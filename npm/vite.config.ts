@@ -8,6 +8,8 @@ export default defineConfig({
   plugins: [
     dts({
       insertTypesEntry: true,
+      include: ['src', 'index.ts'],
+      exclude: ['tests', '**/*.test.*'],
     }),
   ],
   resolve: {

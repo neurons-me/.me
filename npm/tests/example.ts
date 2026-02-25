@@ -1,13 +1,14 @@
 // Smoke-test using the built ESM bundle.
 // NOTE: This file must be treated as an ES module because we use top-level await.
 // We keep `me` as `any` so TS doesn't lose the callable Proxy behavior.
-import ME from "../dist/me.es.js";
+import ME from "this.me";
 const me: any = new ME();
 function log(title: string) {
+  const snap = me.inspect({ last: 8 });
   console.log("\n====================");
   console.log(title);
   console.log("====================");
-  console.log("last thoughts:", me.shortTermMemory.slice(-8));
+  console.log("last thoughts:", snap.thoughts);
   console.log("index peek:", {
     root: me(""), // note: ME is a callable Proxy at runtime; TS typing is `any` in this smoke test
     username: me("__id") ?? me("@") ?? me("username"), // depends on your get() semantics
@@ -102,8 +103,8 @@ log("after '-' remove wallet.hidden.notes");
 // ------------------------------------------------------------
 // 9) Final dump
 // ------------------------------------------------------------
-console.log("\n--- FINAL shortTermMemory (full) ---");
-console.log(me.shortTermMemory);
+console.log("\n--- FINAL inspect().thoughts (full) ---");
+console.log(me.inspect().thoughts);
 console.log("\n--- Quick gets ---");
 console.log("me('profile.name') =", me("profile.name"));
 console.log("me('wallet.net')   =", me("wallet.net"));

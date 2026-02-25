@@ -4,6 +4,7 @@
     "module": "NodeNext",
     "types": ["node"],
     "moduleResolution": "nodenext",
+    "rootDir": ".",
     "allowImportingTsExtensions": true,
     "declaration": true,
     "emitDeclarationOnly": true,
@@ -12,5 +13,5 @@
     "skipLibCheck": true,
     "allowSyntheticDefaultImports": true
   },
-  "include": ["src/**/*", "index.ts"]
+  "include": ["src/**/*", "index.ts", "tests/**/*.ts", "tests/**/*.d.ts"]
 }

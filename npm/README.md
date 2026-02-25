@@ -8,6 +8,13 @@ npm install this.me
 ---
 
 ## **Start .me in 20 seconds**
+###### Import
+**1) Node.js**:
+```ts
+import ME from "this.me";
+const me = new ME();
+```
+**Other modules formats and runtime targets:** CommonJS (`require`), UMD (global/script), TypeScript types.
 
 ###### **Declare** Your Data.
 ```ts
@@ -55,134 +62,35 @@ me("synth.moog.grandmother.osc1.wave");
 Secrets create private branches:
 
 ```ts
-me.wallet.balance(500).secret("ABC");
-me.wallet.transactions.list([1,2,3]).secret("ABC");
+me.wallet["_"]("ABC"); // declare secret scope at "wallet"
+me.wallet.balance(500);
+me.wallet.transactions.list([1, 2, 3]);
 ```
 
-Everything under that secret becomes encrypted as a single blob.
-To access it:
+Everything under that scope is stored in an encrypted branch blob.
+Secret scope roots are stealth by design:
 
 ```ts
-me.secret("ABC");
-me("wallet");  
-// → { balance: 500, transactions: { list:[1,2,3] } }
+me("wallet"); // → undefined (stealth root)
+me("wallet.balance"); // → 500
+me("wallet.transactions.list"); // → [1, 2, 3]
 ```
 
-Secrets can nest infinitely
+Secrets can nest infinitely:
 
 ```ts
-me.wallet.hidden.note("private").secret("ABC").secret("DEEP");
-me.secret("ABC");
-me.secret("DEEP");
-me("wallet.hidden");
-// → { note: "private" }
+me.wallet["_"]("ABC");
+me.wallet.hidden["_"]("DEEP");
+me.wallet.hidden.note("private");
+
+me("wallet.hidden"); // → undefined (stealth root)
+me("wallet.hidden.note"); // → "private"
 ```
 
 - **A secret belongs to a specific position in the identity tree.**
 - Everything under that position becomes encrypted.
-- If you declare another secret inside, it becomes a deeper encrypted universe.
-- Accessing the deepest universe requires walking the chain of secrets.
-
-## **🌳 A secret attaches to a position in the tree**
-You do:
-
-```
-me.wallet.secret("ABC");
-```
-
-**.me** interprets this as:
-> “The subtree starting at wallet is encrypted with ABC.”
-Diagram:
-
-```text
-root
- └── wallet  (SECRET ABC)
-       ├── balance
-       └── transactions
-```
-
-Everything below wallet is encrypted **as one block**.
-
-## 🌚 Declaring another secret inside creates a nested universe
-You do:
-```
-me.wallet.private.secret("DEEP");
-```
-
-Now **.me** interprets:
-> “Inside wallet/ (encrypted under ABC), private/ will be encrypted under DEEP.”
-Visual:
-
-```text
-root
- └── wallet  (SECRET ABC)
-       ├── balance
-       ├── transactions
-       └── private  (SECRET DEEP)
-             └── ...nodes...
-```
-
-## 🔐 Accessing nested secrets requires walking the secret chain
-To read the inner content:
-
-```js
-me.secret("ABC");   // unlock wallet universe
-me.secret("DEEP");  // unlock nested private universe
-```
-
-Then:
-
-```js
-me("wallet.private")  // returns decrypted inner structure
-```
-
-## **🌌 You can nest as many secrets as you want**
-
-```js
-me.x.secret("A");
-me.x.y.secret("B");
-me.x.y.z.secret("C");
-```
-
-To access:
-
-```js
-me.secret("A");
-me.secret("B");
-me.secret("C");
-me("x.y.z");   // fully decrypted
-```
-
-Visual:
-
-```
-x  (A)
- └── y  (B)
-      └── z  (C)
-```
-
-Every deeper secret is a smaller encrypted universe inside a larger encrypted universe.
-This is **fractal encryption**.
-Let’s rewrite your example cleanly:
-
-```js
-me.cars.keys.secret("X");
-```
-
-> “Does this mean cars.keys is public, but everything *inside* keys (after calling secret) becomes encrypted?”
-##### **✔ YES.**
-- cars → public
-- cars.keys → public *branch*
-
-- **everything inside** **cars.keys.\***
-  (anything you declare after calling secret)
-  → encrypted under "X"
-
-### **🧠 Answer to common questions:**
-##### **✔ Yes — you can declare secrets at specific positions.**
-##### **✔ Yes — everything under that branch becomes encrypted.**
-##### **✔ Yes — you can put another secret deeper.**
-##### **✔ Yes — to access you must follow the entire chain of secrets.**
+- If you declare another secret inside, it becomes a deeper encrypted scope.
+- Reads are path-based; there is no global `me.secret(...)` unlock call.
 
 ---
 
@@ -238,8 +146,9 @@ me.system.audio.filters.lowpass.cutoff(1200);
 me.system.audio.filters.lowpass.resonance(0.7);
 
 // Encrypted branch
-me.wallet.balance(500).secret("XYZ");
-me.wallet.transactions.list([1,2,3]).secret("XYZ");
+me.wallet["_"]("XYZ");
+me.wallet.balance(500);
+me.wallet.transactions.list([1, 2, 3]);
 
 // Read values
 console.log(me("name.first")); // "Abella"

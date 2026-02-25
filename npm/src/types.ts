@@ -45,6 +45,8 @@ export interface Thought {
   effectiveSecret: string;
   /** portable hash (FNV-1a 32-bit in me.ts) */
   hash: string;
+  /** previous thought hash for chain integrity (genesis = "") */
+  prevHash?: string;
   timestamp: number;
 }
 // -----------------------------
@@ -250,6 +252,50 @@ export interface OperatorModule {
 
   handler: OperatorHandler;
 }
+
+// -----------------------------
+// Pure mapping proposal types
+// -----------------------------
+
+/**
+ * Canonical operation tags for blind kernel commits.
+ * This coexists with legacy `operator` semantics during migration.
+ */
+export type MappingOp = "set" | "secret" | "noise" | "ptr" | "id" | "derive" | "query" | "remove";
+
+/**
+ * Proxy/router-level invocation before semantic normalization.
+ */
+export interface MappingIntent {
+  path: SemanticPath;
+  expression: any;
+}
+
+/**
+ * Normalized mapping instruction ready for kernel commit.
+ */
+export interface MappingInstruction {
+  path: SemanticPath;
+  op: MappingOp;
+  value: any;
+  meta?: Record<string, any>;
+}
+
+/**
+ * Output of the semantic normalization layer.
+ * - "commit": produce one or more instructions for storage.
+ * - "return": immediate runtime value (root eval/query-like paths), with optional side commits.
+ */
+export type NormalizedCall =
+  | {
+      kind: "commit";
+      instructions: MappingInstruction[];
+    }
+  | {
+      kind: "return";
+      value: any;
+      instructions?: MappingInstruction[];
+    };
 
 // -----------------------------
 // Exact semantics (me.ts invariants)

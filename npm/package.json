@@ -1,6 +1,6 @@
 {
   "name": "this.me",
-  "version": "3.0.35",
+  "version": "3.1.2",
   "type": "module",
   "main": "./dist/me.cjs",
   "module": "./dist/me.es.js",
@@ -14,10 +14,13 @@
     }
   },
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview",
+    "dev": "vite --config vite.config.ts",
+    "build": "vite build --config vite.config.ts",
+    "preview": "vite preview --config vite.config.ts",
     "test:ts": "tsc --noEmit",
+    "test:umd": "node tests/umd.test.cjs",
+    "test:prebuild": "node tests/pre-build.test.mjs",
+    "test:contracts": "node tests/contracts/dsl.contract.test.mjs",
     "prepublishOnly": "npm run build",
     "docs:api": "typedoc",
     "docs:api:watch": "typedoc --watch",
@@ -29,11 +32,10 @@
     "dist"
   ],
   "dependencies": {
-    "fb": "^2.0.0",
     "js-sha3": "^0.9.3"
   },
   "devDependencies": {
-    "@types/node": "^24.10.1",
+    "@types/node": "^24.10.13",
     "typedoc": "^0.28.16",
     "typedoc-plugin-markdown": "^4.9.0",
     "vite": "^7.0.6",

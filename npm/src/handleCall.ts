@@ -17,6 +17,51 @@ export interface HandleCallDeps {
   isThought(obj: any): obj is Thought;
 }
 
+function splitPathExpr(input: string): string[] {
+  const out: string[] = [];
+  let cur = "";
+  let bracketDepth = 0;
+  let quote: '"' | "'" | null = null;
+
+  for (let i = 0; i < input.length; i++) {
+    const ch = input[i];
+    if (quote) {
+      cur += ch;
+      if (ch === quote) quote = null;
+      continue;
+    }
+
+    if (ch === '"' || ch === "'") {
+      quote = ch;
+      cur += ch;
+      continue;
+    }
+    if (ch === "[") {
+      bracketDepth++;
+      cur += ch;
+      continue;
+    }
+    if (ch === "]") {
+      bracketDepth = Math.max(0, bracketDepth - 1);
+      cur += ch;
+      continue;
+    }
+
+    if (ch === "." && bracketDepth === 0) {
+      const part = cur.trim();
+      if (part) out.push(part);
+      cur = "";
+      continue;
+    }
+
+    cur += ch;
+  }
+
+  const tail = cur.trim();
+  if (tail) out.push(tail);
+  return out;
+}
+
 /**
  * Extracted `handleCall` logic from `me.ts`.
  *
@@ -36,7 +81,7 @@ export function handleCall(deps: HandleCallDeps, path: SemanticPath, args: any[]
       const isDottedPath = s.includes(".");
       const isSingleLabelPath = /^[a-zA-Z][a-zA-Z0-9_-]*$/.test(s);
       if (isDottedPath || isOperatorPrefixed || isSingleLabelPath) {
-        const getPath = s.split(".").filter(Boolean);
+        const getPath = splitPathExpr(s);
         return deps.readPath(getPath);
       }
     }
