@@ -1,0 +1,1 @@
+import{_ as i,o as a,c as t,ae as n}from"./chunks/framework.BvHJbMD4.js";const d=JSON.parse('{"title":"","description":"","frontmatter":{},"headers":[],"relativePath":"Examples.md","filePath":"Examples.md"}'),e={name:"Examples.md"};function h(p,s,l,k,E,o){return a(),t("div",null,[...s[0]||(s[0]=[n("",1)])])}const g=i(e,[["render",h]]);export{d as __pageData,g as default};

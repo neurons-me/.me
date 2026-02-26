@@ -231,6 +231,9 @@ The behavior is identical, bit-by-bit, because the logic is part of the state.
 
 ##### License
 **MIT © 2025 by https://neurons.me**
-See the [LICENSE](./LICENSE) file for details.
+
+See the `LICENSE` file in the package root for details.
+
 **∴ Witness our seal** 
+
 **suiGn**
