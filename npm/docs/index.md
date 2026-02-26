@@ -72,7 +72,7 @@ me.main_switch.brightness(0); // Turn off the kitchen from the root
 me("home.kitchen.lights.avg"); // → 20 (Reactive Auto-Update)
 ```
 You can construct any conceptual universe.
-### Run your coffee shops:
+### Run your coffee shops ☕:
 ```ts
 // 1. Build two shops as an indexed collection
 me.shops[1].name("Downtown");
@@ -89,7 +89,7 @@ me("shops[1..2].menu.breakfast_deal"); // → { "1": 6.0, "2": 7.0 }
 me("shops[menu.breakfast_deal > 6].name"); // → { "2": "Riverside" }
 ```
 
-Or even patch your master bus to your moog synth filter
+Or even patch ◎──▶ your **master bus** ──▶ to your **moog synth** filter ──▶◉
 ```ts
 me.studio.master_bus.input["->"]("studio.synth.moog.filter");
 me.studio.master_bus.input.cutoff(1200);
@@ -114,7 +114,7 @@ me("wallet.balance"); // → 500 (Direct path resolution works)
 ```
 ###### 𓉔 Recursive Stealth:
 
-Secrets nest infinitely. Each `["_"]` creates a deeper, independent cryptographic layer:
+**Secrets nest infinitely**. Each `["_"]` creates a deeper, independent cryptographic layer:
 
 ```ts
 me.wallet["_"]("KEY-A");
@@ -198,11 +198,9 @@ me.exportSnapshot();  // full portable state (Phase 7B)
 ```
 
 # 𓃭 The Engine: Why it’s so fast?𓃭
-
 While traditional databases get bogged down in heavy scans and slow joins, the **.me Kernel** doesn't "search" for data—it navigates a **Semantic Algebra.**
 
 #### 𓎛 Incremental Intelligence (Phase 8) 
-
 Unlike standard reactive frameworks that re-render everything, **.me** uses an **Inverted Dependency Index.**
 When you define a formula (=), the Kernel maps the relationship.
 On mutation, only the affected nodes wake up.
@@ -211,15 +209,12 @@ On mutation, only the affected nodes wake up.
  is the specific dependency chain, not the size of the tree).
 
 #### 𓁟 Hermetic Sandbox (Phase C)
-
 Security isn't a "check"; it's a grammar.
 We replaced `eval()` with a custom **Shunting-yard + RPN evaluator.**
 The Kernel is physically incapable of executing arbitrary code. **It only resolves math and logic** over its own validated paths.
 
 #### Fractal Stealth (Phase 0 & 6)
-
 ###### Privacy is woven into the tree's geometry.
-
 **Stealth Roots:** Secret scopes `("_")` are invisible to standard lookups.
 **Deterministic Integrity:** Calculations can cross from public to secret scopes **(Phase 6)** without ever exposing the sensitive keys in the audit trail (me.explain).
 **Zero-Latency Portability** **(Phase 7A/B)**

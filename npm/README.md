@@ -1,91 +1,135 @@
-<img src="https://res.cloudinary.com/dkwnxf6gm/image/upload/v1761149332/this.me-removebg-preview_2_j1eoiy.png" alt=".me Logo" width="144" />
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://res.cloudinary.com/dkwnxf6gm/image/upload/v1769890772/this.me.png" />
+  <img src="https://res.cloudinary.com/dkwnxf6gm/image/upload/v1761149332/this.me-removebg-preview_2_j1eoiy.png" alt=".me Logo" width="144" />
+</picture>
 
 # .me  
 
-##### npm
 ```bash
 npm install this.me
 ```
-
-## **Start .me in 20 seconds**
+## **Start .me in 60 seconds**
 ###### Import
-**1) Node.js**:
 ```ts
 import ME from "this.me";
-let me = new ME();
+const me = new ME();
 ```
-**Other modules formats and runtime targets:** CommonJS (`require`), UMD (global/script), TypeScript types.
+
+###### **Declare** Your Identity.
+```ts
+me["@"]("jabellae");
+```
 
 ###### **Declare** Your Data.
 ```ts
-me.profile.name("Abella");
-me.profile.age(30);
+me.profile.name("Abella.e");
+me.profile.bio("Building the semantic web.");
+me.profile.pic("https://neurons.me/media/neurons-grey.png");
+me.users.ana.name("Ana");
+me.users.ana.bio("Designing semantic interfaces.");
+me.users.ana.age(22);
+me.users.pablo.name("Pablo");
+me.users.pablo.bio("Building distributed systems.");
+me.users.pablo.age(17);
 ```
 
-###### **Read **Your Data
+###### **Use in expressions**
 ```ts
-me("profile.name"); // → "Abella"
-me("profile.age");  // → 30
+me.friends.ana["->"]("users.ana");
+me.friends.pablo["->"]("users.pablo");
+// Broadcast logic over friend pointers
+me.friends["[i]"]["="]("is_adult", "age >= 18");
 ```
-
-##### **Use in expressions**
+###### Read Your Data
 ```ts
-if (me("profile.age") > 18) {
-  console.log("Adult");
-}
-```
-
----
-
-## 🌳 Infinite Semantic Trees
-**.me** supports infinite nesting:
-
-```ts
-me.system.audio.filters.lowpass.cutoff(1200);
-me.system.audio.filters.lowpass.resonance(0.7);
-me("system.audio.filters.lowpass");
-// → { cutoff: 1200, resonance: 0.7 }
-```
-
-You can construct any conceptual universe:
-
-```ts
-me.synth.moog.grandmother.osc1.wave("triangle");
-me.synth.moog.grandmother.osc2.wave("square");
-me("synth.moog.grandmother.osc1.wave");
-// → "triangle"
+me("profile.bio"); // → "Building the semantic web."
+me("friends.ana.bio");// → "Designing semantic interfaces."
+me("friends.pablo.name");// → "Pablo"
+me("friends.ana.is_adult");// → true
+me("friends.pablo.is_adult");// → false
+me("friends[age > 18].name");// → { ana: "Ana" }
 ```
 
 ---
 
-## 🔐 Secrets: Encrypted Universes
-Secrets create private branches:
+# ⟁ Infinite Semantic Trees
+**.me** supports **infinite** nesting:
 
 ```ts
-me.wallet["_"]("ABC"); // declare secret scope at "wallet"
+// 1. Build your nested house
+me.home.kitchen.lights.main.brightness(80); //sets the value to 80
+me.home.kitchen.lights.leds.brightness(40); //sets the value to 40
+// 2. Add "Master Control" Logic
+me.home.kitchen.lights["="]("avg", "(main.brightness + leds.brightness) / 2"); // 80 + 40 / 2
+me("home.kitchen.lights.avg"); // → 60
+```
+
+You can **bridge** distant rooms with **Pointers**:
+```ts
+// Create a "Master Switch" at your root
+me.main_switch["->"]("home.kitchen.lights.main");
+me.main_switch.brightness(0); // Turn off the kitchen from the root
+me("home.kitchen.lights.avg"); // → 20 (Reactive Auto-Update)
+```
+You can construct any conceptual universe.
+### Run your coffee shops ☕:
+```ts
+// 1. Build two shops as an indexed collection
+me.shops[1].name("Downtown");
+me.shops[1].menu.latte.price(4.5);
+me.shops[1].menu.espresso.price(3.0);
+me.shops[2].name("Riverside");
+me.shops[2].menu.latte.price(5.0);
+me.shops[2].menu.espresso.price(3.5);
+// 2. Broadcast combo logic to every shop (iterator [i])
+me.shops["[i]"].menu["="]("breakfast_deal", "latte.price + espresso.price - 1.5");
+// 3. Read by range selector
+me("shops[1..2].menu.breakfast_deal"); // → { "1": 6.0, "2": 7.0 }
+// 4. Filter shops by computed value
+me("shops[menu.breakfast_deal > 6].name"); // → { "2": "Riverside" }
+```
+
+Or even patch ◎──▶ your **master bus** ──▶ to your **moog synth** filter ──▶◉
+```ts
+me.studio.master_bus.input["->"]("studio.synth.moog.filter");
+me.studio.master_bus.input.cutoff(1200);
+me("studio.synth.moog.filter.cutoff"); // → 1200
+```
+
+---
+
+## 𓂀 Secrets: Encrypted Universes
+Secrets don't just hide data; they create **Private Sub-Dimensions** in your identity tree.
+```ts
+// 1. Declare a secret scope at any branch
+me.wallet["_"]("vault-key-2026"); 
 me.wallet.balance(500);
-me.wallet.transactions.list([1, 2, 3]);
+me.wallet.note("Private savings");
 ```
 
-Everything under that scope is stored in an encrypted branch blob.
-Secret scope roots are stealth by design:
+Everything under a `["_"]` scope is **stored as an Encrypted Blob**. By design, secret roots are Stealth:
+```ts
+me("wallet"); // → undefined (The root is a ghost)
+me("wallet.balance"); // → 500 (Direct path resolution works)
+```
+###### 𓉔 Recursive Stealth:
+
+**Secrets nest infinitely**. Each `["_"]` creates a deeper, independent cryptographic layer:
 
 ```ts
-me("wallet"); // → undefined (stealth root)
-me("wallet.balance"); // → 500
-me("wallet.transactions.list"); // → [1, 2, 3]
+me.wallet["_"]("KEY-A");
+me.wallet.hidden["_"]("KEY-B");// Nested secret scope
+me.wallet.hidden.note("Deep dark secret");
+me("wallet.hidden"); // → undefined
+me("wallet.hidden.note");// → "Deep dark secret"
 ```
 
-Secrets can nest infinitely:
+## 𓉐 The Rules of the Vault:
+**Zero-Knowledge Roots:** You can't "list" a secret directory. If you don't know the path, the data doesn't exist for you.
 
-```ts
-me.wallet["_"]("ABC");
-me.wallet.hidden["_"]("DEEP");
-me.wallet.hidden.note("private");
+**Path-Based Resolution:** There is no global unlock() call. Security is woven into the Semantic Path.
+**Atomic Encryption:** Every secret branch is a self-contained encrypted universe.
 
-me("wallet.hidden"); // → undefined (stealth root)
-me("wallet.hidden.note"); // → "private"
-```
 
 - **A secret belongs to a specific position in the identity tree.**
 - Everything under that position becomes encrypted.
@@ -94,81 +138,99 @@ me("wallet.hidden.note"); // → "private"
 
 ---
 
-### 🧬 Why ME Works
-
-- Proxies → infinite language surface  
-- Path strings → universal query interface  
-- Values → semantic meaning, not strict types  
-- Secrets → fractal encrypted universes  
-- Export → deterministic declarative identity  
-- Zero dependencies  
-- Browser & Node compatible  
+## ⟐ Why .me?
+- **Infinite Surface:** No schemas. If you think of a path `(me.a.b.c)`, it exists. You **define your universe as you speak.**
+- **Universal Query:** Any string is a query. No SQL, no complex APIs. Just paths and brackets `[]`.
+- **Fractal Privacy:** Security isn't a "plugin." It's woven into the tree. You can drop a `Secret ["_"]` anywhere, and that branch becomes a private universe.
+- **Deterministic Replay:** Every state change is a "Thought." You can export your entire identity and rebuild it exactly as it was, anywhere in the world.
+- **Zero Baggage:** No dependencies. No bloat. Pure logic that runs in 15ms on a browser or a server.
 
 ---
 
-### 📦 Export Identity
+## 𓆣 Explain Derivations
+
+Use `me.explain(path)` to audit how a computed value was produced.
 
 ```ts
-console.log(me.export());
+const trace = me.explain("shops.2.menu.breakfast_deal");
+console.log(trace);
 ```
 
-Produces a deterministic structure:
+**Example trace:**
 
 ```json
 {
-  "identityRoot": "0xabc...",
-  "publicKey": "...",
-  "identityHash": "...",
-  "declarations": [
-    { "key": "profile.name", "value": "Abella", ... },
-    { "key": "profile.age", "value": 30, ... }
-  ]
+  "path": "shops.2.menu.breakfast_deal",
+  "value": 7,
+  "derivation": {
+    "expression": "latte.price + espresso.price - 1.5",
+    "inputs": [
+      {
+        "label": "latte.price",
+        "path": "shops.2.menu.latte.price",
+        "value": 5,
+        "origin": "public",
+        "masked": false
+      },
+      {
+        "label": "espresso.price",
+        "path": "shops.2.menu.espresso.price",
+        "value": 3.5,
+        "origin": "public",
+        "masked": false
+      }
+    ]
+  },
+  "meta": {
+    "dependsOn": [
+      "shops.2.menu.latte.price",
+      "shops.2.menu.espresso.price"
+    ]
+  }
 }
 ```
 
----
-
-### 🧠 Full Example
+For runtime snapshots/debug:
 
 ```ts
-import { ME } from "this.me";
-
-const me = new ME("my-secret");
-
-// Declare identity
-me.name.first("Abella");
-me.name.last("Eggleton");
-me.profile.role("Musician");
-me.profile.age(30);
-
-// Semantic universes
-me.system.audio.filters.lowpass.cutoff(1200);
-me.system.audio.filters.lowpass.resonance(0.7);
-
-// Encrypted branch
-me.wallet["_"]("XYZ");
-me.wallet.balance(500);
-me.wallet.transactions.list([1, 2, 3]);
-
-// Read values
-console.log(me("name.first")); // "Abella"
-console.log(me("profile.age")); // 30
-
-// Logic
-if (me("profile.age") > 21) {
-  console.log("Access granted");
-}
-
-// Export
-console.log(JSON.stringify(me.export(), null, 2));
+me.inspect(); // thoughts + index + scopes
+me.exportSnapshot();  // full portable state (Phase 7B)
 ```
 
+# 𓃭 The Engine: Why it’s so fast?𓃭
+While traditional databases get bogged down in heavy scans and slow joins, the **.me Kernel** doesn't "search" for data—it navigates a **Semantic Algebra.**
+
+#### 𓎛 Incremental Intelligence (Phase 8) 
+Unlike standard reactive frameworks that re-render everything, **.me** uses an **Inverted Dependency Index.**
+When you define a formula (=), the Kernel maps the relationship.
+On mutation, only the affected nodes wake up.
+**The Result**: Local updates resolve in 15ms, achieving 
+ complexity (where 
+ is the specific dependency chain, not the size of the tree).
+
+#### 𓁟 Hermetic Sandbox (Phase C)
+Security isn't a "check"; it's a grammar.
+We replaced `eval()` with a custom **Shunting-yard + RPN evaluator.**
+The Kernel is physically incapable of executing arbitrary code. **It only resolves math and logic** over its own validated paths.
+
+#### Fractal Stealth (Phase 0 & 6)
+###### Privacy is woven into the tree's geometry.
+**Stealth Roots:** Secret scopes `("_")` are invisible to standard lookups.
+**Deterministic Integrity:** Calculations can cross from public to secret scopes **(Phase 6)** without ever exposing the sensitive keys in the audit trail (me.explain).
+**Zero-Latency Portability** **(Phase 7A/B)**
+
+###### 𓂀𓈖𓂀 ⟐ Your identity is Deterministic ⟐ 𓂀𓈖𓂀
+
+By exporting **"Thoughts"** or **"Snapshots"**, you can teleport your entire state between a **MacBook Air** in **Veracruz** and a high-end server in **London.**
+The behavior is identical, bit-by-bit, because the logic is part of the state.
+
 ---
-
-
 <a href="https://www.neurons.me" target="_blank">
-<img src="https://res.cloudinary.com/dkwnxf6gm/image/upload/v1760893633/npm-neurons-me_9b3e3a.jpg" style="zoom:16%;" /></a>
+<img src="https://res.cloudinary.com/dkwnxf6gm/image/upload/v1760901388/bc75d34cf31ad2217a3cc607f41b884c022e8a7e0dc022e2678bbba5bac1cd59-removebg-preview-removebg-preview_w6c3il.png" style="zoom:21%;" /></a>
+
 
 ##### License
-MIT © 2025 by https://neurons.me
+**MIT © 2025 by https://neurons.me**
 See the [LICENSE](./LICENSE) file for details.
+**∴ Witness our seal** 
+**suiGn**
