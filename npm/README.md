@@ -11,8 +11,8 @@ npm install this.me
 ## **Start .me in 60 seconds**
 ###### Import
 ```ts
-import ME from "this.me";
-const me = new ME();
+import Me from "this.me";
+const me = new Me();
 ```
 
 ###### **Declare** Your Identity.

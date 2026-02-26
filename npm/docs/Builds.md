@@ -21,22 +21,22 @@ Published outputs:
 ### 1) Node.js / Bundlers (recommended)
 
 ```ts
-import ME from "this.me";
-const me = new ME();
+import Me from "this.me";
+const me = new Me();
 ```
 
 ### 2) CommonJS (legacy Node)
 
 ```js
-const ME = require("this.me");
-const me = new ME();
+const Me = require("this.me");
+const me = new Me();
 ```
 
 ### 3) Browser with bundler (Vite/Webpack/Rollup)
 
 ```ts
-import ME from "this.me";
-const me = new ME();
+import Me from "this.me";
+const me = new Me();
 ```
 
 ### 4) Browser without bundler (CDN + UMD)
