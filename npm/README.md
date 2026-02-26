@@ -1,18 +1,18 @@
 <img src="https://res.cloudinary.com/dkwnxf6gm/image/upload/v1761149332/this.me-removebg-preview_2_j1eoiy.png" alt=".me Logo" width="144" />
 
 # .me  
-##### **1. NPM:**
+
+##### npm
 ```bash
 npm install this.me
 ```
----
 
 ## **Start .me in 20 seconds**
 ###### Import
 **1) Node.js**:
 ```ts
 import ME from "this.me";
-const me = new ME();
+let me = new ME();
 ```
 **Other modules formats and runtime targets:** CommonJS (`require`), UMD (global/script), TypeScript types.
 

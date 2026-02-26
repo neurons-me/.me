@@ -3,7 +3,7 @@ import { defineConfig } from "vitepress";
 const base = process.env.VITEPRESS_BASE || "/";
 
 export default defineConfig({
-  title: "this.me",
+  title: ".me",
   description: "Documentation for this.me",
   base,
   themeConfig: {
@@ -11,8 +11,8 @@ export default defineConfig({
       { text: "Home", link: "/" },
       { text: "Builds", link: "/Builds" },
       { text: "Thoughts", link: "/Thoughts" },
-      { text: "API", link: "/api/README" },
-      { text: "Test Map (ES)", link: "/es/TestMap" },
+      { text: "Phases", link: "/Phases" },
+      { text: "Kernel", link: "/Kernel" },
     ],
     sidebar: [
       {
@@ -21,6 +21,9 @@ export default defineConfig({
           { text: "Home", link: "/" },
           { text: "Builds", link: "/Builds" },
           { text: "Thoughts", link: "/Thoughts" },
+          { text: "Phases", link: "/Phases" },
+          { text: "Kernel", link: "/Kernel" },
+
         ],
       },
       {

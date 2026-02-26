@@ -45,6 +45,17 @@ export class ME {
   // Runtime log lives as a semantic node, but is updated via a kernel write (no extra thoughts).
   // This avoids the infinite recursion problem of: postulate -> write memory -> postulate -> ...
   private _shortTermMemory: Thought[] = [];
+  private derivations: Record<
+    string,
+    {
+      expression: string;
+      evalScope: SemanticPath;
+      refs: Array<{ label: string; path: string }>;
+      lastComputedAt: number;
+    }
+  > = {};
+  private refSubscribers: Record<string, string[]> = {};
+  private readonly unsafeEval = false;
   // Legacy compatibility accessor. Prefer `inspect()` for debug tooling.
   get shortTermMemory(): Thought[] {
     return this._shortTermMemory;
@@ -70,6 +81,175 @@ export class ME {
       secretScopes: Object.keys(this.localSecrets),
       noiseScopes: Object.keys(this.localNoises),
     };
+  }
+
+  explain(path: string): {
+    path: string;
+    value: any;
+    derivation: null | {
+      expression: string;
+      inputs: Array<{ label: string; path: string; value: any; origin: "public" | "stealth"; masked: boolean }>;
+    };
+    meta: {
+      dependsOn: string[];
+      lastComputedAt?: number;
+    };
+  } {
+    const target = this.normalizeSelectorPath(String(path ?? "").split(".").filter(Boolean));
+    const key = target.join(".");
+    const value = this.readPath(target);
+    const d = this.derivations[key];
+    if (!d) {
+      return {
+        path: key,
+        value,
+        derivation: null,
+        meta: { dependsOn: [] },
+      };
+    }
+
+    const inputs = d.refs.map((r) => {
+      const refParts = this.normalizeSelectorPath(r.path.split(".").filter(Boolean));
+      const refScope = this.resolveBranchScope(refParts);
+      const isStealth = !!(refScope && refScope.length > 0 && pathStartsWith(refParts, refScope));
+      const raw = this.readPath(refParts);
+      return {
+        label: r.label,
+        path: r.path,
+        value: isStealth ? "●●●●" : raw,
+        origin: (isStealth ? "stealth" : "public") as "public" | "stealth",
+        masked: isStealth,
+      };
+    });
+
+    return {
+      path: key,
+      value,
+      derivation: {
+        expression: d.expression,
+        inputs,
+      },
+      meta: {
+        dependsOn: d.refs.map((r) => r.path),
+        lastComputedAt: d.lastComputedAt,
+      },
+    };
+  }
+
+  private cloneValue<T>(value: T): T {
+    const sc = (globalThis as any).structuredClone;
+    if (typeof sc === "function") return sc(value);
+    return JSON.parse(JSON.stringify(value));
+  }
+
+  exportSnapshot(): {
+    shortTermMemory: Thought[];
+    localSecrets: Record<string, string>;
+    localNoises: Record<string, string>;
+    encryptedBranches: Record<string, EncryptedBlob>;
+    operators: Record<string, { kind: string }>;
+  } {
+    return this.cloneValue({
+      shortTermMemory: this._shortTermMemory,
+      localSecrets: this.localSecrets,
+      localNoises: this.localNoises,
+      encryptedBranches: this.encryptedBranches,
+      operators: this.operators,
+    });
+  }
+
+  importSnapshot(snapshot: {
+    shortTermMemory?: Thought[];
+    localSecrets?: Record<string, string>;
+    localNoises?: Record<string, string>;
+    encryptedBranches?: Record<string, EncryptedBlob>;
+    operators?: Record<string, { kind: string }>;
+  }): void {
+    const data = this.cloneValue(snapshot ?? {});
+    this._shortTermMemory = Array.isArray(data.shortTermMemory) ? data.shortTermMemory : [];
+    this.localSecrets = data.localSecrets && typeof data.localSecrets === "object" ? data.localSecrets : {};
+    this.localNoises = data.localNoises && typeof data.localNoises === "object" ? data.localNoises : {};
+    this.encryptedBranches =
+      data.encryptedBranches && typeof data.encryptedBranches === "object" ? data.encryptedBranches : {};
+    this.derivations = {};
+    this.refSubscribers = {};
+
+    const defaults: Record<string, { kind: string }> = {
+      "_": { kind: "secret" },
+      "~": { kind: "noise" },
+      "__": { kind: "pointer" },
+      "->": { kind: "pointer" },
+      "@": { kind: "identity" },
+      "=": { kind: "eval" },
+      "?": { kind: "query" },
+      "-": { kind: "remove" },
+    };
+    this.operators =
+      data.operators && typeof data.operators === "object"
+        ? { ...defaults, ...data.operators }
+        : defaults;
+
+    this.rebuildIndex();
+  }
+
+  rehydrate(snapshot: {
+    shortTermMemory?: Thought[];
+    localSecrets?: Record<string, string>;
+    localNoises?: Record<string, string>;
+    encryptedBranches?: Record<string, EncryptedBlob>;
+    operators?: Record<string, { kind: string }>;
+  }): void {
+    this.importSnapshot(snapshot);
+  }
+
+  replayThoughts(thoughts: Thought[]): void {
+    this.localSecrets = {};
+    this.localNoises = {};
+    this.encryptedBranches = {};
+    this.index = {};
+    this._shortTermMemory = [];
+    this.derivations = {};
+    this.refSubscribers = {};
+
+    for (const t of thoughts || []) {
+      const path = String(t.path || "")
+        .split(".")
+        .filter(Boolean);
+
+      if (t.operator === "_") {
+        this.postulate([...path, "_"], typeof t.expression === "string" ? t.expression : "***");
+        continue;
+      }
+      if (t.operator === "~") {
+        this.postulate([...path, "~"], typeof t.expression === "string" ? t.expression : "***");
+        continue;
+      }
+      if (t.operator === "@") {
+        const id =
+          (t.expression && (t.expression as any).__id) || (t.value && (t.value as any).__id) || t.value;
+        if (typeof id === "string" && id.length > 0) this.postulate([...path, "@"], id);
+        continue;
+      }
+      if (t.operator === "__" || t.operator === "->") {
+        const ptr =
+          (t.expression && (t.expression as any).__ptr) || (t.value && (t.value as any).__ptr) || t.value;
+        if (typeof ptr === "string" && ptr.length > 0) this.postulate([...path, "__"], ptr);
+        continue;
+      }
+      if (t.operator === "-") {
+        this.removeSubtree(path);
+        continue;
+      }
+
+      // For derived/query thoughts, commit final resolved value at the same path.
+      if (t.operator === "=" || t.operator === "?") {
+        this.postulate(path, t.value, t.operator);
+        continue;
+      }
+
+      this.postulate(path, t.expression, t.operator);
+    }
+    this.rebuildIndex();
   }
   // Kernel operator registry (editable through me["+"]("op", kind))
   // kind: "secret" | "pointer" | "identity" | "custom" | "remove" | "eval" | "query" | "noise"
@@ -347,6 +527,106 @@ export class ME {
     return prev?.hash ?? "";
   }
 
+  private extractExpressionRefs(expr: string): string[] {
+    const raw = String(expr ?? "").trim();
+    if (!raw) return [];
+    const seg = String.raw`[A-Za-z_][A-Za-z0-9_]*(?:\[(?:"[^"]*"|'[^']*'|[^\]]+)\])*`;
+    const tokenRegex = new RegExp(String.raw`__ptr(?:\.${seg})*|${seg}(?:\.${seg})*`, "g");
+    const reserved = new Set(["true", "false", "null", "undefined", "NaN", "Infinity"]);
+    const refs = new Set<string>();
+    const m = raw.match(tokenRegex) || [];
+    for (const t of m) {
+      if (reserved.has(t)) continue;
+      refs.add(t);
+    }
+    return Array.from(refs);
+  }
+
+  private resolveRefPath(label: string, evalScope: SemanticPath): string | null {
+    if (!label || label.startsWith("__ptr.")) return null;
+    const parts = this.normalizeSelectorPath(label.split(".").filter(Boolean));
+    if (parts.length === 0) return null;
+    const rel = this.normalizeSelectorPath([...evalScope, ...parts]).join(".");
+    const abs = this.normalizeSelectorPath(parts).join(".");
+    // Prefer relative binding for bare labels and fallback to absolute for dotted roots.
+    if (!label.includes(".")) return rel;
+    return abs;
+  }
+
+  private unregisterDerivation(targetKey: string): void {
+    const old = this.derivations[targetKey];
+    if (!old) return;
+    for (const ref of old.refs) {
+      const arr = this.refSubscribers[ref.path] || [];
+      this.refSubscribers[ref.path] = arr.filter((t) => t !== targetKey);
+      if (this.refSubscribers[ref.path].length === 0) delete this.refSubscribers[ref.path];
+    }
+    delete this.derivations[targetKey];
+  }
+
+  private registerDerivation(targetPath: SemanticPath, evalScope: SemanticPath, expr: string): void {
+    const targetKey = targetPath.join(".");
+    this.unregisterDerivation(targetKey);
+
+    const labels = this.extractExpressionRefs(expr);
+    const refs: Array<{ label: string; path: string }> = [];
+    const seen = new Set<string>();
+    for (const label of labels) {
+      const resolved = this.resolveRefPath(label, evalScope);
+      if (!resolved) continue;
+      if (seen.has(resolved)) continue;
+      seen.add(resolved);
+      refs.push({ label, path: resolved });
+      const arr = this.refSubscribers[resolved] || [];
+      if (!arr.includes(targetKey)) arr.push(targetKey);
+      this.refSubscribers[resolved] = arr;
+    }
+
+    this.derivations[targetKey] = {
+      expression: expr,
+      evalScope: [...evalScope],
+      refs,
+      lastComputedAt: Date.now(),
+    };
+  }
+
+  private recomputeTarget(targetKey: string): boolean {
+    const d = this.derivations[targetKey];
+    if (!d) return false;
+    const targetPath = this.normalizeSelectorPath(targetKey.split(".").filter(Boolean));
+    const evaluated = this.tryEvaluateAssignExpression(d.evalScope, d.expression);
+    this.postulate(targetPath, evaluated.ok ? evaluated.value : d.expression, "=");
+    d.lastComputedAt = Date.now();
+    return true;
+  }
+
+  private invalidateFromPath(path: SemanticPath): void {
+    const root = this.normalizeSelectorPath(path).join(".");
+    if (!root) return;
+    const queue: string[] = [root];
+    const seenTargets = new Set<string>();
+
+    while (queue.length > 0) {
+      const changed = queue.shift()!;
+      const subs = this.refSubscribers[changed] || [];
+      for (const target of subs) {
+        if (seenTargets.has(target)) continue;
+        seenTargets.add(target);
+        const updated = this.recomputeTarget(target);
+        if (updated) queue.push(target);
+      }
+    }
+  }
+
+  private clearDerivationsByPrefix(prefixPath: SemanticPath): void {
+    const prefix = prefixPath.join(".");
+    for (const target of Object.keys(this.derivations)) {
+      if (prefix === "" || target === prefix || target.startsWith(prefix + ".")) {
+        this.unregisterDerivation(target);
+      }
+    }
+  }
+
   private commitThoughtOnly(
     targetPath: SemanticPath,
     operator: string | null,
@@ -469,19 +749,10 @@ export class ME {
     }
   }
 
-  private tryResolveEvalToken(
+  private tryResolveEvalTokenValue(
     token: string,
     evalScopePath: SemanticPath
-  ): { ok: true; value: number } | { ok: false } {
-    const toFiniteNumber = (v: any): number | null => {
-      if (typeof v === "number" && Number.isFinite(v)) return v;
-      if (typeof v === "string") {
-        const n = Number(v);
-        if (Number.isFinite(n)) return n;
-      }
-      return null;
-    };
-
+  ): { ok: true; value: any } | { ok: false } {
     // Special pointer namespace: resolve from pointer target first.
     if (token.startsWith("__ptr.")) {
       const raw = this.getIndex(evalScopePath);
@@ -489,24 +760,125 @@ export class ME {
       const ptrSuffix = token.slice("__ptr.".length).split(".").filter(Boolean);
       const ptrPath = [...raw.__ptr.split(".").filter(Boolean), ...ptrSuffix];
       const ptrValue = this.readPath(ptrPath);
-      const n = toFiniteNumber(ptrValue);
-      if (n === null) return { ok: false };
-      return { ok: true, value: n };
+      if (ptrValue === undefined || ptrValue === null) return { ok: false };
+      return { ok: true, value: ptrValue };
     }
 
-    // 1) Relative neighborhood resolution: scope + token.
     const tokenParts = token.split(".").filter(Boolean);
     const relativePath = [...evalScopePath, ...tokenParts];
     let value = this.readPath(relativePath);
-
-    // 2) Absolute/root resolution fallback.
     if (value === undefined || value === null) {
       value = this.readPath(tokenParts);
     }
+    if (value === undefined || value === null) return { ok: false };
+    return { ok: true, value };
+  }
 
-    const n = toFiniteNumber(value);
-    if (n === null) return { ok: false };
-    return { ok: true, value: n };
+  private tokenizeEvalExpression(
+    raw: string
+  ):
+    | Array<
+        | { kind: "literal"; value: any }
+        | { kind: "identifier"; value: string }
+        | { kind: "op"; value: string }
+        | { kind: "lparen" }
+        | { kind: "rparen" }
+      >
+    | null {
+    const tokens: Array<
+      | { kind: "literal"; value: any }
+      | { kind: "identifier"; value: string }
+      | { kind: "op"; value: string }
+      | { kind: "lparen" }
+      | { kind: "rparen" }
+    > = [];
+
+    const seg = String.raw`[A-Za-z_][A-Za-z0-9_]*(?:\[(?:"[^"]*"|'[^']*'|[^\]]+)\])*`;
+    const tokenRe = new RegExp(String.raw`^(?:__ptr(?:\.${seg})*|${seg}(?:\.${seg})*)`);
+    const reservedValues: Record<string, any> = {
+      true: true,
+      false: false,
+      null: null,
+      undefined: undefined,
+      NaN: NaN,
+      Infinity: Infinity,
+    };
+    const twoCharOps = new Set([">=", "<=", "==", "!=", "&&", "||"]);
+    const oneCharOps = new Set(["+", "-", "*", "/", "%", "<", ">", "!"]);
+
+    let i = 0;
+    while (i < raw.length) {
+      const ch = raw[i];
+      if (/\s/.test(ch)) {
+        i++;
+        continue;
+      }
+
+      if (ch === "(") {
+        tokens.push({ kind: "lparen" });
+        i++;
+        continue;
+      }
+      if (ch === ")") {
+        tokens.push({ kind: "rparen" });
+        i++;
+        continue;
+      }
+
+      const two = raw.slice(i, i + 2);
+      if (twoCharOps.has(two)) {
+        tokens.push({ kind: "op", value: two });
+        i += 2;
+        continue;
+      }
+
+      if (oneCharOps.has(ch)) {
+        tokens.push({ kind: "op", value: ch });
+        i++;
+        continue;
+      }
+
+      if (/\d/.test(ch) || (ch === "." && /\d/.test(raw[i + 1] ?? ""))) {
+        let j = i;
+        while (j < raw.length && /[0-9]/.test(raw[j])) j++;
+        if (raw[j] === ".") {
+          j++;
+          while (j < raw.length && /[0-9]/.test(raw[j])) j++;
+        }
+        if (raw[j] === "e" || raw[j] === "E") {
+          let k = j + 1;
+          if (raw[k] === "+" || raw[k] === "-") k++;
+          let hasExpDigit = false;
+          while (k < raw.length && /[0-9]/.test(raw[k])) {
+            hasExpDigit = true;
+            k++;
+          }
+          if (!hasExpDigit) return null;
+          j = k;
+        }
+        const n = Number(raw.slice(i, j));
+        if (!Number.isFinite(n)) return null;
+        tokens.push({ kind: "literal", value: n });
+        i = j;
+        continue;
+      }
+
+      const m = raw.slice(i).match(tokenRe);
+      if (m && m[0]) {
+        const token = m[0];
+        if (Object.prototype.hasOwnProperty.call(reservedValues, token)) {
+          tokens.push({ kind: "literal", value: reservedValues[token] });
+        } else {
+          tokens.push({ kind: "identifier", value: token });
+        }
+        i += token.length;
+        continue;
+      }
+
+      return null;
+    }
+
+    return tokens;
   }
 
   private tryEvaluateAssignExpression(
@@ -516,66 +888,175 @@ export class ME {
     const raw = String(expr ?? "").trim();
     if (!raw) return { ok: false };
 
-    // Keep non-arithmetic forms (template strings, quoted text, etc.) as declarative values.
-    if (/['"`]/.test(raw)) return { ok: false };
-    // Allow arithmetic + propositional operators in expressions.
-    if (!/^[\w.\s+\-*/%()[\]<>!=&|]+$/.test(raw)) return { ok: false };
+    if (!/^[A-Za-z0-9_\s+\-*/%().<>=!&|\[\]"']+$/.test(raw)) return { ok: false };
+    if (this.unsafeEval) return { ok: false };
 
-    // Token grammar (Phase 1 selectors):
-    // - path segments like `foo`, `lote[1]`, `lote["reserva"]`, `lote['reserva']`
-    // - dotted chains of those segments
-    // - special `__ptr` namespace with the same segment grammar
-    const seg = String.raw`[A-Za-z_][A-Za-z0-9_]*(?:\[(?:"[^"]*"|'[^']*'|[^\]]+)\])*`;
-    const tokenRegex = new RegExp(
-      String.raw`__ptr(?:\.${seg})*|${seg}(?:\.${seg})*`,
-      "g"
-    );
-    const reservedValues: Record<string, any> = {
-      true: true,
-      false: false,
-      null: null,
-      undefined: undefined,
-      NaN: NaN,
-      Infinity: Infinity,
+    const tokens = this.tokenizeEvalExpression(raw);
+    if (!tokens || tokens.length === 0) return { ok: false };
+
+    const precedence: Record<string, number> = {
+      "u-": 7,
+      "!": 7,
+      "*": 6,
+      "/": 6,
+      "%": 6,
+      "+": 5,
+      "-": 5,
+      "<": 4,
+      "<=": 4,
+      ">": 4,
+      ">=": 4,
+      "==": 3,
+      "!=": 3,
+      "&&": 2,
+      "||": 1,
     };
-    const values: any[] = [];
-    const tokenToIndex = new Map<string, number>();
+    const rightAssoc = new Set(["u-", "!"]);
+    const out: Array<{ kind: "literal"; value: any } | { kind: "identifier"; value: string } | { kind: "op"; value: string }> = [];
+    const ops: Array<{ kind: "op"; value: string } | { kind: "lparen" }> = [];
 
-    let resolutionFailed = false;
-    const compiled = raw.replace(tokenRegex, (token) => {
-      let idx = tokenToIndex.get(token);
-      if (idx === undefined) {
-        if (Object.prototype.hasOwnProperty.call(reservedValues, token)) {
-          idx = values.length;
-          values.push(reservedValues[token]);
-          tokenToIndex.set(token, idx);
-        } else {
-          const resolved = this.tryResolveEvalToken(token, evalScopePath);
-          if (!resolved.ok) {
-            resolutionFailed = true;
-            return token;
+    type Prev = "start" | "value" | "op" | "lparen" | "rparen";
+    let prev: Prev = "start";
+
+    for (const token of tokens) {
+      if (token.kind === "literal" || token.kind === "identifier") {
+        out.push(token);
+        prev = "value";
+        continue;
+      }
+
+      if (token.kind === "lparen") {
+        ops.push(token);
+        prev = "lparen";
+        continue;
+      }
+
+      if (token.kind === "rparen") {
+        let found = false;
+        while (ops.length > 0) {
+          const top = ops.pop()!;
+          if (top.kind === "lparen") {
+            found = true;
+            break;
           }
-          idx = values.length;
-          values.push(resolved.value);
-          tokenToIndex.set(token, idx);
+          out.push(top);
         }
+        if (!found) return { ok: false };
+        prev = "rparen";
+        continue;
       }
-      return `__v[${idx}]`;
-    });
-    if (resolutionFailed) return { ok: false };
 
-    // After token replacement, expression must be over placeholders + math/logic operators.
-    if (!/^[\s\d+\-*/%().<>=!&|\[\]_v]+$/.test(compiled)) return { ok: false };
-
-    try {
-      const out = Function("__v", `"use strict"; return (${compiled});`)(values);
-      if (typeof out === "number" && Number.isFinite(out)) return { ok: true, value: out };
-      if (typeof out === "boolean") {
-        return { ok: true, value: out };
+      let op = token.value;
+      if (op === "-" && (prev === "start" || prev === "op" || prev === "lparen")) {
+        op = "u-";
+      } else if (op === "!" && (prev === "value" || prev === "rparen")) {
+        return { ok: false };
+      } else if (op !== "!" && (prev === "start" || prev === "op" || prev === "lparen")) {
+        return { ok: false };
       }
-    } catch {
-      return { ok: false };
+
+      while (ops.length > 0) {
+        const top = ops[ops.length - 1];
+        if (top.kind !== "op") break;
+        const pTop = precedence[top.value] ?? -1;
+        const pCur = precedence[op] ?? -1;
+        if (pCur < 0) return { ok: false };
+        const shouldPop = rightAssoc.has(op) ? pCur < pTop : pCur <= pTop;
+        if (!shouldPop) break;
+        out.push(ops.pop() as { kind: "op"; value: string });
+      }
+      ops.push({ kind: "op", value: op });
+      prev = "op";
     }
+
+    if (prev === "op" || prev === "lparen" || prev === "start") return { ok: false };
+
+    while (ops.length > 0) {
+      const top = ops.pop()!;
+      if (top.kind === "lparen") return { ok: false };
+      out.push(top);
+    }
+
+    const toFiniteNumber = (v: any): number | null => {
+      if (typeof v === "number" && Number.isFinite(v)) return v;
+      if (typeof v === "string") {
+        const n = Number(v);
+        if (Number.isFinite(n)) return n;
+      }
+      return null;
+    };
+
+    const stack: any[] = [];
+    for (const token of out) {
+      if (token.kind === "literal") {
+        stack.push(token.value);
+        continue;
+      }
+
+      if (token.kind === "identifier") {
+        const resolved = this.tryResolveEvalTokenValue(token.value, evalScopePath);
+        if (!resolved.ok) return { ok: false };
+        stack.push(resolved.value);
+        continue;
+      }
+
+      const op = token.value;
+      if (op === "u-" || op === "!") {
+        if (stack.length < 1) return { ok: false };
+        const a = stack.pop();
+        if (op === "u-") {
+          const n = toFiniteNumber(a);
+          if (n === null) return { ok: false };
+          stack.push(-n);
+        } else {
+          stack.push(!Boolean(a));
+        }
+        continue;
+      }
+
+      if (stack.length < 2) return { ok: false };
+      const b = stack.pop();
+      const a = stack.pop();
+
+      if (op === "&&" || op === "||") {
+        stack.push(op === "&&" ? Boolean(a) && Boolean(b) : Boolean(a) || Boolean(b));
+        continue;
+      }
+
+      if (op === "==" || op === "!=") {
+        stack.push(op === "==" ? a == b : a != b);
+        continue;
+      }
+
+      if (op === "<" || op === "<=" || op === ">" || op === ">=") {
+        const an = toFiniteNumber(a);
+        const bn = toFiniteNumber(b);
+        if (an === null || bn === null) return { ok: false };
+        if (op === "<") stack.push(an < bn);
+        if (op === "<=") stack.push(an <= bn);
+        if (op === ">") stack.push(an > bn);
+        if (op === ">=") stack.push(an >= bn);
+        continue;
+      }
+
+      const an = toFiniteNumber(a);
+      const bn = toFiniteNumber(b);
+      if (an === null || bn === null) return { ok: false };
+      let outNum: number;
+      if (op === "+") outNum = an + bn;
+      else if (op === "-") outNum = an - bn;
+      else if (op === "*") outNum = an * bn;
+      else if (op === "/") outNum = an / bn;
+      else if (op === "%") outNum = an % bn;
+      else return { ok: false };
+      if (!Number.isFinite(outNum)) return { ok: false };
+      stack.push(outNum);
+    }
+
+    if (stack.length !== 1) return { ok: false };
+    const result = stack[0];
+    if (typeof result === "number" && Number.isFinite(result)) return { ok: true, value: result };
+    if (typeof result === "boolean") return { ok: true, value: result };
     return { ok: false };
   }
 
@@ -605,11 +1086,18 @@ export class ME {
         const delegable = normalized.instructions.every((i) => supportedOps.has(i.op));
         if (delegable) {
           let out: Thought | undefined;
+          const changed: SemanticPath[] = [];
           for (const instruction of normalized.instructions) {
             const maybe = this.commitMapping(instruction, operator);
-            if (maybe) out = maybe;
+            if (maybe) {
+              out = maybe;
+              changed.push(maybe.path.split(".").filter(Boolean));
+            }
           }
-          if (out) return out;
+          if (out) {
+            for (const c of changed) this.invalidateFromPath(c);
+            return out;
+          }
         }
       }
     }
@@ -643,6 +1131,7 @@ export class ME {
           const targetScope = this.normalizeSelectorPath(this.substituteIteratorInPath(ev.targetPath, idx));
           const assignTarget = this.normalizeSelectorPath([...targetScope, ev.name]);
           const expr = this.substituteIteratorInExpression(ev.expr, idx);
+          this.registerDerivation(assignTarget, targetScope, expr);
           const evaluated = this.tryEvaluateAssignExpression(targetScope, expr);
           out = this.postulate(assignTarget, evaluated.ok ? evaluated.value : expr, "=");
         }
@@ -655,6 +1144,7 @@ export class ME {
         for (const rawScope of scopes) {
           const targetScope = this.normalizeSelectorPath(rawScope);
           const assignTarget = this.normalizeSelectorPath([...targetScope, ev.name]);
+          this.registerDerivation(assignTarget, targetScope, ev.expr);
           const evaluated = this.tryEvaluateAssignExpression(targetScope, ev.expr);
           out = this.postulate(assignTarget, evaluated.ok ? evaluated.value : ev.expr, "=");
         }
@@ -663,6 +1153,7 @@ export class ME {
 
       const assignTarget = this.normalizeSelectorPath([...ev.targetPath, ev.name]);
       const evalScope = this.normalizeSelectorPath(ev.targetPath);
+      this.registerDerivation(assignTarget, evalScope, ev.expr);
       const evaluated = this.tryEvaluateAssignExpression(evalScope, ev.expr);
       if (evaluated.ok) {
         return this.postulate(assignTarget, evaluated.value, "=");
@@ -704,10 +1195,13 @@ export class ME {
       return this.commitThoughtOnly(scopePath, "~", "***", "***");
     }
 
-    return this.commitValueMapping(targetPath, expression, operator);
+    const thought = this.commitValueMapping(targetPath, expression, operator);
+    this.invalidateFromPath(targetPath);
+    return thought;
   }
 
   private removeSubtree(targetPath: SemanticPath) {
+    this.clearDerivationsByPrefix(targetPath);
     // Remove secrets declared at/under this path (excluding root unless targetPath is root)
     const prefix = targetPath.join(".");
     for (const key of Object.keys(this.localSecrets)) {

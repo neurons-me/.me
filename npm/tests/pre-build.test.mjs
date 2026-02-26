@@ -3,7 +3,7 @@ import { spawnSync } from "node:child_process";
 const steps = [
   { name: "Build dist", cmd: "npm", args: ["run", "build"] },
   { name: "Axioms fire test", cmd: "node", args: ["tests/axioms.test.ts"] },
-  { name: "Phases 0-6 fire test", cmd: "node", args: ["tests/phases[0-6].js"] },
+  { name: "Phases 0-8 fire test", cmd: "node", args: ["tests/phases.test.js"] },
   { name: "CJS build test", cmd: "node", args: ["tests/cjs.test.cjs"] },
   { name: "ESM build test", cmd: "node", args: ["tests/esm.test.mjs"] },
   { name: "TypeScript type test", cmd: "npm", args: ["run", "test:ts"] },
