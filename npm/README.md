@@ -14,7 +14,6 @@ npm install this.me
 </p>
 
 ## **Start .me in 60 seconds**
-
 ###### Import
 ```ts
 import Me from "this.me";
@@ -70,6 +69,25 @@ me.home.kitchen.lights["="]("avg", "(main.brightness + leds.brightness) / 2"); /
 me("home.kitchen.lights.avg"); // → 60
 ```
 
+```txt
+Runtime output (real):
+  avg -> 60
+
+  inspect().index ->
+  {
+    "home.kitchen.lights.main.brightness": 80,
+    "home.kitchen.lights.leds.brightness": 40,
+    "home.kitchen.lights.avg": 60
+  }
+
+  last thoughts ->
+  [
+    { path: "home.kitchen.lights.main.brightness", op: null, value: 80 },
+    { path: "home.kitchen.lights.leds.brightness", op: null, value: 40 },
+    { path: "home.kitchen.lights.avg", op: "=", value: 60 }
+  ]
+```
+
 You can **bridge** distant rooms with **Pointers**:
 ```ts
 // Create a "Master Switch" at your root
@@ -113,6 +131,19 @@ me.wallet.balance(500);
 me.wallet.note("Private savings");
 ```
 
+```txt
+After these writes:
+
+Public index plane (inspect().index):
+  "" -> { __id: "jabellae" }
+
+Secret scope roots:
+  ["wallet"]
+
+Encrypted branch plane (exportSnapshot().encryptedBranches):
+  wallet -> 0x4b46...6f1c4e
+```
+
 Everything under a `["_"]` scope is **stored as an Encrypted Blob**. By design, secret roots are Stealth:
 ```ts
 me("wallet"); // → undefined (The root is a ghost)
@@ -141,6 +172,22 @@ me("wallet.hidden.note");// → "Deep dark secret"
 - Everything under that position becomes encrypted.
 - If you declare another secret inside, it becomes a deeper encrypted scope.
 - Reads are path-based; there is no global `me.secret(...)` unlock call.
+
+###### Structural view (public vs secret planes)
+```txt
+Public index plane (inspect().index):
+  "" -> { __id: "jabellae" }
+
+Secret scope roots:
+  ["wallet"]
+
+Encrypted branch plane (exportSnapshot().encryptedBranches):
+  wallet -> 0x4b46...6f1c4e
+
+Read behavior:
+  me("wallet") -> undefined
+  me("wallet.balance") -> 500
+```
 
 ---
 
@@ -238,9 +285,8 @@ The behavior is identical, bit-by-bit, because the logic is part of the state.
 ##### License
 **MIT © 2025 by https://neurons.me**
 
-See the [LICENSE](./LICENSE) file for details.
+See the `LICENSE` file in the package root for details.
 
 **∴ Witness our seal** 
 
 **suiGn**
-
