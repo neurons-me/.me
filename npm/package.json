@@ -1,6 +1,6 @@
 {
   "name": "this.me",
-  "version": "3.1.5",
+  "version": "3.1.6",
   "type": "module",
   "main": "./dist/me.cjs",
   "module": "./dist/me.es.js",

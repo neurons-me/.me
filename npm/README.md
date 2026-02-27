@@ -8,7 +8,13 @@
 ```bash
 npm install this.me
 ```
+
+<p align="right">
+  <a href="https://neurons-me.github.io/.me/docs/">✍ Read the Docs →</a>
+</p>
+
 ## **Start .me in 60 seconds**
+
 ###### Import
 ```ts
 import Me from "this.me";
