@@ -1,5 +1,4 @@
-# .me Kernel Fire Test Phases (0-8)
-
+# .me Kernel Phases (0-8)
 This document defines the behavioral contract validated by `tests/phases.test.js`.
 
 ## Phase 0 | Identity + Secret Scope
@@ -126,14 +125,11 @@ Expected:
 - `encryptedBranches`, `localSecrets`, `localNoises` preserved exactly
 
 # Phase 8 | Incremental Recompute + Explain
-
 Phase 8 validates two production-oriented capabilities:
-
 - Observability via `me.explain(path)`.
 - Incremental recompute via dependency mapping (`ref -> targets`).
 
 ## Contract
-
 1. Derivations created with `=` must register dependencies.
 2. On leaf mutation, only subscribed targets are re-evaluated.
 3. `explain(path)` must disclose expression inputs with origin flags:
@@ -141,7 +137,6 @@ Phase 8 validates two production-oriented capabilities:
    - `stealth` (masked)
 
 ## Example
-
 ```js
 me.fleet["trucks[i]"]["="]("total_cost", "fuel * finance.fuel_price");
 me.finance.fuel_price(30); // should update total_cost subscribers

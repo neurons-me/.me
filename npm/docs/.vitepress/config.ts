@@ -4,7 +4,7 @@ const base = process.env.VITEPRESS_BASE || "/.me/docs/";
 
 export default defineConfig({
   title: ".me",
-  description: "Documentation for this.me",
+  description: "Documentation for .me",
   base,
   appearance: "force-dark",
   head: [
@@ -12,7 +12,7 @@ export default defineConfig({
     ["link", { rel: "apple-touch-icon", href: "https://res.cloudinary.com/dkwnxf6gm/image/upload/v1760915741/this.me-removebg-preview_1_nrj6pe.png" }],
     ["meta", { name: "theme-color", content: "#0f1115" }],
     ["meta", { name: "author", content: "neurons.me" }],
-    ["meta", { name: "keywords", content: ".me, this.me, semantic identity, sovereign identity, identity runtime, semantic paths" }],
+    ["meta", { name: "keywords", content: ".me, this.me, semantic identity, identity runtime, semantic paths" }],
     ["meta", { property: "og:type", content: "website" }],
     ["meta", { property: "og:title", content: ".me — Documentation" }],
     ["meta", { property: "og:description", content: "Documentation for .me" }],
@@ -27,8 +27,7 @@ export default defineConfig({
     logo: "https://res.cloudinary.com/dkwnxf6gm/image/upload/v1760915741/this.me-removebg-preview_1_nrj6pe.png",
     nav: [
       { text: "Home", link: "/" },
-      { text: "Builds", link: "/Builds" },
-      { text: "Thoughts", link: "/Thoughts" },
+      { text: "Installation", link: "/Builds" },
       { text: "Phases", link: "/Phases" },
       { text: "Kernel", link: "/Kernel" },
     ],
@@ -37,11 +36,9 @@ export default defineConfig({
         text: "Guide",
         items: [
           { text: "Home", link: "/" },
-          { text: "Builds", link: "/Builds" },
-          { text: "Thoughts", link: "/Thoughts" },
+          { text: "Installation", link: "/Builds" },
           { text: "Phases", link: "/Phases" },
           { text: "Kernel", link: "/Kernel" },
-
         ],
       },
       {
@@ -52,6 +49,10 @@ export default defineConfig({
         text: "API",
         items: [{ text: "API Reference", link: "/api/README" }],
       },
+      {
+        text: "Notes",
+        items: [{ text: "Thoughts", link: "/Thoughts" }],
+      }
     ],
   },
 });
