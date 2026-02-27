@@ -6,8 +6,8 @@ function show(step: string, focus: string[] = []) {
   console.log("index keys:", Object.keys(state.index).sort());
   for (const p of focus) console.log(`${p} ->`, me(p));
   console.log(
-    "last thoughts:",
-    state.thoughts.map((t: any) => ({ path: t.path, op: t.operator, value: t.value }))
+    "last memory events:",
+    state.memory.map((t: any) => ({ path: t.path, op: t.operator, value: t.value }))
   );
 }
 

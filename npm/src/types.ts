@@ -149,6 +149,10 @@ export interface OperatorKernel {
   encryptedBranches?: Record<string, EncryptedBlob>;
 
   // canonical log + index
+  memory?: Thought[];
+  /**
+   * @deprecated Use memory.
+   */
   shortTermMemory?: Thought[];
   rebuildIndex(): void;
 
@@ -175,7 +179,7 @@ export interface OperatorKernel {
   readPath(path: SemanticPath): any;
 
   /**
-   * Append a thought to shortTermMemory and rebuild index.
+   * Append an event to memory and rebuild index.
    * Operators that are “kernel-only” should avoid emitting thoughts.
    */
   commitThought?(t: Thought): void;

@@ -102,9 +102,9 @@ Expected:
 Purpose: behavioral persistence via thought replay.
 
 ```js
-const thoughts = me.inspect().thoughts;
+const memory = me.inspect().memory;
 const me2 = new ME();
-me2.replayThoughts(thoughts);
+me2.replayMemory(memory);
 ```
 
 Expected:
@@ -121,7 +121,7 @@ me3.rehydrate(snapshot);
 ```
 
 Expected:
-- thoughts/state outputs preserved
+- memory/state outputs preserved
 - `encryptedBranches`, `localSecrets`, `localNoises` preserved exactly
 
 # Phase 8 | Incremental Recompute + Explain

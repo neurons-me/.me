@@ -165,14 +165,14 @@ runPhase(
 runPhase(
   "Phase 7A - Temporal Rehydration (Replay)",
   [
-    "Thought log can be exported from the current runtime",
-    "A new empty instance can replay those thoughts",
+    "Memory log can be exported from the current runtime",
+    "A new empty instance can replay that memory",
     "Replay reconstructs equivalent semantic results",
   ],
   () => {
-    const exportedThoughts = me.inspect().thoughts;
+    const exportedMemory = me.inspect().memory;
     const me2 = new ME();
-    me2.replayThoughts(exportedThoughts);
+    me2.replayMemory(exportedMemory);
 
     const originalCost = me("fleet.trucks[2].total_cost");
     const replayedCost = me2("fleet.trucks[2].total_cost");
@@ -186,7 +186,7 @@ runPhase(
 runPhase(
   "Phase 7B - Atomic Snapshot Rehydration",
   [
-    "Snapshot exports full kernel state (thoughts + secrets + noises + encrypted branches)",
+    "Snapshot exports full kernel state (memory + secrets + noises + encrypted branches)",
     "A fresh runtime can import snapshot atomically",
     "Imported runtime preserves exact encrypted structures and semantic outputs",
   ],
@@ -195,7 +195,7 @@ runPhase(
     const me3 = new ME();
     me3.rehydrate(snapshot);
 
-    assert.deepEqual(me3.inspect().thoughts, me.inspect().thoughts, "Thought log mismatch after snapshot import");
+    assert.deepEqual(me3.inspect().memory, me.inspect().memory, "Memory log mismatch after snapshot import");
     assert.deepEqual(me3("fleet.trucks[2].total_cost"), me("fleet.trucks[2].total_cost"), "Snapshot lost derived value");
     assert.deepEqual(me3("finance.fuel_price"), me("finance.fuel_price"), "Snapshot lost secret leaf value");
 

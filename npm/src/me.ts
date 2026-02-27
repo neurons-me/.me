@@ -40,9 +40,9 @@ export class ME {
   private localNoises: Record<string, string> = {};
   // Encrypted branch blobs stored at scope roots ("wallet" -> cipherblob)
   private encryptedBranches: Record<string, EncryptedBlob> = {};
-  // Derived read index (path -> latest committed value). Canonical truth is shortTermMemory.
+  // Derived read index (path -> latest committed value). Canonical truth is memory log.
   private index: Record<string, any> = {};
-  // Runtime log lives as a semantic node, but is updated via a kernel write (no extra thoughts).
+  // Runtime log lives as a semantic node, but is updated via a kernel write (no extra events).
   // This avoids the infinite recursion problem of: postulate -> write memory -> postulate -> ...
   private _shortTermMemory: Thought[] = [];
   private derivations: Record<
@@ -56,13 +56,22 @@ export class ME {
   > = {};
   private refSubscribers: Record<string, string[]> = {};
   private readonly unsafeEval = false;
-  // Legacy compatibility accessor. Prefer `inspect()` for debug tooling.
+  /**
+   * @deprecated Use `memory` or `inspect().memory`.
+   */
   get shortTermMemory(): Thought[] {
+    return this._shortTermMemory;
+  }
+
+  // Preferred memory accessor (alias of legacy shortTermMemory).
+  get memory(): Thought[] {
     return this._shortTermMemory;
   }
 
   // Explicit debug API (kept outside DSL semantics).
   inspect(opts?: { last?: number }): {
+    memory: Thought[];
+    /** @deprecated Use memory */
     thoughts: Thought[];
     index: Record<string, any>;
     encryptedScopes: string[];
@@ -70,12 +79,13 @@ export class ME {
     noiseScopes: string[];
   } {
     const last = opts?.last;
-    const thoughts =
+    const memory =
       typeof last === "number" && Number.isFinite(last) && last > 0
         ? this._shortTermMemory.slice(-Math.floor(last))
         : this._shortTermMemory.slice();
     return {
-      thoughts,
+      memory,
+      thoughts: memory,
       index: { ...this.index },
       encryptedScopes: Object.keys(this.encryptedBranches),
       secretScopes: Object.keys(this.localSecrets),
@@ -143,6 +153,8 @@ export class ME {
   }
 
   exportSnapshot(): {
+    memory: Thought[];
+    /** @deprecated Use memory */
     shortTermMemory: Thought[];
     localSecrets: Record<string, string>;
     localNoises: Record<string, string>;
@@ -150,6 +162,7 @@ export class ME {
     operators: Record<string, { kind: string }>;
   } {
     return this.cloneValue({
+      memory: this._shortTermMemory,
       shortTermMemory: this._shortTermMemory,
       localSecrets: this.localSecrets,
       localNoises: this.localNoises,
@@ -159,6 +172,8 @@ export class ME {
   }
 
   importSnapshot(snapshot: {
+    memory?: Thought[];
+    /** @deprecated Use memory */
     shortTermMemory?: Thought[];
     localSecrets?: Record<string, string>;
     localNoises?: Record<string, string>;
@@ -166,7 +181,11 @@ export class ME {
     operators?: Record<string, { kind: string }>;
   }): void {
     const data = this.cloneValue(snapshot ?? {});
-    this._shortTermMemory = Array.isArray(data.shortTermMemory) ? data.shortTermMemory : [];
+    this._shortTermMemory = Array.isArray(data.memory)
+      ? data.memory
+      : Array.isArray(data.shortTermMemory)
+      ? data.shortTermMemory
+      : [];
     this.localSecrets = data.localSecrets && typeof data.localSecrets === "object" ? data.localSecrets : {};
     this.localNoises = data.localNoises && typeof data.localNoises === "object" ? data.localNoises : {};
     this.encryptedBranches =
@@ -193,6 +212,8 @@ export class ME {
   }
 
   rehydrate(snapshot: {
+    memory?: Thought[];
+    /** @deprecated Use memory */
     shortTermMemory?: Thought[];
     localSecrets?: Record<string, string>;
     localNoises?: Record<string, string>;
@@ -250,6 +271,10 @@ export class ME {
       this.postulate(path, t.expression, t.operator);
     }
     this.rebuildIndex();
+  }
+
+  replayMemory(memory: Thought[]): void {
+    this.replayThoughts(memory);
   }
   // Kernel operator registry (editable through me["+"]("op", kind))
   // kind: "secret" | "pointer" | "identity" | "custom" | "remove" | "eval" | "query" | "noise"

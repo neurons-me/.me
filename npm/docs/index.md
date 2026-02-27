@@ -75,7 +75,7 @@ Runtime output (real):
     "home.kitchen.lights.avg": 60
   }
 
-  last thoughts ->
+  last memory events ->
   [
     { path: "home.kitchen.lights.main.brightness", op: null, value: 80 },
     { path: "home.kitchen.lights.leds.brightness", op: null, value: 40 },
@@ -241,7 +241,7 @@ console.log(trace);
 For runtime snapshots/debug:
 
 ```ts
-me.inspect(); // thoughts + index + scopes
+me.inspect(); // memory + index + scopes
 me.exportSnapshot();  // full portable state (Phase 7B)
 ```
 
@@ -269,7 +269,7 @@ The Kernel is physically incapable of executing arbitrary code. **It only resolv
 
 ###### 𓂀𓈖𓂀 ⟐ Your identity is Deterministic ⟐ 𓂀𓈖𓂀
 
-By exporting **"Thoughts"** or **"Snapshots"**, you can teleport your entire state between a **MacBook Air** in **Veracruz** and a high-end server in **London.**
+By exporting **"Memory"** or **"Snapshots"**, you can teleport your entire state between a **MacBook Air** in **Veracruz** and a high-end server in **London.**
 The behavior is identical, bit-by-bit, because the logic is part of the state.
 
 ---

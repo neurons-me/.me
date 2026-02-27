@@ -51,7 +51,7 @@ export default defineConfig({
       },
       {
         text: "Notes",
-        items: [{ text: "Thoughts", link: "/Thoughts" }],
+        items: [{ text: "Memory", link: "/Memory" }],
       }
     ],
   },
