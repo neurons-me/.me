@@ -693,6 +693,70 @@ header, .context-menu, .megamenu-content, footer{
     background-color: #f5f8fa;
     background-image: linear-gradient( 180deg , hsla(0, 0%, 100%, 0.8), hsla(0, 0%, 100%, 0)); 
 }
+/* .me topbar (minimal) */
+.me-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: transparent;
+}
+
+.me-topbar-inner {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 14px 30px 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+@media only screen and (min-width: 1400px) {
+  .me-topbar-inner { max-width: 1024px; }
+}
+
+@media only screen and (min-width: 1800px) {
+  .me-topbar-inner { max-width: 1200px; }
+}
+
+@media screen and (max-width: 500px) {
+  .me-topbar-inner { padding: 12px 20px 0; }
+}
+
+.me-topbar-links {
+  display: inline-flex;
+  gap: 14px;
+  align-items: center;
+}
+
+.me-topbar a {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  color: inherit;
+  opacity: 0.72;
+  transition: opacity 120ms ease;
+  font-size: 0.95rem;
+}
+
+.me-topbar a:hover {
+  opacity: 1;
+}
+
+.me-topbar-icon {
+  width: 16px;
+  height: 16px;
+  display: inline-block;
+}
+
+.me-topbar a span.label {
+  display: inline-block;
+}
+
+@media screen and (max-width: 420px) {
+  .me-topbar a span.label { display: none; }
+}
+
 /* .me footer */
 .me-footer {
   margin-top: 48px;
@@ -743,6 +807,30 @@ header, .context-menu, .megamenu-content, footer{
 <title>READ .ME</title>
 </head>
 <body class='typora-export'><div class='typora-export-content'>
+<div class="me-topbar" aria-label="Top navigation">
+  <div class="me-topbar-inner">
+    <nav class="me-topbar-links" aria-label="Primary">
+      <a href="./" title="Home" aria-label="Home">
+        <svg class="me-topbar-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <path fill="currentColor" d="M12 3l9 8h-3v9h-5v-6H11v6H6v-9H3l9-8z"/>
+        </svg>
+        <span class="label">Home</span>
+      </a>
+      <a href="./docs/" title="Docs" aria-label="Docs">
+        <svg class="me-topbar-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <path fill="currentColor" d="M6 2h9l3 3v17H6V2zm8 1.5V6h2.5L14 3.5zM8 9h8v1.5H8V9zm0 3h8v1.5H8V12zm0 3h6v1.5H8V15z"/>
+        </svg>
+        <span class="label">Docs</span>
+      </a>
+      <a href="https://www.npmjs.com/package/this.me" title="npm" aria-label="npm">
+        <svg class="me-topbar-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <path fill="currentColor" d="M2 7v10h6V9h4v8h4V9h4v8h2V7H2zm6 8H4V9h4v6zm8 0h-2V9h2v6z"/>
+        </svg>
+        <span class="label">npm</span>
+      </a>
+    </nav>
+  </div>
+</div>
 <div id='write'  class=''><picture>
   <img src="https://res.cloudinary.com/dkwnxf6gm/image/upload/v1761149332/this.me-removebg-preview_2_j1eoiy.png" alt=".me Logo" width="144" />
 </picture><h1 id='me'><span>.me  </span></h1><h6 id='minimal-and-expressive'><span>Minimal and Expressive.</span></h6><table border="0" cellspacing="0" cellpadding="0" style="border:none;">
@@ -754,20 +842,12 @@ header, .context-menu, .megamenu-content, footer{
     </td>
     <td valign="middle">
       <h2>Hello, I am <code>.me</code></h2>
-<section style="margin-top: 22px; display: flex; gap: 12px; flex-wrap: wrap; align-items: center;">
-  <a href="./docs/" style="display:inline-flex; align-items:center; gap:10px; padding:10px 14px; border-radius:12px; text-decoration:none; color:inherit; border:1px solid #dfe2e5; background: rgba(0,0,0,0.02); font-weight: 700;">
-    <span aria-hidden="true">📚</span>
-    <span>Docs</span>
-  </a>
-  <a href="https://www.npmjs.com/package/this.me" style="display:inline-flex; align-items:center; gap:10px; padding:10px 14px; border-radius:12px; text-decoration:none; color:inherit; border:1px solid transparent; background: rgba(0,0,0,0.01);">
-    <span aria-hidden="true">📦</span>
-    <span>npm</span>
-  </a>
+<div style="margin-top: 22px;">
   <a href="https://github.com/neurons-me" style="display:inline-flex; align-items:center; gap:10px; padding:10px 14px; border-radius:12px; text-decoration:none; color:inherit; border:1px solid transparent; background: rgba(0,0,0,0.01);">
     <span aria-hidden="true">&lt;/&gt;</span>
     <span>SourceCode</span>
   </a>
-</section>
+</div>
     </td>
   </tr>
 </table><h2 id='a-declarative-language'><span>A Declarative Language  </span></h2>
@@ -782,6 +862,11 @@ header, .context-menu, .megamenu-content, footer{
 <blockquote><p><strong><span>Ownership through derivation.</span></strong>
 </p></blockquote>
 <span>Identity is derived through architecture.</span>
+<h2 id='get-started'><span>Get Started</span></h2>
+<ul>
+  <li><p><a href="./docs/">Read the Docs.</a></p></li>
+  <li><p><a href="https://www.npmjs.com/package/this.me">Install <code>this.me</code>.</a></p></li>
+</ul>
 <footer class="me-footer" aria-label="Footer navigation">
   <a href="https://neurons-me.github.io" title="GitHub">
     <svg class="me-footer-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
