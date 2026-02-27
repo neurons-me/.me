@@ -26,7 +26,8 @@
     "docs:api:watch": "typedoc --watch",
     "docs:dev": "vitepress dev docs",
     "docs:build": "vitepress build docs",
-    "docs:preview": "vitepress preview docs"
+    "docs:preview": "vitepress preview docs",
+    "docs:publish": "npm run docs:build && rm -rf ../docs && mkdir -p ../docs && cp -R docs/.vitepress/dist/* ../docs/ && touch ../docs/.nojekyll"
   },
   "files": [
     "dist"
