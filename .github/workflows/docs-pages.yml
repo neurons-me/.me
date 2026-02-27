@@ -29,7 +29,7 @@ jobs:
         with:
           node-version: 20
           cache: npm
-          cache-dependency-path: this/.me/npm/package-lock.json
+          cache-dependency-path: "**/npm/package-lock.json"
 
       - name: Configure Pages
         uses: actions/configure-pages@v5
