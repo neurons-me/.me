@@ -1,0 +1,1 @@
+import{_ as i,o as e,c as a,ae as t}from"./chunks/framework.CVHnLOl0.js";const c=JSON.parse('{"title":"Memory","description":"","frontmatter":{},"headers":[],"relativePath":"Memory.md","filePath":"Memory.md"}'),l={name:"Memory.md"};function n(h,s,p,r,o,k){return e(),a("div",null,[...s[0]||(s[0]=[t("",7)])])}const m=i(l,[["render",n]]);export{c as __pageData,m as default};

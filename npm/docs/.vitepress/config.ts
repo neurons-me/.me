@@ -28,8 +28,8 @@ export default defineConfig({
     nav: [
       { text: "Home", link: "/" },
       { text: "Installation", link: "/Builds" },
+      { text: "Axioms", link: "/Axioms" },
       { text: "Phases", link: "/Phases" },
-      { text: "Kernel", link: "/Kernel" },
     ],
     sidebar: [
       {
@@ -37,20 +37,25 @@ export default defineConfig({
         items: [
           { text: "Home", link: "/" },
           { text: "Installation", link: "/Builds" },
+          { text: "Axioms", link: "/Axioms" },
           { text: "Phases", link: "/Phases" },
-          { text: "Kernel", link: "/Kernel" },
         ],
       },
       {
-        text: "Validation",
-        items: [{ text: "Test Map (ES)", link: "/es/TestMap" }],
+        text: "Examples",
+        items: [
+        { text: "Social Graph", link: "/examples/Social_Graph" },
+        { text: "CoffeeShops", link: "/examples/Shops_Admin" },
+        { text: "Wallet Split", link: "/examples/WalletSplit" }
+        ],
       },
       {
-        text: "API",
-        items: [{ text: "API Reference", link: "/api/README" }],
+        text: "Kernel",
+        items: [{ text: "Core", link: "/kernel/Core" }, 
+        { text: "Intelligence", link: "/kernel/Intelligence" }],
       },
       {
-        text: "Notes",
+        text: "Tests",
         items: [{ text: "Memory", link: "/Memory" }],
       }
     ],
