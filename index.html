@@ -914,7 +914,7 @@ header, .context-menu, .megamenu-content, footer{
         </svg>
         <span class="label">Home</span>
       </a>
-      <a href="./npm/docs/" title="Docs" aria-label="Docs">
+      <a href="./npm/typedocs/" title="Docs" aria-label="Docs">
         <svg class="me-topbar-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
           <path fill="currentColor" d="M6 2h9l3 3v17H6V2zm8 1.5V6h2.5L14 3.5zM8 9h8v1.5H8V9zm0 3h8v1.5H8V12zm0 3h6v1.5H8V15z"/>
         </svg>
@@ -990,7 +990,7 @@ header, .context-menu, .megamenu-content, footer{
 <span>Identity is derived through architecture.</span>
 <h2 id='get-started'><span>Get Started</span></h2>
 <ul>
-  <li><p><a href="./docs/">Read the Docs.</a></p></li>
+  <li><p><a href="./npm/typedocs/">Read the Docs.</a></p></li>
   <li><p><a href="https://www.npmjs.com/package/this.me">Install <code>this.me</code>.</a></p></li>
 </ul>
 <footer class="me-footer" aria-label="Footer navigation">
@@ -1019,17 +1019,9 @@ header, .context-menu, .megamenu-content, footer{
 <script>
   (function () {
     var isHttp = window.location.protocol === "http:" || window.location.protocol === "https:";
-    var reactSrc = isHttp
-      ? "https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.production.min.js"
-      : "../GUI/npm/node_modules/react/umd/react.development.js";
-    var reactDomSrc = isHttp
-      ? "https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.production.min.js"
-      : "../GUI/npm/node_modules/react-dom/umd/react-dom.development.js";
     var guiSrc = isHttp
-      ? "https://cdn.jsdelivr.net/npm/this.gui@latest/dist/this.gui.umd.js"
-      : "../GUI/npm/dist/this.gui.umd.js";
-    document.write('<script src="' + reactSrc + '"><\\/script>');
-    document.write('<script src="' + reactDomSrc + '"><\\/script>');
+      ? "https://cdn.jsdelivr.net/npm/this.gui@latest/dist/this.gui.bootstrap.umd.js"
+      : "../GUI/npm/dist/this.gui.bootstrap.umd.js";
     document.write('<script src="' + guiSrc + '"><\\/script>');
   })();
 </script>
@@ -1603,7 +1595,6 @@ header, .context-menu, .megamenu-content, footer{
     function initGuiRuntime() {
       var GUI = window.GUI;
       if (!GUI || typeof GUI.mount !== "function") return;
-      if (!window.React || !window.ReactDOM) return;
       if (typeof GUI.Router !== "function" || typeof GUI.RunMe !== "function") {
         console.warn("GUI.Router or GUI.RunMe missing; cannot start runtime.");
         return;
@@ -1698,6 +1689,23 @@ header, .context-menu, .megamenu-content, footer{
         rootEl.classList.toggle("theme-dark", isDark);
         rootEl.classList.toggle("theme-light", !isDark);
       } catch (e) {}
+    }
+
+    function startGuiRuntime() {
+      try {
+        var GUI = window.GUI;
+        if (GUI && typeof GUI.bootstrap === "function") {
+          return GUI.bootstrap().then(function () {
+            initGuiRuntime();
+          }).catch(function (e) {
+            console.warn("GUI.bootstrap failed", e);
+            initGuiRuntime();
+          });
+        }
+      } catch (e) {
+        console.warn("GUI.bootstrap threw", e);
+      }
+      initGuiRuntime();
     }
 
     var THEME_MODE_STORAGE_KEY = "this.gui:themeMode";
@@ -1795,7 +1803,7 @@ header, .context-menu, .megamenu-content, footer{
       document.addEventListener("DOMContentLoaded", bindBirthday);
       document.addEventListener("DOMContentLoaded", bindLanguages);
       document.addEventListener("DOMContentLoaded", installRuntimeThemeBridge);
-      document.addEventListener("DOMContentLoaded", initGuiRuntime);
+      document.addEventListener("DOMContentLoaded", startGuiRuntime);
       document.addEventListener("DOMContentLoaded", syncThemeClass);
     } else {
       bindUsernameInput();
@@ -1804,7 +1812,7 @@ header, .context-menu, .megamenu-content, footer{
       bindBirthday();
       bindLanguages();
       installRuntimeThemeBridge();
-      initGuiRuntime();
+      startGuiRuntime();
       syncThemeClass();
     }
 

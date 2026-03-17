@@ -1,9 +1,10 @@
 import { defineConfig } from "vitepress";
-const base = process.env.VITEPRESS_BASE || "/.me/npm/docs/";
+const base = process.env.VITEPRESS_BASE || "/.me/npm/typedocs/";
 export default defineConfig({
   title: ".me",
   description: "Documentation for .me",
   base,
+  outDir: "../typedocs",
   appearance: "force-dark",
   head: [
     ["link", { rel: "icon", href: "https://res.cloudinary.com/dkwnxf6gm/image/upload/v1760915741/this.me-removebg-preview_1_nrj6pe.png" }],
@@ -14,7 +15,7 @@ export default defineConfig({
     ["meta", { property: "og:type", content: "website" }],
     ["meta", { property: "og:title", content: ".me — Documentation" }],
     ["meta", { property: "og:description", content: "Documentation for .me" }],
-    ["meta", { property: "og:url", content: "https://neurons-me.github.io/.me/npm/docs/" }],
+    ["meta", { property: "og:url", content: "https://neurons-me.github.io/.me/npm/typedocs/" }],
     ["meta", { property: "og:image", content: "https://res.cloudinary.com/dkwnxf6gm/image/upload/v1772172708/a0cada53852af28361f6203f0878f43b7ce1063b750f60d1c43eebfd263a8a0c_cxctzx.png" }],
     ["meta", { name: "twitter:card", content: "summary_large_image" }],
     ["meta", { name: "twitter:title", content: ".me — Documentation" }],
