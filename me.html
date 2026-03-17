@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>.me (Purist)</title>
+  <script>
+    (function () {
+      var LOCAL_GUI_CSS = "../GUI/npm/dist/styles.css";
+      var LOCAL_GUI_UMD = "../GUI/npm/dist/this.gui.umd.js";
+      var LOCAL_ME_UMD = "./npm/dist/me.umd.js";
+      var CDN_GUI_CSS = "https://cdn.jsdelivr.net/npm/this.gui@latest/dist/styles.css";
+      var CDN_GUI_UMD = "https://cdn.jsdelivr.net/npm/this.gui@latest/dist/this.gui.umd.js";
+      var CDN_GUI_BOOTSTRAP = "https://cdn.jsdelivr.net/npm/this.gui@latest/dist/this.gui.bootstrap.umd.js";
+      var CDN_REACT_UMD = "https://cdn.jsdelivr.net/npm/react@18/umd/react.production.min.js";
+      var CDN_REACTDOM_UMD = "https://cdn.jsdelivr.net/npm/react-dom@18/umd/react-dom.production.min.js";
+      var CDN_ME_UMD = "https://cdn.jsdelivr.net/npm/this.me@latest/dist/me.umd.js";
+      var IS_FILE_ORIGIN = location.protocol === "file:";
+      var SOURCE_STORAGE_KEY = "me.runtime:assetSources";
+      var DEFAULT_SOURCE = "local";
+      function loadStyle(href, options) {
+        return new Promise(function (resolve, reject) {
+          if (Array.from(document.querySelectorAll('link[rel="stylesheet"]')).some(function (el) { return el.href === href; })) {
+            resolve();
+            return;
+          }
+          var link = document.createElement("link");
+          link.rel = "stylesheet";
+          link.href = href;
+          if (options && options.crossorigin) link.crossOrigin = options.crossorigin;
+          link.onload = function () { resolve(); };
+          link.onerror = function () { reject(new Error("Failed to load css: " + href)); };
+          document.head.appendChild(link);
+        });
+      }
+
+      function loadScript(src, options) {
+        return new Promise(function (resolve, reject) {
+          if (Array.from(document.querySelectorAll("script[src]")).some(function (el) { return el.src === src; })) {
+            resolve();
+            return;
+          }
+          var script = document.createElement("script");
+          script.src = src;
+          script.async = false;
+          if (options && options.crossorigin) script.crossOrigin = options.crossorigin;
+          script.onload = function () { resolve(); };
+          script.onerror = function () { reject(new Error("Failed to load script: " + src)); };
+          document.head.appendChild(script);
+        });
+      }
+
+      function readSavedSources() {
+        try {
+          var raw = localStorage.getItem(SOURCE_STORAGE_KEY);
+          if (!raw) return null;
+          return JSON.parse(raw);
+        } catch (_) {
+          return null;
+        }
+      }
+
+      function writeSavedSources(next) {
+        try {
+          localStorage.setItem(SOURCE_STORAGE_KEY, JSON.stringify(next));
+        } catch (_) {}
+      }
+
+      function resolveSelectedSources() {
+        var resolved = { gui: "local", me: "local" };
+        writeSavedSources(resolved);
+        return resolved;
+      }
+
+      async function ensureReactRuntime() {
+        if (!window.React || typeof window.React.createElement !== "function") {
+          await loadScript(CDN_REACT_UMD, { crossorigin: "anonymous" });
+        }
+        if (!window.ReactDOM || typeof window.ReactDOM.createRoot !== "function") {
+          await loadScript(CDN_REACTDOM_UMD, { crossorigin: "anonymous" });
+        }
+        if (!window.ReactJSXRuntime && window.React && typeof window.React.createElement === "function") {
+          window.ReactJSXRuntime = {
+            jsx: window.React.createElement,
+            jsxs: window.React.createElement,
+            Fragment: window.React.Fragment
+          };
+        }
+      }
+
+      async function loadSelectedAsset(source, localUrl, cdnUrl, kind) {
+        var target = source === "cdn" ? cdnUrl : localUrl;
+        var opts = source === "cdn" ? { crossorigin: "anonymous" } : undefined;
+        if (kind === "style") {
+          return await loadStyle(target, opts);
+        }
+        return await loadScript(target, opts);
+      }
+
+      async function ensureMeRuntime(source) {
+        if (!window.Me && !window.me && !window.thisMe && !window["this.me"]) {
+          try {
+            await loadSelectedAsset(source || DEFAULT_SOURCE, LOCAL_ME_UMD, CDN_ME_UMD, "script");
+          } catch (e) {
+            if ((source || DEFAULT_SOURCE) !== "cdn") {
+              await loadSelectedAsset("cdn", LOCAL_ME_UMD, CDN_ME_UMD, "script");
+            } else {
+              throw e;
+            }
+          }
+        }
+        try {
+          var MeGlobal = window.Me || window.me || window.thisMe || window["this.me"];
+          if (!MeGlobal) return;
+          var MeCtor = MeGlobal.ME || MeGlobal.Me || MeGlobal.default || MeGlobal;
+          if (typeof MeCtor !== "function") return;
+          if (!window.me) {
+            window.me = new MeCtor();
+          }
+        } catch (_) {}
+      }
+
+      async function init() {
+        var selectedSources = resolveSelectedSources();
+        try {
+          if (selectedSources.gui === "cdn") {
+            await loadStyle(CDN_GUI_CSS, { crossorigin: "anonymous" });
+            await loadScript(CDN_GUI_BOOTSTRAP, { crossorigin: "anonymous" });
+          } else {
+            await ensureReactRuntime();
+            await loadSelectedAsset("local", LOCAL_GUI_CSS, CDN_GUI_CSS, "style");
+            await loadSelectedAsset("local", LOCAL_GUI_UMD, CDN_GUI_UMD, "script");
+          }
+        } catch (e) {
+          if (selectedSources.gui !== "cdn") {
+            try {
+              await loadStyle(CDN_GUI_CSS, { crossorigin: "anonymous" });
+              await loadScript(CDN_GUI_BOOTSTRAP, { crossorigin: "anonymous" });
+            } catch (err) {
+              console.warn("GUI assets failed to load", err);
+              return;
+            }
+          } else {
+            console.warn("GUI assets failed to load", e);
+            return;
+          }
+        }
+
+        if (!window.GUI) return;
+        if (typeof window.GUI.bootstrap === "function") {
+          try { await window.GUI.bootstrap(); } catch (e) { console.warn("GUI bootstrap failed", e); }
+        }
+
+        await ensureMeRuntime(selectedSources.me);
+
+        var GUI = window.GUI;
+        if (typeof GUI.mount !== "function") return;
+
+        var root = document.getElementById("root");
+        if (!root) return;
+
+        var infoOpen = false;
+        function render() {
+          var contentSpec = {
+            type: "Box",
+            props: {
+              sx: {
+                minHeight: "100vh",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 2,
+                p: 3,
+                textAlign: "center",
+                position: "relative"
+              }
+            },
+            children: [
+              {
+                type: "Box",
+                props: {
+                  sx: {
+                    position: "fixed",
+                    top: 16,
+                    right: 16,
+                    zIndex: 20
+                  }
+                },
+                children: [
+                  {
+                    type: "Button",
+                    props: {
+                      variant: "outlined",
+                      size: "small",
+                      onClick: function () { infoOpen = !infoOpen; render(); },
+                      sx: { borderRadius: 999, minWidth: 32, width: 32, height: 32, p: 0, fontWeight: 700 }
+                    },
+                    children: ["i"]
+                  }
+                ]
+              },
+              infoOpen ? {
+                type: "Box",
+                props: {
+                  sx: {
+                    position: "fixed",
+                    top: 0,
+                    right: 0,
+                    height: "100vh",
+                    width: 320,
+                    bgcolor: "background.paper",
+                    borderLeft: "1px solid",
+                    borderColor: "divider",
+                    p: 2.5,
+                    zIndex: 15,
+                    boxShadow: 6,
+                    overflowY: "auto"
+                  }
+                },
+                children: [
+                  { type: "Typography", props: { variant: "body2", sx: { mb: 0.5, opacity: 0.8 } }, children: ["Cleaker"] },
+                  {
+                    type: "Box",
+                    props: { sx: { mb: 2 } },
+                    children: [
+                      { type: "Cleaker" }
+                    ]
+                  },
+                  null
+                ]
+              } : null,
+              { type: "Typography", props: { id: "me-welcome", variant: "h3" }, children: [".me"] },
+              { type: "Typography", props: { id: "me-motto", variant: "subtitle1" }, children: ["Minimal and Expressive."] },
+              {
+                type: "Box",
+                props: { sx: { display: "flex", alignItems: "center", gap: 1 } },
+                children: [
+                  { type: "Typography", props: { id: "me-hello", variant: "h6" }, children: ["Hello, I am"] },
+                  {
+                    type: "TextField",
+                    props: {
+                      id: "me-typewriter",
+                      variant: "standard",
+                      placeholder: ".|...",
+                      InputProps: { disableUnderline: true },
+                      inputProps: { id: "me-typewriter-input" },
+                      sx: {
+                        ml: 1,
+                        maxWidth: 180,
+                        "& input": {
+                          fontFamily: "monospace",
+                          fontSize: "1rem",
+                          padding: 0
+                        }
+                      }
+                    }
+                  }
+                ]
+              },
+              { type: "Typography", props: { id: "me-output", variant: "caption", sx: { opacity: 0.7 } }, children: [""] },
+              {
+                type: "Typography",
+                props: {
+                  id: "me-log",
+                  variant: "body2",
+                  sx: { mt: 2, opacity: 0.8, whiteSpace: "pre-wrap", fontFamily: "monospace" }
+                },
+                children: [""]
+              }
+            ]
+          };
+
+          var spec = {
+            type: "Layout",
+            props: {
+              topBarConfig: false,
+              rightSidebarConfig: false,
+              footerConfig: false,
+              leftSidebarConfig: {
+                initialView: "rail",
+                elements: [
+                  { type: "link", props: { label: "Home", icon: "home", href: "./index.html" } }
+                ]
+              }
+            },
+            children: [contentSpec]
+          };
+
+          GUI.mount(spec, root, {
+            runtime: window.me && typeof GUI.RunMe === "function" ? GUI.RunMe(window.me) : null,
+            showUnknown: true,
+            inspectorEnabled: false,
+            inspectorToggleVisible: false
+          });
+        }
+
+        render();
+
+        function isValidUsername(value) {
+          if (!value) return false;
+          if (value.length < 3 || value.length > 63) return false;
+          if (value.startsWith(".") || value.endsWith(".") || value.includes("..")) return false;
+          var labelRe = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
+          var labels = value.toLowerCase().split(".");
+          for (var i = 0; i < labels.length; i++) {
+            if (!labelRe.test(labels[i])) return false;
+          }
+          return true;
+        }
+
+        // Typewriter effect (placeholder) + Enter handler
+        var input =
+          document.getElementById("me-typewriter-input") ||
+          document.querySelector("#root input");
+        var hasBound = false;
+        var identitySet = false;
+        var identityValue = "";
+        var logHistory = [];
+        var typewriterText = ".|...";
+        function setIdentityUI(value) {
+          identityValue = value || "";
+          var title = document.getElementById("me-welcome");
+          if (title) title.style.display = "none";
+          var motto = document.getElementById("me-motto");
+          if (motto) motto.style.display = "none";
+          var hello = document.getElementById("me-hello");
+          if (hello) {
+            hello.textContent = value + ".";
+            hello.style.display = "";
+          }
+          typewriterText = "";
+          if (input) {
+            input.value = "";
+            input.placeholder = typewriterText;
+            input.setAttribute("aria-label", "Enter .me commands");
+          }
+          logHistory = [];
+          updateLog();
+        }
+        function getPromptLabel() {
+          return identitySet && identityValue ? (identityValue + ". ") : "";
+        }
+        function formatValue(v) {
+          if (Array.isArray(v)) {
+            if (!v.length) return "- (empty)";
+            return "- " + v.map(function (item) {
+              if (typeof item === "string") return item;
+              if (typeof item === "undefined") return "undefined";
+              try { return JSON.stringify(item); } catch (_) { return String(item); }
+            }).join(", ");
+          }
+          try { return JSON.stringify(v); } catch (_) { return String(v); }
+        }
+        function getNumericChildren(path) {
+          if (!window.me || typeof window.me.inspect !== "function") return [];
+          try {
+            var index = window.me.inspect().index || {};
+            var prefix = path + ".";
+            var seen = {};
+            var keys = Object.keys(index);
+            for (var i = 0; i < keys.length; i++) {
+              var k = keys[i];
+              if (k.indexOf(prefix) !== 0) continue;
+              var rest = k.slice(prefix.length);
+              var seg = rest.split(".")[0];
+              if (/^\d+$/.test(seg)) seen[seg] = true;
+            }
+            var nums = Object.keys(seen).map(function (n) { return Number(n); }).sort(function (a, b) { return a - b; });
+            var out = [];
+            for (var j = 0; j < nums.length; j++) {
+              var key = path + "." + nums[j];
+              if (Object.prototype.hasOwnProperty.call(index, key)) {
+                out.push(index[key]);
+              } else {
+                out.push(readByPath(key));
+              }
+            }
+            return out;
+          } catch (_) {
+            return [];
+          }
+        }
+        function getNextNumericIndex(path) {
+          var list = getNumericChildren(path);
+          if (!list || !list.length) return 1;
+          return list.length + 1;
+        }
+        function normalizeListPath(path) {
+          if (path && path.endsWith("[]")) return path.slice(0, -2);
+          return path;
+        }
+        function writeByPath(path, value) {
+          var parts = path.split(".").filter(Boolean);
+          if (!parts.length) return;
+          var cursor = window.me;
+          for (var i = 0; i < parts.length - 1; i++) cursor = cursor[parts[i]];
+          cursor[parts[parts.length - 1]](value);
+        }
+        function readByPath(path) {
+          return window.me(path);
+        }
+        function updateLog() {
+          var logEl = document.getElementById("me-log");
+          if (!logEl) return;
+          logEl.textContent = logHistory.join("\n");
+        }
+        function formatLogLine(responseLine) {
+          var base = String(responseLine || "").trim();
+          if (!base) return "";
+          if (base.indexOf("ok → ") === 0) {
+            base = base.slice(5);
+          }
+          var prefix = identitySet && identityValue ? (identityValue + ".") : "";
+          return prefix ? (prefix + base) : base;
+        }
+        function appendLogLine(responseLine) {
+          var line = formatLogLine(responseLine);
+          if (line) logHistory.unshift(line);
+          var maxLines = 200;
+          if (logHistory.length > maxLines) {
+            logHistory = logHistory.slice(0, maxLines);
+          }
+          updateLog();
+        }
+        function parseCommand(text) {
+          var cmd = text.trim();
+          if (!cmd) return { kind: "empty" };
+          var protoIndex = cmd.indexOf("://");
+          if (protoIndex > -1) {
+            cmd = cmd.slice(protoIndex + 3).trim();
+          }
+          if (cmd.toLowerCase().startsWith("nrp ")) cmd = cmd.slice(4).trim();
+          var lower = cmd.toLowerCase();
+          var eqIndex = cmd.indexOf("=");
+          var leftSide = eqIndex > -1 ? cmd.slice(0, eqIndex).trim() : cmd;
+          var rightSide = eqIndex > -1 ? cmd.slice(eqIndex + 1).trim() : "";
+
+          // Explicit write: #path value OR #path = value
+          if (leftSide.startsWith("#")) {
+            var hashSpec = leftSide.slice(1).trim();
+            if (!hashSpec) return { kind: "error", message: "No path provided." };
+            var hashParts = hashSpec.split(/\s+/);
+            var hPath = hashParts.shift() || "";
+            var hVal = hashParts.join(" ");
+            if (rightSide && !hVal) hVal = rightSide;
+            if (!hPath) return { kind: "error", message: "No path provided." };
+            if (!hVal) return { kind: "error", message: "No value provided for write." };
+            return { kind: "write", path: hPath, value: hVal, push: true };
+          }
+
+          // Explicit read: ?path or ?path.to.node
+          if (leftSide.startsWith("?")) {
+            var readPath = leftSide.slice(1).trim();
+            if (!readPath) return { kind: "error", message: "No path provided." };
+            return { kind: "read", path: readPath };
+          }
+
+          // Explicit write: $path value OR $path = value
+          if (leftSide.startsWith("$")) {
+            var writeSpec = leftSide.slice(1).trim();
+            if (!writeSpec) return { kind: "error", message: "No path provided." };
+            var ws = writeSpec.split(/\s+/);
+            var wPath = ws.shift() || "";
+            var wVal = ws.join(" ");
+            if (rightSide && !wVal) wVal = rightSide;
+            if (!wVal) return { kind: "error", message: "No value provided for write." };
+            return { kind: "write", path: wPath, value: wVal };
+          }
+
+          // Shorthand: :/path (implicit local)
+          if (leftSide.startsWith(":/")) {
+            return {
+              kind: "me_target",
+              namespace: "local",
+              selector: rightSide ? "write" : "read",
+              path: leftSide.slice(2),
+              value: rightSide
+            };
+          }
+
+          // Protocol-ish: https:domain/path, ftp:host/path, ssh:host/path
+          var schemeMatch = leftSide.match(/^([a-z]+):(.+)$/i);
+          if (schemeMatch) {
+            var scheme = schemeMatch[1].toLowerCase();
+            var rest = String(schemeMatch[2] || "");
+            if (["http", "https", "ftp", "ssh"].indexOf(scheme) > -1) {
+              if (rest.startsWith("//")) rest = rest.slice(2);
+              var slashIdx = rest.indexOf("/");
+              if (slashIdx > -1) {
+                var host = rest.slice(0, slashIdx);
+                var p = rest.slice(slashIdx + 1);
+                return {
+                  kind: "me_target",
+                  namespace: host || scheme,
+                  selector: rightSide ? "write" : "read",
+                  path: p,
+                  value: rightSide
+                };
+              }
+            }
+          }
+
+          var targetRe = /^([a-z0-9_-]+(?:\.[a-z0-9_-]+)*):([a-z0-9_-]+)\/(.+)$/i;
+          var shortTargetRe = /^([a-z0-9_-]+(?:\.[a-z0-9_-]+)*)\/(.+)$/i;
+          var targetMatch = leftSide.match(targetRe);
+          if (targetMatch) {
+            return {
+              kind: "me_target",
+              namespace: targetMatch[1],
+              selector: String(targetMatch[2] || "").toLowerCase(),
+              path: targetMatch[3],
+              value: rightSide
+            };
+          }
+          var shortMatch = leftSide.match(shortTargetRe);
+          if (shortMatch) {
+            return {
+              kind: "me_target",
+              namespace: shortMatch[1],
+              selector: rightSide ? "write" : "read",
+              path: shortMatch[2],
+              value: rightSide
+            };
+          }
+          if (lower.startsWith("me(")) {
+            var inner = cmd.slice(3, -1).trim();
+            inner = inner.replace(/^['"]|['"]$/g, "");
+            if (!inner) return { kind: "error", message: "No read path provided." };
+            return { kind: "read", path: inner };
+          }
+          if (lower.startsWith("me.")) {
+            var open = cmd.indexOf("(");
+            var close = cmd.lastIndexOf(")");
+            if (open > 0 && close > open) {
+              var pathWrite = cmd.slice(3, open).trim();
+              var rawVal = cmd.slice(open + 1, close).trim();
+              rawVal = rawVal.replace(/^['"]|['"]$/g, "");
+              if (!rawVal) return { kind: "read", path: pathWrite };
+              return { kind: "write", path: pathWrite, value: rawVal };
+            }
+            // shorthand: me.name jose
+            var partsShort = cmd.slice(3).trim().split(/\s+/);
+            var pathShort = partsShort.shift() || "";
+            var valShort = partsShort.join(" ");
+            if (!valShort) return { kind: "read", path: pathShort };
+            return { kind: "write", path: pathShort, value: valShort };
+          }
+          if (lower.startsWith("me ")) {
+            var rest = cmd.slice(3).trim();
+            if (!rest) return { kind: "error", message: "No path provided." };
+            var parts = rest.split(/\s+/);
+            var path = parts.shift() || "";
+            var value = parts.join(" ");
+            if (!value) return { kind: "read", path: path };
+            return { kind: "write", path: path, value: value };
+          }
+          if (lower.startsWith("what")) {
+            var q = cmd
+              .replace(/^what(?:'s| is)?(?: the)?/i, "")
+              .replace(/\?+$/, "")
+              .replace(/\s+of\s*$/i, "")
+              .trim();
+            var pathQ = q.replace(/\s+/g, ".");
+            if (!pathQ) return { kind: "error", message: "No query path." };
+            return { kind: "read", path: pathQ };
+          }
+          // Plain shorthand: "path" -> read only (no implicit writes)
+          var partsPlain = cmd.split(/\s+/);
+          var pathPlain = partsPlain.shift() || "";
+          if (pathPlain.startsWith("/")) pathPlain = pathPlain.slice(1);
+          if (pathPlain) {
+            return { kind: "read", path: pathPlain };
+          }
+          return { kind: "error", message: "Unknown command. Try: me.name(\"jose\"), me(\"name\"), or me://local:read/name" };
+        }
+        function handleSubmit(value) {
+          var output = document.getElementById("me-output");
+          var responseLine = "";
+          var promptLabel = getPromptLabel();
+          if (!identitySet) {
+            var usernameIsValid = isValidUsername(value);
+            if (window.me) {
+              try { window.me.name(value); } catch (_) {}
+              if (usernameIsValid && typeof window.me["@" ] === "function") {
+                try { window.me["@" ](value); } catch (_) {}
+              }
+            }
+            if (output) {
+              responseLine = usernameIsValid
+                ? ("@ identity set → " + value)
+                : ("Saved name → " + value + " (invalid @ username)");
+              output.textContent = responseLine;
+            }
+            console.log('me["@"] set to:', value);
+            if (usernameIsValid) {
+              identitySet = true;
+              setIdentityUI(value);
+              if (output) output.style.display = "none";
+            }
+            appendLogLine(responseLine);
+            if (input) {
+              input.value = "";
+              try { input.focus(); } catch (_) {}
+            }
+            return;
+          }
+          var action = parseCommand(value);
+          if (!window.me) return;
+          try {
+            if (action.kind === "me_target") {
+              var ns = (action.namespace || "").toLowerCase();
+              var selector = action.selector;
+              if (ns !== "local" && ns !== "self") {
+                responseLine = "error → remote namespace not supported here: " + action.namespace;
+                if (output) output.textContent = responseLine;
+                appendLogLine(responseLine);
+                return;
+              }
+              if (selector === "read" || selector === "get" || selector === "open") {
+                var readVal = readByPath(action.path);
+                responseLine = "me://"+action.namespace+":"+action.selector+"/"+action.path+" → " + formatValue(readVal);
+                if (output) output.textContent = responseLine;
+              } else if (selector === "write" || selector === "set") {
+                if (!action.value) {
+                  responseLine = "error → write requires value (use = value)";
+                  if (output) output.textContent = responseLine;
+                } else {
+                  writeByPath(action.path, action.value);
+                  responseLine = "me://"+action.namespace+":"+action.selector+"/"+action.path+" → " + formatValue(action.value);
+                  if (output) output.textContent = responseLine;
+                }
+              } else {
+                responseLine = "error → unsupported selector: " + action.selector;
+                if (output) output.textContent = responseLine;
+              }
+            } else if (action.kind === "write") {
+              var targetPath = action.path;
+              if (action.push) {
+                var nextIndex = getNextNumericIndex(action.path);
+                targetPath = action.path + "." + String(nextIndex);
+              }
+              writeByPath(targetPath, action.value);
+              responseLine = "ok → " + targetPath + " = " + action.value;
+              if (output) output.textContent = responseLine;
+            } else if (action.kind === "read") {
+              var wantsList = action.path && action.path.slice(-2) === "[]";
+              var basePath = normalizeListPath(action.path);
+              if (wantsList) {
+                var list = getNumericChildren(basePath);
+                responseLine = action.path + " → " + formatValue(list);
+              } else {
+                var result = readByPath(basePath);
+                responseLine = action.path + " → " + formatValue(result);
+              }
+              if (output) output.textContent = responseLine;
+            } else if (action.kind === "error") {
+              responseLine = "error → " + action.message;
+              if (output) output.textContent = responseLine;
+            }
+          } catch (e) {
+            responseLine = "error → " + (e && e.message ? e.message : "command failed");
+            if (output) output.textContent = responseLine;
+          }
+          appendLogLine(responseLine || (promptLabel + value));
+          if (input) {
+            input.value = "";
+            try { input.focus(); } catch (_) {}
+          }
+        }
+        if (input) {
+          if (window.me && typeof window.me.inspect === "function") {
+            try {
+              var existingId = window.me.inspect().index[""].__id;
+              if (existingId) {
+                identitySet = true;
+                setIdentityUI(existingId);
+                var outputEl = document.getElementById("me-output");
+                if (outputEl) {
+                  outputEl.textContent = "@ identity set → " + existingId;
+                  outputEl.style.display = "none";
+                }
+                appendLogLine("@ identity set → " + existingId);
+              }
+            } catch (_) {}
+          }
+          try { input.focus(); } catch (_) {}
+          var text = typewriterText;
+          var idx = 0;
+          var blinkOn = true;
+          setInterval(function () {
+            text = typewriterText;
+            var ch = text[idx % text.length];
+            if (ch === "|") {
+              input.placeholder = text.slice(0, idx % text.length) + (blinkOn ? "|" : " ") + text.slice((idx % text.length) + 1);
+              blinkOn = !blinkOn;
+            } else {
+              input.placeholder = text;
+              idx += 1;
+            }
+          }, 260);
+
+          if (!hasBound) {
+            hasBound = true;
+            input.addEventListener("keydown", function (e) {
+              if (e.key !== "Enter") return;
+              var value = (input.value || "").trim();
+              if (!value) return;
+              handleSubmit(value);
+            });
+            try { input.focus(); } catch (_) {}
+          }
+        }
+
+        // Fallback: watch for the real input if it renders later
+        if (!input && window.MutationObserver) {
+          var observer = new MutationObserver(function () {
+            var lateInput =
+              document.getElementById("me-typewriter-input") ||
+              document.querySelector("#root input");
+            if (!lateInput) return;
+            observer.disconnect();
+            // Re-run binding by simulating local scope
+            input = lateInput;
+            if (hasBound) return;
+            hasBound = true;
+            try { input.focus(); } catch (_) {}
+            var text = typewriterText;
+            var idx = 0;
+            var blinkOn = true;
+            setInterval(function () {
+              text = typewriterText;
+              var ch = text[idx % text.length];
+              if (ch === "|") {
+                input.placeholder = text.slice(0, idx % text.length) + (blinkOn ? "|" : " ") + text.slice((idx % text.length) + 1);
+                blinkOn = !blinkOn;
+              } else {
+                input.placeholder = text;
+                idx += 1;
+              }
+            }, 260);
+            input.addEventListener("keydown", function (e) {
+              if (e.key !== "Enter") return;
+              var value = (input.value || "").trim();
+              if (!value) return;
+              handleSubmit(value);
+            });
+          });
+          observer.observe(document.getElementById("root") || document.body, { childList: true, subtree: true });
+        }
+
+        // Periodic log refresh
+        setInterval(function () { updateLog(); }, 800);
+
+        // Removed global Enter fallback to avoid double-trigger.
+      }
+
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", function () { init(); });
+      } else {
+        init();
+      }
+    })();
+  </script>
+</head>
+<body>
+  <div id="root"></div>
+</body>
+</html>

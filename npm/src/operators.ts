@@ -81,23 +81,27 @@ export function pathStartsWith(path: SemanticPath, prefix: SemanticPath): boolea
 
 /**
  * Domain-safe label rules (DNS-like):
- * - 3..63 chars
- * - a-z, 0-9, hyphen
- * - must start/end with alphanumeric
- * - disallow consecutive hyphens "--" (hygiene)
+ * - 3..63 chars total
+ * - a-z, 0-9, hyphen, dot
+ * - labels separated by dots
+ * - each label must start/end with alphanumeric
  */
 export function normalizeAndValidateUsername(input: string): string {
   const id = input.trim().toLowerCase();
   if (id.length < 3 || id.length > 63) {
     throw new Error(`Invalid username length: ${id.length}. Expected 3..63 characters.`);
   }
-  if (!/^[a-z0-9][a-z0-9-]*[a-z0-9]$/.test(id)) {
-    throw new Error(
-      `Invalid username. Use only [a-z0-9-], and start/end with [a-z0-9]. Got: ${input}`
-    );
+  if (id.startsWith(".") || id.endsWith(".") || id.includes("..")) {
+    throw new Error(`Invalid username. Dot-separated labels only. Got: ${input}`);
   }
-  if (id.includes("--")) {
-    throw new Error(`Invalid username. "--" is not allowed. Got: ${input}`);
+  const labelRe = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
+  const labels = id.split(".");
+  for (const label of labels) {
+    if (!labelRe.test(label)) {
+      throw new Error(
+        `Invalid username. Use dot-separated labels with [a-z0-9-], each starting/ending with [a-z0-9]. Got: ${input}`
+      );
+    }
   }
   return id;
 }

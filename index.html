@@ -2,9 +2,13 @@
 <html>
 <head>
 <meta charset='UTF-8'><meta name='viewport' content='width=device-width initial-scale=1'><style type='text/css'>html {overflow-x: initial !important;}</style>
-<style type='text/css'  id="style-base">:root { --bg-color: #ffffff; --text-color: #333333; --select-text-bg-color: #B5D6FC; --select-text-font-color: auto; --monospace: "Lucida Console",Consolas,"Courier",monospace; --title-bar-height: 20px; }
+<link rel="stylesheet" href="../GUI/npm/dist/styles.css" />
+<style type='text/css'  id="style-base">:root { --bg-color: #ffffff; --text-color: #333333; --select-text-bg-color: #B5D6FC; --select-text-font-color: auto; --monospace: "Lucida Console",Consolas,"Courier",monospace; --title-bar-height: 20px; --card-border: rgba(0,0,0,0.08); --field-bg: rgba(0,0,0,0.02); --field-border: rgba(0,0,0,0.2); }
+.me-type { display: inline-flex; align-items: center; gap: 6px; margin-left: 10px; font-family: var(--monospace); font-size: 0.85rem; letter-spacing: 0.02em; color: rgba(51, 51, 51, 0.75); }
+.me-caret { display: inline-block; width: 0.6ch; animation: me-blink 1s steps(2, start) infinite; color: rgba(51, 51, 51, 0.6); }
+@keyframes me-blink { 0% { opacity: 1; } 50% { opacity: 0; } 100% { opacity: 1; } }
 .mac-os-11 { --title-bar-height: 28px; }
-html { font-size: 14px; background-color: var(--bg-color); color: var(--text-color); font-family: "Helvetica Neue", Helvetica, Arial, "Segoe UI Emoji", "SF Pro", sans-serif; -webkit-font-smoothing: antialiased; }
+html { font-size: 14px; background-color: var(--bg-color); color: var(--text-color); font-family: "Helvetica Neue", Helvetica, Arial, "Segoe UI Emoji", "SF Pro", sans-serif; -webkit-font-smoothing: antialiased; transition: background-color 200ms ease, color 200ms ease; }
 h1, h2, h3, h4, h5 { white-space: pre-wrap; }
 body { margin: 0px; padding: 0px; height: auto; inset: 0px; font-size: 1rem; line-height: 1.428571; overflow-x: hidden; background: inherit; }
 iframe { margin: auto; }
@@ -224,6 +228,20 @@ mjx-container { break-inside: avoid; }
 .md-alert-text-container::after { content: attr(data-text); text-transform: capitalize; pointer-events: none; margin-right: 1ch; }
 
 </style>
+<script src="https://cdn.jsdelivr.net/npm/this.me@latest/dist/me.umd.js"></script>
+<script>
+  (function () {
+    try {
+      var MeGlobal = window.Me || window.me || window.thisMe || window["this.me"];
+      if (!MeGlobal) return;
+      var MeCtor = MeGlobal.ME || MeGlobal.Me || MeGlobal.default || MeGlobal;
+      if (typeof MeCtor !== "function") return;
+      if (!window.me) {
+        window.me = new MeCtor();
+      }
+    } catch (_) {}
+  })();
+</script>
 <style type='text/css'  id="style-codemirror">.CodeMirror { height: auto; }
 .CodeMirror.cm-s-inner { background: inherit; }
 .CodeMirror-scroll { overflow: auto hidden; z-index: 3; }
@@ -802,10 +820,83 @@ header, .context-menu, .megamenu-content, footer{
 }
 </style>
 <style type='text/css'  id="style-lp">ol, ul {padding-left: 40px}</style>
+<style type="text/css" id="style-theme-images">
+  .theme-dark .img-light { display: none !important; }
+  .theme-light .img-dark { display: none !important; }
+  .theme-img { display: inline-block; }
+</style>
+<style type="text/css" id="style-theme-override">
+  /* Theme bridge for Typora export: force CSS vars so GUI theme updates apply without reload */
+  html, body {
+    background-color: var(--mui-palette-background-default, var(--bg-color, #fff)) !important;
+    color: var(--mui-palette-text-primary, var(--text-color, #333)) !important;
+  }
+  #write, .typora-export, .typora-export-content {
+    background-color: transparent !important;
+    color: var(--mui-palette-text-primary, var(--text-color, #333)) !important;
+  }
+  a, a:visited {
+    color: var(--mui-palette-primary-main, #0f6a78) !important;
+  }
+  h1, h2, h3, h4, h5, h6, p, li, blockquote, table, th, td {
+    color: var(--mui-palette-text-primary, #333) !important;
+  }
+  blockquote {
+    border-left-color: var(--mui-palette-divider, rgba(0,0,0,0.16)) !important;
+  }
+  hr {
+    border-color: var(--mui-palette-divider, rgba(0,0,0,0.16)) !important;
+  }
+  code, pre, samp, tt {
+    color: var(--mui-palette-text-primary, #333) !important;
+    background-color: color-mix(in srgb, var(--mui-palette-background-paper, #fff) 85%, transparent) !important;
+  }
+  pre, .md-fences, .CodeMirror {
+    background-color: transparent !important;
+  }
+  table, th, td {
+    border-color: var(--mui-palette-divider, rgba(0,0,0,0.16)) !important;
+  }
+  input, select, textarea {
+    color: var(--mui-palette-text-primary, #333) !important;
+    background-color: color-mix(in srgb, var(--mui-palette-background-paper, #fff) 80%, transparent) !important;
+    border-color: var(--mui-palette-divider, rgba(0,0,0,0.16)) !important;
+  }
+</style>
+<style type="text/css" id="style-me-monad">
+  #me-monad { position: relative; width: 240px; height: 220px; margin: 0 auto; }
+  #me-monad > .MuiBox-root { position: relative !important; left: 0 !important; top: 0 !important; margin: 0 auto; }
+  #me-monad .MuiBox-root { pointer-events: auto; }
+</style>
+<style type="text/css" id="style-me-leftbar">
+  .me-with-leftbar body.typora-export { padding-left: var(--me-leftbar-inset, 0px); }
+  #me-leftbar { position: fixed; inset: 0; pointer-events: none; z-index: 1400; }
+  #me-leftbar #layout-root { min-height: 0; background: transparent !important; }
+  #me-leftbar #content { display: none !important; }
+  #me-leftbar .LeftSidebar { pointer-events: auto; }
+  #me-leftbar .LeftSidebar header { display: flex; }
+  @media screen and (max-width: 640px) {
+    .me-with-leftbar body.typora-export { padding-left: 0; }
+    #me-leftbar { display: none; }
+  }
+</style>
+<script>
+  (function () {
+    try {
+      var stored = localStorage.getItem("this.gui:themeMode");
+      var prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+      var isDark = stored ? stored === "dark" : prefersDark;
+      var rootEl = document.documentElement;
+      rootEl.classList.toggle("theme-dark", isDark);
+      rootEl.classList.toggle("theme-light", !isDark);
+    } catch (e) {}
+  })();
+</script>
 <style type='text/css'  id="style-mac-print"> @media print { @page {margin: 0 0 0 0;} body.typora-export {padding-left: 0; padding-right: 0;} #write {padding:0;}}</style>
 <title>READ .ME</title>
 </head>
 <body class='typora-export'><div class='typora-export-content'>
+<div id="me-leftbar"></div>
 <div class="me-topbar" aria-label="Top navigation">
   <div class="me-topbar-inner">
     <nav class="me-topbar-links" aria-label="Primary">
@@ -831,26 +922,54 @@ header, .context-menu, .megamenu-content, footer{
   </div>
 </div>
 <div id='write'  class=''><picture>
-  <img src="https://res.cloudinary.com/dkwnxf6gm/image/upload/v1761149332/this.me-removebg-preview_2_j1eoiy.png" alt=".me Logo" width="144" />
+  <img class="theme-img img-light" src="https://res.cloudinary.com/dkwnxf6gm/image/upload/v1761149332/this.me-removebg-preview_2_j1eoiy.png" alt=".me Logo" width="144" />
+  <img class="theme-img img-dark" src="https://res.cloudinary.com/dkwnxf6gm/image/upload/v1769890772/this.me.png" alt=".me Logo (dark)" width="144" />
 </picture><h1 id='me'><span>.me  </span></h1><h6 id='minimal-and-expressive'><span>Minimal and Expressive.</span></h6><table border="0" cellspacing="0" cellpadding="0" style="border:none;">
   <tr>
     <td width="260" align="center" valign="middle">
-      <picture>
-        <img src="https://suign.github.io/assets/imgs/monads.png" alt=".me as a coordinate" width="200" />
-      </picture>
+      <div id="me-monad-menu"></div>
+      <div id="me-monad"></div>
     </td>
     <td valign="middle">
-      <h2>Hello, I am <code>.me</code></h2>
-<div style="margin-top: 22px;">
-  <a href="https://github.com/neurons-me" style="display:inline-flex; align-items:center; gap:10px; padding:10px 14px; border-radius:12px; text-decoration:none; color:inherit; border:1px solid transparent; background: rgba(0,0,0,0.01);">
-    <span aria-hidden="true">&lt;/&gt;</span>
-    <span>SourceCode</span>
-  </a>
-</div>
+      <h2>Hello, I am <input id="me-username" type="text" aria-label="Type your .me username" placeholder=".me" style="border: none; border-bottom: 1px solid rgba(0,0,0,0.25); background: transparent; outline: none; font-family: var(--monospace); font-size: 1rem; padding: 2px 4px; min-width: 180px;" /></h2>
+      <div id="me-identity-fields" style="margin-top: 8px; display: grid; gap: 8px; font-family: var(--monospace); font-size: 0.92rem;">
+        <div style="display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+          <div style="font-weight: 700;">Birthday</div>
+          <div style="display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+            <select id="me-bday-month" aria-label="Birthday month" style="border: 1px solid var(--field-border); border-radius: 8px; padding: 5px 8px; background: var(--field-bg); font-size: 0.9rem;">
+              <option value="">Month</option>
+            </select>
+            <select id="me-bday-day" aria-label="Birthday day" style="border: 1px solid var(--field-border); border-radius: 8px; padding: 5px 8px; background: var(--field-bg); font-size: 0.9rem;">
+              <option value="">Day</option>
+            </select>
+            <select id="me-bday-year" aria-label="Birthday year" style="border: 1px solid var(--field-border); border-radius: 8px; padding: 5px 8px; background: var(--field-bg); font-size: 0.9rem;">
+              <option value="">Year</option>
+            </select>
+          </div>
+        </div>
+        <div style="display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+          <div style="font-weight: 700;">Languages</div>
+          <div id="me-lang-tags" style="display: inline-flex; flex-wrap: wrap; gap: 6px;"></div>
+          <input id="me-lang-input" type="text" aria-label="Add languages" placeholder="Add a language" style="border: 1px solid var(--field-border); border-radius: 8px; padding: 5px 8px; background: transparent; outline: none; font-family: var(--monospace); font-size: 0.92rem; min-width: 190px;" />
+          <div id="me-lang-suggestions" style="display: none; flex-wrap: wrap; gap: 6px;"></div>
+        </div>
+      </div>
+      <div id="me-theme-gui" style="margin-top: 10px;"></div>
     </td>
   </tr>
 </table><h2 id='a-declarative-language'><span>A Declarative Language  </span></h2>
-<span>Everything emerges from two primitives:</span></p><pre class="md-fences md-end-block ty-contain-cm modeLoaded" spellcheck="false" lang="text"><div class="CodeMirror cm-s-inner cm-s-null-scroll CodeMirror-wrap" lang="text"><div style="overflow: hidden; position: relative; width: 3px; height: 0px; top: 9.5px; left: 8px;"><textarea autocorrect="off" autocapitalize="off" spellcheck="false" tabindex="0" style="position: absolute; bottom: -1em; padding: 0px; width: 1000px; height: 1em; outline: currentcolor;"></textarea></div><div class="CodeMirror-scrollbar-filler" cm-not-content="true"></div><div class="CodeMirror-gutter-filler" cm-not-content="true"></div><div class="CodeMirror-scroll" tabindex="-1"><div class="CodeMirror-sizer" style="margin-left: 0px; margin-bottom: 0px; border-right-width: 0px; padding-right: 0px; padding-bottom: 0px;"><div style="position: relative; top: 0px;"><div class="CodeMirror-lines" role="presentation"><div role="presentation" style="position: relative; outline: currentcolor;"><div class="CodeMirror-measure"></div><div class="CodeMirror-measure"></div><div style="position: relative; z-index: 1;"></div><div class="CodeMirror-code" role="presentation"><div class="CodeMirror-activeline" style="position: relative;"><div class="CodeMirror-activeline-background CodeMirror-linebackground"></div><div class="CodeMirror-gutter-background CodeMirror-activeline-gutter" style="left: 0px; width: 0px;"></div><pre class=" CodeMirror-line " role="presentation"><span role="presentation" style="padding-right: 0.1px;">Declare meaning</span></pre></div><pre class=" CodeMirror-line " role="presentation"><span role="presentation" style="padding-right: 0.1px;">Resolve meaning</span></pre></div></div></div></div></div><div style="position: absolute; height: 0px; width: 1px; border-bottom-width: 0px; border-bottom-style: solid; border-bottom-color: transparent; top: 46px;"></div><div class="CodeMirror-gutters" style="display: none; height: 46px;"></div></div></div></pre><hr /><h1 id='𓅓-self-semantic-runtime-invariance'><span>𓅓 Self-Semantic Runtime Invariance</span></h1><p><span>The runtime of </span><code>.me</code><span> is written </span><strong><span>in the same semantic model that it interprets</span></strong><span>, making it a </span><em><span>self-describing</span></em><span> and </span><em><span>self-sustaining</span></em><span> identity system.</span><br/><span>This property is known as </span><strong><span>Self‑Semantic Runtime Invariance</span></strong><span>.</span></p><h4 id='why-this-matters'><span>Why this matters</span></h4><ul><li><p><span>The language can describe itself using its own primitives.  </span></p></li><li><p><span>The runtime’s behavior is encoded in the same declarative structures users write.  </span></p></li><li><p><span>Every semantic operation becomes both:</span></p><ul><li><p><span>a computation, and  </span></p></li><li><p><span>a piece of meaning inside the identity universe.  </span></p></li></ul></li><li><p><span>The system is </span><em><span>reflexive</span></em><span>: the runtime can observe, narrate, and export its own evolution.</span></p></li></ul><h2 id='▵-the-philosophy'><strong><span>▵ The Philosophy</span></strong></h2><p><strong><span>&gt;</span><span> Human owns meaning. Everything else asks.</span></strong>
+<span>Everything emerges from two primitives:</span></p>
+<div style="margin: 14px 0 24px; font-family: var(--monospace);">
+  <div style="font-weight: 700; margin-bottom: 6px;">1. Declare meaning</div>
+  <div style="display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+    <span>me.name(</span>
+    <input id="me-name-input" type="text" aria-label="Declare your name" placeholder="Name" style="border: none; border-bottom: 1px solid rgba(0,0,0,0.25); background: transparent; outline: none; font-family: var(--monospace); font-size: 1rem; padding: 2px 4px; min-width: 180px;" />
+    <span>)</span>
+  </div>
+  <div style="font-weight: 700; margin: 12px 0 6px;">2. Resolve meaning</div>
+  <div><code>me("name")</code> → <span id="me-name-value" aria-live="polite">...</span></div>
+</div>
+<hr /><h1 id='𓅓-self-semantic-runtime-invariance'><span>𓅓 Self-Semantic Runtime Invariance</span></h1><p><span>The runtime of </span><code>.me</code><span> is written </span><strong><span>in the same semantic model that it interprets</span></strong><span>, making it a </span><em><span>self-describing</span></em><span> and </span><em><span>self-sustaining</span></em><span> identity system.</span><br/><span>This property is known as </span><strong><span>Self‑Semantic Runtime Invariance</span></strong><span>.</span></p><h4 id='why-this-matters'><span>Why this matters</span></h4><ul><li><p><span>The language can describe itself using its own primitives.  </span></p></li><li><p><span>The runtime’s behavior is encoded in the same declarative structures users write.  </span></p></li><li><p><span>Every semantic operation becomes both:</span></p><ul><li><p><span>a computation, and  </span></p></li><li><p><span>a piece of meaning inside the identity universe.  </span></p></li></ul></li><li><p><span>The system is </span><em><span>reflexive</span></em><span>: the runtime can observe, narrate, and export its own evolution.</span></p></li></ul><h2 id='▵-the-philosophy'><strong><span>▵ The Philosophy</span></strong></h2><p><strong><span>&gt;</span><span> Human owns meaning. Everything else asks.</span></strong>
 <span>A semantic language for identity, built from recursive declarations and symbolic paths.</span>
 <strong><span>▵ meaning</span></strong><span> / </span><strong><span>⊙ identities</span></strong><span> / </span><strong><span>● universes.</span></strong>
 <span>With one primitive:</span></p>
@@ -889,5 +1008,789 @@ header, .context-menu, .megamenu-content, footer{
   </a>
 </footer>
 </div></div>
+<script src="../GUI/npm/node_modules/react/umd/react.development.js"></script>
+<script src="../GUI/npm/node_modules/react-dom/umd/react-dom.development.js"></script>
+<script src="../GUI/npm/dist/this.gui.umd.js"></script>
+<script>
+  (function () {
+
+    function commitUsername() {
+      var input = document.getElementById("me-username");
+      if (!input) return;
+      var value = String(input.value || "").trim();
+      if (!value) return;
+      try {
+        if (window.me && typeof window.me["@"] === "function") {
+          window.me["@"](value);
+        }
+      } catch (e) {
+        console.warn("Failed to set .me username", e);
+      }
+    }
+
+    function bindUsernameInput() {
+      var input = document.getElementById("me-username");
+      if (!input) return;
+      input.addEventListener("change", commitUsername);
+      input.addEventListener("blur", commitUsername);
+      input.addEventListener("keydown", function (e) {
+        if (e.key === "Enter") {
+          commitUsername();
+        }
+      });
+    }
+
+    function commitName() {
+      var input = document.getElementById("me-name-input");
+      var output = document.getElementById("me-name-value");
+      if (!input) return;
+      var value = String(input.value || "").trim();
+      if (!value) {
+        if (output) output.textContent = "...";
+        return;
+      }
+      try {
+        if (window.me && typeof window.me.name === "function") {
+          window.me.name(value);
+        }
+        if (window.me && typeof window.me === "function" && output) {
+          output.textContent = String(window.me("name"));
+        }
+      } catch (e) {
+        console.warn("Failed to set .me name", e);
+      }
+    }
+
+    function bindNameInput() {
+      var input = document.getElementById("me-name-input");
+      if (!input) return;
+      input.addEventListener("change", commitName);
+      input.addEventListener("blur", commitName);
+      input.addEventListener("keydown", function (e) {
+        if (e.key === "Enter") {
+          commitName();
+        }
+      });
+    }
+
+    var langTags = [];
+    var langSuggestions = [
+      "English","Spanish","French","German","Italian","Portuguese",
+      "Japanese","Korean","Chinese","Arabic","Russian","Hindi"
+    ];
+
+    function renderLangTags() {
+      var container = document.getElementById("me-lang-tags");
+      if (!container) return;
+      container.innerHTML = "";
+      langTags.forEach(function (tag, idx) {
+        var pill = document.createElement("span");
+        pill.style.display = "inline-flex";
+        pill.style.alignItems = "center";
+        pill.style.gap = "6px";
+        pill.style.padding = "4px 10px";
+        pill.style.borderRadius = "999px";
+        pill.style.border = "1px solid rgba(0,0,0,0.18)";
+        pill.style.background = "rgba(0,0,0,0.02)";
+        pill.style.fontSize = "0.85rem";
+
+        var label = document.createElement("span");
+        label.textContent = tag;
+        pill.appendChild(label);
+
+        var btn = document.createElement("button");
+        btn.type = "button";
+        btn.textContent = "×";
+        btn.setAttribute("aria-label", "Remove " + tag);
+        btn.style.border = "none";
+        btn.style.background = "transparent";
+        btn.style.cursor = "pointer";
+        btn.style.fontSize = "0.95rem";
+        btn.style.lineHeight = "1";
+        btn.addEventListener("click", function () {
+          langTags.splice(idx, 1);
+          commitLanguages();
+        });
+        pill.appendChild(btn);
+
+        container.appendChild(pill);
+      });
+    }
+
+    function commitLanguages() {
+      renderLangTags();
+      var input = document.getElementById("me-lang-input");
+      renderLangSuggestions(input ? input.value : "");
+      try {
+        if (window.me && typeof window.me.languages === "function") {
+          window.me.languages(langTags.slice());
+        }
+      } catch (e) {
+        console.warn("Failed to set .me languages", e);
+      }
+    }
+
+    function addLanguageFromInput() {
+      var input = document.getElementById("me-lang-input");
+      if (!input) return;
+      var raw = String(input.value || "");
+      if (!raw.trim()) return;
+      var parts = raw.split(",").map(function (t) { return t.trim(); }).filter(Boolean);
+      if (!parts.length) return;
+      parts.forEach(function (tag) {
+        if (langTags.indexOf(tag) === -1) langTags.push(tag);
+      });
+      input.value = "";
+      commitLanguages();
+    }
+
+    function addLanguage(tag) {
+      if (!tag) return;
+      if (langTags.indexOf(tag) === -1) langTags.push(tag);
+      commitLanguages();
+    }
+
+    function renderLangSuggestions(query) {
+      var container = document.getElementById("me-lang-suggestions");
+      if (!container) return;
+      container.innerHTML = "";
+      var q = String(query || "").trim().toLowerCase();
+      if (!q) {
+        container.style.display = "none";
+        return;
+      }
+      var any = false;
+      langSuggestions.forEach(function (tag) {
+        if (langTags.indexOf(tag) !== -1) return;
+        if (tag.toLowerCase().indexOf(q) === -1) return;
+        var btn = document.createElement("button");
+        btn.type = "button";
+        btn.textContent = "+" + tag;
+        btn.style.border = "1px dashed rgba(0,0,0,0.2)";
+        btn.style.background = "transparent";
+        btn.style.borderRadius = "999px";
+        btn.style.padding = "3px 8px";
+        btn.style.cursor = "pointer";
+        btn.style.fontSize = "0.8rem";
+        btn.addEventListener("click", function () {
+          addLanguage(tag);
+        });
+        container.appendChild(btn);
+        any = true;
+      });
+      container.style.display = any ? "inline-flex" : "none";
+    }
+
+    function bindLanguages() {
+      var input = document.getElementById("me-lang-input");
+      if (!input) return;
+      input.addEventListener("keydown", function (e) {
+        if (e.key === "Enter" || e.key === ",") {
+          e.preventDefault();
+          addLanguageFromInput();
+        }
+      });
+      input.addEventListener("input", function () {
+        renderLangSuggestions(input.value);
+      });
+      input.addEventListener("blur", function () {
+        addLanguageFromInput();
+        renderLangSuggestions("");
+      });
+      renderLangTags();
+      renderLangSuggestions("");
+    }
+
+    function populateBirthdaySelects() {
+      var month = document.getElementById("me-bday-month");
+      var day = document.getElementById("me-bday-day");
+      var year = document.getElementById("me-bday-year");
+      if (!month || !day || !year) return;
+
+      var months = [
+        "January","February","March","April","May","June",
+        "July","August","September","October","November","December"
+      ];
+      months.forEach(function (label, i) {
+        var opt = document.createElement("option");
+        opt.value = String(i + 1);
+        opt.textContent = label;
+        month.appendChild(opt);
+      });
+
+      for (var d = 1; d <= 31; d++) {
+        var optDay = document.createElement("option");
+        optDay.value = String(d);
+        optDay.textContent = String(d);
+        day.appendChild(optDay);
+      }
+
+      var currentYear = new Date().getFullYear();
+      for (var y = currentYear; y >= currentYear - 100; y--) {
+        var optYear = document.createElement("option");
+        optYear.value = String(y);
+        optYear.textContent = String(y);
+        year.appendChild(optYear);
+      }
+    }
+
+    function commitBirthday() {
+      var month = document.getElementById("me-bday-month");
+      var day = document.getElementById("me-bday-day");
+      var year = document.getElementById("me-bday-year");
+      if (!month || !day || !year) return;
+      var m = month.value;
+      var d = day.value;
+      var y = year.value;
+      try {
+        if (window.me && window.me.birthday) {
+          if (m) window.me.birthday.month(Number(m));
+          if (d) window.me.birthday.day(Number(d));
+          if (y) window.me.birthday.year(Number(y));
+        }
+      } catch (e) {
+        console.warn("Failed to set .me birthday", e);
+      }
+    }
+
+    function bindBirthday() {
+      var month = document.getElementById("me-bday-month");
+      var day = document.getElementById("me-bday-day");
+      var year = document.getElementById("me-bday-year");
+      if (!month || !day || !year) return;
+      month.addEventListener("change", commitBirthday);
+      day.addEventListener("change", commitBirthday);
+      year.addEventListener("change", commitBirthday);
+    }
+
+    var INSPECTOR_STORAGE_KEY = "me.runtime.gui.inspector.v1";
+    var inspectorEnabled = false;
+
+    function readInspectorEnabled() {
+      try {
+        return localStorage.getItem(INSPECTOR_STORAGE_KEY) === "true";
+      } catch (e) {
+        return false;
+      }
+    }
+
+    function writeInspectorEnabled(value) {
+      try {
+        localStorage.setItem(INSPECTOR_STORAGE_KEY, value ? "true" : "false");
+      } catch (e) {}
+    }
+
+    function syncInspectorStateToRuntime() {
+      try {
+        window.dispatchEvent(new CustomEvent("this.gui:inspector:set", {
+          detail: { enabled: Boolean(inspectorEnabled) }
+        }));
+      } catch (e) {}
+
+      var legacyToggle = document.querySelector(
+        "#root button[style*=\"position: fixed\"][style*=\"bottom: 16px\"][style*=\"right: 16px\"]"
+      );
+      if (!legacyToggle) return;
+      var label = String(legacyToggle.textContent || "").trim();
+      var legacyEnabled = label === "Inspector ON";
+      if (legacyEnabled !== Boolean(inspectorEnabled) && typeof legacyToggle.click === "function") {
+        legacyToggle.click();
+      }
+    }
+
+    function hideLegacyInspectorToggle() {
+      var candidates = document.querySelectorAll("#root button");
+      for (var i = 0; i < candidates.length; i += 1) {
+        var btn = candidates[i];
+        var label = String(btn.textContent || "").trim();
+        if (label !== "Inspector ON" && label !== "Inspector OFF") continue;
+        var styles = window.getComputedStyle(btn);
+        if (styles.position !== "fixed") continue;
+        btn.style.display = "none";
+      }
+    }
+
+    function applyInspectorCompatibility() {
+      syncInspectorStateToRuntime();
+      hideLegacyInspectorToggle();
+      window.requestAnimationFrame(function () {
+        syncInspectorStateToRuntime();
+        hideLegacyInspectorToggle();
+      });
+      window.setTimeout(function () {
+        syncInspectorStateToRuntime();
+        hideLegacyInspectorToggle();
+      }, 80);
+    }
+
+    function installInspectorClickGuard() {
+      window.addEventListener("click", function (ev) {
+        if (!inspectorEnabled) return;
+        var target = ev.target;
+        if (!target || typeof target.closest !== "function") return;
+        if (!target.closest("[data-gui-node-id]")) return;
+        return;
+      }, true);
+    }
+
+    function installLegacyInspectorObserver() {
+      if (typeof MutationObserver === "undefined") return;
+      var observer = new MutationObserver(function () {
+        hideLegacyInspectorToggle();
+      });
+      observer.observe(document.body, { childList: true, subtree: true });
+    }
+
+    function buildThemeSpec() {
+      return {
+        type: "Box",
+        props: { sx: { display: "flex", flexDirection: "column", gap: 1, mt: 1 } },
+        children: [
+          {
+            key: "theme-header",
+            type: "Box",
+            props: { sx: { display: "flex", alignItems: "center", justifyContent: "space-between" } },
+            children: [
+              { type: "Typography", props: { variant: "body2", sx: { fontWeight: 700 } }, children: ["Theme Catalog"] },
+              { type: "ThemeModeToggle", props: { variant: "switchMinimal", show: "icons", switchSize: "small", iconSize: "small" } }
+            ]
+          },
+          { key: "theme-catalog", type: "ThemesCatalog", props: { variant: "grid", minimal: true, hideDescription: true, hideAuthor: true, hideTitle: true, hideModeToggle: true, sx: { maxHeight: 240, overflow: "auto", pr: 0.5 } } }
+        ]
+      };
+    }
+
+    function buildLeftBarSpec() {
+      var ThemeModeToggle = window.GUI && window.GUI.ThemeModeToggle;
+      var themeToggleElement =
+        ThemeModeToggle && typeof window.React.createElement === "function"
+          ? window.React.createElement(ThemeModeToggle, {
+              variant: "minimal",
+              show: "icons",
+              iconSize: "small"
+            })
+          : null;
+      return {
+        type: (window.GUI && window.GUI.Layout) ? window.GUI.Layout : "Layout",
+        props: {
+          topBarConfig: false,
+          rightSidebarConfig: false,
+          footerConfig: false,
+          leftSidebarConfig: {
+            initialView: "rail",
+            elements: [
+              { key: "home", type: "link", props: { label: ".me", icon: "terminal", href: "./me.html" } },
+              { key: "docs", type: "link", props: { label: "Docs", icon: "description", href: "./index.html" } },
+              { key: "npm", type: "link", props: { label: "npm", icon: "code", href: "https://www.npmjs.com/package/this.me" } }
+            ],
+            footerElements: [
+              { key: "inspector-toggle", type: "action", props: { label: inspectorEnabled ? "Inspector · ON" : "Inspector · OFF", icon: inspectorEnabled ? "code" : "code_off", active: inspectorEnabled, action: "__meToggleInspector" } },
+              themeToggleElement
+                ? { key: "theme-toggle", type: "action", props: { label: "Theme Mode", element: themeToggleElement } }
+                : { key: "theme-action", type: "action", props: { label: "Theme", icon: "dark_mode", action: "__meToggleTheme" } }
+            ]
+          }
+        },
+        children: [
+          {
+            type: "Box",
+            props: { sx: { display: "none" } }
+          }
+        ]
+      };
+    }
+
+    function buildMonadSpec() {
+      return {
+        type: "Monad",
+        props: { variant: "bubble", mode: "contained" },
+        children: [
+          {
+            key: "monad-content",
+            type: "Box",
+            props: { sx: { display: "flex", flexDirection: "column", gap: 1 } },
+            children: [
+              {
+                key: "monad-icon",
+                type: "Box",
+                props: { sx: { display: "flex", alignItems: "center", gap: 0.75 } },
+                children: [
+                  {
+                    type: "Icon",
+                    props: { name: "face", fontSize: "small", iconColor: "primary" }
+                  },
+                  {
+                    type: "Typography",
+                    props: { variant: "caption", sx: { fontWeight: 700, letterSpacing: 0.4 } },
+                    children: ["face recognition"]
+                  }
+                ]
+              },
+              {
+                key: "monad-title",
+                type: "Typography",
+                props: { variant: "body2", sx: { fontWeight: 700 } },
+                children: ["Contexto: .me · cleaker · GUI"]
+              },
+              {
+                key: "monad-subtitle",
+                type: "Typography",
+                props: { variant: "caption", sx: { opacity: 0.8 } },
+                children: ["Escribe para abrir el contexto interno."]
+              },
+              {
+                key: "monad-input",
+                type: "TextField",
+                props: {
+                  placeholder: "Escribe aquí…",
+                  fullWidth: true,
+                  size: "small"
+                }
+              }
+            ]
+          }
+        ]
+      };
+    }
+
+    function buildMonadMenuSpec() {
+      return {
+        type: "Box",
+        props: {
+          sx: {
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 1,
+            mb: 1
+          }
+        },
+        children: [
+          {
+            type: "Box",
+            props: {
+              sx: {
+                width: 32,
+                height: 32,
+                borderRadius: "10px",
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                border: "1px solid rgba(255,255,255,0.18)",
+                background: "rgba(255,255,255,0.06)"
+              }
+            },
+            children: [
+              {
+                type: "Icon",
+                props: { name: "face", fontSize: "small", iconColor: "primary" }
+              }
+            ]
+          },
+          {
+            type: "Box",
+            props: {
+              sx: {
+                width: 32,
+                height: 32,
+                borderRadius: "10px",
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                border: "1px solid rgba(255,255,255,0.18)",
+                background: "rgba(255,255,255,0.06)"
+              }
+            },
+            children: [
+              {
+                type: "Icon",
+                props: { name: "fingerprint", fontSize: "small", iconColor: "primary" }
+              }
+            ]
+          },
+          {
+            type: "Box",
+            props: {
+              sx: {
+                width: 32,
+                height: 32,
+                borderRadius: "10px",
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                border: "1px solid rgba(255,255,255,0.18)",
+                background: "rgba(255,255,255,0.06)"
+              }
+            },
+            children: [
+              {
+                type: "Icon",
+                props: { name: "dialpad", fontSize: "small", iconColor: "primary" }
+              }
+            ]
+          },
+          {
+            type: "Box",
+            props: {
+              sx: {
+                width: 32,
+                height: 32,
+                borderRadius: "10px",
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                border: "1px solid rgba(255,255,255,0.18)",
+                background: "rgba(255,255,255,0.06)"
+              }
+            },
+            children: [
+              {
+                type: "Icon",
+                props: { name: "email", fontSize: "small", iconColor: "primary" }
+              }
+            ]
+          }
+        ]
+      };
+    }
+
+    var leftbarInsetObserver = null;
+
+    function syncLeftbarInset() {
+      try {
+        var sidebar = document.querySelector("#me-leftbar .LeftSidebar");
+        if (!sidebar) return;
+        var rect = sidebar.getBoundingClientRect();
+        var width = Math.max(0, Math.round(rect.width || 0));
+        document.documentElement.style.setProperty("--me-leftbar-inset", width + "px");
+      } catch (e) {}
+    }
+
+    function installLeftbarInsetObserver() {
+      try {
+        if (leftbarInsetObserver || typeof ResizeObserver === "undefined") return;
+        var sidebar = document.querySelector("#me-leftbar .LeftSidebar");
+        if (!sidebar) return;
+        leftbarInsetObserver = new ResizeObserver(function () {
+          syncLeftbarInset();
+        });
+        leftbarInsetObserver.observe(sidebar);
+      } catch (e) {}
+    }
+
+    function initGuiRuntime() {
+      var GUI = window.GUI;
+      if (!GUI || typeof GUI.mount !== "function") return;
+      if (!window.React || !window.ReactDOM) return;
+      if (typeof GUI.Router !== "function" || typeof GUI.RunMe !== "function") {
+        console.warn("GUI.Router or GUI.RunMe missing; cannot start runtime.");
+        return;
+      }
+
+      var me = window.me;
+      if (!me && window.Me) {
+        try {
+          me = new window.Me();
+          window.me = me;
+        } catch (e) {}
+      }
+      if (!me) {
+        console.warn("window.me is missing; GUI runtime will run without .me context.");
+      }
+
+      var runtime = me ? GUI.RunMe(me) : null;
+      var router = new GUI.Router({ runtime: runtime });
+      var currentPath = "/";
+      var currentCtx = { namespace: ".me" };
+      function rerender() {
+        router.navigate(currentPath, { push: false, ctx: currentCtx });
+      }
+
+      inspectorEnabled = readInspectorEnabled();
+      window.__meToggleInspector = function () {
+        inspectorEnabled = !inspectorEnabled;
+        writeInspectorEnabled(inspectorEnabled);
+        applyInspectorCompatibility();
+        rerender();
+      };
+      applyInspectorCompatibility();
+      installInspectorClickGuard();
+      installLegacyInspectorObserver();
+      var leftbarRoot = document.getElementById("me-leftbar");
+      var themeRoot = document.getElementById("me-theme-gui");
+      var monadRoot = document.getElementById("me-monad");
+      var monadMenuRoot = document.getElementById("me-monad-menu");
+      function mountAll(specs, ctx) {
+        if (leftbarRoot && specs.leftbar) {
+          GUI.mount(specs.leftbar, leftbarRoot, { runtime: runtime, ctx: ctx, showUnknown: true, idPrefix: "me-leftbar" });
+          document.documentElement.classList.add("me-with-leftbar");
+          syncLeftbarInset();
+          installLeftbarInsetObserver();
+        }
+        if (themeRoot && specs.theme) {
+          GUI.mount(specs.theme, themeRoot, { runtime: runtime, ctx: ctx, showUnknown: true, idPrefix: "me-theme" });
+        }
+        if (monadRoot && specs.monad) {
+          GUI.mount(specs.monad, monadRoot, { runtime: runtime, ctx: ctx, showUnknown: true, idPrefix: "me-monad" });
+        }
+        if (monadMenuRoot && specs.monadMenu) {
+          GUI.mount(specs.monadMenu, monadMenuRoot, { runtime: runtime, ctx: ctx, showUnknown: true, idPrefix: "me-monad-menu" });
+        }
+      }
+
+      router.set("/", function () {
+        return {
+          leftbar: buildLeftBarSpec(),
+          theme: buildThemeSpec(),
+          monad: buildMonadSpec(),
+          monadMenu: buildMonadMenuSpec()
+        };
+      });
+
+      router.onChange(function (specs, meta) {
+        currentPath = (meta && meta.path) ? meta.path : "/";
+        currentCtx = (meta && meta.ctx) ? meta.ctx : { namespace: ".me" };
+        mountAll(specs || {}, meta && meta.ctx ? meta.ctx : {});
+      });
+
+      window.addEventListener("this.gui:themeMode:changed", function () {
+        rerender();
+      });
+      window.addEventListener("storage", function (event) {
+        if (!event) return;
+        if (event.key === "this.gui:themeMode" || event.key === "this.gui:themeId") {
+          rerender();
+        }
+      });
+
+      router.navigate("/", { push: false, ctx: { namespace: ".me" } }).catch(function (e) {
+        console.warn("GUI router navigation failed", e);
+      });
+    }
+
+    function syncThemeClass() {
+      try {
+        var mode = localStorage.getItem("this.gui:themeMode");
+        var isDark = mode === "dark";
+        var rootEl = document.documentElement;
+        rootEl.classList.toggle("theme-dark", isDark);
+        rootEl.classList.toggle("theme-light", !isDark);
+      } catch (e) {}
+    }
+
+    var THEME_MODE_STORAGE_KEY = "this.gui:themeMode";
+    var THEME_MODE_EVENT = "this.gui:themeMode:changed";
+    function readRuntimeThemeMode() {
+      try {
+        var raw = String(localStorage.getItem(THEME_MODE_STORAGE_KEY) || "light").toLowerCase();
+        return raw === "dark" ? "dark" : "light";
+      } catch (e) {
+        return "light";
+      }
+    }
+
+    function getRuntimeThemeVars(mode) {
+      if (mode === "dark") {
+        return {
+          "--mui-palette-background-default": "#0b1114",
+          "--mui-palette-background-paper": "#0b1114",
+          "--mui-palette-text-primary": "#e8eded",
+          "--mui-palette-text-secondary": "#98a7b3",
+          "--mui-palette-divider": "rgba(232, 237, 237, 0.12)",
+          "--mui-palette-primary-main": "#4fd1c5",
+          "--mui-palette-primary-contrastText": "#0b1114",
+          "--mui-palette-success-main": "#22c55e",
+          "--mui-palette-warning-main": "#f59e0b",
+          "--mui-palette-error-main": "#ef4444",
+          "--mui-palette-common-black": "#000000",
+          "--mui-palette-common-white": "#ffffff",
+          "--mui-palette-action-hover": "rgba(255, 255, 255, 0.08)"
+        };
+      }
+      return {
+        "--mui-palette-background-default": "#f4f7f8",
+        "--mui-palette-background-paper": "#f4f7f8",
+        "--mui-palette-text-primary": "#0f1720",
+        "--mui-palette-text-secondary": "#51606d",
+        "--mui-palette-divider": "rgba(15, 23, 32, 0.16)",
+        "--mui-palette-primary-main": "#0f6a78",
+        "--mui-palette-primary-contrastText": "#f1fbfc",
+        "--mui-palette-success-main": "#15803d",
+        "--mui-palette-warning-main": "#b7791f",
+        "--mui-palette-error-main": "#b91c1c",
+        "--mui-palette-common-black": "#000000",
+        "--mui-palette-common-white": "#ffffff",
+        "--mui-palette-action-hover": "rgba(15, 23, 32, 0.06)"
+      };
+    }
+
+    function applyRuntimeThemeMode(mode) {
+      var resolved = mode === "dark" ? "dark" : "light";
+      var vars = getRuntimeThemeVars(resolved);
+      var root = document.documentElement;
+      root.setAttribute("data-this-gui-theme-mode", resolved);
+      Object.keys(vars).forEach(function (key) {
+        root.style.setProperty(key, vars[key]);
+      });
+    }
+
+    function emitThemeModeChanged(mode) {
+      try {
+        window.dispatchEvent(new CustomEvent(THEME_MODE_EVENT, { detail: { mode: mode } }));
+      } catch (e) {}
+    }
+
+    function installRuntimeThemeBridge() {
+      if (window.__meThemeBridgeInstalled) return;
+      window.__meThemeBridgeInstalled = true;
+      try {
+        var originalSetItem = localStorage.setItem.bind(localStorage);
+        localStorage.setItem = function (key, value) {
+          originalSetItem(key, value);
+          if (String(key) === THEME_MODE_STORAGE_KEY) {
+            emitThemeModeChanged(String(value || ""));
+          }
+        };
+      } catch (e) {}
+
+      window.addEventListener("storage", function (event) {
+        if (!event || event.key !== THEME_MODE_STORAGE_KEY) return;
+        applyRuntimeThemeMode(String(event.newValue || "light"));
+      });
+
+      window.addEventListener(THEME_MODE_EVENT, function (event) {
+        var mode = event && event.detail ? event.detail.mode : null;
+        applyRuntimeThemeMode(String(mode || readRuntimeThemeMode()));
+      });
+
+      applyRuntimeThemeMode(readRuntimeThemeMode());
+    }
+
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", bindUsernameInput);
+      document.addEventListener("DOMContentLoaded", bindNameInput);
+      document.addEventListener("DOMContentLoaded", populateBirthdaySelects);
+      document.addEventListener("DOMContentLoaded", bindBirthday);
+      document.addEventListener("DOMContentLoaded", bindLanguages);
+      document.addEventListener("DOMContentLoaded", installRuntimeThemeBridge);
+      document.addEventListener("DOMContentLoaded", initGuiRuntime);
+      document.addEventListener("DOMContentLoaded", syncThemeClass);
+    } else {
+      bindUsernameInput();
+      bindNameInput();
+      populateBirthdaySelects();
+      bindBirthday();
+      bindLanguages();
+      installRuntimeThemeBridge();
+      initGuiRuntime();
+      syncThemeClass();
+    }
+
+    window.addEventListener("storage", function (e) {
+      if (e.key === "this.gui:themeMode") syncThemeClass();
+    });
+    setInterval(syncThemeClass, 500);
+  })();
+</script>
 </body>
 </html>

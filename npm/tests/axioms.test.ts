@@ -43,8 +43,12 @@ function assertIndexDoesNotExposePrefix(me: MEProxy, prefix: string) {
 function shouldBeValidUsername(id: string) {
   const s = id.trim().toLowerCase();
   if (s.length < 3 || s.length > 63) return false;
-  if (!/^[a-z0-9][a-z0-9-]*[a-z0-9]$/.test(s)) return false;
-  if (s.includes("--")) return false;
+  if (s.startsWith(".") || s.endsWith(".") || s.includes("..")) return false;
+  const labelRe = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
+  const labels = s.split(".");
+  for (const label of labels) {
+    if (!labelRe.test(label)) return false;
+  }
   return true;
 }
 
@@ -183,7 +187,7 @@ const axioms: AxiomCase[] = [
       me["@"]("Abella");
       assertHasRootClaim(me, "abella");
 
-      const bad = ["a_b", "-aaa", "aaa-", "a..b", "a b", "á", "A", "", "aa", "a--b", "a", "ab"];
+      const bad = ["a_b", "-aaa", "aaa-", "a..b", "a b", "á", "A", "", "aa", "a", "ab"];
       for (const b of bad) {
         assert.ok(!shouldBeValidUsername(b), `test expects '${b}' to be invalid`);
         assert.throws(() => me["@"](b), `expected me['@'] to throw for invalid username '${b}'`);
