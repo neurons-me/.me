@@ -910,7 +910,6 @@
         await loadRuntimeScriptWithFallback(source, LOCAL_REACTDOM_UMD, CDN_REACTDOM_UMD);
       }
     }
-
     function normalizeRemoteExpr(expr) {
       const match = String(expr || '').match(/^remote\/([^/]+)\/(.+)$/);
       if (!match) return null;
@@ -921,7 +920,6 @@
         path: match[2]
       };
     }
-
     function extractSemanticValue(payload) {
       if (!payload || typeof payload !== 'object') return payload;
       const result = payload.result;
@@ -934,7 +932,6 @@
       }
       return payload;
     }
-
     function classifyConnectionIssue(error, response) {
       const defaultIssue = {
         kind: 'unknown',
@@ -1000,7 +997,6 @@
       }
       return defaultIssue;
     }
-
     function buildOfflineRemoteCache(namespace, reason) {
       return {
         expression: 'me://' + namespace + ':read/' + REMOTE_PATH,
@@ -1009,7 +1005,6 @@
         fallback: 'local-only'
       };
     }
-
     function extractRemoteResultError(payload) {
       if (!payload || typeof payload !== 'object') return null;
       const result = payload.result;
@@ -1031,7 +1026,6 @@
         retryable: status ? status >= 500 : true
       };
     }
-
     function getRemoteDebugSnapshot() {
       const remoteExpr = getRemoteExpr();
       const normalized = normalizeRemoteExpr(remoteExpr);
@@ -1043,7 +1037,6 @@
         cacheValue: cacheKey ? remoteCache.get(cacheKey) : null
       };
     }
-
     function withCleakerPayload(record, payload) {
       return {
         ...record,
@@ -1052,7 +1045,6 @@
         }
       };
     }
-
     async function seedRemotePath(normalized, activeContext) {
       const headers = {
         'content-type': 'application/json'
@@ -1087,7 +1079,6 @@
         data: data
       };
     }
-
     try {
       await ensureReactRuntime(selectedSources.gui);
       await loadSelectedAsset(selectedSources.gui, LOCAL_GUI_CSS, CDN_GUI_CSS, 'style');
@@ -1194,11 +1185,9 @@
       CleakerModule?.__version ||
       CleakerModule?.__VERSION__ ||
       CLEAKER_LOCAL_VERSION;
-
     setRuntimeStatus('gui', selectedSources.gui, resolveAssetUrl(selectedSources.gui, LOCAL_GUI_BOOTSTRAP, CDN_GUI_BOOTSTRAP), 'on', GUI_VERSION);
     setRuntimeStatus('cleaker', selectedSources.cleaker, resolveAssetUrl(selectedSources.cleaker, LOCAL_CLEAKER_UMD, CDN_CLEAKER_UMD), 'on', CLEAKER_VERSION);
     setRuntimeStatus('me', selectedSources.me, resolveAssetUrl(selectedSources.me, LOCAL_ME_UMD, CDN_ME_UMD), 'on', ME_VERSION);
-
     const me = new Me();
     const triadSecret = readSavedTriadSecret();
     const node = Cleaker(me, {
