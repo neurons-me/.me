@@ -2,11 +2,31 @@
 
 ***
 
-[this.me](../README.md) / default
+[this.me](../README.md) / ME
 
-# Class: default
+# Class: ME
 
-Defined in: [me.ts:49](https://github.com/neurons-me/.me/blob/40be0272a181ea4e788bfce1d6ec1ba6e4d53f45/npm/src/me.ts#L49)
+Defined in: [me.ts:70](https://github.com/neurons-me/.me/blob/eb91d161f4c6660821f8b6426d70a5c8c15adb16/npm/src/me.ts#L70)
+
+The `.me` semantic kernel.
+
+`ME` is both:
+
+- a stateful kernel that stores semantic memories, indexes, secrets, and derivations
+- a callable proxy runtime that lets you navigate and execute semantic paths like `me.profile.name("Ana")`
+
+Practical mental model:
+
+- property access builds a semantic path
+- calling `()` writes, reads, or invokes an operator at that path
+- explicit class methods such as `inspect()`, `explain()`, `exportSnapshot()`, and `replayMemories()`
+  are the debugging, replay, and hydration surface around that runtime
+
+If you are reading the generated API docs:
+
+- this class page shows the explicit TypeScript class members
+- the full language surface also includes the proxy/DSL behavior documented in
+  `Runtime Surface`, `Proxy Calls`, `Operators`, and `Syntax`
 
 ## Indexable
 
@@ -16,9 +36,9 @@ Defined in: [me.ts:49](https://github.com/neurons-me/.me/blob/40be0272a181ea4e78
 
 ### Constructor
 
-> **new default**(`expression?`): `ME`
+> **new ME**(`expression?`): `ME`
 
-Defined in: [me.ts:377](https://github.com/neurons-me/.me/blob/40be0272a181ea4e788bfce1d6ec1ba6e4d53f45/npm/src/me.ts#L377)
+Defined in: [me.ts:399](https://github.com/neurons-me/.me/blob/eb91d161f4c6660821f8b6426d70a5c8c15adb16/npm/src/me.ts#L399)
 
 Constructor base:
  me = new ME(expression?)
@@ -42,13 +62,13 @@ Esto es equivalente a llamar:
 
 #### Get Signature
 
-> **get** **memories**(): `Memory`[]
+> **get** **memories**(): [`Memory`](../interfaces/Memory.md)[]
 
-Defined in: [me.ts:89](https://github.com/neurons-me/.me/blob/40be0272a181ea4e788bfce1d6ec1ba6e4d53f45/npm/src/me.ts#L89)
+Defined in: [me.ts:111](https://github.com/neurons-me/.me/blob/eb91d161f4c6660821f8b6426d70a5c8c15adb16/npm/src/me.ts#L111)
 
 ##### Returns
 
-`Memory`[]
+[`Memory`](../interfaces/Memory.md)[]
 
 ## Methods
 
@@ -56,7 +76,7 @@ Defined in: [me.ts:89](https://github.com/neurons-me/.me/blob/40be0272a181ea4e78
 
 > **explain**(`path`): `object`
 
-Defined in: [me.ts:135](https://github.com/neurons-me/.me/blob/40be0272a181ea4e788bfce1d6ec1ba6e4d53f45/npm/src/me.ts#L135)
+Defined in: [me.ts:157](https://github.com/neurons-me/.me/blob/eb91d161f4c6660821f8b6426d70a5c8c15adb16/npm/src/me.ts#L157)
 
 #### Parameters
 
@@ -98,7 +118,7 @@ Defined in: [me.ts:135](https://github.com/neurons-me/.me/blob/40be0272a181ea4e7
 
 > **exportSnapshot**(): `object`
 
-Defined in: [me.ts:195](https://github.com/neurons-me/.me/blob/40be0272a181ea4e788bfce1d6ec1ba6e4d53f45/npm/src/me.ts#L195)
+Defined in: [me.ts:217](https://github.com/neurons-me/.me/blob/eb91d161f4c6660821f8b6426d70a5c8c15adb16/npm/src/me.ts#L217)
 
 #### Returns
 
@@ -106,7 +126,7 @@ Defined in: [me.ts:195](https://github.com/neurons-me/.me/blob/40be0272a181ea4e7
 
 ##### encryptedBranches
 
-> **encryptedBranches**: `Record`\<`string`, `EncryptedBlob` \| `Record`\<`string`, `EncryptedBlob`\>\>
+> **encryptedBranches**: `Record`\<`string`, [`EncryptedBlob`](../type-aliases/EncryptedBlob.md) \| `Record`\<`string`, [`EncryptedBlob`](../type-aliases/EncryptedBlob.md)\>\>
 
 ##### localNoises
 
@@ -118,7 +138,7 @@ Defined in: [me.ts:195](https://github.com/neurons-me/.me/blob/40be0272a181ea4e7
 
 ##### memories
 
-> **memories**: `Memory`[]
+> **memories**: [`Memory`](../interfaces/Memory.md)[]
 
 ##### operators
 
@@ -130,7 +150,7 @@ Defined in: [me.ts:195](https://github.com/neurons-me/.me/blob/40be0272a181ea4e7
 
 > **getRecomputeMode**(): `"eager"` \| `"lazy"`
 
-Defined in: [me.ts:124](https://github.com/neurons-me/.me/blob/40be0272a181ea4e788bfce1d6ec1ba6e4d53f45/npm/src/me.ts#L124)
+Defined in: [me.ts:146](https://github.com/neurons-me/.me/blob/eb91d161f4c6660821f8b6426d70a5c8c15adb16/npm/src/me.ts#L146)
 
 #### Returns
 
@@ -142,7 +162,7 @@ Defined in: [me.ts:124](https://github.com/neurons-me/.me/blob/40be0272a181ea4e7
 
 > **importSnapshot**(`snapshot`): `void`
 
-Defined in: [me.ts:211](https://github.com/neurons-me/.me/blob/40be0272a181ea4e788bfce1d6ec1ba6e4d53f45/npm/src/me.ts#L211)
+Defined in: [me.ts:233](https://github.com/neurons-me/.me/blob/eb91d161f4c6660821f8b6426d70a5c8c15adb16/npm/src/me.ts#L233)
 
 #### Parameters
 
@@ -162,7 +182,7 @@ Defined in: [me.ts:211](https://github.com/neurons-me/.me/blob/40be0272a181ea4e7
 
 ###### memories?
 
-`Memory`[]
+[`Memory`](../interfaces/Memory.md)[]
 
 ###### operators?
 
@@ -178,7 +198,7 @@ Defined in: [me.ts:211](https://github.com/neurons-me/.me/blob/40be0272a181ea4e7
 
 > **inspect**(`opts?`): `object`
 
-Defined in: [me.ts:94](https://github.com/neurons-me/.me/blob/40be0272a181ea4e788bfce1d6ec1ba6e4d53f45/npm/src/me.ts#L94)
+Defined in: [me.ts:116](https://github.com/neurons-me/.me/blob/eb91d161f4c6660821f8b6426d70a5c8c15adb16/npm/src/me.ts#L116)
 
 #### Parameters
 
@@ -202,7 +222,7 @@ Defined in: [me.ts:94](https://github.com/neurons-me/.me/blob/40be0272a181ea4e78
 
 ##### memories
 
-> **memories**: `Memory`[]
+> **memories**: [`Memory`](../interfaces/Memory.md)[]
 
 ##### noiseScopes
 
@@ -226,7 +246,7 @@ Defined in: [me.ts:94](https://github.com/neurons-me/.me/blob/40be0272a181ea4e78
 
 > **learn**(`memory`): `void`
 
-Defined in: [me.ts:261](https://github.com/neurons-me/.me/blob/40be0272a181ea4e788bfce1d6ec1ba6e4d53f45/npm/src/me.ts#L261)
+Defined in: [me.ts:283](https://github.com/neurons-me/.me/blob/eb91d161f4c6660821f8b6426d70a5c8c15adb16/npm/src/me.ts#L283)
 
 #### Parameters
 
@@ -244,7 +264,7 @@ Defined in: [me.ts:261](https://github.com/neurons-me/.me/blob/40be0272a181ea4e7
 
 > **rehydrate**(`snapshot`): `void`
 
-Defined in: [me.ts:251](https://github.com/neurons-me/.me/blob/40be0272a181ea4e788bfce1d6ec1ba6e4d53f45/npm/src/me.ts#L251)
+Defined in: [me.ts:273](https://github.com/neurons-me/.me/blob/eb91d161f4c6660821f8b6426d70a5c8c15adb16/npm/src/me.ts#L273)
 
 #### Parameters
 
@@ -264,7 +284,7 @@ Defined in: [me.ts:251](https://github.com/neurons-me/.me/blob/40be0272a181ea4e7
 
 ###### memories?
 
-`Memory`[]
+[`Memory`](../interfaces/Memory.md)[]
 
 ###### operators?
 
@@ -280,13 +300,13 @@ Defined in: [me.ts:251](https://github.com/neurons-me/.me/blob/40be0272a181ea4e7
 
 > **replayMemories**(`memories`): `void`
 
-Defined in: [me.ts:303](https://github.com/neurons-me/.me/blob/40be0272a181ea4e788bfce1d6ec1ba6e4d53f45/npm/src/me.ts#L303)
+Defined in: [me.ts:325](https://github.com/neurons-me/.me/blob/eb91d161f4c6660821f8b6426d70a5c8c15adb16/npm/src/me.ts#L325)
 
 #### Parameters
 
 ##### memories
 
-`Memory`[]
+[`Memory`](../interfaces/Memory.md)[]
 
 #### Returns
 
@@ -298,7 +318,7 @@ Defined in: [me.ts:303](https://github.com/neurons-me/.me/blob/40be0272a181ea4e7
 
 > **setRecomputeMode**(`mode`): `this`
 
-Defined in: [me.ts:119](https://github.com/neurons-me/.me/blob/40be0272a181ea4e788bfce1d6ec1ba6e4d53f45/npm/src/me.ts#L119)
+Defined in: [me.ts:141](https://github.com/neurons-me/.me/blob/eb91d161f4c6660821f8b6426d70a5c8c15adb16/npm/src/me.ts#L141)
 
 #### Parameters
 

@@ -20,7 +20,7 @@ export default defineConfig({
   },
   esbuild: {
     loader: 'ts',
-    include: /src\/.*\.[tj]sx?$/,
+    include: /(?:src\/.*|index\.ts)$/,
   },
   build: {
     lib: {

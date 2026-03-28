@@ -13,5 +13,5 @@
     "skipLibCheck": true,
     "allowSyntheticDefaultImports": true
   },
-  "include": ["src/**/*", "index.ts", "tests/**/*.ts", "tests/**/*.d.ts"]
+  "include": ["src/**/*", "index.ts", "typedoc-entry.ts", "tests/**/*.ts", "tests/**/*.d.ts"]
 }

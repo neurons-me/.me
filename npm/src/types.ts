@@ -56,6 +56,75 @@ export type MePointer = { __ptr: string };
 export type MeIdentityRef = { __id: string };
 export type MeMarker = MePointer | MeIdentityRef;
 export type EncryptedBlob = `0x${string}`;
+
+// -----------------------------
+// Wrapped secret envelopes (v1)
+// -----------------------------
+export type WrappedSecretClass = "identity-key" | "app-secret" | "data-key";
+export type WrappedSecretUsage = "sign" | "decrypt" | "derive";
+
+export interface P256PublicKeyCoordinates {
+  kty: "EC";
+  crv: "P-256";
+  x: string;
+  y: string;
+}
+
+export interface WrappedSecretPolicy {
+  appId?: string;
+  usage?: WrappedSecretUsage[];
+  label?: string;
+  /**
+   * Declarative policy hint only.
+   * This does not prove Secure Enclave / TPM attestation by itself.
+   */
+  hardwareBound?: boolean;
+}
+
+export interface WrappedSecretEncryptionV1 {
+  kex: "ECDH-ES";
+  kdf: "HKDF-SHA-256";
+  aead: "AES-256-GCM";
+  iv: string;
+  salt: string;
+  tag: string;
+  ciphertext: string;
+  ephemeralPK: P256PublicKeyCoordinates;
+}
+
+export interface WrappedSecretV1 {
+  version: 1;
+  class: WrappedSecretClass;
+  kid: string;
+  /**
+   * Public key corresponding to the wrapped secret material when the secret
+   * represents an asymmetric keypair. Optional for generic app/data secrets.
+   */
+  publicKey?: P256PublicKeyCoordinates;
+  encryption: WrappedSecretEncryptionV1;
+  policy?: WrappedSecretPolicy;
+}
+
+export interface StoredWrappedKey {
+  envelope: WrappedSecretV1;
+  recipientKeyId?: string;
+}
+
+// -----------------------------
+// me:// executable targets
+// -----------------------------
+export interface MeTargetAst {
+  scheme: "me";
+  namespace: string;
+  operation: string;
+  path: string;
+  raw?: string;
+  /**
+   * Optional raw context segment preserved for higher layers such as cleaker
+   * and monad.ai. The `.me` kernel does not interpret transport context.
+   */
+  contextRaw?: string | null;
+}
 // -----------------------------
 // Path / call representation
 // -----------------------------

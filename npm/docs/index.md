@@ -8,6 +8,29 @@
 ```bash
 npm install this.me
 ```
+
+## API Reference
+
+The generated library reference lives here:
+
+- [API Overview](/api/)
+- [ME Class](/api/classes/ME)
+
+## Runtime Surface
+
+The real `.me` runtime is bigger than the generated class API.
+
+- [Runtime Surface](/Runtime-Surface)
+- [Proxy Calls](/Proxy-Calls)
+- [Operators](/Operators)
+- [Syntax](/Syntax)
+
+## Space Algebra
+
+`.me` is built on spaces, subspaces, and set laws.
+
+- [Space Algebra](/Space-Algebra)
+
 ## **Start .me in 60 seconds**
 ###### Import
 ```ts

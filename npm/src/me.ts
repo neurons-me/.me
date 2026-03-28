@@ -12,7 +12,19 @@
  * Licensed under MIT.
  * ---------------------------------------------------------
  */
-import type { Memory, SemanticPath, EncryptedBlob, MappingInstruction, OperatorRegistry } from "./types.js";
+import type {
+  Memory,
+  MeTargetAst,
+  SemanticPath,
+  StoredWrappedKey,
+  EncryptedBlob,
+  MappingInstruction,
+  OperatorRegistry,
+  P256PublicKeyCoordinates,
+  WrappedSecretClass,
+  WrappedSecretPolicy,
+  WrappedSecretV1,
+} from "./types.js";
 import {
   isMemory,
   isPointer,
@@ -21,7 +33,16 @@ import {
   splitPath,
   pathStartsWith,
 } from "./operators.js";
-import { xorEncrypt, xorDecrypt, isEncryptedBlob } from "./crypto.js";
+import {
+  xorEncrypt,
+  xorDecrypt,
+  isEncryptedBlob,
+  exportP256PublicKey,
+  generateP256KeyPair,
+  importP256PublicKey,
+  unwrapSecretV1,
+  wrapSecretV1,
+} from "./crypto.js";
 import { handleCall as handleCallFn } from "./handleCall.js";
 import { normalizeCall } from "./normalizeCall.js";
 // Proxy type for ME: allows callable and property access
@@ -46,13 +67,59 @@ function hashFn(input: string): string {
   return ("00000000" + (h >>> 0).toString(16)).slice(-8);
 }
 
+/**
+ * The `.me` semantic kernel.
+ *
+ * `ME` is both:
+ *
+ * - a stateful kernel that stores semantic memories, indexes, secrets, and derivations
+ * - a callable proxy runtime that lets you navigate and execute semantic paths like `me.profile.name("Ana")`
+ *
+ * Practical mental model:
+ *
+ * - property access builds a semantic path
+ * - calling `()` writes, reads, or invokes an operator at that path
+ * - explicit class methods such as `inspect()`, `explain()`, `exportSnapshot()`, and `replayMemories()`
+ *   are the debugging, replay, and hydration surface around that runtime
+ *
+ * If you are reading the generated API docs:
+ *
+ * - this class page shows the explicit TypeScript class members
+ * - the full language surface also includes the proxy/DSL behavior documented in
+ *   `Runtime Surface`, `Proxy Calls`, `Operators`, and `Syntax`
+ */
 export class ME {
   [key: string]: any;
+  private static readonly RUNTIME_ESCAPE_TOKEN = "!";
+
+  static generateP256KeyPair = generateP256KeyPair;
+  static exportP256PublicKey = exportP256PublicKey;
+  static importP256PublicKey = importP256PublicKey;
+  static wrapSecretV1(input: {
+    secret: Uint8Array | string;
+    recipientPublicKey: CryptoKey | P256PublicKeyCoordinates;
+    kid: string;
+    class: WrappedSecretClass;
+    publicKey?: P256PublicKeyCoordinates;
+    policy?: WrappedSecretPolicy;
+  }): Promise<WrappedSecretV1> {
+    return wrapSecretV1(input);
+  }
+  static unwrapSecretV1(
+    envelope: WrappedSecretV1,
+    recipientPrivateKey: CryptoKey,
+    output: "bytes" | "utf8" = "bytes",
+  ): Promise<Uint8Array | string> {
+    return unwrapSecretV1(envelope, recipientPrivateKey, output);
+  }
   // Secret local por ruta ("a.b.c" -> secret declarado en ese nivel)
   private localSecrets: Record<string, string> = {};
   private localNoises: Record<string, string> = {};
   // Encrypted branch blobs stored at scope roots ("wallet" -> cipherblob)
   private encryptedBranches: Record<string, EncryptedBlob | Record<string, EncryptedBlob>> = {};
+  // Wrapped key envelopes persist with the kernel snapshot. Private keys do not.
+  private keySpaces: Record<string, StoredWrappedKey> = {};
+  private recipientKeyring: Record<string, CryptoKey> = {};
   // Derived read index (path -> latest committed value). Canonical truth is memory log.
   private index: Record<string, any> = {};
   // Runtime log lives as a semantic node, but is updated via a kernel write (no extra events).
@@ -125,6 +192,49 @@ export class ME {
     return this.recomputeMode;
   }
 
+  installRecipientKey(recipientKeyId: string, privateKey: CryptoKey): this {
+    const keyId = String(recipientKeyId || "").trim();
+    if (!keyId) throw new Error("installRecipientKey(...) requires a recipient key id.");
+    this.recipientKeyring[keyId] = privateKey;
+    return this;
+  }
+
+  uninstallRecipientKey(recipientKeyId: string): this {
+    const keyId = String(recipientKeyId || "").trim();
+    if (!keyId) return this;
+    delete this.recipientKeyring[keyId];
+    return this;
+  }
+
+  storeWrappedKey(keyId: string, envelope: WrappedSecretV1, options?: { recipientKeyId?: string }): this {
+    const normalizedKeyId = String(keyId || "").trim();
+    if (!normalizedKeyId) throw new Error("storeWrappedKey(...) requires a key id.");
+    if (!envelope || envelope.version !== 1) {
+      throw new Error("storeWrappedKey(...) requires a valid WrappedSecretV1 envelope.");
+    }
+
+    this.keySpaces[normalizedKeyId] = this.cloneValue({
+      envelope,
+      recipientKeyId: options?.recipientKeyId,
+    });
+    return this;
+  }
+
+  execute(rawTarget: string | MeTargetAst, body?: any): any {
+    const target = this.normalizeExecutableTarget(rawTarget);
+
+    switch (target.namespace) {
+      case "self":
+        return this.handleSelfTarget(target.operation, target.path, body);
+      case "kernel":
+        return this.handleKernelTarget(target.operation, target.path, body);
+      default:
+        throw new Error(
+          `External me target "${target.namespace}" must be resolved by cleaker or monad.ai before reaching the local kernel.`,
+        );
+    }
+  }
+
   private bumpSecretEpoch(): void {
     this.secretEpoch++;
     this.scopeCache.clear();
@@ -192,11 +302,349 @@ export class ME {
     return JSON.parse(JSON.stringify(value));
   }
 
+  private handleSelfTarget(operation: string, rawPath: string, body?: any): any {
+    const keyPath = this.parseKeySpacePath(rawPath);
+    if (keyPath.isKeySpace) {
+      return this.handleKeySpaceTarget(operation, keyPath.keyId, body);
+    }
+
+    const path = this.normalizeExecutablePath(rawPath);
+
+    switch (operation) {
+      case "read":
+        return this.readPath(path.parts);
+      case "write":
+        if (!path.key) throw new Error("self:write requires a semantic path.");
+        if (body === undefined) throw new Error("self:write requires a body payload.");
+        return this.postulate(path.parts, body);
+      case "inspect":
+        return this.inspectAtPath(path.key);
+      case "explain":
+        if (!path.key) throw new Error("self:explain requires a semantic path.");
+        return this.explain(path.key);
+      default:
+        throw new Error(`Unsupported self operation: ${operation}`);
+    }
+  }
+
+  private handleKernelTarget(operation: string, rawPath: string, body?: any): any {
+    const path = this.normalizeExecutablePath(rawPath);
+    const key = path.key;
+
+    switch (operation) {
+      case "read":
+        return this.handleKernelRead(key);
+      case "export":
+        return this.handleKernelExport(key);
+      case "import":
+        if (body === undefined) throw new Error("kernel:import requires a payload.");
+        return this.handleKernelImport(key, body);
+      case "replay":
+        if (body === undefined) throw new Error("kernel:replay requires a payload.");
+        return this.handleKernelReplay(key, body);
+      case "rehydrate":
+        if (body === undefined) throw new Error("kernel:rehydrate requires a payload.");
+        return this.handleKernelRehydrate(key, body);
+      case "get":
+        return this.handleKernelGet(key);
+      case "set":
+        if (body === undefined) throw new Error("kernel:set requires a payload.");
+        return this.handleKernelSet(key, body);
+      default:
+        throw new Error(`Unsupported kernel operation: ${operation}`);
+    }
+  }
+
+  private handleKernelRead(key: string): any {
+    switch (key) {
+      case "memory":
+      case "memories":
+      case "logs":
+        return this.cloneValue(this.memories);
+      case "snapshot":
+        return this.exportSnapshot();
+      case "mode":
+      case "recompute.mode":
+        return this.getRecomputeMode();
+      default:
+        throw new Error(`Unsupported kernel:read path: ${key || "<root>"}`);
+    }
+  }
+
+  private handleKernelExport(key: string): any {
+    switch (key) {
+      case "memory":
+      case "memories":
+      case "logs":
+        return this.cloneValue(this.memories);
+      case "snapshot":
+        return this.exportSnapshot();
+      default:
+        throw new Error(`Unsupported kernel:export path: ${key || "<root>"}`);
+    }
+  }
+
+  private handleKernelImport(key: string, body: any): any {
+    switch (key) {
+      case "snapshot":
+        this.importSnapshot(body ?? {});
+        return this.exportSnapshot();
+      default:
+        throw new Error(`Unsupported kernel:import path: ${key || "<root>"}`);
+    }
+  }
+
+  private handleKernelReplay(key: string, body: any): any {
+    switch (key) {
+      case "memory":
+      case "memories":
+      case "logs":
+        if (!Array.isArray(body)) throw new Error("kernel:replay/memory requires a Memory[] payload.");
+        this.replayMemories(body);
+        return this.cloneValue(this.memories);
+      default:
+        throw new Error(`Unsupported kernel:replay path: ${key || "<root>"}`);
+    }
+  }
+
+  private handleKernelRehydrate(key: string, body: any): any {
+    switch (key) {
+      case "snapshot":
+        this.rehydrate(body ?? {});
+        return this.exportSnapshot();
+      default:
+        throw new Error(`Unsupported kernel:rehydrate path: ${key || "<root>"}`);
+    }
+  }
+
+  private handleKernelGet(key: string): any {
+    switch (key) {
+      case "mode":
+      case "recompute.mode":
+        return this.getRecomputeMode();
+      default:
+        throw new Error(`Unsupported kernel:get path: ${key || "<root>"}`);
+    }
+  }
+
+  private handleKernelSet(key: string, body: any): any {
+    switch (key) {
+      case "mode":
+      case "recompute.mode":
+        if (body !== "eager" && body !== "lazy") {
+          throw new Error(`kernel:set/${key} only accepts "eager" or "lazy".`);
+        }
+        this.setRecomputeMode(body);
+        return this.getRecomputeMode();
+      default:
+        throw new Error(`Unsupported kernel:set path: ${key || "<root>"}`);
+    }
+  }
+
+  private handleKeySpaceTarget(operation: string, keyId: string | null, body?: any): any {
+    switch (operation) {
+      case "read":
+        if (!keyId) {
+          return this.cloneValue(this.keySpaces);
+        }
+        return this.readWrappedKey(keyId);
+      case "write":
+        if (!keyId) throw new Error("self:write/keys requires a key id.");
+        if (body === undefined) throw new Error("self:write/keys requires a payload.");
+        return this.writeWrappedKey(keyId, body);
+      case "open":
+      case "use":
+        if (!keyId) throw new Error(`self:${operation}/keys requires a key id.`);
+        return this.openWrappedKey(keyId, body);
+      default:
+        throw new Error(`Unsupported keys operation: ${operation}`);
+    }
+  }
+
+  private inspectAtPath(scopeKey: string) {
+    const snapshot = this.inspect();
+    if (!scopeKey) return snapshot;
+
+    const matchesScope = (candidate: string) =>
+      candidate === scopeKey || candidate.startsWith(scopeKey + ".");
+
+    return {
+      path: scopeKey,
+      value: this.readPath(scopeKey.split(".").filter(Boolean)),
+      memories: snapshot.memories.filter((memory) => matchesScope(memory.path)),
+      index: Object.fromEntries(
+        Object.entries(snapshot.index).filter(([path]) => matchesScope(path)),
+      ),
+      encryptedScopes: snapshot.encryptedScopes.filter(matchesScope),
+      secretScopes: snapshot.secretScopes.filter(matchesScope),
+      noiseScopes: snapshot.noiseScopes.filter(matchesScope),
+      recomputeMode: snapshot.recomputeMode,
+      staleDerivations: snapshot.staleDerivations,
+    };
+  }
+
+  private parseKeySpacePath(rawPath: string): { isKeySpace: boolean; keyId: string | null } {
+    const trimmed = String(rawPath ?? "").trim().replace(/^\/+|\/+$/g, "");
+    if (!trimmed) return { isKeySpace: false, keyId: null };
+    if (trimmed === "keys") return { isKeySpace: true, keyId: null };
+    if (trimmed.startsWith("keys/")) {
+      return { isKeySpace: true, keyId: trimmed.slice("keys/".length).trim() || null };
+    }
+    if (trimmed.startsWith("keys.")) {
+      return { isKeySpace: true, keyId: trimmed.slice("keys.".length).trim() || null };
+    }
+    return { isKeySpace: false, keyId: null };
+  }
+
+  private readWrappedKey(keyId: string): WrappedSecretV1 {
+    const entry = this.keySpaces[keyId];
+    if (!entry) throw new Error(`Key space "${keyId}" was not found.`);
+    return this.cloneValue(entry.envelope);
+  }
+
+  private writeWrappedKey(keyId: string, body: any): WrappedSecretV1 {
+    const envelope =
+      body && typeof body === "object" && body.envelope
+        ? (body.envelope as WrappedSecretV1)
+        : (body as WrappedSecretV1);
+    const recipientKeyId =
+      body && typeof body === "object" && typeof body.recipientKeyId === "string"
+        ? body.recipientKeyId
+        : undefined;
+
+    this.storeWrappedKey(keyId, envelope, { recipientKeyId });
+    return this.readWrappedKey(keyId);
+  }
+
+  private openWrappedKey(
+    keyId: string,
+    body?: { recipientKeyId?: string; recipientPrivateKey?: CryptoKey; output?: "bytes" | "utf8" },
+  ): Promise<Uint8Array | string> {
+    const entry = this.keySpaces[keyId];
+    if (!entry) throw new Error(`Key space "${keyId}" was not found.`);
+
+    const output = body?.output === "utf8" ? "utf8" : "bytes";
+    const inlinePrivateKey = body?.recipientPrivateKey;
+    const resolvedRecipientKeyId = body?.recipientKeyId ?? entry.recipientKeyId;
+    const recipientPrivateKey =
+      inlinePrivateKey ??
+      (resolvedRecipientKeyId ? this.recipientKeyring[resolvedRecipientKeyId] : undefined);
+
+    if (!recipientPrivateKey) {
+      throw new Error(
+        `No recipient private key is available to open "${keyId}". Install one first or pass it inline.`,
+      );
+    }
+
+    return unwrapSecretV1(entry.envelope, recipientPrivateKey, output);
+  }
+
+  private normalizeExecutableTarget(rawTarget: string | MeTargetAst): MeTargetAst {
+    if (typeof rawTarget === "string") return this.parseExecutableTarget(rawTarget);
+    if (!rawTarget || typeof rawTarget !== "object") {
+      throw new Error("execute(...) requires a me target string or AST.");
+    }
+
+    const namespace = String(rawTarget.namespace ?? "").trim();
+    const operation = String(rawTarget.operation ?? "").trim().toLowerCase();
+    const path = String(rawTarget.path ?? "").trim();
+    if (!namespace) throw new Error("Executable me target is missing a namespace.");
+    if (!operation) throw new Error("Executable me target is missing an operation.");
+
+    return {
+      scheme: "me",
+      namespace,
+      operation,
+      path,
+      raw: rawTarget.raw,
+      contextRaw: rawTarget.contextRaw ?? null,
+    };
+  }
+
+  private parseExecutableTarget(rawTarget: string): MeTargetAst {
+    const raw = String(rawTarget ?? "").trim();
+    if (!raw) throw new Error("execute(...) received an empty me target.");
+
+    const withoutScheme = raw.startsWith("me://") ? raw.slice(5) : raw;
+    const colonIndex = this.findTopLevelIndex(withoutScheme, ":");
+    if (colonIndex < 0) {
+      throw new Error(`Invalid me target "${raw}": expected ":" between namespace and operation.`);
+    }
+
+    const namespaceWithContext = withoutScheme.slice(0, colonIndex).trim();
+    const rhs = withoutScheme.slice(colonIndex + 1).trim();
+    if (!namespaceWithContext) throw new Error(`Invalid me target "${raw}": missing namespace.`);
+    if (!rhs) throw new Error(`Invalid me target "${raw}": missing operation.`);
+
+    const slashIndex = rhs.indexOf("/");
+    const operation = (slashIndex >= 0 ? rhs.slice(0, slashIndex) : rhs).trim().toLowerCase();
+    const path = (slashIndex >= 0 ? rhs.slice(slashIndex + 1) : "").trim();
+    if (!operation) throw new Error(`Invalid me target "${raw}": missing operation.`);
+
+    const { namespace, contextRaw } = this.splitTargetNamespace(namespaceWithContext, raw);
+    return {
+      scheme: "me",
+      namespace,
+      operation,
+      path,
+      raw,
+      contextRaw,
+    };
+  }
+
+  private splitTargetNamespace(
+    namespaceWithContext: string,
+    rawTarget: string,
+  ): { namespace: string; contextRaw: string | null } {
+    const openIndex = namespaceWithContext.indexOf("[");
+    if (openIndex < 0) {
+      return { namespace: namespaceWithContext, contextRaw: null };
+    }
+
+    const closeIndex = namespaceWithContext.lastIndexOf("]");
+    if (closeIndex < openIndex || closeIndex !== namespaceWithContext.length - 1) {
+      throw new Error(`Invalid me target "${rawTarget}": malformed context segment.`);
+    }
+
+    const namespace = namespaceWithContext.slice(0, openIndex).trim();
+    const contextRaw = namespaceWithContext.slice(openIndex + 1, closeIndex).trim();
+    if (!namespace) throw new Error(`Invalid me target "${rawTarget}": missing namespace before context.`);
+    return { namespace, contextRaw: contextRaw || null };
+  }
+
+  private normalizeExecutablePath(rawPath: string): { key: string; parts: SemanticPath } {
+    const dotted = String(rawPath ?? "")
+      .trim()
+      .replace(/^\/+|\/+$/g, "")
+      .replace(/\//g, ".");
+    const parts = dotted
+      .split(".")
+      .map((part) => part.trim())
+      .filter(Boolean);
+    const normalized = this.normalizeSelectorPath(parts);
+    return {
+      key: normalized.join("."),
+      parts: normalized,
+    };
+  }
+
+  private findTopLevelIndex(input: string, needle: string): number {
+    let depth = 0;
+    for (let i = 0; i < input.length; i++) {
+      const char = input[i];
+      if (char === "[") depth++;
+      else if (char === "]") depth = Math.max(0, depth - 1);
+      else if (char === needle && depth === 0) return i;
+    }
+    return -1;
+  }
+
   exportSnapshot(): {
     memories: Memory[];
     localSecrets: Record<string, string>;
     localNoises: Record<string, string>;
     encryptedBranches: Record<string, EncryptedBlob | Record<string, EncryptedBlob>>;
+    keySpaces: Record<string, StoredWrappedKey>;
     operators: Record<string, { kind: string }>;
   } {
     return this.cloneValue({
@@ -204,6 +652,7 @@ export class ME {
       localSecrets: this.localSecrets,
       localNoises: this.localNoises,
       encryptedBranches: this.encryptedBranches,
+      keySpaces: this.keySpaces,
       operators: this.operators,
     });
   }
@@ -213,6 +662,7 @@ export class ME {
     localSecrets?: Record<string, string>;
     localNoises?: Record<string, string>;
     encryptedBranches?: Record<string, EncryptedBlob | Record<string, EncryptedBlob>>;
+    keySpaces?: Record<string, StoredWrappedKey>;
     operators?: Record<string, { kind: string }>;
   }): void {
     const data = this.cloneValue(snapshot ?? {});
@@ -224,6 +674,7 @@ export class ME {
     this.bumpSecretEpoch();
     this.encryptedBranches =
       data.encryptedBranches && typeof data.encryptedBranches === "object" ? data.encryptedBranches : {};
+    this.keySpaces = data.keySpaces && typeof data.keySpaces === "object" ? data.keySpaces : {};
     this.derivations = {};
     this.refSubscribers = {};
     this.refVersions = {};
@@ -253,6 +704,7 @@ export class ME {
     localSecrets?: Record<string, string>;
     localNoises?: Record<string, string>;
     encryptedBranches?: Record<string, EncryptedBlob | Record<string, EncryptedBlob>>;
+    keySpaces?: Record<string, StoredWrappedKey>;
     operators?: Record<string, { kind: string }>;
   }): void {
     this.importSnapshot(snapshot);
@@ -304,6 +756,7 @@ export class ME {
     this.localSecrets = {};
     this.localNoises = {};
     this.encryptedBranches = {};
+    this.keySpaces = {};
     this.bumpSecretEpoch();
     this.index = {};
     this._memories = [];
@@ -378,6 +831,8 @@ export class ME {
     this.localSecrets = {};
     this.localNoises = {};
     this.encryptedBranches = {};
+    this.keySpaces = {};
+    this.recipientKeyring = {};
     this.bumpSecretEpoch();
     this.index = {};
     this.operators = {
@@ -448,6 +903,9 @@ export class ME {
     return new Proxy(fn, {
       get(target, prop) {
         if (typeof prop === "symbol") return (target as any)[prop];
+        if (prop === ME.RUNTIME_ESCAPE_TOKEN) {
+          return self.createRuntimeProxy([]);
+        }
         // Support direct access to real instance methods/props.
         // IMPORTANT: if the property exists on the ME instance prototype (methods like `postulate`, etc)
         // or is a real data accessor (like `memories` getter), we should return it.
@@ -466,6 +924,185 @@ export class ME {
         return Reflect.apply(target as any, undefined, args);
       },
     }) as MEProxy;
+  }
+
+  private describeRuntimeMethod(
+    path: string,
+    call: (...args: any[]) => unknown,
+    docs: string,
+    signature: string,
+  ) {
+    return {
+      kind: "method",
+      path,
+      docs,
+      signature,
+      call,
+    };
+  }
+
+  private buildRuntimeSurface(): Record<string, any> {
+    return {
+      docs: {
+        kind: "runtime-surface",
+        description:
+          "Reflective runtime plane for .me. Use me['!'] to access inspection, replay, snapshots, and kernel controls.",
+        namespaces: ["inspect", "explain", "memories", "snapshot", "runtime", "methods"],
+      },
+      inspect: this.describeRuntimeMethod(
+        "inspect",
+        (opts?: { last?: number }) => this.inspect(opts),
+        "Return a debug snapshot of memories, index, scopes, and recompute state.",
+        "inspect(opts?: { last?: number }): { memories, index, encryptedScopes, secretScopes, noiseScopes, recomputeMode, staleDerivations }",
+      ),
+      explain: this.describeRuntimeMethod(
+        "explain",
+        (path: string) => this.explain(path),
+        "Explain how a derived value was computed, including dependency inputs and masking for stealth sources.",
+        "explain(path: string): { path, value, derivation, meta }",
+      ),
+      memories: {
+        docs: "Memory log helpers and replay controls.",
+        list: this.describeRuntimeMethod(
+          "memories.list",
+          () => this.memories,
+          "Return the current memory log.",
+          "memories.list(): Memory[]",
+        ),
+        replay: this.describeRuntimeMethod(
+          "memories.replay",
+          (memories: Memory[]) => this.replayMemories(memories),
+          "Reset kernel state and replay a memory log into the current kernel.",
+          "memories.replay(memories: Memory[]): void",
+        ),
+      },
+      snapshot: {
+        docs: "Snapshot import/export helpers for full kernel state.",
+        export: this.describeRuntimeMethod(
+          "snapshot.export",
+          () => this.exportSnapshot(),
+          "Export the current kernel snapshot, including memories, secrets, noises, encrypted branches, key spaces, and operators.",
+          "snapshot.export(): Snapshot",
+        ),
+        import: this.describeRuntimeMethod(
+          "snapshot.import",
+          (snapshot: {
+            memories?: Memory[];
+            localSecrets?: Record<string, string>;
+            localNoises?: Record<string, string>;
+            encryptedBranches?: Record<string, EncryptedBlob | Record<string, EncryptedBlob>>;
+            keySpaces?: Record<string, StoredWrappedKey>;
+            operators?: Record<string, { kind: string }>;
+          }) => this.importSnapshot(snapshot),
+          "Import a full snapshot into the current kernel and rebuild runtime state.",
+          "snapshot.import(snapshot: Snapshot): void",
+        ),
+        rehydrate: this.describeRuntimeMethod(
+          "snapshot.rehydrate",
+          (snapshot: {
+            memories?: Memory[];
+            localSecrets?: Record<string, string>;
+            localNoises?: Record<string, string>;
+            encryptedBranches?: Record<string, EncryptedBlob | Record<string, EncryptedBlob>>;
+            keySpaces?: Record<string, StoredWrappedKey>;
+            operators?: Record<string, { kind: string }>;
+          }) => this.rehydrate(snapshot),
+          "Alias for importSnapshot that emphasizes bringing a kernel back to life from a persisted snapshot.",
+          "snapshot.rehydrate(snapshot: Snapshot): void",
+        ),
+      },
+      runtime: {
+        docs: "Kernel execution and recomputation controls.",
+        getRecomputeMode: this.describeRuntimeMethod(
+          "runtime.getRecomputeMode",
+          () => this.getRecomputeMode(),
+          "Return the current recomputation mode.",
+          "runtime.getRecomputeMode(): 'eager' | 'lazy'",
+        ),
+        setRecomputeMode: this.describeRuntimeMethod(
+          "runtime.setRecomputeMode",
+          (mode: "eager" | "lazy") => this.setRecomputeMode(mode),
+          "Set recomputation mode for derivations.",
+          "runtime.setRecomputeMode(mode: 'eager' | 'lazy'): this",
+        ),
+      },
+      methods: {
+        docs: "Self-described method registry for the runtime surface.",
+        inspect: null,
+        explain: null,
+        exportSnapshot: null,
+        importSnapshot: null,
+        rehydrate: null,
+        replayMemories: null,
+        getRecomputeMode: null,
+        setRecomputeMode: null,
+      },
+    };
+  }
+
+  private createRuntimeProxy(path: string[]): any {
+    const self = this;
+    const fn: any = (...args: any[]) => {
+      const resolved = self.resolveRuntimeValue(path);
+      if (typeof resolved === "function") {
+        return resolved(...args);
+      }
+      if (resolved && typeof resolved === "object" && typeof (resolved as any).call === "function") {
+        return (resolved as any).call(...args);
+      }
+      if (path.length === 0) return self.describeRuntimeSurface();
+      return resolved;
+    };
+
+    return new Proxy(fn, {
+      get(target, prop) {
+        if (typeof prop === "symbol") return (target as any)[prop];
+        const key = String(prop);
+        const nextPath = [...path, key];
+        const resolved = self.resolveRuntimeValue(nextPath);
+        if (resolved === undefined) return undefined;
+        if (resolved === null) return null;
+        if (Array.isArray(resolved)) return resolved;
+        if (typeof resolved === "function") return self.createRuntimeProxy(nextPath);
+        if (typeof resolved === "object") return self.createRuntimeProxy(nextPath);
+        return resolved;
+      },
+      apply(target, _thisArg, args) {
+        return Reflect.apply(target as any, undefined, args);
+      },
+    });
+  }
+
+  private describeRuntimeSurface() {
+    return {
+      kind: "runtime-surface",
+      escape: ME.RUNTIME_ESCAPE_TOKEN,
+      description:
+        "Use me['!'] to enter the reflective runtime plane. This plane exposes snapshots, replay, explainability, and kernel controls.",
+      namespaces: ["inspect", "explain", "memories", "snapshot", "runtime", "methods"],
+    };
+  }
+
+  private resolveRuntimeValue(path: string[]): unknown {
+    const surface = this.buildRuntimeSurface();
+
+    surface.methods.inspect = surface.inspect;
+    surface.methods.explain = surface.explain;
+    surface.methods.exportSnapshot = surface.snapshot.export;
+    surface.methods.importSnapshot = surface.snapshot.import;
+    surface.methods.rehydrate = surface.snapshot.rehydrate;
+    surface.methods.replayMemories = surface.memories.replay;
+    surface.methods.getRecomputeMode = surface.runtime.getRecomputeMode;
+    surface.methods.setRecomputeMode = surface.runtime.setRecomputeMode;
+
+    if (path.length === 0) return surface;
+
+    let ref: any = surface;
+    for (const segment of path) {
+      if (ref == null) return undefined;
+      ref = ref[segment];
+    }
+    return ref;
   }
 
   // Normaliza args:

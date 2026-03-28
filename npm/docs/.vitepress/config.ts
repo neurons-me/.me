@@ -26,6 +26,9 @@ export default defineConfig({
     logo: "https://res.cloudinary.com/dkwnxf6gm/image/upload/v1760915741/this.me-removebg-preview_1_nrj6pe.png",
     nav: [
       { text: "Home", link: "/" },
+      { text: "API", link: "/api/" },
+      { text: "Runtime", link: "/Runtime-Surface" },
+      { text: "Space", link: "/Space-Algebra" },
       { text: "Installation", link: "/Builds" },
       { text: "Operators", link: "/Operators" },
       { text: "Syntax", link: "/Syntax" },
@@ -39,6 +42,10 @@ export default defineConfig({
         text: "Guide",
         items: [
           { text: "Home", link: "/" },
+          { text: "API Overview", link: "/api/" },
+          { text: "Runtime Surface", link: "/Runtime-Surface" },
+          { text: "Space Algebra", link: "/Space-Algebra" },
+          { text: "Proxy Calls", link: "/Proxy-Calls" },
           { text: "Installation", link: "/Builds" },
           { text: "Operators", link: "/Operators" },
           { text: "Syntax", link: "/Syntax" },
@@ -46,6 +53,39 @@ export default defineConfig({
           { text: "Shared Meaning", link: "/Shared-Meaning" },
           { text: "Axioms", link: "/Axioms" },
           { text: "Phases", link: "/Phases" }],
+      },
+      {
+        text: "Runtime",
+        items: [
+          { text: "Runtime Surface", link: "/Runtime-Surface" },
+          { text: "Space Algebra", link: "/Space-Algebra" },
+          { text: "Proxy Calls", link: "/Proxy-Calls" },
+          { text: "Operators", link: "/Operators" },
+          { text: "Syntax", link: "/Syntax" }
+        ],
+      },
+      {
+        text: "API Reference",
+        items: [
+          { text: "Overview", link: "/api/" },
+          {
+            text: "ME Class",
+            link: "/api/classes/ME",
+            items: [
+              { text: "Constructor", link: "/api/classes/ME#constructor" },
+              { text: "memories", link: "/api/classes/ME#memories" },
+              { text: "explain()", link: "/api/classes/ME#explain" },
+              { text: "exportSnapshot()", link: "/api/classes/ME#exportsnapshot" },
+              { text: "getRecomputeMode()", link: "/api/classes/ME#getrecomputemode" },
+              { text: "importSnapshot()", link: "/api/classes/ME#importsnapshot" },
+              { text: "inspect()", link: "/api/classes/ME#inspect" },
+              { text: "learn()", link: "/api/classes/ME#learn" },
+              { text: "rehydrate()", link: "/api/classes/ME#rehydrate" },
+              { text: "replayMemories()", link: "/api/classes/ME#replaymemories" },
+              { text: "setRecomputeMode()", link: "/api/classes/ME#setrecomputemode" },
+            ],
+          }
+        ],
       },
       {
         text: "Examples",

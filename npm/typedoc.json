@@ -1,7 +1,8 @@
 {
-  "entryPoints": ["./index.ts"],
+  "entryPoints": ["./typedoc-entry.ts"],
   "out": "docs/api",
   "plugin": ["typedoc-plugin-markdown"],
+  "cleanOutputDir": false,
   "excludePrivate": true,
   "excludeInternal": true,
   "readme": "none"

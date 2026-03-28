@@ -95,4 +95,35 @@ test("phase5 transform projection", () => {
   assert.deepEqual(projected, { "1": 90, "2": 108, "3": 72 });
 });
 
+test("runtime escape plane exposes reflective kernel helpers", () => {
+  const me = new ME();
+  me.profile.name("Abella");
+
+  assert.equal(me["!"].docs.kind, "runtime-surface");
+  assert.deepEqual(me["!"].docs.namespaces, [
+    "inspect",
+    "explain",
+    "memories",
+    "snapshot",
+    "runtime",
+    "methods",
+  ]);
+
+  const inspect = me["!"].inspect();
+  assert.equal(Array.isArray(inspect.memories), true);
+  assert.equal(inspect.index["profile.name"], "Abella");
+
+  assert.equal(me["!"].methods.inspect.path, "inspect");
+  assert.equal(typeof me["!"].methods.inspect.docs, "string");
+  assert.equal(me["!"].runtime.getRecomputeMode(), "eager");
+
+  me["!"].runtime.setRecomputeMode("lazy");
+  assert.equal(me["!"].runtime.getRecomputeMode(), "lazy");
+
+  const snapshot = me["!"].snapshot.export();
+  const me2 = new ME();
+  me2["!"].snapshot.import(snapshot);
+  assert.equal(me2("profile.name"), "Abella");
+});
+
 console.log("✅ Phase 6 contract suite passed");
