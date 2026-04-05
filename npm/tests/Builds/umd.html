@@ -6,7 +6,11 @@
     <script>
       console.log("=== UMD BUILD TEST ===");
       try {
-        window.me = new Me.ME("test", "secret");
+        const ME = typeof Me === "function" ? Me : Me && Me.ME;
+        if (typeof ME !== "function") {
+          throw new Error("UMD export not found: expected global `Me` constructor or `Me.ME`.");
+        }
+        window.me = new ME();
         me.profile.name("Abella");
         me.profile.age(30);
         const name = me("profile.name");

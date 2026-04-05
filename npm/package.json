@@ -1,6 +1,6 @@
 {
   "name": "this.me",
-  "version": "3.4.8",
+  "version": "3.5.1",
   "type": "module",
   "main": "./dist/me.cjs",
   "module": "./dist/me.es.js",
@@ -43,7 +43,7 @@
     "vite-plugin-dts": "^4.5.4",
     "vitepress": "^1.6.4"
   },
-  "description": ".me is your identity trust through cryptographic signatures.",
+  "description": "Centralize the Self, Distribute the Data.",
   "keywords": [
     "semantic kernel",
     "knowledge graph",

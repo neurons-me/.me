@@ -453,3 +453,194 @@ export interface OperatorSystemSpec {
   registry: OperatorRegistry;
   modules: OperatorModule[];
 }
+
+// -----------------------------
+// Internal ME kernel extraction types
+// -----------------------------
+
+export type MERecomputeMode = "eager" | "lazy";
+
+export interface MEDerivationRecord {
+  expression: string;
+  evalScope: SemanticPath;
+  refs: Array<{ label: string; path: string }>;
+  lastComputedAt: number;
+}
+
+export interface MEBranchScopeCacheEntry {
+  epoch: number;
+  scope: SemanticPath | null;
+}
+
+export interface MEEffectiveSecretCacheEntry {
+  epoch: number;
+  value: string;
+}
+
+export interface MEDecryptedBranchCacheEntry {
+  epoch: number;
+  blob: EncryptedBlob;
+  data: any;
+}
+
+export interface MEInspectResult {
+  memories: Memory[];
+  index: Record<string, any>;
+  encryptedScopes: string[];
+  secretScopes: string[];
+  noiseScopes: string[];
+  recomputeMode: MERecomputeMode;
+  staleDerivations: number;
+}
+
+export interface MEExplainResult {
+  path: string;
+  value: any;
+  derivation: null | {
+    expression: string;
+    inputs: Array<{
+      label: string;
+      path: string;
+      value: any;
+      origin: "public" | "stealth";
+      masked: boolean;
+    }>;
+  };
+  meta: {
+    dependsOn: string[];
+    lastComputedAt?: number;
+  };
+}
+
+export interface MESnapshot {
+  memories: Memory[];
+  localSecrets: Record<string, string>;
+  localNoises: Record<string, string>;
+  encryptedBranches: Record<string, EncryptedBlob | Record<string, EncryptedBlob>>;
+  keySpaces: Record<string, StoredWrappedKey>;
+  operators: Record<string, { kind: string }>;
+}
+
+export interface MESnapshotInput {
+  memories?: Memory[];
+  localSecrets?: Record<string, string>;
+  localNoises?: Record<string, string>;
+  encryptedBranches?: Record<string, EncryptedBlob | Record<string, EncryptedBlob>>;
+  keySpaces?: Record<string, StoredWrappedKey>;
+  operators?: Record<string, { kind: string }>;
+}
+
+export interface MEWrappedKeyOpenOptions {
+  recipientKeyId?: string;
+  recipientPrivateKey?: CryptoKey;
+  output?: "bytes" | "utf8";
+}
+
+export interface MERuntimeMethodDescriptor {
+  kind: "method";
+  path: string;
+  docs: string;
+  signature: string;
+  call: (...args: any[]) => unknown;
+}
+
+export interface MEKernelLike extends Record<string, any> {
+  localSecrets: Record<string, string>;
+  localNoises: Record<string, string>;
+  encryptedBranches: Record<string, EncryptedBlob | Record<string, EncryptedBlob>>;
+  keySpaces: Record<string, StoredWrappedKey>;
+  recipientKeyring: Record<string, CryptoKey>;
+  index: Record<string, any>;
+  _memories: Memory[];
+  derivations: Record<string, MEDerivationRecord>;
+  refSubscribers: Record<string, string[]>;
+  recomputeMode: MERecomputeMode;
+  refVersions: Record<string, number>;
+  derivationRefVersions: Record<string, Record<string, number>>;
+  staleDerivations: Set<string>;
+  secretEpoch: number;
+  scopeCache: Map<string, MEBranchScopeCacheEntry>;
+  effectiveSecretCache: Map<string, MEEffectiveSecretCacheEntry>;
+  decryptedBranchCache: Map<string, MEDecryptedBranchCacheEntry>;
+  readonly secretChunkSize: number;
+  readonly secretHashBuckets: number;
+  readonly unsafeEval: boolean;
+  operators: Record<string, { kind: string }>;
+  memories: Memory[];
+
+  inspect(opts?: { last?: number }): MEInspectResult;
+  explain(path: string): MEExplainResult;
+  setRecomputeMode(mode: MERecomputeMode): this;
+  getRecomputeMode(): MERecomputeMode;
+  installRecipientKey(recipientKeyId: string, privateKey: CryptoKey): this;
+  uninstallRecipientKey(recipientKeyId: string): this;
+  storeWrappedKey(keyId: string, envelope: WrappedSecretV1, options?: { recipientKeyId?: string }): this;
+  execute(rawTarget: string | MeTargetAst, body?: any): any;
+  exportSnapshot(): MESnapshot;
+  importSnapshot(snapshot: MESnapshotInput): void;
+  rehydrate(snapshot: MESnapshotInput): void;
+  learn(memory: unknown): void;
+  replayMemories(memories: Memory[]): void;
+  cloneValue<T>(value: T): T;
+  normalizeArgs(args: any[]): any;
+  opKind(op: string): string | null;
+  postulate(path: SemanticPath, expression: any, operator?: string | null): any;
+  readPath(path: SemanticPath): any;
+  getIndex(path: SemanticPath): any;
+  setIndex(path: SemanticPath, value: any): void;
+  normalizeSelectorPath(path: SemanticPath): SemanticPath;
+  resolveBranchScope(path: SemanticPath): SemanticPath | null;
+  computeEffectiveSecret(path: SemanticPath): string;
+  getChunkId(path: SemanticPath, scope: SemanticPath): string;
+  getDecryptedChunk(scope: SemanticPath, scopeSecret: string, chunkId: string): any | undefined;
+  setChunkBlob(scope: SemanticPath, chunkId: string, blob: EncryptedBlob, scopeSecret: string): void;
+  clearScopeChunkCache(scopeKey: string): void;
+  ensureTargetFresh(targetKey: string, visiting?: Set<string>): boolean;
+  tryEvaluateAssignExpression(evalScopePath: SemanticPath, expr: string): { ok: true; value: number | boolean } | { ok: false };
+  registerDerivation(targetPath: SemanticPath, evalScope: SemanticPath, expr: string): void;
+  clearDerivationsByPrefix(prefixPath: SemanticPath): void;
+  invalidateFromPath(path: SemanticPath): void;
+  commitMemoryOnly(targetPath: SemanticPath, operator: string | null, expression: any, value: any): Memory;
+  commitValueMapping(targetPath: SemanticPath, expression: any, operator?: string | null): Memory;
+  commitMapping(instruction: MappingInstruction, fallbackOperator?: string | null): Memory | undefined;
+  applyMemoryToIndex(memory: Memory): void;
+  removeIndexPrefix(prefixPath: SemanticPath): void;
+  rebuildIndex(): void;
+  resolveIndexPointerPath(path: SemanticPath, maxHops?: number): { path: SemanticPath; raw: any };
+  parseFilterExpression(expr: string): { left: string; op: ">" | "<" | ">=" | "<=" | "==" | "!="; right: string } | null;
+  parseLogicalFilterExpression(expr: string): {
+    clauses: Array<{ left: string; op: ">" | "<" | ">=" | "<=" | "==" | "!="; right: string }>;
+    ops: Array<"&&" | "||">;
+  } | null;
+  compareValues(left: any, op: ">" | "<" | ">=" | "<=" | "==" | "!=", right: any): boolean;
+  parseLiteralOrPath(raw: string): { kind: "literal"; value: any } | { kind: "path"; parts: SemanticPath };
+  resolveRelativeFirst(scope: SemanticPath, parts: SemanticPath): any;
+  evaluateFilterClauseForScope(
+    scope: SemanticPath,
+    clause: { left: string; op: ">" | "<" | ">=" | "<=" | "==" | "!="; right: string },
+  ): boolean;
+  evaluateLogicalFilterForScope(scope: SemanticPath, expr: string): boolean;
+  collectChildrenForPrefix(prefix: SemanticPath): string[];
+  parseSelectorSegment(segment: string): { base: string; selector: string } | null;
+  parseSelectorKeys(selector: string): string[] | null;
+  parseTransformSelector(selector: string): { varName: string; expr: string } | null;
+  evaluateTransformPath(path: SemanticPath): any;
+  evaluateSelectionPath(path: SemanticPath): any;
+  buildPublicSubtree(prefix: SemanticPath): any;
+  evaluateFilterPath(path: SemanticPath): any;
+  pathContainsFilterSelector(path: SemanticPath): boolean;
+  collectFilteredScopes(path: SemanticPath): SemanticPath[];
+  pathContainsIterator(path: SemanticPath): boolean;
+  substituteIteratorInPath(path: SemanticPath, indexValue: string): SemanticPath;
+  substituteIteratorInExpression(expr: string, indexValue: string): string;
+  collectIteratorIndices(path: SemanticPath): string[];
+  extractExpressionRefs(expr: string): string[];
+  resolveRefPath(label: string, evalScope: SemanticPath): string | null;
+  unregisterDerivation(targetKey: string): void;
+  getRefVersion(refPath: string): number;
+  bumpRefVersion(refPath: string): void;
+  snapshotDerivationRefVersions(targetKey: string): void;
+  recomputeTarget(targetKey: string): boolean;
+  isDerivationVersionStale(targetKey: string): boolean;
+  removeSubtree(targetPath: SemanticPath): void;
+}
