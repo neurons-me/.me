@@ -4,9 +4,7 @@
 </picture>
 
 # .me  
-
 ###### Minimal and Expressive.
-
 <table border="0" cellspacing="0" cellpadding="0" style="border:none;">
   <tr>
     <td width="260" align="center" valign="middle">
@@ -25,14 +23,12 @@ Define who you are, what you own, and how everything connects — once.
 Then use it across apps, websites, dashboards, and more.
 
 ## What is .me?
-
 - A lightweight semantic kernel
 - You work with paths instead of complex state management
 - Supports secrets, pointers, derived values, and full state export/import
 - Works the same across languages and platforms
 
 ## Why use it?
-
 - Stop repeating boilerplate across multiple apps
 - Have real control over your data and identity
 - Structural privacy (not just "trust us")
