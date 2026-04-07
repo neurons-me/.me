@@ -154,7 +154,6 @@ index keys: [ '' ]
   operator: null,
   expression: '',
   value: '',
-  effectiveSecret: '',
   hash: '4cce34b7',
   prevHash: '3f1c0ad3',
   timestamp: 1772255707955

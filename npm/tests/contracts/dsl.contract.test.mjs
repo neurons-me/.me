@@ -1,8 +1,11 @@
 import assert from "node:assert/strict";
-import sha3 from "js-sha3";
 import ME from "../../dist/me.es.js";
-
-const { keccak256 } = sha3;
+import {
+  clone,
+  flipLastHexNibble,
+  hashFn,
+  legacyXorEncrypt,
+} from "./_fixtures/secret-blobs.fixture.mjs";
 
 function test(name, fn) {
   try {
@@ -12,52 +15,6 @@ function test(name, fn) {
     console.error(`❌ ${name}`);
     throw err;
   }
-}
-
-function asciiToBytes(str) {
-  return new TextEncoder().encode(str);
-}
-
-function bytesToHex(buf) {
-  let hex = "";
-  for (let i = 0; i < buf.length; i++) {
-    hex += buf[i].toString(16).padStart(2, "0");
-  }
-  return `0x${hex}`;
-}
-
-function legacyXorEncrypt(value, secret, path) {
-  const json = JSON.stringify(value);
-  const bytes = asciiToBytes(String(json));
-  const key = keccak256(secret + ":" + path.join("."));
-  const keyBytes = asciiToBytes(key);
-  const out = new Uint8Array(bytes.length);
-  for (let i = 0; i < bytes.length; i++) {
-    out[i] = bytes[i] ^ keyBytes[i % keyBytes.length];
-  }
-  return bytesToHex(out);
-}
-
-function hashFn(input) {
-  let h = 0x811c9dc5;
-  for (let i = 0; i < input.length; i++) {
-    h ^= input.charCodeAt(i);
-    h = Math.imul(h, 0x01000193);
-  }
-  return ("00000000" + (h >>> 0).toString(16)).slice(-8);
-}
-
-function clone(value) {
-  return typeof structuredClone === "function"
-    ? structuredClone(value)
-    : JSON.parse(JSON.stringify(value));
-}
-
-function flipLastHexNibble(blob) {
-  const hex = String(blob).slice(2);
-  const last = hex.slice(-1).toLowerCase();
-  const next = last === "a" ? "b" : "a";
-  return `0x${hex.slice(0, -1)}${next}`;
 }
 
 console.log("\n### DSL Contract Tests (Phase 6)");

@@ -8,7 +8,7 @@
 
 > **MEProxy** = (...`args`) => `MEProxy`
 
-Defined in: [types.ts:70](https://github.com/neurons-me/.me/blob/eb91d161f4c6660821f8b6426d70a5c8c15adb16/npm/src/types.ts#L70)
+Defined in: [types.ts:148](https://github.com/neurons-me/.me/blob/be0fcc0288ad977c5c48673c15dee62b435195d3/npm/src/types.ts#L148)
 
 ## Index Signature
 

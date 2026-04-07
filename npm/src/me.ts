@@ -131,6 +131,10 @@ export class ME {
   private readonly unsafeEval!: boolean;
   private operators!: Record<string, { kind: string }>;
 
+  /**
+   * Public redacted memory log.
+   * This never exposes internal forensic fields such as `effectiveSecret`.
+   */
   get memories(): Memory[] {
     return toPublicMemories(this._memories);
   }
@@ -148,6 +152,10 @@ export class ME {
     return rootProxy as unknown as ME;
   }
 
+  /**
+   * Inspect the current runtime state.
+   * Returned memories are always public/redacted.
+   */
   inspect(opts?: { last?: number }) {
     return Core.inspect(this as unknown as MEKernelLike, opts);
   }
@@ -274,10 +282,18 @@ export class ME {
     return Utils.findTopLevelIndex(input, needle);
   }
 
+  /**
+   * Export a portable public snapshot.
+   * Snapshot memories are redacted and omit internal forensic fields.
+   */
   exportSnapshot(): MESnapshot {
     return Core.exportSnapshot(this as unknown as MEKernelLike);
   }
 
+  /**
+   * Import a snapshot into the current runtime.
+   * Accepts both redacted public snapshots and legacy/internal payloads.
+   */
   importSnapshot(snapshot: MESnapshotInput): void {
     return Core.importSnapshot(this as unknown as MEKernelLike, snapshot);
   }
@@ -290,6 +306,10 @@ export class ME {
     return Core.learn(this as unknown as MEKernelLike, memory);
   }
 
+  /**
+   * Replay a memory log into the current runtime.
+   * Accepts both public `Memory[]` and legacy/internal memory payloads.
+   */
   replayMemories(memories: ReplayMemoryInput[]): void {
     return Core.replayMemories(this as unknown as MEKernelLike, memories);
   }

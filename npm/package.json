@@ -20,7 +20,7 @@
     "test:ts": "tsc --noEmit",
     "test:umd": "node tests/Builds/umd.test.cjs",
     "test:prebuild": "node tests/pre-build.test.mjs",
-    "test:contracts": "node tests/contracts/dsl.contract.test.mjs",
+    "test:contracts": "node tests/contracts/run-contracts.mjs",
     "prepublishOnly": "npm run build",
     "docs:api": "typedoc",
     "docs:api:watch": "typedoc --watch",

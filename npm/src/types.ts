@@ -521,6 +521,10 @@ export interface MEExplainResult {
   };
 }
 
+/**
+ * Portable public snapshot shape.
+ * Memory records exported here are redacted and never expose `effectiveSecret`.
+ */
 export interface MESnapshot {
   memories: Memory[];
   localSecrets: Record<string, string>;
@@ -530,6 +534,10 @@ export interface MESnapshot {
   operators: Record<string, { kind: string }>;
 }
 
+/**
+ * Snapshot import shape.
+ * Accepts both modern redacted memories and legacy/internal memory payloads.
+ */
 export interface MESnapshotInput {
   memories?: ReplayMemoryInput[];
   localSecrets?: Record<string, string>;

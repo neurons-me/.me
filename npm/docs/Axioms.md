@@ -254,14 +254,18 @@ const hashInput = JSON.stringify({ path, operator, expression, value, effectiveS
 const hash = hashFn(hashInput);
 ```
 
+This hash chain is computed from the **internal** kernel log (`KernelMemory`).
+The public `Memory` surface stays redacted, but the forensic chain remains intact inside `_memories`.
+
 **Proof snippet:**
 ```ts
 const me = new ME() as any;
 me["@"]("jabellae");
 me.ledger.host("localhost:8161");
-const m = me.memories;
+const m = me._memories; // internal forensic log
 console.log(m[0].prevHash === ""); // true
 console.log(m[1].prevHash === m[0].hash); // true
+console.log(Object.hasOwn(me.memories[0] ?? {}, "effectiveSecret")); // false
 ```
 
 ---

@@ -5,6 +5,12 @@ export default defineConfig({
   description: "Documentation for .me",
   base,
   outDir: "../typedocs",
+  // TypeDoc markdown occasionally emits valid generated pages that
+  // VitePress still flags as dead links during build.
+  ignoreDeadLinks: [
+    /\/api\/interfaces\/MeTargetAst(?:\.md)?$/,
+    /\/api\/interfaces\/StoredWrappedKey(?:\.md)?$/,
+  ],
   appearance: "force-dark",
   head: [
     ["link", { rel: "icon", href: "https://res.cloudinary.com/dkwnxf6gm/image/upload/v1760915741/this.me-removebg-preview_1_nrj6pe.png" }],

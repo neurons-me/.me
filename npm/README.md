@@ -5,7 +5,6 @@
 
 # .me
 ###### **Your personal semantic kernel.**
-
 Define who you are, **what you own**, and how everything connects — once.  
 Then use it everywhere: apps, websites, dashboards, tickets, and more.
 
@@ -36,22 +35,20 @@ console.log(me("friends.ana.is_adult"));        // → true
 console.log(me("friends[age > 18].name"));      // → { ana: "Ana" }
 ```
 
-### What is .me?
-
+## What is .me?
 - An **infinite semantic tree** where you define the rules.
 - Create data, relationships, formulas, and private universes.
 - Everything is **reactive** — change one value and everything that depends on it updates automatically.
 - Secrets are **structural**: entire branches can be hidden and encrypted by design.
 - Export your entire state and restore it anywhere — it works exactly the same.
 
-### Why people like it
-
+## Why people like it
 - No schemas needed — if you can imagine a path, it exists.
 - Real privacy — not promises, but built into the structure.
 - Define once, use everywhere — stop repeating code across projects.
 - Full transparency — `me.explain("path")` shows exactly how any value was computed.
 
-### Quick secret test
+## Quick secret test
 
 ```ts
 me.wallet["_"]("my-secret-key");      // Create a hidden universe
@@ -62,8 +59,7 @@ console.log(me("wallet"));            // → undefined (root is hidden)
 console.log(me("wallet.balance"));    // → 5000 (leaf is still accessible)
 ```
 
-### Who is .me for?
-
+## Who is .me for?
 Developers and creators who want to:
 
 - Stop repeating the same infrastructure across multiple apps
@@ -71,7 +67,7 @@ Developers and creators who want to:
 - Have real structural privacy
 - Build clean, scalable systems without the usual mess
 
-### Installation
+## Installation
 
 ```bash
 npm install this.me

@@ -6,9 +6,9 @@
 
 # Type Alias: OperatorResult
 
-> **OperatorResult** = [`Memory`](../interfaces/Memory.md) \| `any` \| `undefined`
+> **OperatorResult** = `KernelMemory` \| `any` \| `undefined`
 
-Defined in: [types.ts:215](https://github.com/neurons-me/.me/blob/eb91d161f4c6660821f8b6426d70a5c8c15adb16/npm/src/types.ts#L215)
+Defined in: [types.ts:293](https://github.com/neurons-me/.me/blob/be0fcc0288ad977c5c48673c15dee62b435195d3/npm/src/types.ts#L293)
 
 Operators in me.ts can yield:
 - a Memory (most writes)

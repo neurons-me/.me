@@ -6,7 +6,7 @@
 
 # Interface: OperatorRegistryEntry
 
-Defined in: [types.ts:26](https://github.com/neurons-me/.me/blob/eb91d161f4c6660821f8b6426d70a5c8c15adb16/npm/src/types.ts#L26)
+Defined in: [types.ts:26](https://github.com/neurons-me/.me/blob/be0fcc0288ad977c5c48673c15dee62b435195d3/npm/src/types.ts#L26)
 
 ## Properties
 
@@ -14,4 +14,4 @@ Defined in: [types.ts:26](https://github.com/neurons-me/.me/blob/eb91d161f4c6660
 
 > **kind**: [`OperatorKind`](../type-aliases/OperatorKind.md)
 
-Defined in: [types.ts:27](https://github.com/neurons-me/.me/blob/eb91d161f4c6660821f8b6426d70a5c8c15adb16/npm/src/types.ts#L27)
+Defined in: [types.ts:27](https://github.com/neurons-me/.me/blob/be0fcc0288ad977c5c48673c15dee62b435195d3/npm/src/types.ts#L27)
