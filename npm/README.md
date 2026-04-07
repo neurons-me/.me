@@ -82,7 +82,7 @@ npm install this.me
 ---
 
 **MIT License** © 2025 [neurons.me](https://neurons.me)
-Made in Veracruz, Mexico.
+
 **∴ Witness our seal**  
+
 **suiGn**
-```

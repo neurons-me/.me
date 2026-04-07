@@ -20,40 +20,20 @@
     </td>
   </tr>
 </table>
-## A Declarative Language  
 
-Everything emerges from two primitives:
+Define who you are, what you own, and how everything connects — once.  
+Then use it across apps, websites, dashboards, and more.
 
-```text
-Declare meaning
-Resolve meaning
-```
----
+## What is .me?
 
-# 𓅓 Self-Semantic Runtime Invariance
-The runtime of `.me` is written **in the same semantic model that it interprets**, making it a *self-describing* and *self-sustaining* identity system.  
-This property is known as **Self‑Semantic Runtime Invariance**.
+- A lightweight semantic kernel
+- You work with paths instead of complex state management
+- Supports secrets, pointers, derived values, and full state export/import
+- Works the same across languages and platforms
 
-#### Why this matters
-- The language can describe itself using its own primitives.  
-- The runtime’s behavior is encoded in the same declarative structures users write.  
-- Every semantic operation becomes both:
-  - a computation, and  
-  - a piece of meaning inside the identity universe.  
-- The system is *reflexive*: the runtime can observe, narrate, and export its own evolution.
+## Why use it?
 
-## **▵ The Philosophy**
-
-**\> Human owns meaning. Everything else asks.**
-A semantic language for identity, built from recursive declarations and symbolic paths.
-**▵ meaning** / **⊙ identities** / **● universes.**
-With one primitive:
-
-> me
-
-What **.me** unlocks is: 
->**Ownership through derivation.** 
-
-Not through passwords, dashboards, cookie banners, or corporate **“trust us”** slogans — but **through architecture**. 
-Your identity is **derived**, meaning it only exists when **you** decide to bring it into existence. 
-[suiGn](https://suign.github.io/)
+- Stop repeating boilerplate across multiple apps
+- Have real control over your data and identity
+- Structural privacy (not just "trust us")
+- Simple, reactive, and portable
