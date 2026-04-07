@@ -1,0 +1,52 @@
+import { bumpSecretEpoch } from "./secret.js";
+import { toKernelMemories, toPublicMemories } from "./memory-redaction.js";
+import type {
+  MEKernelLike,
+  MESnapshot,
+  MESnapshotInput,
+} from "./types.js";
+import {
+  cloneValue,
+  createDefaultOperators,
+} from "./utils.js";
+
+export function exportSnapshot(self: MEKernelLike): MESnapshot {
+  return cloneValue({
+    memories: toPublicMemories(self._memories),
+    localSecrets: self.localSecrets,
+    localNoises: self.localNoises,
+    encryptedBranches: self.encryptedBranches,
+    keySpaces: self.keySpaces,
+    operators: self.operators,
+  });
+}
+
+export function importSnapshot(self: MEKernelLike, snapshot: MESnapshotInput): void {
+  const data = cloneValue(snapshot ?? {});
+  self._memories = Array.isArray(data.memories)
+    ? toKernelMemories(data.memories)
+    : [];
+  self.localSecrets = data.localSecrets && typeof data.localSecrets === "object" ? data.localSecrets : {};
+  self.localNoises = data.localNoises && typeof data.localNoises === "object" ? data.localNoises : {};
+  bumpSecretEpoch(self);
+  self.encryptedBranches =
+    data.encryptedBranches && typeof data.encryptedBranches === "object" ? data.encryptedBranches : {};
+  self.keySpaces = data.keySpaces && typeof data.keySpaces === "object" ? data.keySpaces : {};
+  self.derivations = {};
+  self.refSubscribers = {};
+  self.refVersions = {};
+  self.derivationRefVersions = {};
+  self.staleDerivations.clear();
+
+  const defaults = createDefaultOperators();
+  self.operators =
+    data.operators && typeof data.operators === "object"
+      ? { ...defaults, ...data.operators }
+      : defaults;
+
+  self.rebuildIndex();
+}
+
+export function rehydrate(self: MEKernelLike, snapshot: MESnapshotInput): void {
+  self.importSnapshot(snapshot);
+}

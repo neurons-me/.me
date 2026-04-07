@@ -21,6 +21,8 @@ import {
 import * as Core from "./core.js";
 import * as Derivation from "./derivation.js";
 import * as Evaluator from "./evaluator.js";
+import { createInitialKernelFields } from "./kernel-state.js";
+import { toPublicMemories } from "./memory-redaction.js";
 import {
   isDefineOpCall,
   isEvalCall,
@@ -36,6 +38,7 @@ import * as ProxyRuntime from "./proxy.js";
 import * as Secret from "./secret.js";
 import type {
   EncryptedBlob,
+  KernelMemory,
   MappingInstruction,
   MEBranchScopeCacheEntry,
   MEDecryptedBranchCacheEntry,
@@ -48,6 +51,7 @@ import type {
   MeTargetAst,
   Memory,
   OperatorRegistry,
+  ReplayMemoryInput,
   P256PublicKeyCoordinates,
   SemanticPath,
   StoredWrappedKey,
@@ -105,42 +109,35 @@ export class ME {
     return unwrapSecretV1(envelope, recipientPrivateKey, output);
   }
 
-  private localSecrets: Record<string, string> = {};
-  private localNoises: Record<string, string> = {};
-  private encryptedBranches: Record<string, EncryptedBlob | Record<string, EncryptedBlob>> = {};
-  private keySpaces: Record<string, StoredWrappedKey> = {};
-  private recipientKeyring: Record<string, CryptoKey> = {};
-  private index: Record<string, any> = {};
-  private _memories: Memory[] = [];
-  private derivations: Record<string, MEDerivationRecord> = {};
-  private refSubscribers: Record<string, string[]> = {};
-  private recomputeMode: "eager" | "lazy" = "eager";
-  private refVersions: Record<string, number> = {};
-  private derivationRefVersions: Record<string, Record<string, number>> = {};
-  private staleDerivations = new Set<string>();
-  private secretEpoch = 0;
-  private scopeCache = new Map<string, MEBranchScopeCacheEntry>();
-  private effectiveSecretCache = new Map<string, MEEffectiveSecretCacheEntry>();
-  private decryptedBranchCache = new Map<string, MEDecryptedBranchCacheEntry>();
-  private readonly secretChunkSize = 256;
-  private readonly secretHashBuckets = 16;
-  private readonly unsafeEval = false;
-  private operators: Record<string, { kind: string }> = Utils.createDefaultOperators();
+  private localSecrets!: Record<string, string>;
+  private localNoises!: Record<string, string>;
+  private encryptedBranches!: Record<string, EncryptedBlob | Record<string, EncryptedBlob>>;
+  private keySpaces!: Record<string, StoredWrappedKey>;
+  private recipientKeyring!: Record<string, CryptoKey>;
+  private index!: Record<string, any>;
+  private _memories!: KernelMemory[];
+  private derivations!: Record<string, MEDerivationRecord>;
+  private refSubscribers!: Record<string, string[]>;
+  private recomputeMode!: "eager" | "lazy";
+  private refVersions!: Record<string, number>;
+  private derivationRefVersions!: Record<string, Record<string, number>>;
+  private staleDerivations!: Set<string>;
+  private secretEpoch!: number;
+  private scopeCache!: Map<string, MEBranchScopeCacheEntry>;
+  private effectiveSecretCache!: Map<string, MEEffectiveSecretCacheEntry>;
+  private decryptedBranchCache!: Map<string, MEDecryptedBranchCacheEntry>;
+  private readonly secretChunkSize!: number;
+  private readonly secretHashBuckets!: number;
+  private readonly unsafeEval!: boolean;
+  private operators!: Record<string, { kind: string }>;
 
   get memories(): Memory[] {
-    return this._memories;
+    return toPublicMemories(this._memories);
   }
 
   constructor(expression?: any) {
-    this.localSecrets = {};
-    this.localNoises = {};
-    this.encryptedBranches = {};
-    this.keySpaces = {};
-    this.recipientKeyring = {};
+    Object.assign(this, createInitialKernelFields());
     this.bumpSecretEpoch();
-    this.index = {};
-    this.operators = Utils.createDefaultOperators();
-    this._memories = [];
     if (expression !== undefined) {
       this.postulate([], expression);
     }
@@ -259,18 +256,18 @@ export class ME {
   }
 
   private parseExecutableTarget(rawTarget: string): MeTargetAst {
-    return Core.parseExecutableTarget(this as unknown as MEKernelLike, rawTarget);
+    return Core.parseExecutableTarget(rawTarget);
   }
 
   private splitTargetNamespace(
     namespaceWithContext: string,
     rawTarget: string,
   ): { namespace: string; contextRaw: string | null } {
-    return Core.splitTargetNamespace(this as unknown as MEKernelLike, namespaceWithContext, rawTarget);
+    return Core.splitTargetNamespace(namespaceWithContext, rawTarget);
   }
 
   private normalizeExecutablePath(rawPath: string): { key: string; parts: SemanticPath } {
-    return Core.normalizeExecutablePath(this as unknown as MEKernelLike, rawPath);
+    return Core.normalizeExecutablePath(rawPath);
   }
 
   private findTopLevelIndex(input: string, needle: string): number {
@@ -293,7 +290,7 @@ export class ME {
     return Core.learn(this as unknown as MEKernelLike, memory);
   }
 
-  replayMemories(memories: Memory[]): void {
+  replayMemories(memories: ReplayMemoryInput[]): void {
     return Core.replayMemories(this as unknown as MEKernelLike, memories);
   }
 
@@ -390,7 +387,7 @@ export class ME {
     operator: string | null,
     expression: any,
     value: any,
-  ): Memory {
+  ): KernelMemory {
     return Core.commitMemoryOnly(this as unknown as MEKernelLike, targetPath, operator, expression, value);
   }
 
@@ -398,11 +395,11 @@ export class ME {
     targetPath: SemanticPath,
     expression: any,
     operator: string | null = null,
-  ): Memory {
+  ): KernelMemory {
     return Core.commitValueMapping(this as unknown as MEKernelLike, targetPath, expression, operator);
   }
 
-  private commitMapping(instruction: MappingInstruction, fallbackOperator: string | null = null): Memory | undefined {
+  private commitMapping(instruction: MappingInstruction, fallbackOperator: string | null = null): KernelMemory | undefined {
     return Core.commitMapping(this as unknown as MEKernelLike, instruction, fallbackOperator);
   }
 
@@ -436,7 +433,7 @@ export class ME {
     return Secret.computeEffectiveSecret(this as unknown as MEKernelLike, path);
   }
 
-  private applyMemoryToIndex(t: Memory): void {
+  private applyMemoryToIndex(t: KernelMemory): void {
     return Core.applyMemoryToIndex(this as unknown as MEKernelLike, t);
   }
 

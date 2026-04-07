@@ -1,5 +1,8 @@
 import assert from "node:assert/strict";
+import sha3 from "js-sha3";
 import ME from "../../dist/me.es.js";
+
+const { keccak256 } = sha3;
 
 function test(name, fn) {
   try {
@@ -11,6 +14,52 @@ function test(name, fn) {
   }
 }
 
+function asciiToBytes(str) {
+  return new TextEncoder().encode(str);
+}
+
+function bytesToHex(buf) {
+  let hex = "";
+  for (let i = 0; i < buf.length; i++) {
+    hex += buf[i].toString(16).padStart(2, "0");
+  }
+  return `0x${hex}`;
+}
+
+function legacyXorEncrypt(value, secret, path) {
+  const json = JSON.stringify(value);
+  const bytes = asciiToBytes(String(json));
+  const key = keccak256(secret + ":" + path.join("."));
+  const keyBytes = asciiToBytes(key);
+  const out = new Uint8Array(bytes.length);
+  for (let i = 0; i < bytes.length; i++) {
+    out[i] = bytes[i] ^ keyBytes[i % keyBytes.length];
+  }
+  return bytesToHex(out);
+}
+
+function hashFn(input) {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < input.length; i++) {
+    h ^= input.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return ("00000000" + (h >>> 0).toString(16)).slice(-8);
+}
+
+function clone(value) {
+  return typeof structuredClone === "function"
+    ? structuredClone(value)
+    : JSON.parse(JSON.stringify(value));
+}
+
+function flipLastHexNibble(blob) {
+  const hex = String(blob).slice(2);
+  const last = hex.slice(-1).toLowerCase();
+  const next = last === "a" ? "b" : "a";
+  return `0x${hex.slice(0, -1)}${next}`;
+}
+
 console.log("\n### DSL Contract Tests (Phase 6)");
 
 test("boot + basic set/get", () => {
@@ -20,6 +69,106 @@ test("boot + basic set/get", () => {
   me.profile.age(30);
   assert.equal(me("profile.name"), "Abella");
   assert.equal(me("profile.age"), 30);
+});
+
+test("constructor bootstrap preserves callable proxy after rehydrate", () => {
+  const me = new ME();
+  me.profile.name("Bootstrap");
+  me.wallet["_"]("ctor-steel-door");
+  me.wallet.balance(7);
+
+  const snapshot = me.exportSnapshot();
+  const restored = new ME();
+
+  assert.equal(typeof restored, "function");
+  assert.equal(typeof restored["!"].inspect, "function");
+
+  restored.rehydrate(snapshot);
+
+  assert.equal(restored("profile.name"), "Bootstrap");
+  assert.equal(restored("wallet.balance"), 7);
+  assert.equal(typeof restored["!"].snapshot.export, "function");
+});
+
+test("execute dispatch keeps kernel and keyspace routes stable", () => {
+  const me = new ME();
+
+  me.execute("me://self:write/profile/name", "Dispatch");
+  assert.equal(me.execute("me://self:read/profile/name"), "Dispatch");
+
+  assert.equal(me.execute("me://kernel:get/recompute.mode"), "eager");
+  assert.equal(me.execute("me://kernel:set/recompute.mode", "lazy"), "lazy");
+  assert.equal(me.execute("me://kernel:read/recompute.mode"), "lazy");
+
+  const envelope = { version: 1, kid: "app-key" };
+  me.execute("me://self:write/keys/app", envelope);
+  assert.deepEqual(me.execute("me://self:read/keys/app"), envelope);
+});
+
+test("mutation helpers preserve learn + replay semantics", () => {
+  const me = new ME();
+
+  me.learn({ path: "profile.name", expression: "Writer" });
+  me.learn({ path: "vault", operator: "_", expression: "steel-door" });
+  me.learn({ path: "vault.balance", expression: 25 });
+  me.learn({ path: "profile.primary", operator: "__", value: { __ptr: "vault" } });
+  me.learn({ path: "profile.legacy", expression: "remove-me" });
+  me.learn({ path: "profile.legacy", operator: "-" });
+
+  const memories = me.execute("me://kernel:export/memory");
+  const restored = new ME();
+  restored.execute("me://kernel:replay/memory", memories);
+
+  assert.equal(restored("profile.name"), "Writer");
+  assert.equal(restored("vault"), undefined);
+  assert.equal(restored("vault.balance"), 25);
+  assert.equal(restored("profile.primary.balance"), 25);
+  assert.notEqual(restored("profile.legacy"), "remove-me");
+});
+
+test("public memory surfaces redact effectiveSecret and stay replayable", () => {
+  const me = new ME();
+  me.profile.name("Public");
+  me.vault["_"]("steel-door");
+  me.vault.balance(33);
+
+  const inspected = me.inspect().memories;
+  const snapshot = me.exportSnapshot();
+
+  assert.equal(inspected.some((memory) => Object.hasOwn(memory, "effectiveSecret")), false);
+  assert.equal(snapshot.memories.some((memory) => Object.hasOwn(memory, "effectiveSecret")), false);
+
+  const replayed = new ME();
+  replayed.replayMemories(inspected);
+
+  assert.equal(replayed("profile.name"), "Public");
+  assert.equal(replayed("vault"), undefined);
+  assert.equal(replayed("vault.balance"), 33);
+});
+
+test("snapshot import accepts both public and legacy memory payloads", () => {
+  const me = new ME();
+  me.profile.name("Legacy");
+  me.vault["_"]("steel-door");
+  me.vault.balance(44);
+
+  const publicSnapshot = me.exportSnapshot();
+  const publicRestored = new ME();
+  publicRestored.importSnapshot(publicSnapshot);
+
+  assert.equal(publicRestored("profile.name"), "Legacy");
+  assert.equal(publicRestored("vault"), undefined);
+  assert.equal(publicRestored("vault.balance"), 44);
+
+  const legacySnapshot = clone(publicSnapshot);
+  legacySnapshot.memories = clone(me._memories);
+
+  const legacyRestored = new ME();
+  legacyRestored.importSnapshot(legacySnapshot);
+
+  assert.equal(legacyRestored("profile.name"), "Legacy");
+  assert.equal(legacyRestored("vault"), undefined);
+  assert.equal(legacyRestored("vault.balance"), 44);
 });
 
 test("phase1 selector [] fixed id", () => {
@@ -124,6 +273,82 @@ test("runtime escape plane exposes reflective kernel helpers", () => {
   const me2 = new ME();
   me2["!"].snapshot.import(snapshot);
   assert.equal(me2("profile.name"), "Abella");
+});
+
+test("secret branch blobs are non-deterministic across identical writes", () => {
+  const me = new ME();
+  me.wallet["_"]("steel-door");
+  me.wallet.balance(100);
+
+  const firstBlob = me.encryptedBranches.wallet.balance_root;
+  assert.equal(typeof firstBlob, "string");
+
+  me.wallet.balance(100);
+  const secondBlob = me.encryptedBranches.wallet.balance_root;
+
+  assert.notEqual(secondBlob, firstBlob);
+  assert.equal(me("wallet"), undefined);
+  assert.equal(me("wallet.balance"), 100);
+});
+
+test("tampered v2 secret blobs fail closed", () => {
+  const me = new ME();
+  me.wallet["_"]("steel-door");
+  me.wallet.balance(100);
+
+  const snapshot = clone(me.exportSnapshot());
+  const chunks = snapshot.encryptedBranches.wallet;
+  const chunkKey = Object.keys(chunks)[0];
+  chunks[chunkKey] = flipLastHexNibble(chunks[chunkKey]);
+
+  const me2 = new ME();
+  me2.rehydrate(snapshot);
+
+  assert.equal(me2("wallet"), undefined);
+  assert.equal(me2("wallet.balance"), undefined);
+});
+
+test("legacy xor secret snapshots still decrypt after v2 hardening", () => {
+  const rawSecret = "legacy-steel-door";
+  const effectiveScopeSecret = hashFn(`root::${rawSecret}`);
+  const legacyBlob = legacyXorEncrypt({ payload: 42 }, effectiveScopeSecret, ["vault"]);
+
+  const snapshot = {
+    memories: [],
+    localSecrets: { vault: rawSecret },
+    localNoises: {},
+    encryptedBranches: {
+      vault: {
+        payload_root: legacyBlob,
+      },
+    },
+    keySpaces: {},
+  };
+
+  const me = new ME();
+  me.rehydrate(snapshot);
+
+  assert.equal(me("vault"), undefined);
+  assert.equal(me("vault.payload"), 42);
+});
+
+test("secret caches stay bounded under broad secret traversal", () => {
+  const me = new ME();
+  const total = 320;
+  me.vault["_"]("bounded-cache");
+
+  for (let i = 0; i < total; i++) {
+    me.vault[`entry_${i}`].payload(i);
+  }
+
+  for (let i = 0; i < total; i++) {
+    assert.equal(me(`vault.entry_${i}.payload`), i);
+  }
+
+  assert.equal(me("vault"), undefined);
+  assert.ok(me.scopeCache.size <= 256);
+  assert.ok(me.effectiveSecretCache.size <= 256);
+  assert.ok(me.decryptedBranchCache.size <= 64);
 });
 
 console.log("✅ Phase 6 contract suite passed");

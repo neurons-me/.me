@@ -25,7 +25,7 @@ type AxiomCase = {
 };
 
 function getSTM(me: MEProxy): Memory[] {
-  const v = (me as any).memories ?? (me as any)._memories;
+  const v = (me as any)._memories ?? (me as any).memories;
   return Array.isArray(v) ? v : [];
 }
 

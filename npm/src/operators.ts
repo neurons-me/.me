@@ -17,13 +17,13 @@
  */
 
 import type {
+  KernelMemory,
   OperatorKind,
   OperatorRegistry,
   OperatorToken,
   SemanticPath,
   MePointer,
   MeIdentityRef,
-  Memory,
 } from "./types.js";
 
 export const OP_DEFINE: OperatorToken = "+";
@@ -48,7 +48,7 @@ export function isIdentityRef(obj: any): obj is MeIdentityRef {
   return !!obj && typeof obj === "object" && typeof obj.__id === "string" && obj.__id.length > 0;
 }
 
-export function isMemory(obj: any): obj is Memory {
+export function isMemory(obj: any): obj is KernelMemory {
   return (
     !!obj &&
     typeof obj === "object" &&

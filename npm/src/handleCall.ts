@@ -1,4 +1,4 @@
-import type { SemanticPath, Memory } from "./types.js";
+import type { KernelMemory, SemanticPath } from "./types.js";
 // Forward declarations to avoid circular type imports.
 // MEProxy is defined in me.ts; we only need it as `any` at runtime.
 export type MEProxy = any;
@@ -14,7 +14,7 @@ export interface HandleCallDeps {
   /** Resolve operator kinds (used only to decide chaining path when a memory was produced). */
   opKind(op: string): string | null;
   splitPath(path: SemanticPath): { scope: SemanticPath; leaf: string | null };
-  isMemory(obj: any): obj is Memory;
+  isMemory(obj: any): obj is KernelMemory;
 }
 
 function splitPathExpr(input: string): string[] {

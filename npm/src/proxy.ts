@@ -7,6 +7,7 @@ import type {
   MERuntimeMethodDescriptor,
   MEProxy,
   MESnapshotInput,
+  ReplayMemoryInput,
   StoredWrappedKey,
 } from "./types.js";
 
@@ -68,9 +69,9 @@ export function buildRuntimeSurface(self: MEKernelLike): Record<string, any> {
       replay: describeRuntimeMethod(
         self,
         "memories.replay",
-        (memories: Memory[]) => self.replayMemories(memories),
-        "Reset kernel state and replay a memory log into the current kernel.",
-        "memories.replay(memories: Memory[]): void",
+        (memories: ReplayMemoryInput[]) => self.replayMemories(memories),
+        "Reset kernel state and replay a public or legacy memory log into the current kernel.",
+        "memories.replay(memories: ReplayMemoryInput[]): void",
       ),
     },
     snapshot: {
@@ -79,7 +80,7 @@ export function buildRuntimeSurface(self: MEKernelLike): Record<string, any> {
         self,
         "snapshot.export",
         () => self.exportSnapshot(),
-        "Export the current kernel snapshot, including memories, secrets, noises, encrypted branches, key spaces, and operators.",
+        "Export the current kernel snapshot with public memories plus secrets, noises, encrypted branches, key spaces, and operators.",
         "snapshot.export(): Snapshot",
       ),
       import: describeRuntimeMethod(

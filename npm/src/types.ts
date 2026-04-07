@@ -29,8 +29,8 @@ export interface OperatorRegistryEntry {
 
 export type OperatorRegistry = Record<OperatorToken, OperatorRegistryEntry>;
 /**
- * Canonical semantic log item in ME.
- * This mirrors the shape in `me.ts` exactly.
+ * Public semantic log item exposed by `.me` surfaces such as inspect(),
+ * `me.memories`, and exported snapshots.
  */
 export interface Memory {
   /** semantic destination path (where the write/claim lands). root is "" */
@@ -38,17 +38,26 @@ export interface Memory {
   /** operator used to produce this memory (null for normal writes) */
   operator: string | null;
   /** expression as provided by the user (pre-eval / pre-resolve). */
-  expression: any;
+  expression?: any;
   /** value that was actually committed at `path` (post-eval / post-collect; may be encrypted) */
   value: any;
-  /** computed by ME kernel (fractal secret chaining + noise override) */
-  effectiveSecret: string;
   /** portable hash (FNV-1a 32-bit in me.ts) */
   hash: string;
   /** previous memory hash for chain integrity (genesis = "") */
   prevHash?: string;
   timestamp: number;
 }
+
+/**
+ * Internal kernel memory record.
+ * This preserves forensic fields that should not cross the public API boundary.
+ */
+export interface KernelMemory extends Memory {
+  /** computed by ME kernel (fractal secret chaining + noise override) */
+  effectiveSecret?: string;
+}
+
+export type ReplayMemoryInput = Memory | KernelMemory;
 // -----------------------------
 // Structural marker values
 // -----------------------------
@@ -219,7 +228,7 @@ export interface OperatorKernel {
   encryptedBranches?: Record<string, EncryptedBlob>;
 
   // canonical log + index
-  memories?: Memory[];
+  memories?: KernelMemory[];
   rebuildIndex(): void;
 
   // --- crypto & secret derivation
@@ -248,7 +257,7 @@ export interface OperatorKernel {
    * Append an event to memories and rebuild index.
    * Operators that are “kernel-only” should avoid emitting memories.
    */
-  commitMemory?(t: Memory): void;
+  commitMemory?(t: KernelMemory): void;
 
   /**
    * Remove a subtree: deletes matching localSecrets/localNoises/encryptedBranches and emits a "-" memory.
@@ -281,7 +290,7 @@ export interface OperatorKernel {
  * - undefined (kernel-only or removals)
  * - a returned value for root "=" thunk and root "?" query
  */
-export type OperatorResult = Memory | any | undefined;
+export type OperatorResult = KernelMemory | any | undefined;
 
 // -----------------------------
 // Operator handler interface
@@ -522,7 +531,7 @@ export interface MESnapshot {
 }
 
 export interface MESnapshotInput {
-  memories?: Memory[];
+  memories?: ReplayMemoryInput[];
   localSecrets?: Record<string, string>;
   localNoises?: Record<string, string>;
   encryptedBranches?: Record<string, EncryptedBlob | Record<string, EncryptedBlob>>;
@@ -551,7 +560,7 @@ export interface MEKernelLike extends Record<string, any> {
   keySpaces: Record<string, StoredWrappedKey>;
   recipientKeyring: Record<string, CryptoKey>;
   index: Record<string, any>;
-  _memories: Memory[];
+  _memories: KernelMemory[];
   derivations: Record<string, MEDerivationRecord>;
   refSubscribers: Record<string, string[]>;
   recomputeMode: MERecomputeMode;
@@ -580,7 +589,7 @@ export interface MEKernelLike extends Record<string, any> {
   importSnapshot(snapshot: MESnapshotInput): void;
   rehydrate(snapshot: MESnapshotInput): void;
   learn(memory: unknown): void;
-  replayMemories(memories: Memory[]): void;
+  replayMemories(memories: ReplayMemoryInput[]): void;
   cloneValue<T>(value: T): T;
   normalizeArgs(args: any[]): any;
   opKind(op: string): string | null;
@@ -600,10 +609,10 @@ export interface MEKernelLike extends Record<string, any> {
   registerDerivation(targetPath: SemanticPath, evalScope: SemanticPath, expr: string): void;
   clearDerivationsByPrefix(prefixPath: SemanticPath): void;
   invalidateFromPath(path: SemanticPath): void;
-  commitMemoryOnly(targetPath: SemanticPath, operator: string | null, expression: any, value: any): Memory;
-  commitValueMapping(targetPath: SemanticPath, expression: any, operator?: string | null): Memory;
-  commitMapping(instruction: MappingInstruction, fallbackOperator?: string | null): Memory | undefined;
-  applyMemoryToIndex(memory: Memory): void;
+  commitMemoryOnly(targetPath: SemanticPath, operator: string | null, expression: any, value: any): KernelMemory;
+  commitValueMapping(targetPath: SemanticPath, expression: any, operator?: string | null): KernelMemory;
+  commitMapping(instruction: MappingInstruction, fallbackOperator?: string | null): KernelMemory | undefined;
+  applyMemoryToIndex(memory: KernelMemory): void;
   removeIndexPrefix(prefixPath: SemanticPath): void;
   rebuildIndex(): void;
   resolveIndexPointerPath(path: SemanticPath, maxHops?: number): { path: SemanticPath; raw: any };
