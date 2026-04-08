@@ -18,6 +18,8 @@ export type SecretState = {
   localSecrets: Record<string, string>;
   localNoises: Record<string, string>;
   encryptedBranches: Record<string, EncryptedBlob | Record<string, EncryptedBlob>>;
+  // v3 is the default write format from Corte 4. v2 remains available for rollback/tests.
+  secretBlobVersion: "v2" | "v3";
   keySpaces: Record<string, StoredWrappedKey>;
   recipientKeyring: Record<string, CryptoKey>;
   secretEpoch: number;
@@ -65,6 +67,7 @@ export function createInitialKernelState(): KernelState {
       localSecrets: {},
       localNoises: {},
       encryptedBranches: {},
+      secretBlobVersion: "v3",
       keySpaces: {},
       recipientKeyring: {},
       secretEpoch: 0,

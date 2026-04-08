@@ -250,6 +250,7 @@ test("secret branch blobs are non-deterministic across identical writes", () => 
 
 test("tampered v2 secret blobs fail closed", () => {
   const me = new ME();
+  me.setSecretBlobVersionForTesting("v2");
   me.wallet["_"]("steel-door");
   me.wallet.balance(100);
 

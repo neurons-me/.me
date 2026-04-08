@@ -51,6 +51,7 @@ export function flipLastHexNibble(blob) {
 
 export function makeBranchSecretRuntime() {
   const me = new ME();
+  me.setSecretBlobVersionForTesting("v2");
   me.profile.name("Fixture");
   me.wallet["_"]("steel-door");
   me.wallet.balance(100);

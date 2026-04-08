@@ -14,12 +14,44 @@ const BLOB_V2_MAGIC = new Uint8Array([0xfe, 0x6d, 0x65]);
 const BLOB_V2_VERSION = 0x02;
 const BLOB_V2_NONCE_LENGTH = 16;
 const BLOB_V2_TAG_LENGTH = 16;
+const BLOB_V3_VERSION = 0x03;
+const BLOB_V3_NONCE_LENGTH = 16;
+const BLOB_V3_TAG_LENGTH = 16;
 const KECCAK_HMAC_BLOCK_SIZE = 136;
 const V2_KDF_SALT_LABEL = "this.me/blob/v2/salt";
 const V2_ENC_INFO_LABEL = "this.me/blob/v2/enc";
 const V2_MAC_INFO_LABEL = "this.me/blob/v2/mac";
 const V2_STREAM_INFO_LABEL = "this.me/blob/v2/stream";
 const V2_TAG_INFO_LABEL = "this.me/blob/v2/tag";
+const V3_KDF_LABEL = "this.me/blob/v3/kdf";
+const V3_ENC_INFO_LABEL = "this.me/blob/v3/enc";
+const V3_MAC_INFO_LABEL = "this.me/blob/v3/mac";
+const V3_STREAM_INFO_LABEL = "this.me/blob/v3/stream";
+const V3_TAG_INFO_LABEL = "this.me/blob/v3/tag";
+
+type V3Purpose =
+  | "this.me/blob/v3/branch"
+  | "this.me/blob/v3/value"
+  | "this.me/blob/v3/enc"
+  | "this.me/blob/v3/mac";
+
+type V3BlobMode = "branch" | "value";
+
+function getPerfSink(): any | null {
+  const sink = (globalThis as any).__ME_PERF__;
+  if (!sink || sink.enabled !== true) return null;
+  if (!sink.stats) sink.stats = {};
+  return sink;
+}
+
+function recordPerfSample(key: string, durationMs: number): void {
+  const sink = getPerfSink();
+  if (!sink) return;
+  const stat = sink.stats[key] || (sink.stats[key] = { calls: 0, totalMs: 0, samples: [] });
+  stat.calls++;
+  stat.totalMs += durationMs;
+  stat.samples.push(durationMs);
+}
 
 export function asciiToBytes(str: string): Uint8Array {
   const input = String(str ?? "");
@@ -275,6 +307,122 @@ function decodeBlobV2(blob: EncryptedBlob): {
   };
 }
 
+function encodeBlobV3(nonce: Uint8Array, tag: Uint8Array, ciphertext: Uint8Array): EncryptedBlob {
+  return bytesToHex(
+    concatBytes(BLOB_V2_MAGIC, new Uint8Array([BLOB_V3_VERSION]), nonce, tag, ciphertext),
+  );
+}
+
+function decodeBlobV3(blob: EncryptedBlob): {
+  header: Uint8Array;
+  nonce: Uint8Array;
+  tag: Uint8Array;
+  ciphertext: Uint8Array;
+} | null {
+  const bytes = hexToBytes(blob);
+  const headerLength = BLOB_V2_MAGIC.length + 1;
+  const minLength = headerLength + BLOB_V3_NONCE_LENGTH + BLOB_V3_TAG_LENGTH + 1;
+  if (bytes.length < minLength) return null;
+
+  for (let i = 0; i < BLOB_V2_MAGIC.length; i++) {
+    if (bytes[i] !== BLOB_V2_MAGIC[i]) return null;
+  }
+  if (bytes[BLOB_V2_MAGIC.length] !== BLOB_V3_VERSION) return null;
+
+  const header = bytes.subarray(0, headerLength);
+  const nonceStart = headerLength;
+  const tagStart = nonceStart + BLOB_V3_NONCE_LENGTH;
+  const ciphertextStart = tagStart + BLOB_V3_TAG_LENGTH;
+
+  return {
+    header,
+    nonce: bytes.subarray(nonceStart, tagStart),
+    tag: bytes.subarray(tagStart, ciphertextStart),
+    ciphertext: bytes.subarray(ciphertextStart),
+  };
+}
+
+function deriveBlobV3Keys(
+  chain: Uint8Array[],
+  mode: V3BlobMode,
+  path: string[],
+): { encKey: Uint8Array; macKey: Uint8Array; pathContext: Uint8Array } {
+  const purpose: V3Purpose = mode === "branch" ? "this.me/blob/v3/branch" : "this.me/blob/v3/value";
+  const baseKey = deriveSecretMaterialV3(chain, purpose);
+  const pathContext = normalizePathContext(path);
+  const encInfoLabel = asciiToBytes(V3_ENC_INFO_LABEL);
+  const macInfoLabel = asciiToBytes(V3_MAC_INFO_LABEL);
+  try {
+    const encKey = hmacKeccak256(baseKey, encInfoLabel, lengthPrefixed(pathContext));
+    const macKey = hmacKeccak256(baseKey, macInfoLabel, lengthPrefixed(pathContext));
+    return { encKey, macKey, pathContext };
+  } finally {
+    wipeBytes(baseKey, encInfoLabel, macInfoLabel);
+  }
+}
+
+function generateBlobV3Keystream(
+  encKey: Uint8Array,
+  nonce: Uint8Array,
+  pathContext: Uint8Array,
+  length: number,
+): Uint8Array {
+  const out = new Uint8Array(length);
+  let offset = 0;
+  let counter = 0;
+  const streamLabel = asciiToBytes(V3_STREAM_INFO_LABEL);
+
+  try {
+    while (offset < length) {
+      const counterBytes = uint32ToBytes(counter);
+      const block = keccakBytes(
+        streamLabel,
+        lengthPrefixed(encKey),
+        lengthPrefixed(nonce),
+        counterBytes,
+        lengthPrefixed(pathContext),
+      );
+      try {
+        const chunkLength = Math.min(block.length, length - offset);
+        out.set(block.subarray(0, chunkLength), offset);
+        offset += chunkLength;
+        counter++;
+      } finally {
+        wipeBytes(counterBytes, block);
+      }
+    }
+    return out;
+  } finally {
+    wipeBytes(streamLabel);
+  }
+}
+
+function computeBlobV3Tag(
+  macKey: Uint8Array,
+  header: Uint8Array,
+  nonce: Uint8Array,
+  pathContext: Uint8Array,
+  ciphertext: Uint8Array,
+): Uint8Array {
+  const tagLabel = asciiToBytes(V3_TAG_INFO_LABEL);
+  const cipherLength = uint64ToBytes(ciphertext.length);
+  let full: Uint8Array | null = null;
+  try {
+    full = hmacKeccak256(
+      macKey,
+      tagLabel,
+      lengthPrefixed(header),
+      lengthPrefixed(nonce),
+      lengthPrefixed(pathContext),
+      cipherLength,
+      ciphertext,
+    );
+    return Uint8Array.from(full.subarray(0, BLOB_V3_TAG_LENGTH));
+  } finally {
+    wipeBytes(tagLabel, cipherLength, full);
+  }
+}
+
 function encryptBlobV2(value: any, secret: string, path: string[]): EncryptedBlob {
   const json = JSON.stringify(value);
   const bytes = asciiToBytes(String(json));
@@ -361,6 +509,117 @@ function legacyXorDecrypt(hex: string, secret: string, path: string[]): any {
     return null;
   } finally {
     wipeBytes(encryptedBytes, keyBytes, out);
+  }
+}
+
+export function deriveSecretMaterialV3(chain: Uint8Array[], purpose: V3Purpose): Uint8Array {
+  if (!Array.isArray(chain) || chain.length < 6) {
+    throw new Error("V3 derivation requires a complete secret chain.");
+  }
+
+  const kdfLabel = asciiToBytes(V3_KDF_LABEL);
+  const purposeBytes = asciiToBytes(purpose);
+  const transcriptParts = [kdfLabel, lengthPrefixed(purposeBytes), ...chain.map((segment) => lengthPrefixed(segment))];
+  let transcript: Uint8Array | null = null;
+
+  try {
+    transcript = concatBytes(...transcriptParts);
+    return keccakBytes(transcript);
+  } finally {
+    wipeBytes(kdfLabel, purposeBytes, transcript, ...transcriptParts);
+  }
+}
+
+// From Corte 4 onward, v3 is the default write format. Version detection keeps v2/legacy readable.
+export function detectBlobVersion(blob: EncryptedBlob): "v3" | "v2" | "legacy" {
+  try {
+    const bytes = hexToBytes(blob);
+    if (bytes.length < BLOB_V2_MAGIC.length + 1) return "legacy";
+    for (let i = 0; i < BLOB_V2_MAGIC.length; i++) {
+      if (bytes[i] !== BLOB_V2_MAGIC[i]) return "legacy";
+    }
+    const version = bytes[BLOB_V2_MAGIC.length];
+    if (version === BLOB_V3_VERSION) return "v3";
+    if (version === BLOB_V2_VERSION) return "v2";
+    return "legacy";
+  } catch {
+    return "legacy";
+  }
+}
+
+export function encryptBlobV3(
+  value: any,
+  chain: Uint8Array[],
+  mode: V3BlobMode,
+  path: string[],
+): EncryptedBlob {
+  const json = JSON.stringify(value);
+  const bytes = asciiToBytes(String(json));
+  const nonce = getRandomBytes(BLOB_V3_NONCE_LENGTH);
+  const { encKey, macKey, pathContext } = deriveBlobV3Keys(chain, mode, path);
+  let keystream: Uint8Array | null = null;
+  let ciphertext: Uint8Array | null = null;
+  let header: Uint8Array | null = null;
+  let tag: Uint8Array | null = null;
+  try {
+    keystream = generateBlobV3Keystream(encKey, nonce, pathContext, bytes.length);
+    ciphertext = new Uint8Array(bytes.length);
+    for (let i = 0; i < bytes.length; i++) {
+      ciphertext[i] = bytes[i] ^ keystream[i];
+    }
+
+    header = concatBytes(BLOB_V2_MAGIC, new Uint8Array([BLOB_V3_VERSION]));
+    tag = computeBlobV3Tag(macKey, header, nonce, pathContext, ciphertext);
+    return encodeBlobV3(nonce, tag, ciphertext);
+  } finally {
+    wipeBytes(bytes, nonce, encKey, macKey, pathContext, keystream, ciphertext, header, tag);
+  }
+}
+
+export function decryptBlobV3(
+  blob: EncryptedBlob,
+  chain: Uint8Array[],
+  mode: V3BlobMode,
+  path: string[],
+): any {
+  const totalStart = performance.now();
+  const decoded = decodeBlobV3(blob);
+  if (!decoded) {
+    recordPerfSample("crypto.decryptBlobV3.total", performance.now() - totalStart);
+    return null;
+  }
+
+  const deriveStart = performance.now();
+  const { encKey, macKey, pathContext } = deriveBlobV3Keys(chain, mode, path);
+  recordPerfSample("crypto.decryptBlobV3.deriveBlobV3Keys", performance.now() - deriveStart);
+  let expectedTag: Uint8Array | null = null;
+  let keystream: Uint8Array | null = null;
+  let clear: Uint8Array | null = null;
+  try {
+    const tagStart = performance.now();
+    expectedTag = computeBlobV3Tag(macKey, decoded.header, decoded.nonce, pathContext, decoded.ciphertext);
+    const tagOk = constantTimeEqual(expectedTag, decoded.tag);
+    recordPerfSample("crypto.decryptBlobV3.tagValidation", performance.now() - tagStart);
+    if (!tagOk) return null;
+
+    const streamStart = performance.now();
+    keystream = generateBlobV3Keystream(encKey, decoded.nonce, pathContext, decoded.ciphertext.length);
+    clear = new Uint8Array(decoded.ciphertext.length);
+    for (let i = 0; i < decoded.ciphertext.length; i++) {
+      clear[i] = decoded.ciphertext[i] ^ keystream[i];
+    }
+    recordPerfSample("crypto.decryptBlobV3.keystreamXor", performance.now() - streamStart);
+
+    const parseStart = performance.now();
+    const json = utf8ToString(clear);
+    const parsed = JSON.parse(json);
+    recordPerfSample("crypto.decryptBlobV3.decodeParse", performance.now() - parseStart);
+    return parsed;
+  } catch {
+    return null;
+  } finally {
+    recordPerfSample("crypto.decryptBlobV3.total", performance.now() - totalStart);
+    wipeBytes(encKey, macKey, pathContext, expectedTag, keystream, clear);
   }
 }
 

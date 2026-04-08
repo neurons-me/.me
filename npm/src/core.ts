@@ -1,4 +1,6 @@
 import {
+  decryptBlobV3,
+  detectBlobVersion,
   isEncryptedBlob,
   xorDecrypt,
 } from "./crypto.js";
@@ -34,6 +36,7 @@ import {
   isPointer,
   pathStartsWith,
 } from "./operators.js";
+import { collectSecretChainV3 } from "./secret-context.js";
 import {
   computeEffectiveSecret,
   getChunkId,
@@ -50,6 +53,23 @@ import {
   cloneValue,
   normalizeSelectorPath,
 } from "./utils.js";
+
+function getPerfSink(): any | null {
+  const sink = (globalThis as any).__ME_PERF__;
+  if (!sink || sink.enabled !== true) return null;
+  if (!sink.stats) sink.stats = {};
+  return sink;
+}
+
+function recordPerfSample(key: string, durationMs: number): void {
+  const sink = getPerfSink();
+  if (!sink) return;
+  const stat = sink.stats[key] || (sink.stats[key] = { calls: 0, totalMs: 0, samples: [] });
+  stat.calls++;
+  stat.totalMs += durationMs;
+  stat.samples.push(durationMs);
+}
+
 export {
   commitMapping,
   commitMemoryOnly,
@@ -214,25 +234,30 @@ export function readPath(self: MEKernelLike, rawPath: SemanticPath): any {
 
   const scope = resolveBranchScope(self, path);
   if (scope && scope.length > 0 && pathStartsWith(path, scope)) {
-    if (path.length === scope.length) return undefined;
-    const scopeSecret = computeEffectiveSecret(self, scope);
-    if (!scopeSecret) return null;
-    const chunkId = getChunkId(self, path, scope);
-    let branchObj = getDecryptedChunk(self, scope, scopeSecret, chunkId);
-    if (!branchObj && chunkId !== "default") {
-      branchObj = getDecryptedChunk(self, scope, scopeSecret, "default");
+    const branchStart = performance.now();
+    try {
+      if (path.length === scope.length) return undefined;
+      const scopeSecret = computeEffectiveSecret(self, scope);
+      if (!scopeSecret) return null;
+      const chunkId = getChunkId(self, path, scope);
+      let branchObj = getDecryptedChunk(self, scope, scopeSecret, chunkId);
+      if (!branchObj && chunkId !== "default") {
+        branchObj = getDecryptedChunk(self, scope, scopeSecret, "default");
+      }
+      if (!branchObj) return undefined;
+      const rel = path.slice(scope.length);
+      let ref: any = branchObj;
+      for (const part of rel) {
+        if (!ref || typeof ref !== "object") return undefined;
+        ref = ref[part];
+      }
+      if (isPointer(ref)) return self.readPath(ref.__ptr.split(".").filter(Boolean));
+      if (isIdentityRef(ref)) return cloneValue(ref);
+      if (ref && typeof ref === "object") return cloneValue(ref);
+      return ref;
+    } finally {
+      recordPerfSample("core.readPath.secret.branch", performance.now() - branchStart);
     }
-    if (!branchObj) return undefined;
-    const rel = path.slice(scope.length);
-    let ref: any = branchObj;
-    for (const part of rel) {
-      if (!ref || typeof ref !== "object") return undefined;
-      ref = ref[part];
-    }
-    if (isPointer(ref)) return self.readPath(ref.__ptr.split(".").filter(Boolean));
-    if (isIdentityRef(ref)) return cloneValue(ref);
-    if (ref && typeof ref === "object") return cloneValue(ref);
-    return ref;
   }
 
   const directRaw = getIndex(self, path);
@@ -249,7 +274,23 @@ export function readPath(self: MEKernelLike, rawPath: SemanticPath): any {
   if (isPointer(raw)) return self.readPath(raw.__ptr.split(".").filter(Boolean));
   if (isIdentityRef(raw)) return raw;
   if (!isEncryptedBlob(raw)) return raw;
-  const effectiveSecret = computeEffectiveSecret(self, path);
-  if (!effectiveSecret) return null;
-  return xorDecrypt(raw, effectiveSecret, path);
+  const valueStart = performance.now();
+  const blobVersion = detectBlobVersion(raw);
+  if (blobVersion === "v3") {
+    try {
+      const chain = collectSecretChainV3(self, path, "value");
+      return decryptBlobV3(raw, chain, "value", path);
+    } catch {
+      return null;
+    } finally {
+      recordPerfSample("core.readPath.secret.value.v3", performance.now() - valueStart);
+    }
+  }
+  try {
+    const effectiveSecret = computeEffectiveSecret(self, path);
+    if (!effectiveSecret) return null;
+    return xorDecrypt(raw, effectiveSecret, path);
+  } finally {
+    recordPerfSample("core.readPath.secret.value.v2_legacy", performance.now() - valueStart);
+  }
 }

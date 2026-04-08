@@ -565,6 +565,8 @@ export interface MEKernelLike extends Record<string, any> {
   localSecrets: Record<string, string>;
   localNoises: Record<string, string>;
   encryptedBranches: Record<string, EncryptedBlob | Record<string, EncryptedBlob>>;
+  /** Internal write preference. v3 is the default from Corte 4; v2 remains for compatibility and rollback. */
+  secretBlobVersion: "v2" | "v3";
   keySpaces: Record<string, StoredWrappedKey>;
   recipientKeyring: Record<string, CryptoKey>;
   index: Record<string, any>;

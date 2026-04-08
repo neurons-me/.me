@@ -1,4 +1,4 @@
-import { xorEncrypt } from "./crypto.js";
+import { encryptBlobV3, xorEncrypt } from "./crypto.js";
 import {
   clearDerivationsByPrefix,
   invalidateFromPath,
@@ -26,6 +26,7 @@ import {
   resolveBranchScope,
   setChunkBlob,
 } from "./secret.js";
+import { collectSecretChainV3 } from "./secret-context.js";
 import type {
   KernelMemory,
   MappingInstruction,
@@ -221,7 +222,10 @@ export function commitValueMapping(
     }
 
     if (scopeSecret) {
-      const blob = xorEncrypt(branchObj, scopeSecret, scope);
+      // v3 is the primary write path. v2 remains available only for compatibility and rollback forcing.
+      const blob = self.secretBlobVersion === "v2"
+        ? xorEncrypt(branchObj, scopeSecret, scope)
+        : encryptBlobV3(branchObj, collectSecretChainV3(self, scope, "branch"), "branch", scope);
       setChunkBlob(self, scope, chunkId, blob, scopeSecret);
     }
     storedValue = expression;
@@ -230,7 +234,9 @@ export function commitValueMapping(
     if (isPointer(expression) || isIdentityRef(expression) || !shouldEncryptValue) {
       storedValue = expression;
     } else {
-      storedValue = xorEncrypt(expression, effectiveSecret, targetPath);
+      storedValue = self.secretBlobVersion === "v2"
+        ? xorEncrypt(expression, effectiveSecret, targetPath)
+        : encryptBlobV3(expression, collectSecretChainV3(self, targetPath, "value"), "value", targetPath);
     }
   } else {
     storedValue = expression;

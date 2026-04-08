@@ -12,6 +12,8 @@
  * ---------------------------------------------------------
  */
 import {
+  detectBlobVersion,
+  encryptBlobV3,
   exportP256PublicKey,
   generateP256KeyPair,
   importP256PublicKey,
@@ -36,6 +38,7 @@ import {
 } from "./operators.js";
 import * as ProxyRuntime from "./proxy.js";
 import * as Secret from "./secret.js";
+import { collectSecretChainV3 } from "./secret-context.js";
 import type {
   EncryptedBlob,
   KernelMemory,
@@ -112,6 +115,7 @@ export class ME {
   private localSecrets!: Record<string, string>;
   private localNoises!: Record<string, string>;
   private encryptedBranches!: Record<string, EncryptedBlob | Record<string, EncryptedBlob>>;
+  private secretBlobVersion!: "v2" | "v3";
   private keySpaces!: Record<string, StoredWrappedKey>;
   private recipientKeyring!: Record<string, CryptoKey>;
   private index!: Record<string, any>;
@@ -314,8 +318,77 @@ export class ME {
     return Core.replayMemories(this as unknown as MEKernelLike, memories);
   }
 
+  /**
+   * Re-encrypt existing secret branch chunks into blob v3.
+   * This remains useful after v3 became the default write path because older snapshots
+   * and mixed runtimes may still carry branch blobs in v2 or legacy layouts.
+   * It only touches `encryptedBranches`; it never rewrites historical memories.
+   */
+  migrateEncryptedBranchesToV3(): {
+    migratedScopes: number;
+    migratedChunks: number;
+    skipped: number;
+    errors: number;
+  } {
+    const report = {
+      migratedScopes: 0,
+      migratedChunks: 0,
+      skipped: 0,
+      errors: 0,
+    };
+
+    for (const scopeKey of Object.keys(this.encryptedBranches)) {
+      const scope = scopeKey.split(".").filter(Boolean);
+      const scopeSecret = this.computeEffectiveSecret(scope);
+      if (!scopeSecret) {
+        report.skipped++;
+        continue;
+      }
+
+      let migratedInScope = 0;
+      try {
+        const chunks = this.ensureScopeChunks(scope, scopeSecret);
+        const chain = collectSecretChainV3(this as unknown as MEKernelLike, scope, "branch");
+        for (const [chunkId, blob] of Object.entries(chunks)) {
+          if (detectBlobVersion(blob as EncryptedBlob) === "v3") {
+            report.skipped++;
+            continue;
+          }
+
+          const data = this.getDecryptedChunk(scope, scopeSecret, chunkId);
+          if (!data || typeof data !== "object") {
+            report.errors++;
+            continue;
+          }
+
+          this.setChunkBlob(scope, chunkId, encryptBlobV3(data, chain, "branch", scope), scopeSecret);
+          migratedInScope++;
+          report.migratedChunks++;
+        }
+      } catch {
+        report.errors++;
+      } finally {
+        this.clearScopeChunkCache(scopeKey);
+      }
+
+      if (migratedInScope > 0) {
+        report.migratedScopes++;
+      }
+    }
+
+    return report;
+  }
+
   private normalizeArgs(args: any[]): any {
     return ProxyRuntime.normalizeArgs(args);
+  }
+
+  /**
+   * Internal escape hatch for tests and controlled rollback verification.
+   * Not part of the public runtime surface.
+   */
+  private setSecretBlobVersionForTesting(version: "v2" | "v3"): void {
+    this.secretBlobVersion = version;
   }
 
   private opKind(op: string): string | null {
