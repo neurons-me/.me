@@ -15,29 +15,6 @@ import { hashFn } from "./utils.js";
 
 const MAX_DECRYPTED_BRANCH_CACHE_ENTRIES = 64;
 
-function getPerfSink(): any | null {
-  const sink = (globalThis as any).__ME_PERF__;
-  if (!sink || sink.enabled !== true) return null;
-  if (!sink.stats) sink.stats = {};
-  if (!sink.counters) sink.counters = {};
-  return sink;
-}
-
-function recordPerfSample(key: string, durationMs: number): void {
-  const sink = getPerfSink();
-  if (!sink) return;
-  const stat = sink.stats[key] || (sink.stats[key] = { calls: 0, totalMs: 0, samples: [] });
-  stat.calls++;
-  stat.totalMs += durationMs;
-  stat.samples.push(durationMs);
-}
-
-function incrementPerfCounter(key: string): void {
-  const sink = getPerfSink();
-  if (!sink) return;
-  sink.counters[key] = (sink.counters[key] || 0) + 1;
-}
-
 function touchLruEntry<K, V>(cache: Map<K, V>, key: K, value: V): void {
   if (cache.has(key)) cache.delete(key);
   cache.set(key, value);
@@ -178,51 +155,56 @@ export function setChunkBlob(
   self.decryptedBranchCache.delete(chunkCacheKey(scopeKey, chunkId));
 }
 
+export function primeDecryptedBranchCache(
+  self: MEKernelLike,
+  scope: SemanticPath,
+  chunkId: string,
+  data: any,
+): void {
+  // Branch writes already hold the clear object in memory, so we seed the cache here
+  // and avoid paying a full decrypt on the first read right after mutation.
+  const scopeKey = scope.join(".");
+  const blob = getChunkBlob(self, scope, chunkId);
+  if (!blob) return;
+  const ck = chunkCacheKey(scopeKey, chunkId);
+  touchLruEntry(self.decryptedBranchCache, ck, {
+    epoch: self.secretEpoch,
+    blob,
+    data,
+  });
+  trimLruCache(self.decryptedBranchCache, MAX_DECRYPTED_BRANCH_CACHE_ENTRIES);
+}
+
 export function getDecryptedChunk(
   self: MEKernelLike,
   scope: SemanticPath,
   scopeSecret: string,
   chunkId: string,
 ): any | undefined {
-  const totalStart = performance.now();
   const scopeKey = scope.join(".");
   const blob = getChunkBlob(self, scope, chunkId);
-  if (!blob) {
-    recordPerfSample("secret-storage.getDecryptedChunk.total", performance.now() - totalStart);
-    return undefined;
-  }
+  if (!blob) return undefined;
   const ck = chunkCacheKey(scopeKey, chunkId);
   const hit = self.decryptedBranchCache.get(ck);
   if (hit && hit.epoch === self.secretEpoch && hit.blob === blob) {
-    incrementPerfCounter("secret-storage.getDecryptedChunk.cache.hit");
     touchLruEntry(self.decryptedBranchCache, ck, hit);
-    recordPerfSample("secret-storage.getDecryptedChunk.total", performance.now() - totalStart);
     return hit.data;
   }
-  incrementPerfCounter("secret-storage.getDecryptedChunk.cache.miss");
 
   const version = detectBlobVersion(blob);
   let data: any = null;
   if (version === "v3") {
     try {
-      const start = performance.now();
       const chain = collectSecretChainV3(self, scope, "branch");
       data = decryptBlobV3(blob, chain, "branch", scope);
-      recordPerfSample("secret-storage.getDecryptedChunk.v3", performance.now() - start);
     } catch {
       data = null;
     }
   } else {
-    const start = performance.now();
     data = xorDecrypt(blob, scopeSecret, scope);
-    recordPerfSample("secret-storage.getDecryptedChunk.v2_legacy", performance.now() - start);
   }
-  if (!data || typeof data !== "object") {
-    recordPerfSample("secret-storage.getDecryptedChunk.total", performance.now() - totalStart);
-    return undefined;
-  }
+  if (!data || typeof data !== "object") return undefined;
   touchLruEntry(self.decryptedBranchCache, ck, { epoch: self.secretEpoch, blob, data });
   trimLruCache(self.decryptedBranchCache, MAX_DECRYPTED_BRANCH_CACHE_ENTRIES);
-  recordPerfSample("secret-storage.getDecryptedChunk.total", performance.now() - totalStart);
   return data;
 }

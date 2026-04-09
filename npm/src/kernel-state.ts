@@ -1,9 +1,11 @@
 import * as Utils from "./utils.js";
 import type {
   EncryptedBlob,
+  MEBlobV3KeyCacheEntry,
   KernelMemory,
   MEBranchScopeCacheEntry,
   MEDecryptedBranchCacheEntry,
+  MEDecryptedValueCacheEntry,
   MEDerivationRecord,
   MEEffectiveSecretCacheEntry,
   StoredWrappedKey,
@@ -26,6 +28,8 @@ export type SecretState = {
   scopeCache: Map<string, MEBranchScopeCacheEntry>;
   effectiveSecretCache: Map<string, MEEffectiveSecretCacheEntry>;
   decryptedBranchCache: Map<string, MEDecryptedBranchCacheEntry>;
+  decryptedValueCache: Map<string, MEDecryptedValueCacheEntry>;
+  v3KeyCache: Map<string, MEBlobV3KeyCacheEntry>;
   secretChunkSize: number;
   secretHashBuckets: number;
 };
@@ -74,6 +78,8 @@ export function createInitialKernelState(): KernelState {
       scopeCache: new Map(),
       effectiveSecretCache: new Map(),
       decryptedBranchCache: new Map(),
+      decryptedValueCache: new Map(),
+      v3KeyCache: new Map(),
       secretChunkSize: 256,
       secretHashBuckets: 16,
     },

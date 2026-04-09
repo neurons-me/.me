@@ -492,6 +492,19 @@ export interface MEDecryptedBranchCacheEntry {
   data: any;
 }
 
+export interface MEDecryptedValueCacheEntry {
+  epoch: number;
+  blob: EncryptedBlob;
+  data: any;
+}
+
+export interface MEBlobV3KeyCacheEntry {
+  epoch: number;
+  encKey: Uint8Array;
+  macKey: Uint8Array;
+  pathContext: Uint8Array;
+}
+
 export interface MEInspectResult {
   memories: Memory[];
   index: Record<string, any>;
@@ -581,6 +594,8 @@ export interface MEKernelLike extends Record<string, any> {
   scopeCache: Map<string, MEBranchScopeCacheEntry>;
   effectiveSecretCache: Map<string, MEEffectiveSecretCacheEntry>;
   decryptedBranchCache: Map<string, MEDecryptedBranchCacheEntry>;
+  decryptedValueCache: Map<string, MEDecryptedValueCacheEntry>;
+  v3KeyCache: Map<string, MEBlobV3KeyCacheEntry>;
   readonly secretChunkSize: number;
   readonly secretHashBuckets: number;
   readonly unsafeEval: boolean;

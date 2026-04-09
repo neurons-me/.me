@@ -156,6 +156,85 @@ async function main(): Promise<void> {
     assert.equal(restored("profile.mode"), "locked");
   });
 
+  await test("value-level cache does not leak mutable object references", () => {
+    const me: any = new ME();
+    me["_"]("root-secret");
+    me.profile.settings({
+      city: "Cordoba",
+      nested: { safe: true },
+    });
+
+    const first = me("profile.settings");
+    first.city = "Mutated";
+    first.nested.safe = false;
+
+    const second = me("profile.settings");
+    assert.deepEqual(second, {
+      city: "Cordoba",
+      nested: { safe: true },
+    });
+  });
+
+  await test("value-level cache invalidates when secret epoch changes", () => {
+    const me: any = new ME();
+    me["_"]("root-secret");
+    me.profile.name("RootPrivate");
+
+    assert.equal(me("profile.name"), "RootPrivate");
+
+    me["_"]("new-root-secret");
+    const value = me("profile.name");
+    assert.ok(value === undefined || value === null);
+  });
+
+  await test("branch write primes cache for immediate read", () => {
+    const me: any = new ME();
+    me.wallet["_"]("steel-door");
+    me.wallet.balance(100);
+    me.wallet.balance(250);
+
+    const result = me("wallet.balance");
+    assert.equal(result, 250);
+    assert.equal(me("wallet.balance"), 250);
+  });
+
+  await test("branch cache priming is scoped to the written chunk", () => {
+    const me: any = new ME();
+    me.vault["_"]("scope-secret");
+    me.vault.data[1].value(10);
+    me.vault.data[300].value(300);
+
+    me.decryptedBranchCache.clear();
+    me.vault.data[1].value(11);
+
+    const result = me("vault.data[300].value");
+    assert.equal(result, 300);
+    assert.equal(me("vault.data[1].value"), 11);
+  });
+
+  await test("branch cache priming invalidates when secret epoch changes", () => {
+    const me: any = new ME();
+    me.wallet["_"]("steel-door");
+    me.wallet.balance(100);
+    me.wallet.balance(250);
+    me.wallet["_"]("new-steel-door");
+
+    const result = me("wallet.balance");
+    assert.ok(result === undefined || result === null);
+  });
+
+  await test("tampered branch blob bypasses primed cache and fails closed", () => {
+    const me: any = new ME();
+    me.vault["_"]("steel-door");
+    me.vault.data[1].value(100);
+
+    const chunkId = me.getChunkId(["vault", "data", "1", "value"], ["vault"]);
+    me.encryptedBranches.vault[chunkId] = flipLastHexNibble(me.encryptedBranches.vault[chunkId]);
+
+    const result = me("vault.data[1].value");
+    assert.ok(result === undefined || result === null);
+  });
+
   await test("v2 and legacy blobs remain readable", async () => {
     const v2 = new ME() as any;
     v2.setSecretBlobVersionForTesting("v2");

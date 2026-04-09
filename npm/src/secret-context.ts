@@ -6,22 +6,6 @@ const MAX_EFFECTIVE_SECRET_CACHE_ENTRIES = 256;
 const V3_DOMAIN = "this.me/blob/v3";
 const V3_NO_NOISE_SENTINEL = "this.me/blob/v3/no-noise";
 
-function getPerfSink(): any | null {
-  const sink = (globalThis as any).__ME_PERF__;
-  if (!sink || sink.enabled !== true) return null;
-  if (!sink.stats) sink.stats = {};
-  return sink;
-}
-
-function recordPerfSample(key: string, durationMs: number): void {
-  const sink = getPerfSink();
-  if (!sink) return;
-  const stat = sink.stats[key] || (sink.stats[key] = { calls: 0, totalMs: 0, samples: [] });
-  stat.calls++;
-  stat.totalMs += durationMs;
-  stat.samples.push(durationMs);
-}
-
 function touchLruEntry<K, V>(cache: Map<K, V>, key: K, value: V): void {
   if (cache.has(key)) cache.delete(key);
   cache.set(key, value);
@@ -126,6 +110,13 @@ export function bumpSecretEpoch(self: MEKernelLike): void {
   self.scopeCache.clear();
   self.effectiveSecretCache.clear();
   self.decryptedBranchCache.clear();
+  self.decryptedValueCache.clear();
+  for (const cached of self.v3KeyCache.values()) {
+    cached.encKey.fill(0);
+    cached.macKey.fill(0);
+    cached.pathContext.fill(0);
+  }
+  self.v3KeyCache.clear();
 }
 
 export function computeEffectiveSecret(self: MEKernelLike, path: SemanticPath): string {
@@ -214,30 +205,25 @@ export function collectSecretChainV3(
   targetPath: SemanticPath,
   mode: "branch" | "value",
 ): Uint8Array[] {
-  const start = performance.now();
-  try {
-    const scopePath = resolveBranchScope(self, targetPath);
-    if (!scopePath) {
-      throw new Error(`No secret context active for "${targetPath.join(".")}".`);
-    }
-    if (mode === "branch" && scopePath.length === 0) {
-      throw new Error("Branch v3 derivation does not support the root secret scope.");
-    }
-
-    const anchorPath = mode === "branch" ? scopePath : targetPath;
-    const activeNoise = findActiveNoiseBoundary(self, anchorPath);
-    const noiseBoundaryBytes =
-      activeNoise.key === null ? utf8Bytes(V3_NO_NOISE_SENTINEL) : utf8Bytes(activeNoise.key);
-
-    return [
-      utf8Bytes(V3_DOMAIN),
-      utf8Bytes(mode),
-      normalizePathBytes(scopePath),
-      normalizePathBytes(anchorPath),
-      noiseBoundaryBytes,
-      ...collectLineageSegments(self, anchorPath, activeNoise),
-    ];
-  } finally {
-    recordPerfSample(`secret-context.collectSecretChainV3.${mode}`, performance.now() - start);
+  const scopePath = resolveBranchScope(self, targetPath);
+  if (!scopePath) {
+    throw new Error(`No secret context active for "${targetPath.join(".")}".`);
   }
+  if (mode === "branch" && scopePath.length === 0) {
+    throw new Error("Branch v3 derivation does not support the root secret scope.");
+  }
+
+  const anchorPath = mode === "branch" ? scopePath : targetPath;
+  const activeNoise = findActiveNoiseBoundary(self, anchorPath);
+  const noiseBoundaryBytes =
+    activeNoise.key === null ? utf8Bytes(V3_NO_NOISE_SENTINEL) : utf8Bytes(activeNoise.key);
+
+  return [
+    utf8Bytes(V3_DOMAIN),
+    utf8Bytes(mode),
+    normalizePathBytes(scopePath),
+    normalizePathBytes(anchorPath),
+    noiseBoundaryBytes,
+    ...collectLineageSegments(self, anchorPath, activeNoise),
+  ];
 }

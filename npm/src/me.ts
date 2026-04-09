@@ -44,7 +44,9 @@ import type {
   KernelMemory,
   MappingInstruction,
   MEBranchScopeCacheEntry,
+  MEBlobV3KeyCacheEntry,
   MEDecryptedBranchCacheEntry,
+  MEDecryptedValueCacheEntry,
   MEDerivationRecord,
   MEEffectiveSecretCacheEntry,
   MEKernelLike,
@@ -130,6 +132,8 @@ export class ME {
   private scopeCache!: Map<string, MEBranchScopeCacheEntry>;
   private effectiveSecretCache!: Map<string, MEEffectiveSecretCacheEntry>;
   private decryptedBranchCache!: Map<string, MEDecryptedBranchCacheEntry>;
+  private decryptedValueCache!: Map<string, MEDecryptedValueCacheEntry>;
+  private v3KeyCache!: Map<string, MEBlobV3KeyCacheEntry>;
   private readonly secretChunkSize!: number;
   private readonly secretHashBuckets!: number;
   private readonly unsafeEval!: boolean;

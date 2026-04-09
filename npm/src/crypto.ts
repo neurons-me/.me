@@ -36,22 +36,7 @@ type V3Purpose =
   | "this.me/blob/v3/mac";
 
 type V3BlobMode = "branch" | "value";
-
-function getPerfSink(): any | null {
-  const sink = (globalThis as any).__ME_PERF__;
-  if (!sink || sink.enabled !== true) return null;
-  if (!sink.stats) sink.stats = {};
-  return sink;
-}
-
-function recordPerfSample(key: string, durationMs: number): void {
-  const sink = getPerfSink();
-  if (!sink) return;
-  const stat = sink.stats[key] || (sink.stats[key] = { calls: 0, totalMs: 0, samples: [] });
-  stat.calls++;
-  stat.totalMs += durationMs;
-  stat.samples.push(durationMs);
-}
+export type BlobV3DerivedKeys = { encKey: Uint8Array; macKey: Uint8Array; pathContext: Uint8Array };
 
 export function asciiToBytes(str: string): Uint8Array {
   const input = String(str ?? "");
@@ -342,11 +327,11 @@ function decodeBlobV3(blob: EncryptedBlob): {
   };
 }
 
-function deriveBlobV3Keys(
+export function deriveBlobV3Keys(
   chain: Uint8Array[],
   mode: V3BlobMode,
   path: string[],
-): { encKey: Uint8Array; macKey: Uint8Array; pathContext: Uint8Array } {
+): BlobV3DerivedKeys {
   const purpose: V3Purpose = mode === "branch" ? "this.me/blob/v3/branch" : "this.me/blob/v3/value";
   const baseKey = deriveSecretMaterialV3(chain, purpose);
   const pathContext = normalizePathContext(path);
@@ -582,44 +567,38 @@ export function decryptBlobV3(
   mode: V3BlobMode,
   path: string[],
 ): any {
-  const totalStart = performance.now();
-  const decoded = decodeBlobV3(blob);
-  if (!decoded) {
-    recordPerfSample("crypto.decryptBlobV3.total", performance.now() - totalStart);
-    return null;
-  }
-
-  const deriveStart = performance.now();
   const { encKey, macKey, pathContext } = deriveBlobV3Keys(chain, mode, path);
-  recordPerfSample("crypto.decryptBlobV3.deriveBlobV3Keys", performance.now() - deriveStart);
+  try {
+    return decryptBlobV3WithDerivedKeys(blob, { encKey, macKey, pathContext });
+  } finally {
+    wipeBytes(encKey, macKey, pathContext);
+  }
+}
+
+export function decryptBlobV3WithDerivedKeys(blob: EncryptedBlob, keys: BlobV3DerivedKeys): any {
+  const decoded = decodeBlobV3(blob);
+  if (!decoded) return null;
+
   let expectedTag: Uint8Array | null = null;
   let keystream: Uint8Array | null = null;
   let clear: Uint8Array | null = null;
   try {
-    const tagStart = performance.now();
-    expectedTag = computeBlobV3Tag(macKey, decoded.header, decoded.nonce, pathContext, decoded.ciphertext);
+    expectedTag = computeBlobV3Tag(keys.macKey, decoded.header, decoded.nonce, keys.pathContext, decoded.ciphertext);
     const tagOk = constantTimeEqual(expectedTag, decoded.tag);
-    recordPerfSample("crypto.decryptBlobV3.tagValidation", performance.now() - tagStart);
     if (!tagOk) return null;
 
-    const streamStart = performance.now();
-    keystream = generateBlobV3Keystream(encKey, decoded.nonce, pathContext, decoded.ciphertext.length);
+    keystream = generateBlobV3Keystream(keys.encKey, decoded.nonce, keys.pathContext, decoded.ciphertext.length);
     clear = new Uint8Array(decoded.ciphertext.length);
     for (let i = 0; i < decoded.ciphertext.length; i++) {
       clear[i] = decoded.ciphertext[i] ^ keystream[i];
     }
-    recordPerfSample("crypto.decryptBlobV3.keystreamXor", performance.now() - streamStart);
 
-    const parseStart = performance.now();
     const json = utf8ToString(clear);
-    const parsed = JSON.parse(json);
-    recordPerfSample("crypto.decryptBlobV3.decodeParse", performance.now() - parseStart);
-    return parsed;
+    return JSON.parse(json);
   } catch {
     return null;
   } finally {
-    recordPerfSample("crypto.decryptBlobV3.total", performance.now() - totalStart);
-    wipeBytes(encKey, macKey, pathContext, expectedTag, keystream, clear);
+    wipeBytes(expectedTag, keystream, clear);
   }
 }
 

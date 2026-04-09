@@ -13,5 +13,6 @@ export {
   ensureScopeChunks,
   getChunkBlob,
   setChunkBlob,
+  primeDecryptedBranchCache,
   getDecryptedChunk,
 } from "./secret-storage.js";

@@ -23,6 +23,7 @@ import {
   computeEffectiveSecret,
   getChunkId,
   getDecryptedChunk,
+  primeDecryptedBranchCache,
   resolveBranchScope,
   setChunkBlob,
 } from "./secret.js";
@@ -227,6 +228,9 @@ export function commitValueMapping(
         ? xorEncrypt(branchObj, scopeSecret, scope)
         : encryptBlobV3(branchObj, collectSecretChainV3(self, scope, "branch"), "branch", scope);
       setChunkBlob(self, scope, chunkId, blob, scopeSecret);
+      // Seed the decrypted branch cache with the exact object we just wrote so the first
+      // post-mutation read can hit cache instead of decrypting the freshly written chunk.
+      primeDecryptedBranchCache(self, scope, chunkId, branchObj);
     }
     storedValue = expression;
   } else if (effectiveSecret) {
@@ -456,6 +460,7 @@ export function removeSubtree(self: MEKernelLike, targetPath: SemanticPath) {
       delete ref[rel[rel.length - 1]];
       const nextBlob = xorEncrypt(branchObj, scopeSecret, scope);
       setChunkBlob(self, scope, writeChunkId, nextBlob, scopeSecret);
+      primeDecryptedBranchCache(self, scope, writeChunkId, branchObj);
     }
   }
 

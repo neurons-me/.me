@@ -1,0 +1,1 @@
+import{_ as i,o as a,c as n,ae as t}from"./chunks/framework.CY_fclge.js";const o=JSON.parse('{"title":"","description":"","frontmatter":{},"headers":[],"relativePath":"Axioms.md","filePath":"Axioms.md"}'),h={name:"Axioms.md"};function l(e,s,k,p,r,E){return a(),n("div",null,[...s[0]||(s[0]=[t("",69)])])}const g=i(h,[["render",l]]);export{o as __pageData,g as default};

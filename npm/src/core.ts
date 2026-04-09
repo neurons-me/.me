@@ -1,5 +1,6 @@
 import {
-  decryptBlobV3,
+  decryptBlobV3WithDerivedKeys,
+  deriveBlobV3Keys,
   detectBlobVersion,
   isEncryptedBlob,
   xorDecrypt,
@@ -54,20 +55,82 @@ import {
   normalizeSelectorPath,
 } from "./utils.js";
 
-function getPerfSink(): any | null {
-  const sink = (globalThis as any).__ME_PERF__;
-  if (!sink || sink.enabled !== true) return null;
-  if (!sink.stats) sink.stats = {};
-  return sink;
+const MAX_DECRYPTED_VALUE_CACHE_ENTRIES = 128;
+const MAX_V3_KEY_CACHE_ENTRIES = 256;
+
+function touchLruEntry<K, V>(cache: Map<K, V>, key: K, value: V): void {
+  if (cache.has(key)) cache.delete(key);
+  cache.set(key, value);
 }
 
-function recordPerfSample(key: string, durationMs: number): void {
-  const sink = getPerfSink();
-  if (!sink) return;
-  const stat = sink.stats[key] || (sink.stats[key] = { calls: 0, totalMs: 0, samples: [] });
-  stat.calls++;
-  stat.totalMs += durationMs;
-  stat.samples.push(durationMs);
+function trimLruCache<K, V>(cache: Map<K, V>, limit: number): void {
+  while (cache.size > limit) {
+    const oldest = cache.keys().next();
+    if (oldest.done) return;
+    cache.delete(oldest.value);
+  }
+}
+
+function trimV3KeyCache(self: MEKernelLike): void {
+  while (self.v3KeyCache.size > MAX_V3_KEY_CACHE_ENTRIES) {
+    const oldest = self.v3KeyCache.keys().next();
+    if (oldest.done) return;
+    const entry = self.v3KeyCache.get(oldest.value);
+    if (entry) {
+      entry.encKey.fill(0);
+      entry.macKey.fill(0);
+      entry.pathContext.fill(0);
+    }
+    self.v3KeyCache.delete(oldest.value);
+  }
+}
+
+function cloneCachedValue<T>(value: T): T {
+  if (value && typeof value === "object") return cloneValue(value);
+  return value;
+}
+
+function getCachedV3Keys(self: MEKernelLike, path: SemanticPath) {
+  const cacheKey = `value::${path.join(".")}`;
+  const hit = self.v3KeyCache.get(cacheKey);
+  if (hit && hit.epoch === self.secretEpoch) {
+    touchLruEntry(self.v3KeyCache, cacheKey, hit);
+    return hit;
+  }
+
+  const chain = collectSecretChainV3(self, path, "value");
+  const derived = deriveBlobV3Keys(chain, "value", path);
+  const cached = {
+    epoch: self.secretEpoch,
+    encKey: Uint8Array.from(derived.encKey),
+    macKey: Uint8Array.from(derived.macKey),
+    pathContext: Uint8Array.from(derived.pathContext),
+  };
+  touchLruEntry(self.v3KeyCache, cacheKey, cached);
+  trimV3KeyCache(self);
+  return cached;
+}
+
+function getCachedValueDecrypt(self: MEKernelLike, path: SemanticPath, blob: `0x${string}`): any {
+  const cacheKey = path.join(".");
+  const hit = self.decryptedValueCache.get(cacheKey);
+  if (hit && hit.epoch === self.secretEpoch && hit.blob === blob) {
+    touchLruEntry(self.decryptedValueCache, cacheKey, hit);
+    return cloneCachedValue(hit.data);
+  }
+  return undefined;
+}
+
+function setCachedValueDecrypt(self: MEKernelLike, path: SemanticPath, blob: `0x${string}`, value: any): any {
+  const cacheKey = path.join(".");
+  const cachedValue = cloneCachedValue(value);
+  touchLruEntry(self.decryptedValueCache, cacheKey, {
+    epoch: self.secretEpoch,
+    blob,
+    data: cachedValue,
+  });
+  trimLruCache(self.decryptedValueCache, MAX_DECRYPTED_VALUE_CACHE_ENTRIES);
+  return cloneCachedValue(cachedValue);
 }
 
 export {
@@ -234,30 +297,25 @@ export function readPath(self: MEKernelLike, rawPath: SemanticPath): any {
 
   const scope = resolveBranchScope(self, path);
   if (scope && scope.length > 0 && pathStartsWith(path, scope)) {
-    const branchStart = performance.now();
-    try {
-      if (path.length === scope.length) return undefined;
-      const scopeSecret = computeEffectiveSecret(self, scope);
-      if (!scopeSecret) return null;
-      const chunkId = getChunkId(self, path, scope);
-      let branchObj = getDecryptedChunk(self, scope, scopeSecret, chunkId);
-      if (!branchObj && chunkId !== "default") {
-        branchObj = getDecryptedChunk(self, scope, scopeSecret, "default");
-      }
-      if (!branchObj) return undefined;
-      const rel = path.slice(scope.length);
-      let ref: any = branchObj;
-      for (const part of rel) {
-        if (!ref || typeof ref !== "object") return undefined;
-        ref = ref[part];
-      }
-      if (isPointer(ref)) return self.readPath(ref.__ptr.split(".").filter(Boolean));
-      if (isIdentityRef(ref)) return cloneValue(ref);
-      if (ref && typeof ref === "object") return cloneValue(ref);
-      return ref;
-    } finally {
-      recordPerfSample("core.readPath.secret.branch", performance.now() - branchStart);
+    if (path.length === scope.length) return undefined;
+    const scopeSecret = computeEffectiveSecret(self, scope);
+    if (!scopeSecret) return null;
+    const chunkId = getChunkId(self, path, scope);
+    let branchObj = getDecryptedChunk(self, scope, scopeSecret, chunkId);
+    if (!branchObj && chunkId !== "default") {
+      branchObj = getDecryptedChunk(self, scope, scopeSecret, "default");
     }
+    if (!branchObj) return undefined;
+    const rel = path.slice(scope.length);
+    let ref: any = branchObj;
+    for (const part of rel) {
+      if (!ref || typeof ref !== "object") return undefined;
+      ref = ref[part];
+    }
+    if (isPointer(ref)) return self.readPath(ref.__ptr.split(".").filter(Boolean));
+    if (isIdentityRef(ref)) return cloneValue(ref);
+    if (ref && typeof ref === "object") return cloneValue(ref);
+    return ref;
   }
 
   const directRaw = getIndex(self, path);
@@ -274,23 +332,20 @@ export function readPath(self: MEKernelLike, rawPath: SemanticPath): any {
   if (isPointer(raw)) return self.readPath(raw.__ptr.split(".").filter(Boolean));
   if (isIdentityRef(raw)) return raw;
   if (!isEncryptedBlob(raw)) return raw;
-  const valueStart = performance.now();
   const blobVersion = detectBlobVersion(raw);
   if (blobVersion === "v3") {
     try {
-      const chain = collectSecretChainV3(self, path, "value");
-      return decryptBlobV3(raw, chain, "value", path);
+      const cached = getCachedValueDecrypt(self, path, raw);
+      if (cached !== undefined) return cached;
+      const keys = getCachedV3Keys(self, path);
+      const value = decryptBlobV3WithDerivedKeys(raw, keys);
+      if (value === null || value === undefined) return value;
+      return setCachedValueDecrypt(self, path, raw, value);
     } catch {
       return null;
-    } finally {
-      recordPerfSample("core.readPath.secret.value.v3", performance.now() - valueStart);
     }
   }
-  try {
-    const effectiveSecret = computeEffectiveSecret(self, path);
-    if (!effectiveSecret) return null;
-    return xorDecrypt(raw, effectiveSecret, path);
-  } finally {
-    recordPerfSample("core.readPath.secret.value.v2_legacy", performance.now() - valueStart);
-  }
+  const effectiveSecret = computeEffectiveSecret(self, path);
+  if (!effectiveSecret) return null;
+  return xorDecrypt(raw, effectiveSecret, path);
 }
