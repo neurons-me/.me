@@ -1,8 +1,12 @@
-# .me Kernel Phases (0-8)
-This document defines the behavioral contract validated by `tests/phases.test.js`.
+# .me Kernel Phases (0–8)
+
+This document defines the **behavioral contract** of the `.me` kernel, validated by `tests/phases.test.js`.
+
+Each phase represents a foundational capability that builds upon the previous ones, culminating in a fully expressive, secure, and observable personal semantic engine.
 
 ## Phase 0 | Identity + Secret Scope
-Purpose: validate identity claim and stealth secret roots.
+
+**Core Idea:** Establish identity and introduce structural privacy through stealth roots.
 
 ```js
 me["@"]("jabellae");
@@ -11,154 +15,150 @@ me.finance.fuel_price(24.5);
 ```
 
 Expected:
+
 - `me("finance")` -> `undefined`
 - `me("finance.fuel_price")` -> `24.5`
 
-## Phase 1 | Structural [] Selectors
-Purpose: validate indexed write/read semantics.
+This phase proves that secrecy is **structural**, not global.
 
-```js
+## Phase 1 | Structural Selectors ([])
+
+**Core Idea:** The kernel treats numeric and string keys as first-class structural elements.
+
+```ts
 me.fleet.trucks[1].km(1000);
+me.fleet.trucks[1].fuel(200);
 me.fleet.trucks[2].fuel(350);
+me.fleet.trucks[2].km(1200);
+me.fleet.trucks[3].km(800);
+me.fleet.trucks[3].fuel(150);
 ```
 
-Expected:
-- `me("fleet.trucks[1].km")` -> `1000`
-- `me("fleet.trucks[2].fuel")` -> `350`
+**Expected:**
 
-## Phase 2 | `[i]` Broadcast with `=`
-Purpose: one formula applied to all indexed members.
+- me("fleet.trucks[1].km") → 1000
+- me("fleet.trucks[2].fuel") → 350
 
-```js
+This establishes that .me is a true **semantic tree**, not just a plain object.
+
+## Phase 2 | Broadcast Iterator [i] + Derivation =
+
+**Core Idea:** One rule can be applied across an entire collection declaratively.
+
+```ts
 me.fleet["trucks[i]"]["="]("efficiency", "km / fuel");
 ```
 
-Expected:
-- `me("fleet.trucks[1].efficiency")` -> `5`
-- `me("fleet.trucks[2].efficiency")` -> `1200 / 350`
+**Expected:**
 
-## Phase 3 | Logical Filters
-Purpose: declarative filtered selection.
+- me("fleet.trucks[1].efficiency") → 5
+- me("fleet.trucks[2].efficiency") → `1200 / 350`
+- me("fleet.trucks[3].efficiency") → `800 / 150`
 
-```js
+This is the birth of **mass reactive logic** without loops or manual subscriptions.
+
+## Phase 3 | Logical Filters & Filtered Broadcast
+
+**Core Idea:** You can query and mutate subsets of the tree using declarative predicates.
+
+```ts
 me("fleet.trucks[efficiency < 4.5]");
 me("fleet.trucks[efficiency < 4.5 || km > 1100]");
-```
-
-Expected keys:
-- `["2"]`
-
-## Phase 3.1 | Filtered Broadcast
-Purpose: mutate only nodes matching filter predicate.
-
-```js
 me.fleet["trucks[efficiency < 4.5]"]["="]("alert", "true");
 ```
 
-Expected:
-- `me("fleet.trucks[2].alert")` -> `true`
-- non-matching nodes remain `undefined`
+**Expected:**
 
-## Phase 4 | Range + Multi-Select
-Purpose: deterministic slicing of indexed collections.
+- `me("fleet.trucks[efficiency < 4.5]")` returns only truck `2`
+- `me("fleet.trucks[efficiency < 4.5 || km > 1100]")` still returns only truck `2`
+- `me("fleet.trucks[2].alert")` → `true`
+- non-matching trucks keep `alert` as `undefined`
 
-```js
-me("fleet.trucks[1..2].efficiency");
+This phase introduces **declarative selection and conditional mutation**.
+
+## Phase 4 | Range & Multi-Select
+
+**Core Idea:** Precise, deterministic slicing of indexed data.
+
+```ts
+me("fleet.trucks[1..3].efficiency");
 me("fleet.trucks[[1,3]].efficiency");
 ```
 
-Expected keys:
-- range -> `["1", "2"]`
-- sparse -> `["1", "3"]`
+Supports both contiguous ranges and sparse selections.
 
-## Phase 5 | Transform Projection (Read-Only)
-Purpose: computed projection without mutation.
+## Phase 5 | Transform Projections (Read-only)
 
-```js
+**Core Idea:** Compute derived views without mutating the underlying tree.
+
+```ts
 me("fleet.trucks[x => x.efficiency * 1.2]");
 ```
 
-Example output shape:
+Returns a projected shape while leaving original data untouched.
 
-```json
-{
-  "1": 6,
-  "2": "<number>",
-  "3": "<number>"
-}
-```
+## Phase 6 | Cross-Scope Contract Integrity
 
-## Phase 6 | Contract Integrity
-Purpose: deterministic arithmetic across public + secret scopes.
+**Core Idea:** Public and secret data can participate in the same derivations securely.
 
-```js
+```ts
 me.fleet["trucks[i]"]["="]("total_cost", "fuel * finance.fuel_price");
 ```
 
-Expected:
-- `me("fleet.trucks[2].total_cost")` -> `350 * 24.5`
+**Expected:**
 
-## Phase 7A | Temporal Rehydration (Replay Equivalence)
-Purpose: behavioral persistence via memory replay.
+- `me("fleet.trucks[2].total_cost")` → `350 * 24.5`
 
-```js
+The kernel correctly resolves mixed public/secret dependencies while preserving stealth.
+
+## Phase 7A | Temporal Rehydration (Memory Replay)
+
+**Core Idea:** The entire history is portable and deterministic.
+
+```ts
+import ME from "this.me";
+
 const memories = me.inspect().memories;
 const me2 = new ME();
-me2.replayMemories(memory);
+me2.replayMemories(memories);
 ```
 
-Expected:
-- `me2("fleet.trucks[2].total_cost") === me("fleet.trucks[2].total_cost")`
-- secret root stealth remains preserved
+me2 must behave **identically** to the original, including secret stealth.
 
 ## Phase 7B | Atomic Snapshot Rehydration
-Purpose: full-state portability (semantic + cryptographic planes).
 
-```js
+**Core Idea:** Full state portability including cryptographic planes.
+
+```ts
+import ME from "this.me";
+
 const snapshot = me.exportSnapshot();
 const me3 = new ME();
 me3.rehydrate(snapshot);
 ```
 
-Expected:
-- memory/state outputs preserved
-- `encryptedBranches`, `localSecrets`, `localNoises` preserved exactly
+Preserves public state, encrypted branches, secrets, and noises exactly.
 
-# Phase 8 | Incremental Recompute + Explain
-Phase 8 validates two production-oriented capabilities:
-- Observability via `me.explain(path)`.
-- Incremental recompute via dependency mapping (`ref -> targets`).
+## Phase 8 | Incremental Intelligence + Observability
 
-## Contract
-1. Derivations created with `=` must register dependencies.
-2. On leaf mutation, only subscribed targets are re-evaluated.
-3. `explain(path)` must disclose expression inputs with origin flags:
-   - `public`
-   - `stealth` (masked)
+**Core Idea:** The kernel must be efficient and fully explainable.
 
-## Example
-```js
+- Derivations register precise dependencies (ref → targets).
+- Only affected nodes recompute on change (inverted dependency index).
+- `me.explain(path)` provides complete traceability, including masked secret origins.
+- Invalid executable tokens remain declarative strings instead of arbitrary code execution.
+
+**Example:**
+
+```ts
 me.fleet["trucks[i]"]["="]("total_cost", "fuel * finance.fuel_price");
-me.finance.fuel_price(30); // should update total_cost subscribers
+me.finance.fuel_price(30);
 
 const trace = me.explain("fleet.trucks[2].total_cost");
 ```
 
-Expected trace shape:
+The trace must show inputs, origins (`public` / `stealth`), masking, and dependency graph.
 
-```json
-{
-  "path": "fleet.trucks.2.total_cost",
-  "value": 29970,
-  "derivation": {
-    "expression": "fuel * finance.fuel_price",
-    "inputs": [
-      { "label": "fuel", "path": "fleet.trucks.2.fuel", "value": 999, "origin": "public", "masked": false },
-      { "label": "finance.fuel_price", "path": "finance.fuel_price", "value": "●●●●", "origin": "stealth", "masked": true }
-    ]
-  },
-  "meta": {
-    "dependsOn": ["fleet.trucks.2.fuel", "finance.fuel_price"]
-  }
-}
-```
+**This progression is the real contract of .me:**
+
+From simple identity and privacy → to structural collections → to declarative logic at scale → to secure cross-scope computation → to full temporal and cryptographic portability → finally reaching **observable, incremental intelligence**.

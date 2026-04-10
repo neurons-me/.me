@@ -1,8 +1,14 @@
-import type { MEKernelLike, SemanticPath } from "./types.js";
+import { deriveBlobV3Keys } from "./crypto.ts";
+import type {
+  MEBlobV3KeyCacheEntry,
+  MEKernelLike,
+  SemanticPath,
+} from "./types.js";
 import { hashFn } from "./utils.ts";
 
 const MAX_SCOPE_CACHE_ENTRIES = 256;
 const MAX_EFFECTIVE_SECRET_CACHE_ENTRIES = 256;
+const MAX_V3_KEY_CACHE_ENTRIES = 256;
 const V3_DOMAIN = "this.me/blob/v3";
 const V3_NO_NOISE_SENTINEL = "this.me/blob/v3/no-noise";
 
@@ -16,6 +22,20 @@ function trimLruCache<K, V>(cache: Map<K, V>, limit: number): void {
     const oldest = cache.keys().next();
     if (oldest.done) return;
     cache.delete(oldest.value);
+  }
+}
+
+function trimV3KeyCache(self: MEKernelLike): void {
+  while (self.v3KeyCache.size > MAX_V3_KEY_CACHE_ENTRIES) {
+    const oldest = self.v3KeyCache.keys().next();
+    if (oldest.done) return;
+    const entry = self.v3KeyCache.get(oldest.value);
+    if (entry) {
+      entry.encKey.fill(0);
+      entry.macKey.fill(0);
+      entry.pathContext.fill(0);
+    }
+    self.v3KeyCache.delete(oldest.value);
   }
 }
 
@@ -226,4 +246,34 @@ export function collectSecretChainV3(
     noiseBoundaryBytes,
     ...collectLineageSegments(self, anchorPath, activeNoise),
   ];
+}
+
+/**
+ * Retorna las keys derivadas v3 desde el cache compartido o las deriva usando
+ * la ruta oficial del runtime. Se comparte entre value reads y branch reads.
+ * @internal
+ */
+export function getOrDeriveV3Keys(
+  self: MEKernelLike,
+  path: SemanticPath,
+  mode: "branch" | "value",
+): MEBlobV3KeyCacheEntry {
+  const cacheKey = `${mode}::${path.join(".")}`;
+  const hit = self.v3KeyCache.get(cacheKey);
+  if (hit && hit.epoch === self.secretEpoch) {
+    touchLruEntry(self.v3KeyCache, cacheKey, hit);
+    return hit;
+  }
+
+  const chain = collectSecretChainV3(self, path, mode);
+  const derived = deriveBlobV3Keys(chain, mode, path);
+  const cached: MEBlobV3KeyCacheEntry = {
+    epoch: self.secretEpoch,
+    encKey: Uint8Array.from(derived.encKey),
+    macKey: Uint8Array.from(derived.macKey),
+    pathContext: Uint8Array.from(derived.pathContext),
+  };
+  touchLruEntry(self.v3KeyCache, cacheKey, cached);
+  trimV3KeyCache(self);
+  return cached;
 }

@@ -21,25 +21,27 @@ Published outputs:
 ### 1) Node.js / Bundlers (recommended)
 
 ```ts
-import Me from "this.me";
-const me = new Me();
+import ME from "this.me";
+const me = new ME();
 ```
 
 ### 2) CommonJS (legacy Node)
 
 ```js
-const Me = require("this.me");
-const me = new Me();
+const ME = require("this.me");
+const me = new ME();
 ```
 
 ### 3) Browser with bundler (Vite/Webpack/Rollup)
 
 ```ts
-import Me from "this.me";
-const me = new Me();
+import ME from "this.me";
+const me = new ME();
 ```
 
 ### 4) Browser without bundler (CDN + UMD)
+
+The UMD global is still `Me`.
 
 ```html
 <script src="https://unpkg.com/this.me/dist/me.umd.js"></script>

@@ -538,26 +538,34 @@ export function encryptBlobV3(
   mode: V3BlobMode,
   path: string[],
 ): EncryptedBlob {
+  const { encKey, macKey, pathContext } = deriveBlobV3Keys(chain, mode, path);
+  try {
+    return encryptBlobV3WithDerivedKeys(value, { encKey, macKey, pathContext });
+  } finally {
+    wipeBytes(encKey, macKey, pathContext);
+  }
+}
+
+export function encryptBlobV3WithDerivedKeys(value: any, keys: BlobV3DerivedKeys): EncryptedBlob {
   const json = JSON.stringify(value);
   const bytes = asciiToBytes(String(json));
   const nonce = getRandomBytes(BLOB_V3_NONCE_LENGTH);
-  const { encKey, macKey, pathContext } = deriveBlobV3Keys(chain, mode, path);
   let keystream: Uint8Array | null = null;
   let ciphertext: Uint8Array | null = null;
   let header: Uint8Array | null = null;
   let tag: Uint8Array | null = null;
   try {
-    keystream = generateBlobV3Keystream(encKey, nonce, pathContext, bytes.length);
+    keystream = generateBlobV3Keystream(keys.encKey, nonce, keys.pathContext, bytes.length);
     ciphertext = new Uint8Array(bytes.length);
     for (let i = 0; i < bytes.length; i++) {
       ciphertext[i] = bytes[i] ^ keystream[i];
     }
 
     header = concatBytes(BLOB_V2_MAGIC, new Uint8Array([BLOB_V3_VERSION]));
-    tag = computeBlobV3Tag(macKey, header, nonce, pathContext, ciphertext);
+    tag = computeBlobV3Tag(keys.macKey, header, nonce, keys.pathContext, ciphertext);
     return encodeBlobV3(nonce, tag, ciphertext);
   } finally {
-    wipeBytes(bytes, nonce, encKey, macKey, pathContext, keystream, ciphertext, header, tag);
+    wipeBytes(bytes, nonce, keystream, ciphertext, header, tag);
   }
 }
 

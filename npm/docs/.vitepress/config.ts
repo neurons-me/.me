@@ -48,52 +48,30 @@ export default defineConfig({
         text: "Guide",
         items: [
           { text: "Home", link: "/" },
-          { text: "API Overview", link: "/api/" },
+          { text: "Installation", link: "/Installation" },
+          { text: "Quick Start", link: "/QuickStart" }
+        ]
+      },
+      {
+        text: "Core Concepts",
+        items: [
           { text: "Runtime Surface", link: "/Runtime-Surface" },
           { text: "Space Algebra", link: "/Space-Algebra" },
           { text: "Proxy Calls", link: "/Proxy-Calls" },
-          { text: "Installation", link: "/Builds" },
           { text: "Operators", link: "/Operators" },
           { text: "Syntax", link: "/Syntax" },
-          { text: "Secrets", link: "/guides/Secrets" },
-          { text: "Shared Meaning", link: "/Shared-Meaning" },
-          { text: "Axioms", link: "/Axioms" },
-          { text: "Phases", link: "/Phases" }],
-      },
-      {
-        text: "Runtime",
-        items: [
-          { text: "Runtime Surface", link: "/Runtime-Surface" },
-          { text: "Space Algebra", link: "/Space-Algebra" },
-          { text: "Proxy Calls", link: "/Proxy-Calls" },
-          { text: "Operators", link: "/Operators" },
-          { text: "Syntax", link: "/Syntax" }
+          { text: "Secrets", link: "/guides/Secrets" }
         ],
-      },
-      {
-        text: "API Reference",
-        items: [
-          { text: "Overview", link: "/api/" },
-          {
-            text: "ME Class",
-            link: "/api/classes/ME",
-            items: [
-              { text: "Constructor", link: "/api/classes/ME#constructor" },
-              { text: "memories", link: "/api/classes/ME#memories" },
-              { text: "explain()", link: "/api/classes/ME#explain" },
-              { text: "exportSnapshot()", link: "/api/classes/ME#exportsnapshot" },
-              { text: "getRecomputeMode()", link: "/api/classes/ME#getrecomputemode" },
-              { text: "importSnapshot()", link: "/api/classes/ME#importsnapshot" },
-              { text: "inspect()", link: "/api/classes/ME#inspect" },
-              { text: "learn()", link: "/api/classes/ME#learn" },
-              { text: "rehydrate()", link: "/api/classes/ME#rehydrate" },
-              { text: "replayMemories()", link: "/api/classes/ME#replaymemories" },
-              { text: "setRecomputeMode()", link: "/api/classes/ME#setrecomputemode" },
-            ],
-          }
-        ],
-      },
-      {
+      },{
+    text: "Advanced Topics",
+    collapsed: true,
+    items: [
+      { text: "Shared Meaning", link: "/Shared-Meaning" },
+      { text: "Axioms", link: "/Axioms" },
+      { text: "Phases", link: "/Phases" },
+      { text: "Builds", link: "/Builds" },
+    ]
+  }, {
         text: "Examples",
         items: [
         { text: "Social Graph", link: "/examples/Social_Graph" },
@@ -116,6 +94,30 @@ export default defineConfig({
           { text: "Performance", link: "/tests/Performance" },
           { text: "Memory", link: "/Memory" }
         ],
-      }]
+      },{
+        text: "API Reference",
+        items: [
+          { text: "Overview", link: "/api/" },
+          {
+            text: "ME Class",
+            link: "/api/classes/ME",
+            items: [
+              { text: "Constructor", link: "/api/classes/ME#constructor" },
+              { text: "memories", link: "/api/classes/ME#memories" },
+              { text: "inspect()", link: "/api/classes/ME#inspect" },
+              { text: "explain()", link: "/api/classes/ME#explain" },
+              { text: "execute()", link: "/api/classes/ME#execute" },
+              { text: "exportSnapshot()", link: "/api/classes/ME#exportsnapshot" },
+              { text: "importSnapshot()", link: "/api/classes/ME#importsnapshot" },
+              { text: "rehydrate()", link: "/api/classes/ME#rehydrate" },
+              { text: "replayMemories()", link: "/api/classes/ME#replaymemories" },
+              { text: "learn()", link: "/api/classes/ME#learn" },
+              { text: "setRecomputeMode()", link: "/api/classes/ME#setrecomputemode" },
+              { text: "getRecomputeMode()", link: "/api/classes/ME#getrecomputemode" },
+            ],
+          }
+        ],
+      },
+    ]
   }
 });

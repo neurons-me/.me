@@ -15,39 +15,46 @@ npm install this.me
 ## In 30 seconds
 
 ```ts
-import Me from "this.me";
+import ME from "this.me";
 
-// Create your semantic kernel
-const me = new Me();
+const me = new ME();
 
 me["@"]("jabellae");                    // Your digital identity
 
-// Simple data
+// Public profile
 me.profile.name("José Abella");
 me.profile.bio("Building the semantic web.");
 
-// Relationships
+// Private wallet
+me.wallet["_"]("wallet-key-2026");
+me.wallet.balance(12480);
+
+// People
 me.users.ana.name("Ana");
-me.users.ana.age(22);
+me.users.ana.age(24);
+me.users.pablo.name("Pablo");
+me.users.pablo.age(19);
 
-me.friends.ana["->"]("users.ana");      // Ana is my friend
+// Relationships
+me.friends.ana["->"]("users.ana");
+me.friends.pablo["->"]("users.pablo");
 
-// Automatic derived logic — no hooks, no reducers
+// Automatic derived logic
 me.friends["[i]"]["="]("isAdult", "age >= 18");
 
-// Query naturally
-console.log(me("friends.ana.isAdult"));           // → true
+// Private group chat
+me.groups.vancouver["_"]("group-key-2026");
+me.groups.vancouver.messages[0].from("jabellae");
+me.groups.vancouver.messages[0].text("Who is bringing the car?");
 
-// Powerful queries in one line
-console.log(me("friends[age >= 18].name"));       // → { ana: "Ana" }
-
-// Explain anything
+console.log(me("profile.name"));                  // "José Abella"
+console.log(me("friends.ana.isAdult"));           // true
+console.log(me("friends[age >= 18].name"));       // { ana: "Ana", pablo: "Pablo" }
+console.log(me("wallet"));                        // undefined
+console.log(me("wallet.balance"));                // 12480
+console.log(me("groups.vancouver"));              // undefined
+console.log(me("groups.vancouver.messages[0].text"));
 console.log(me.explain("friends.ana.isAdult"));
-// → {
-//     result: true,
-//     dependsOn: ["users.ana.age"],
-//     formula: "age >= 18"
-//   }
 ```
 
 ## What is .me?
@@ -63,12 +70,12 @@ console.log(me.explain("friends.ana.isAdult"));
 - Define once, use everywhere — stop repeating code across projects.
 - Full transparency — `me.explain("path")` shows exactly how any value was computed.
 
-## Quick secret test
+## Quick Secret Test
 
 ```ts
-import Me from "this.me";
+import ME from "this.me";
 
-const me = new Me();
+const me = new ME();
 
 me["@"]("jabellae");
 
@@ -80,24 +87,20 @@ me.profile.bio("Building the semantic web.");
 me.wallet["_"]("my-secret-key");           // Create a hidden universe
 
 me.wallet.balance(12480);
-me.wallet.transactions[0] = { 
-  amount: 5000, 
-  to: "rent", 
-  date: "2026-04-01" 
-};
-
-me.wallet.transactions[1] = { 
-  amount: -320, 
-  to: "groceries", 
-  date: "2026-04-05" 
-};
-
+me.wallet.transactions[0].amount(5000);
+me.wallet.transactions[0].to("rent");
+me.wallet.transactions[0].date("2026-04-01");
+me.wallet.transactions[1].amount(-320);
+me.wallet.transactions[1].to("groceries");
+me.wallet.transactions[1].date("2026-04-05");
 me.wallet.note("Remember to renew passport");
 
 // === Secret Chat with Ana (completely hidden) ===
 me.chats.ana["_"]("our-secret-key");
-me.chats.ana.messages[0] = { from: "me", text: "Hey, did you get the documents?" };
-me.chats.ana.messages[1] = { from: "ana", text: "Yes, sending them now 🔥" };
+me.chats.ana.messages[0].from("me");
+me.chats.ana.messages[0].text("Hey, did you get the documents?");
+me.chats.ana.messages[1].from("ana");
+me.chats.ana.messages[1].text("Yes, sending them now.");
 
 // === What the outside world sees ===
 console.log(me("profile"));                    
@@ -131,71 +134,51 @@ Developers and creators who want to:
 npm install this.me
 ```
 
-## Social Network Demo
+## Canonical Example
 
 ```ts
-import Me from "this.me";
+import ME from "this.me";
 
-const me = new Me();
+const me = new ME();
 
 me["@"]("jabellae");
 
-// ====================== PUBLIC PROFILE ======================
+// Public profile
 me.profile.name("José Abella");
-me.profile.bio("Building the semantic web • Privacy maximalist");
-me.profile.location("Córdoba, Veracruz");
+me.profile.bio("Building the semantic web.");
 
-// ====================== SOCIAL GRAPH ======================
-me.following.ana["->"]("users.ana");
-me.following.luis["->"]("users.luis");
+// Private wallet
+me.wallet["_"]("wallet-key-2026");
+me.wallet.balance(12480);
+me.wallet.savings(4500);
 
-me.followers.ana["->"]("users.jabellae");
+// Social graph
+me.users.ana.name("Ana");
+me.users.ana.age(24);
+me.users.pablo.name("Pablo");
+me.users.pablo.age(19);
 
-// ====================== SECRET GROUPS ======================
-me.groups["trip-to-oaxaca"]["_"]("secret-trip-key");     // Hidden group
-me.groups["trip-to-oaxaca"].members.ana["->"]("users.ana");
-me.groups["trip-to-oaxaca"].date = "2026-05-15";
-me.groups["trip-to-oaxaca"].note = "Don't tell anyone yet";
+me.friends.ana["->"]("users.ana");
+me.friends.pablo["->"]("users.pablo");
+me.friends["[i]"]["="]("isAdult", "age >= 18");
 
-// Public group (visible)
-me.groups["veracruz-devs"].isPublic = true;
-me.groups["veracruz-devs"].members.jabellae["->"]("users.jabellae");
+// Private group chat
+me.groups.vancouver["_"]("group-key-2026");
+me.groups.vancouver.topic("Trip to Vancouver");
+me.groups.vancouver.members.count(4);
+me.groups.vancouver.messages[0].from("jabellae");
+me.groups.vancouver.messages[0].text("Who is bringing the car?");
 
-// ====================== POSTS WITH SELECTIVE PRIVACY ======================
-me.posts[0] = {
-  text: "Working on something new...",
-  visibility: "public"
-};
-
-me.posts[1] = {
-  text: "Found an amazing beach in Oaxaca",
-  visibility: "friends-only"     // Only people I follow can see it
-};
-
-me.posts[2] = {
-  text: "Secret trip planning 👀",
-  visibility: "group:trip-to-oaxaca"   // Only members of that hidden group
-};
-
-// ====================== PRIVATE MESSAGES ======================
-me.chats.ana["_"]("our-secret-chat-key");
-me.chats.ana.messages[0] = { from: "me", text: "Hey, did you see the new prototype?" };
-me.chats.ana.messages[1] = { from: "ana", text: "Yes! It's insane 🔥" };
-
-// ====================== SHARED PLACES ======================
-me.places.secretBeach["_"]("beach-key");
-me.places.secretBeach.location = "Oaxaca coast";
-me.places.secretBeach.note = "Only for close friends";
-
-// ====================== WHAT THE OUTSIDE WORLD SEES ======================
-console.log(me("profile"));                    // Public profile
-console.log(me("groups.veracruz-devs"));       // Public group
-console.log(me("groups.trip-to-oaxaca"));      // → undefined (hidden)
-console.log(me("posts[visibility=public]"));   // Only public posts
-console.log(me("chats.ana"));                  // → undefined (private chat)
+console.log(me("friends.ana.isAdult"));             // true
+console.log(me("friends[age >= 18].name"));         // { ana: "Ana", pablo: "Pablo" }
+console.log(me("wallet"));                          // undefined
+console.log(me("wallet.balance"));                  // 12480
+console.log(me("groups.vancouver"));                // undefined
+console.log(me("groups.vancouver.messages[0].text"));
+console.log(me.explain("friends.ana.isAdult"));
 ```
 
-[✍ Read the Docs →](https://neurons-me.github.io/.me/npm/docs/)
+[Read the Docs →](https://neurons-me.github.io/.me/npm/docs/)
 
 ---
 

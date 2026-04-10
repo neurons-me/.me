@@ -1,12 +1,19 @@
-# 𓎛 Kernel Intelligence
+# Kernel Intelligence
 ###### Reactive Inference in `.me`
 
-While the **Axioms** define identity, secrecy, and integrity, **Kernel Intelligence** defines how `.me` computes fast and predictably.
+While the **Axioms** define identity, secrecy, and integrity, **Kernel Intelligence** explains how `.me` recomputes, evaluates, and exposes meaning predictably.
 
----
+Today that intelligence is implemented across runtime modules such as:
 
-## ⟐ What "Intelligence" Means Here
+- `src/derivation.ts`
+- `src/evaluator.ts`
+- `src/core-read.ts`
+- `src/core-write.ts`
+- `src/core-snapshot.ts`
+
+## What "Intelligence" Means Here
 In `.me`, intelligence is not AI magic. It is:
+
 - **Dependency-aware recompute**
 - **Hermetic formula evaluation**
 - **Inspectable derivations**
@@ -17,30 +24,30 @@ You write:
 me.fleet["trucks[i]"]["="]("cost", "fuel * finance.fuel_price");
 ```
 
-The kernel builds relationships between paths, then re-computes only affected targets when inputs mutate.
+The kernel extracts references, stores the derivation graph, and recomputes only the affected targets when source paths change.
 
----
+## Incremental Recompute
+Instead of rescanning the whole tree on every change, `.me` keeps explicit derivation and subscriber maps.
 
-## 𓃭 Incremental Recompute (Phase 8)
-Instead of rescanning the entire tree on every change, `.me` tracks references from formulas.
+### Kernel evidence
 
-### Kernel evidence (`src/me.ts`)
+Representative runtime state in `src/types.ts`:
 
 ```ts
-private derivations: Record<string, { expression: string; evalScope: SemanticPath; refs: Array<{ label: string; path: string }>; lastComputedAt: number; }> = {};
-private refSubscribers: Record<string, string[]> = {};
+derivations: Record<string, MEDerivationRecord>;
+refSubscribers: Record<string, string[]>;
+refVersions: Record<string, number>;
+derivationRefVersions: Record<string, Record<string, number>>;
+staleDerivations: Set<string>;
 ```
 
-```ts
-private registerDerivation(targetPath: SemanticPath, evalScope: SemanticPath, expr: string): void {
-  // extracts refs, resolves relative/absolute paths, and registers subscribers
-}
-```
+Representative runtime flow in `src/derivation.ts`:
 
 ```ts
-private invalidateFromPath(path: SemanticPath): void {
-  // BFS queue: changed source -> subscribers -> recomputed targets
-}
+registerDerivation(...)
+invalidateFromPath(...)
+ensureTargetFresh(...)
+recomputeTarget(...)
 ```
 
 ### Runtime shape
@@ -52,40 +59,42 @@ mutation -> invalidateFromPath(source)
          -> queue next affected targets
 ```
 
+In lazy mode, `.me` postpones the recompute until the target is read, then uses `ensureTargetFresh(...)` before resolving the path.
+
 ### Minimal proof
 
 ```ts
-const me = new Me() as any;
+import ME from "this.me";
+
+const me = new ME();
+
 me.finance.fuel_price(24.5);
 me.fleet.trucks[1].fuel(200);
 me.fleet.trucks[2].fuel(350);
 me.fleet["trucks[i]"]["="]("cost", "fuel * finance.fuel_price");
 
 me.finance.fuel_price(25);
+
 console.log(me("fleet.trucks[1].cost")); // 5000
 console.log(me("fleet.trucks[2].cost")); // 8750
 ```
 
----
+## Hermetic Evaluator
+The formula engine is intentionally constrained. It tokenizes and evaluates expressions with a controlled grammar. There is no `eval` and no `new Function`.
 
-## 𓁟 Hermetic Evaluator (No `eval`, no `new Function`)
-The formula engine is intentionally constrained. It tokenizes and evaluates expressions with a controlled grammar.
+### Kernel evidence
 
-### Kernel evidence (`src/me.ts`)
+Representative runtime controls in `src/evaluator.ts` and `src/types.ts`:
 
 ```ts
-private readonly unsafeEval = false;
+unsafeEval: boolean;
+tokenizeEvalExpression(...)
+tryEvaluateAssignExpression(...)
 ```
 
 ```ts
 if (!/^[A-Za-z0-9_\s+\-*/%().<>=!&|\[\]"']+$/.test(raw)) return { ok: false };
-if (this.unsafeEval) return { ok: false };
-```
-
-```ts
-// tokenize -> shunting-yard -> RPN execution
-private tokenizeEvalExpression(...)
-private tryEvaluateAssignExpression(...)
+if (self.unsafeEval) return { ok: false };
 ```
 
 ### Supported operators
@@ -99,37 +108,38 @@ private tryEvaluateAssignExpression(...)
 ### Security behavior
 
 ```ts
-const me = new Me() as any;
+import ME from "this.me";
+
+const me = new ME();
+
 me.profile.age(30);
 me.profile["="]("adult", "age > 18");
 console.log(me("profile.adult")); // true
 
 me.profile["="]("bad", "1 + console.log(1)");
-console.log(me("profile.bad")); // expression fallback (not executable JS)
+console.log(me("profile.bad")); // expression fallback, not arbitrary JS execution
 ```
 
----
+## Explainable Derivations
+Every derived value can expose its provenance through `me.explain(path)`.
 
-## 𓆣 Explainable Derivations (`me.explain`)
-Every derived value can expose its provenance.
+### Kernel evidence
 
-### Kernel evidence (`src/me.ts`)
+`src/derivation.ts` builds explain traces from the registered derivation and masks secret-origin inputs:
 
 ```ts
-explain(path: string): {
-  path: string;
-  value: any;
-  derivation: null | { expression: string; inputs: Array<{ label: string; path: string; value: any; origin: "public" | "stealth"; masked: boolean }> };
-  meta: { dependsOn: string[]; lastComputedAt?: number };
-}
+explain(self, path)
 ```
 
-For secret-origin inputs, explain masks the value (`●●●●`) but still shows dependency and origin.
+For secret-origin inputs, explain keeps the dependency and origin but masks the value as `●●●●`.
 
 ### Example
 
 ```ts
-const me = new Me() as any;
+import ME from "this.me";
+
+const me = new ME();
+
 me.finance["_"]("k-2026");
 me.finance.fuel_price(24.5);
 me.fleet.trucks[2].fuel(350);
@@ -160,32 +170,35 @@ Expected trace shape:
 }
 ```
 
----
+## Replay + Portability
+`.me` snapshots and memory replay preserve visible runtime state, but there is an important nuance:
 
-## 𓈖 Replay + Portability
-Kernel intelligence is portable because derivations are rebuilt from memory/snapshot planes.
+- `exportSnapshot()` exports public/redacted memories plus secret/noise/encrypted branch planes.
+- `importSnapshot()` rebuilds the runtime state from those planes.
+- `replayMemories()` restores committed results. For `=` and `?`, it currently replays the materialized value, not the original live derivation graph.
+
+That means snapshots are portable and deterministic for state, but they are **not currently a full derivation-graph serializer**.
 
 ```ts
 const snapshot = me.exportSnapshot();
-const me2 = new Me() as any;
+
+const me2 = new ME();
 me2.importSnapshot(snapshot);
-console.log(me2("fleet.trucks.2.cost")); // same deterministic result
+
+console.log(me2("fleet.trucks.2.cost")); // same materialized state
 ```
 
----
-
-## ☯ Current Guarantees
+## Current Guarantees
 - **Deterministic recompute** through explicit dependency mapping.
 - **Safe expression runtime** with restricted grammar.
 - **Traceable outputs** via `me.explain(path)`.
-- **Stealth-aware observability** (secret inputs masked, not leaked).
+- **Stealth-aware observability** where secret inputs are masked instead of leaked.
 
-## ⟁ Current Limits (honest status)
-- No full AST optimizer yet (current evaluator is token/RPN based).
-- No built-in topological cycle rejection API yet; avoid circular formula graphs at user level.
-- Large collection setup still costs upfront time; local mutations are where O(k) wins.
-
----
+## Current Limits
+- No full AST optimizer yet; the evaluator is still token/RPN based.
+- No built-in public API for cycle rejection yet; avoid circular derivation graphs.
+- Snapshot/replay preserves materialized state, not the live derivation graph itself.
+- Large collection setup still costs upfront time; local mutations are where `O(k)` wins.
 
 ## Run Validation
 
@@ -195,5 +208,3 @@ node tests/axioms.test.ts
 ```
 
 If both pass, the intelligence layer is consistent with the kernel invariants.
-
-- suiGn

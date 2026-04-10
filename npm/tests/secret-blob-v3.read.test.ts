@@ -187,15 +187,20 @@ async function main(): Promise<void> {
     assert.ok(value === undefined || value === null);
   });
 
-  await test("branch write primes cache for immediate read", () => {
+  await test("branch write preloads v3 keys cache for immediate cold read", () => {
     const me: any = new ME();
     me.wallet["_"]("steel-door");
     me.wallet.balance(100);
     me.wallet.balance(250);
 
+    const cachedKeys = me.v3KeyCache.get("branch::wallet");
+    assert.ok(cachedKeys);
+    me.decryptedBranchCache.clear();
+
     const result = me("wallet.balance");
     assert.equal(result, 250);
     assert.equal(me("wallet.balance"), 250);
+    assert.strictEqual(me.v3KeyCache.get("branch::wallet"), cachedKeys);
   });
 
   await test("branch cache priming is scoped to the written chunk", () => {

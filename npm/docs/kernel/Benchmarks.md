@@ -1,3 +1,5 @@
+# Kernel Benchmarks
+
 ## Benchmark Overview
 This suite validates a single systems claim:
 
@@ -16,19 +18,25 @@ This suite validates a single systems claim:
 | #11 Secret Push vs Pull | `tests/Benchmarks/benchmark.11.secret-push-vs-pull.test.ts` | Secret/public split of push vs pull; confirms secret-path cost structure after chunking/cache refactors. |
 | Regression Gate | `tests/Benchmarks/benchmark.regression-gate.test.ts` | CI pass/fail checks for p95 latency, `k` complexity bound, and stealth masking correctness. |
 
-## Latest Results (Local Baseline)
+## Latest Verified Local Runs
 Machine: `Suis-MacBook-Air`  
-Run context: local, March 2026
+Run context: isolated local runs on `April 9, 2026`
+
+Notes:
+
+- The tables below were taken from isolated runs on the current branch.
+- `#9` and `#11` are the most sensitive to ambient machine load, so they should be read as performance envelopes, not hard SLAs.
+- The historical pre-5.4/5.5 secret baseline still lives in `tests/Benchmarks/BASELINE-5-FINAL.md`.
 
 ### #5 Throughput Under Sustained Mutation
 | Metric | Value (ms) |
 |---|---:|
-| p50 | 0.0041 |
-| p95 | 0.0077 |
-| p99 | 0.0132 |
-| max | 0.2680 |
+| p50 | 0.0061 |
+| p95 | 0.0096 |
+| p99 | 0.0162 |
+| max | 0.9394 |
 
-Windowed p95 drift: `-65.79%` (end window vs start window).
+Windowed p95 drift: `-42.28%` (end window vs start window).
 
 Interpretation:
 - No upward drift under sustained updates.
@@ -37,12 +45,12 @@ Interpretation:
 ### #6 Fan-Out Sensitivity Curves
 | Fanout | k | p50 (ms) | p95 (ms) | p99 (ms) |
 |---:|---:|---:|---:|---:|
-| 10 | 2 | 0.0098 | 0.0185 | 0.0919 |
-| 100 | 2 | 0.0059 | 0.0105 | 0.0158 |
-| 500 | 2 | 0.0057 | 0.0091 | 0.0144 |
-| 1000 | 2 | 0.0043 | 0.0068 | 0.0181 |
-| 2500 | 2 | 0.0040 | 0.0056 | 0.0114 |
-| 5000 | 2 | 0.0034 | 0.0038 | 0.0072 |
+| 10 | 2 | 0.0110 | 0.0192 | 0.1016 |
+| 100 | 2 | 0.0075 | 0.0140 | 0.0300 |
+| 500 | 2 | 0.0070 | 0.0101 | 0.0139 |
+| 1000 | 2 | 0.0057 | 0.0097 | 0.0196 |
+| 2500 | 2 | 0.0052 | 0.0076 | 0.0120 |
+| 5000 | 2 | 0.0046 | 0.0056 | 0.0081 |
 
 Interpretation:
 - `k` stays constant at `2`.
@@ -51,9 +59,9 @@ Interpretation:
 ### #7 Cold vs Warm Runtime Profiles
 | Nodes | Cold (ms) | Warm (ms) | Steady Avg (ms) | Steady Min (ms) | Steady Max (ms) |
 |---:|---:|---:|---:|---:|---:|
-| 100 | 0.1899 | 0.0948 | 0.0161 | 0.0077 | 0.3110 |
-| 1000 | 0.0082 | 0.0137 | 0.0044 | 0.0041 | 0.0067 |
-| 5000 | 0.0095 | 0.0096 | 0.0047 | 0.0036 | 0.0109 |
+| 100 | 0.1846 | 0.0909 | 0.0229 | 0.0091 | 0.4603 |
+| 1000 | 0.0078 | 0.0101 | 0.0056 | 0.0050 | 0.0108 |
+| 5000 | 0.0116 | 0.0108 | 0.0059 | 0.0046 | 0.0132 |
 
 Interpretation:
 - Cold penalty is isolated.
@@ -62,64 +70,69 @@ Interpretation:
 ### #8 Explain Overhead Budget
 | Mode | p50 (ms) | p95 (ms) | p99 (ms) |
 |---|---:|---:|---:|
-| baseline | 0.0055 | 0.0101 | 0.0173 |
-| with_explain | 0.0092 | 0.0138 | 0.0244 |
+| baseline | 0.0071 | 0.0139 | 0.0238 |
+| with_explain | 0.0113 | 0.0173 | 0.0282 |
 
-`p95` overhead: `36.63%`.
+`p95` overhead: `24.92%`.
 
 Interpretation:
 - `explain(path)` adds bounded overhead while preserving traceability.
 - Absolute overhead remains sub-millisecond, making it production-safe for real-time auditing.
 
 ### #9 Secret-Scope Performance Impact
+Repeated isolated runs on `April 9, 2026`:
+
 | Scope | p50 (ms) | p95 (ms) | p99 (ms) |
 |---|---:|---:|---:|
-| public | 0.0071 | 0.0150 | 0.1111 |
-| secret | 0.2492 | 0.2968 | 0.5470 |
-
-Secret `p95` slowdown vs public: `1878.33%`.
+| public | 0.0088 - 0.0095 | 0.0162 - 0.0170 | 0.0233 - 0.1565 |
+| secret | 0.5785 - 0.6073 | 0.7475 - 0.8788 | 1.0762 - 1.5146 |
 
 Interpretation:
-- Secret path remains slower than public by design cost (crypto + boundary logic), but now sits in sub-millisecond p95 absolute range for this scenario.
+- Secret path remains slower than public by design cost: crypto, stealth boundary logic, and lazy refresh/write-back.
+- In absolute terms, secret `p95` is now consistently sub-millisecond in isolated local runs for this scenario.
+- Compared with the March 2026 historical baseline in `BASELINE-5-FINAL.md` (`4.6503ms` secret `p95`), the current local envelope is roughly `81% - 84%` lower in absolute `p95`.
+- Slowdown percentages still look dramatic because the public path is already extremely close to the timer floor.
 
 ### #10 Push vs Pull (Eager vs Lazy)
-Selected rows (fanout = 5000):
+Selected row from the latest isolated run (`fanout = 5000`):
 
 | Mode | Fanout | k | Mutation p95 (ms) | Read p95 (ms) |
 |---|---:|---:|---:|---:|
-| eager | 5000 | 2 | 0.0017 | 0.0022 |
-| lazy | 5000 | 2 | 0.0028 | 0.0027 |
+| eager | 5000 | 2 | 0.0515 | 0.0478 |
+| lazy | 5000 | 2 | 0.0038 | 0.0035 |
 
 Interpretation:
-- Both modes are now low-latency.
-- Lazy/eager semantics are selectable without destabilizing performance envelopes.
+- Both modes remain low-latency in steady-state.
+- `push` and `first-read-after-write` stay measurable as separate costs, which is the benchmark's main purpose.
+- Single-run outliers can appear at lower fanouts, so this benchmark is best read as a shape test rather than a one-number SLA.
 
-### #11 Secret Push vs Pull (Chunked Secret Storage)
+### #11 Secret Push vs Pull (Shared v3 Key Cache + Lazy Recompute)
 | Plane | Nodes | Mutation p95 (ms) | Read p95 (ms) |
 |---|---:|---:|---:|
-| public | 100 | 0.0056 | 0.0121 |
-| secret | 100 | 0.0216 | 0.3438 |
-| public | 300 | 0.0027 | 0.0045 |
-| secret | 300 | 0.0122 | 0.1566 |
-| public | 600 | 0.0027 | 0.0041 |
-| secret | 600 | 0.0117 | 0.2653 |
+| public | 100 | 0.0173 | 0.0237 |
+| secret | 100 | 0.0472 | 0.7461 |
+| public | 300 | 0.0047 | 0.0047 |
+| secret | 300 | 0.0408 | 0.3542 |
+| public | 600 | 0.0042 | 0.0040 |
+| secret | 600 | 0.0403 | 0.6410 |
 
 Slowdown ratios (secret/public p95):
 
 | Nodes | Mutation slowdown x | Read slowdown x |
 |---:|---:|---:|
-| 100 | 3.86x | 28.41x |
-| 300 | 4.52x | 34.80x |
-| 600 | 4.33x | 64.71x |
+| 100 | 2.73x | 31.48x |
+| 300 | 8.68x | 75.36x |
+| 600 | 9.60x | 160.25x |
 
 Interpretation:
-- Chunking and cache reduced secret mutation slowdown to single-digit multiples.
-- Read slowdown remains higher than write slowdown, but absolute read p95 remains sub-millisecond.
+- Secret mutation cost stays in low-sub-millisecond territory.
+- Secret read cost is still the noisiest part of the runtime because this benchmark couples crypto with lazy derivation refresh and write-back.
+- In absolute terms, the latest isolated run still kept secret read `p95` below `1ms` at `100` and `600` nodes, and around `0.35ms` at `300` nodes.
 
 ## Regression Gate Status
 Latest gate output:
 
-- `latency_p95`: ✅ `0.0125ms` (threshold `20ms`)
+- `latency_p95`: ✅ `0.0201ms` (threshold `20ms`)
 - `complexity_k`: ✅ `k=2` (threshold `<=4`)
 - `stealth_masking`: ✅ `origin=stealth`, `masked=true`, `value=●●●●`
 
@@ -127,11 +140,11 @@ Latest gate output:
 - Public-path performance is stable and effectively bounded by small `k`.
 - Lazy/eager recompute modes are operational and benchmarked.
 - Explainability overhead is measurable and bounded.
-- Secret-path cost is no longer monolithic; chunked secret storage materially improved write-side scaling.
-- Privacy and semantic invariants remain intact (`test:prebuild` green).
+- Secret-path cost is no longer monolithic; shared v3 key reuse removed the worst cold branch-derivation penalty.
+- Secret reads are still the most expensive path, but they now sit in the sub-millisecond envelope for the main `#9` scenario on isolated runs.
+- Privacy and semantic invariants remain intact while performance work lands.
 
 ## Next Optimization Frontier
-- Further reduce secret read p95 under high node counts by:
-- increasing chunk locality for hot-read paths,
-- optional multi-read amortization benchmarks (`reads_per_mutation`),
-- and tuning chunk size/hash-bucket parameters with empirical thresholds.
+- If we chase the final secret-latency gap, the next real frontier is no longer "more cache."
+- It is separating lazy derivation refresh from full memory append/hash-chain write-back on internal recomputes.
+- That is a semantic refactor, not just a micro-optimization, so it should be driven by product usage traces rather than benchmark vanity alone.

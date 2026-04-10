@@ -1,6 +1,5 @@
 import {
   decryptBlobV3WithDerivedKeys,
-  deriveBlobV3Keys,
   detectBlobVersion,
   isEncryptedBlob,
   xorDecrypt,
@@ -37,7 +36,7 @@ import {
   isPointer,
   pathStartsWith,
 } from "./operators.js";
-import { collectSecretChainV3 } from "./secret-context.js";
+import { getOrDeriveV3Keys } from "./secret-context.js";
 import {
   computeEffectiveSecret,
   getChunkId,
@@ -56,7 +55,6 @@ import {
 } from "./utils.js";
 
 const MAX_DECRYPTED_VALUE_CACHE_ENTRIES = 128;
-const MAX_V3_KEY_CACHE_ENTRIES = 256;
 
 function touchLruEntry<K, V>(cache: Map<K, V>, key: K, value: V): void {
   if (cache.has(key)) cache.delete(key);
@@ -71,44 +69,9 @@ function trimLruCache<K, V>(cache: Map<K, V>, limit: number): void {
   }
 }
 
-function trimV3KeyCache(self: MEKernelLike): void {
-  while (self.v3KeyCache.size > MAX_V3_KEY_CACHE_ENTRIES) {
-    const oldest = self.v3KeyCache.keys().next();
-    if (oldest.done) return;
-    const entry = self.v3KeyCache.get(oldest.value);
-    if (entry) {
-      entry.encKey.fill(0);
-      entry.macKey.fill(0);
-      entry.pathContext.fill(0);
-    }
-    self.v3KeyCache.delete(oldest.value);
-  }
-}
-
 function cloneCachedValue<T>(value: T): T {
   if (value && typeof value === "object") return cloneValue(value);
   return value;
-}
-
-function getCachedV3Keys(self: MEKernelLike, path: SemanticPath) {
-  const cacheKey = `value::${path.join(".")}`;
-  const hit = self.v3KeyCache.get(cacheKey);
-  if (hit && hit.epoch === self.secretEpoch) {
-    touchLruEntry(self.v3KeyCache, cacheKey, hit);
-    return hit;
-  }
-
-  const chain = collectSecretChainV3(self, path, "value");
-  const derived = deriveBlobV3Keys(chain, "value", path);
-  const cached = {
-    epoch: self.secretEpoch,
-    encKey: Uint8Array.from(derived.encKey),
-    macKey: Uint8Array.from(derived.macKey),
-    pathContext: Uint8Array.from(derived.pathContext),
-  };
-  touchLruEntry(self.v3KeyCache, cacheKey, cached);
-  trimV3KeyCache(self);
-  return cached;
 }
 
 function getCachedValueDecrypt(self: MEKernelLike, path: SemanticPath, blob: `0x${string}`): any {
@@ -337,7 +300,7 @@ export function readPath(self: MEKernelLike, rawPath: SemanticPath): any {
     try {
       const cached = getCachedValueDecrypt(self, path, raw);
       if (cached !== undefined) return cached;
-      const keys = getCachedV3Keys(self, path);
+      const keys = getOrDeriveV3Keys(self, path, "value");
       const value = decryptBlobV3WithDerivedKeys(raw, keys);
       if (value === null || value === undefined) return value;
       return setCachedValueDecrypt(self, path, raw, value);

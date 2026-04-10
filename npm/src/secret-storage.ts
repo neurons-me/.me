@@ -1,11 +1,11 @@
 import {
-  decryptBlobV3,
+  decryptBlobV3WithDerivedKeys,
   detectBlobVersion,
   xorDecrypt,
   xorEncrypt,
 } from "./crypto.js";
 import { isIdentityRef, isPointer } from "./operators.js";
-import { collectSecretChainV3 } from "./secret-context.js";
+import { getOrDeriveV3Keys } from "./secret-context.js";
 import type {
   EncryptedBlob,
   MEKernelLike,
@@ -195,8 +195,8 @@ export function getDecryptedChunk(
   let data: any = null;
   if (version === "v3") {
     try {
-      const chain = collectSecretChainV3(self, scope, "branch");
-      data = decryptBlobV3(blob, chain, "branch", scope);
+      const keys = getOrDeriveV3Keys(self, scope, "branch");
+      data = decryptBlobV3WithDerivedKeys(blob, keys);
     } catch {
       data = null;
     }

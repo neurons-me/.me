@@ -4,6 +4,18 @@
   "plugin": ["typedoc-plugin-markdown"],
   "cleanOutputDir": false,
   "excludePrivate": true,
+  "excludeProtected": true,
   "excludeInternal": true,
+  "sort": ["kind", "source-order"],
+  "intentionallyNotExported": [
+    "KernelMemory",
+    "MEInspectResult",
+    "MEExplainResult",
+    "MESnapshot",
+    "MESnapshotInput",
+    "ReplayMemoryInput",
+    "MePointer",
+    "MeIdentityRef"
+  ],
   "readme": "none"
 }

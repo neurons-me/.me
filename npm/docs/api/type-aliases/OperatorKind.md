@@ -8,4 +8,4 @@
 
 > **OperatorKind** = `"secret"` \| `"noise"` \| `"pointer"` \| `"identity"` \| `"eval"` \| `"query"` \| `"remove"` \| `"custom"`
 
-Defined in: [types.ts:16](https://github.com/neurons-me/.me/blob/be0fcc0288ad977c5c48673c15dee62b435195d3/npm/src/types.ts#L16)
+Defined in: [types.ts:16](https://github.com/neurons-me/.me/blob/c571ec78a420eef7f7b8151238de06919c99b3b5/npm/src/types.ts#L16)

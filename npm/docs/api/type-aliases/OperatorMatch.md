@@ -6,9 +6,9 @@
 
 # Type Alias: OperatorMatch
 
-> **OperatorMatch** = \{ `matched`: `false`; \} \| \{ `kind`: [`OperatorKind`](OperatorKind.md); `matched`: `true`; `memoryOperator?`: `string`; `returnsValueAtRoot?`: `boolean`; `rewrittenExpression?`: `any`; `targetPath`: [`SemanticPath`](SemanticPath.md); `token`: [`OperatorToken`](OperatorToken.md); \}
+> **OperatorMatch** = \{ `matched`: `false`; \} \| \{ `matched`: `true`; `token`: [`OperatorToken`](OperatorToken.md); `kind`: [`OperatorKind`](OperatorKind.md); `targetPath`: [`SemanticPath`](SemanticPath.md); `rewrittenExpression?`: `any`; `memoryOperator?`: `string`; `returnsValueAtRoot?`: `boolean`; \}
 
-Defined in: [types.ts:178](https://github.com/neurons-me/.me/blob/be0fcc0288ad977c5c48673c15dee62b435195d3/npm/src/types.ts#L178)
+Defined in: [types.ts:178](https://github.com/neurons-me/.me/blob/c571ec78a420eef7f7b8151238de06919c99b3b5/npm/src/types.ts#L178)
 
 Operator recognition can either match (and then execute) or pass.
 
@@ -20,7 +20,17 @@ Operator recognition can either match (and then execute) or pass.
 
 > **matched**: `false`
 
-\{ `kind`: [`OperatorKind`](OperatorKind.md); `matched`: `true`; `memoryOperator?`: `string`; `returnsValueAtRoot?`: `boolean`; `rewrittenExpression?`: `any`; `targetPath`: [`SemanticPath`](SemanticPath.md); `token`: [`OperatorToken`](OperatorToken.md); \}
+\{ `matched`: `true`; `token`: [`OperatorToken`](OperatorToken.md); `kind`: [`OperatorKind`](OperatorKind.md); `targetPath`: [`SemanticPath`](SemanticPath.md); `rewrittenExpression?`: `any`; `memoryOperator?`: `string`; `returnsValueAtRoot?`: `boolean`; \}
+
+### matched
+
+> **matched**: `true`
+
+### token
+
+> **token**: [`OperatorToken`](OperatorToken.md)
+
+The operator token that matched (e.g. "_", "=")
 
 ### kind
 
@@ -28,9 +38,19 @@ Operator recognition can either match (and then execute) or pass.
 
 The operator kind from the registry
 
-### matched
+### targetPath
 
-> **matched**: `true`
+> **targetPath**: [`SemanticPath`](SemanticPath.md)
+
+The destination path that should receive the semantic write (operator leaf removed
+or otherwise transformed). In me.ts this is typically `scope`.
+
+### rewrittenExpression?
+
+> `optional` **rewrittenExpression**: `any`
+
+The expression to write after the operator transforms it.
+e.g. pointer operator turns expression:string into {__ptr:string}
 
 ### memoryOperator?
 
@@ -46,23 +66,3 @@ If operator is producing a semantic memory, what should be recorded as `operator
 Some operators return a value instead of writing when invoked at root.
 - root "=" thunk returns computed value
 - root "?" returns collected/transformed output
-
-### rewrittenExpression?
-
-> `optional` **rewrittenExpression**: `any`
-
-The expression to write after the operator transforms it.
-e.g. pointer operator turns expression:string into {__ptr:string}
-
-### targetPath
-
-> **targetPath**: [`SemanticPath`](SemanticPath.md)
-
-The destination path that should receive the semantic write (operator leaf removed
-or otherwise transformed). In me.ts this is typically `scope`.
-
-### token
-
-> **token**: [`OperatorToken`](OperatorToken.md)
-
-The operator token that matched (e.g. "_", "=")

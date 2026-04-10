@@ -6,27 +6,25 @@
 
 # Class: ME
 
-Defined in: [me.ts:87](https://github.com/neurons-me/.me/blob/be0fcc0288ad977c5c48673c15dee62b435195d3/npm/src/me.ts#L87)
+Defined in: [me.ts:90](https://github.com/neurons-me/.me/blob/c571ec78a420eef7f7b8151238de06919c99b3b5/npm/src/me.ts#L90)
 
-The `.me` semantic kernel.
+The `.me` Semantic Kernel.
 
-`ME` is both:
+This is the core class of `.me`. When you do `new ME()`, you get much more than
+a normal class instance:
 
-- a stateful kernel that stores semantic memories, indexes, secrets, and derivations
-- a callable proxy runtime that lets you navigate and execute semantic paths like `me.profile.name("Ana")`
+- a stateful semantic kernel that manages memories, indexes, secrets, and derivations
+- a callable proxy that lets you interact with infinite semantic paths like
+  `me.profile.name("Jose")`, `me("profile.name")`, or `me.wallet["_"]("key")`
 
-Practical mental model:
+Important:
 
-- property access builds a semantic path
-- calling `()` writes, reads, or invokes an operator at that path
-- explicit class methods such as `inspect()`, `explain()`, `exportSnapshot()`, and `replayMemories()`
-  are the debugging, replay, and hydration surface around that runtime
-
-If you are reading the generated API docs:
-
-- this class page shows the explicit TypeScript class members
-- the full language surface also includes the proxy/DSL behavior documented in
-  `Runtime Surface`, `Proxy Calls`, `Operators`, and `Syntax`
+- this generated page only shows the explicit class API documented below
+- the main user experience is the callable proxy / DSL, documented in
+  [Runtime Surface](/Runtime-Surface),
+  [Proxy Calls](/Proxy-Calls),
+  [Operators](/Operators), and
+  [Syntax](/Syntax)
 
 ## Indexable
 
@@ -38,7 +36,7 @@ If you are reading the generated API docs:
 
 > **new ME**(`expression?`): `ME`
 
-Defined in: [me.ts:142](https://github.com/neurons-me/.me/blob/be0fcc0288ad977c5c48673c15dee62b435195d3/npm/src/me.ts#L142)
+Defined in: [me.ts:153](https://github.com/neurons-me/.me/blob/c571ec78a420eef7f7b8151238de06919c99b3b5/npm/src/me.ts#L153)
 
 #### Parameters
 
@@ -50,64 +48,6 @@ Defined in: [me.ts:142](https://github.com/neurons-me/.me/blob/be0fcc0288ad977c5
 
 `ME`
 
-## Properties
-
-### exportP256PublicKey()
-
-> `static` **exportP256PublicKey**: (`key`) => `Promise`\<`P256PublicKeyCoordinates`\>
-
-Defined in: [me.ts:92](https://github.com/neurons-me/.me/blob/be0fcc0288ad977c5c48673c15dee62b435195d3/npm/src/me.ts#L92)
-
-#### Parameters
-
-##### key
-
-`CryptoKey`
-
-#### Returns
-
-`Promise`\<`P256PublicKeyCoordinates`\>
-
-***
-
-### generateP256KeyPair()
-
-> `static` **generateP256KeyPair**: (`extractable`, `usages`) => `Promise`\<`CryptoKeyPair`\>
-
-Defined in: [me.ts:91](https://github.com/neurons-me/.me/blob/be0fcc0288ad977c5c48673c15dee62b435195d3/npm/src/me.ts#L91)
-
-#### Parameters
-
-##### extractable?
-
-`boolean` = `true`
-
-##### usages?
-
-`KeyUsage`[] = `...`
-
-#### Returns
-
-`Promise`\<`CryptoKeyPair`\>
-
-***
-
-### importP256PublicKey()
-
-> `static` **importP256PublicKey**: (`publicKey`) => `Promise`\<`CryptoKey`\>
-
-Defined in: [me.ts:93](https://github.com/neurons-me/.me/blob/be0fcc0288ad977c5c48673c15dee62b435195d3/npm/src/me.ts#L93)
-
-#### Parameters
-
-##### publicKey
-
-`P256PublicKeyCoordinates`
-
-#### Returns
-
-`Promise`\<`CryptoKey`\>
-
 ## Accessors
 
 ### memories
@@ -116,7 +56,7 @@ Defined in: [me.ts:93](https://github.com/neurons-me/.me/blob/be0fcc0288ad977c5c
 
 > **get** **memories**(): [`Memory`](../interfaces/Memory.md)[]
 
-Defined in: [me.ts:138](https://github.com/neurons-me/.me/blob/be0fcc0288ad977c5c48673c15dee62b435195d3/npm/src/me.ts#L138)
+Defined in: [me.ts:149](https://github.com/neurons-me/.me/blob/c571ec78a420eef7f7b8151238de06919c99b3b5/npm/src/me.ts#L149)
 
 Public redacted memory log.
 This never exposes internal forensic fields such as `effectiveSecret`.
@@ -127,99 +67,11 @@ This never exposes internal forensic fields such as `effectiveSecret`.
 
 ## Methods
 
-### execute()
-
-> **execute**(`rawTarget`, `body?`): `any`
-
-Defined in: [me.ts:183](https://github.com/neurons-me/.me/blob/be0fcc0288ad977c5c48673c15dee62b435195d3/npm/src/me.ts#L183)
-
-#### Parameters
-
-##### rawTarget
-
-`string` | [`MeTargetAst`](../interfaces/MeTargetAst.md)
-
-##### body?
-
-`any`
-
-#### Returns
-
-`any`
-
-***
-
-### explain()
-
-> **explain**(`path`): `MEExplainResult`
-
-Defined in: [me.ts:191](https://github.com/neurons-me/.me/blob/be0fcc0288ad977c5c48673c15dee62b435195d3/npm/src/me.ts#L191)
-
-#### Parameters
-
-##### path
-
-`string`
-
-#### Returns
-
-`MEExplainResult`
-
-***
-
-### exportSnapshot()
-
-> **exportSnapshot**(): `MESnapshot`
-
-Defined in: [me.ts:289](https://github.com/neurons-me/.me/blob/be0fcc0288ad977c5c48673c15dee62b435195d3/npm/src/me.ts#L289)
-
-Export a portable public snapshot.
-Snapshot memories are redacted and omit internal forensic fields.
-
-#### Returns
-
-`MESnapshot`
-
-***
-
-### getRecomputeMode()
-
-> **getRecomputeMode**(): `"eager"` \| `"lazy"`
-
-Defined in: [me.ts:167](https://github.com/neurons-me/.me/blob/be0fcc0288ad977c5c48673c15dee62b435195d3/npm/src/me.ts#L167)
-
-#### Returns
-
-`"eager"` \| `"lazy"`
-
-***
-
-### importSnapshot()
-
-> **importSnapshot**(`snapshot`): `void`
-
-Defined in: [me.ts:297](https://github.com/neurons-me/.me/blob/be0fcc0288ad977c5c48673c15dee62b435195d3/npm/src/me.ts#L297)
-
-Import a snapshot into the current runtime.
-Accepts both redacted public snapshots and legacy/internal payloads.
-
-#### Parameters
-
-##### snapshot
-
-`MESnapshotInput`
-
-#### Returns
-
-`void`
-
-***
-
 ### inspect()
 
 > **inspect**(`opts?`): `MEInspectResult`
 
-Defined in: [me.ts:159](https://github.com/neurons-me/.me/blob/be0fcc0288ad977c5c48673c15dee62b435195d3/npm/src/me.ts#L159)
+Defined in: [me.ts:170](https://github.com/neurons-me/.me/blob/c571ec78a420eef7f7b8151238de06919c99b3b5/npm/src/me.ts#L170)
 
 Inspect the current runtime state.
 Returned memories are always public/redacted.
@@ -238,39 +90,81 @@ Returned memories are always public/redacted.
 
 ***
 
-### installRecipientKey()
+### explain()
 
-> **installRecipientKey**(`recipientKeyId`, `privateKey`): `this`
+> **explain**(`path`): `MEExplainResult`
 
-Defined in: [me.ts:171](https://github.com/neurons-me/.me/blob/be0fcc0288ad977c5c48673c15dee62b435195d3/npm/src/me.ts#L171)
+Defined in: [me.ts:178](https://github.com/neurons-me/.me/blob/c571ec78a420eef7f7b8151238de06919c99b3b5/npm/src/me.ts#L178)
+
+Explain how a semantic path is derived.
+Useful for debugging pointers, operators, and derived values.
 
 #### Parameters
 
-##### recipientKeyId
+##### path
 
 `string`
 
-##### privateKey
-
-`CryptoKey`
-
 #### Returns
 
-`this`
+`MEExplainResult`
 
 ***
 
-### learn()
+### execute()
 
-> **learn**(`memory`): `void`
+> **execute**(`rawTarget`, `body?`): `any`
 
-Defined in: [me.ts:305](https://github.com/neurons-me/.me/blob/be0fcc0288ad977c5c48673c15dee62b435195d3/npm/src/me.ts#L305)
+Defined in: [me.ts:186](https://github.com/neurons-me/.me/blob/c571ec78a420eef7f7b8151238de06919c99b3b5/npm/src/me.ts#L186)
+
+Execute a raw target string or parsed target AST without going through proxy property access.
+Useful for tooling, explicit runtime dispatch, and tests.
 
 #### Parameters
 
-##### memory
+##### rawTarget
 
-`unknown`
+`string` | [`MeTargetAst`](../interfaces/MeTargetAst.md)
+
+##### body?
+
+`any`
+
+#### Returns
+
+`any`
+
+***
+
+### exportSnapshot()
+
+> **exportSnapshot**(): `MESnapshot`
+
+Defined in: [me.ts:284](https://github.com/neurons-me/.me/blob/c571ec78a420eef7f7b8151238de06919c99b3b5/npm/src/me.ts#L284)
+
+Export a portable public snapshot.
+Snapshot memories are redacted and omit internal forensic fields.
+
+#### Returns
+
+`MESnapshot`
+
+***
+
+### importSnapshot()
+
+> **importSnapshot**(`snapshot`): `void`
+
+Defined in: [me.ts:292](https://github.com/neurons-me/.me/blob/c571ec78a420eef7f7b8151238de06919c99b3b5/npm/src/me.ts#L292)
+
+Import a snapshot into the current runtime.
+Accepts both redacted public snapshots and legacy/internal payloads.
+
+#### Parameters
+
+##### snapshot
+
+`MESnapshotInput`
 
 #### Returns
 
@@ -282,7 +176,10 @@ Defined in: [me.ts:305](https://github.com/neurons-me/.me/blob/be0fcc0288ad977c5
 
 > **rehydrate**(`snapshot`): `void`
 
-Defined in: [me.ts:301](https://github.com/neurons-me/.me/blob/be0fcc0288ad977c5c48673c15dee62b435195d3/npm/src/me.ts#L301)
+Defined in: [me.ts:300](https://github.com/neurons-me/.me/blob/c571ec78a420eef7f7b8151238de06919c99b3b5/npm/src/me.ts#L300)
+
+Rehydrate the runtime from a snapshot payload.
+This is a hydration-oriented alias over the import flow.
 
 #### Parameters
 
@@ -300,7 +197,7 @@ Defined in: [me.ts:301](https://github.com/neurons-me/.me/blob/be0fcc0288ad977c5
 
 > **replayMemories**(`memories`): `void`
 
-Defined in: [me.ts:313](https://github.com/neurons-me/.me/blob/be0fcc0288ad977c5c48673c15dee62b435195d3/npm/src/me.ts#L313)
+Defined in: [me.ts:308](https://github.com/neurons-me/.me/blob/c571ec78a420eef7f7b8151238de06919c99b3b5/npm/src/me.ts#L308)
 
 Replay a memory log into the current runtime.
 Accepts both public `Memory[]` and legacy/internal memory payloads.
@@ -317,11 +214,34 @@ Accepts both public `Memory[]` and legacy/internal memory payloads.
 
 ***
 
+### learn()
+
+> **learn**(`memory`): `void`
+
+Defined in: [me.ts:316](https://github.com/neurons-me/.me/blob/c571ec78a420eef7f7b8151238de06919c99b3b5/npm/src/me.ts#L316)
+
+Ingest a single memory-like payload into the runtime.
+Useful for tools that already operate at the memory-log layer.
+
+#### Parameters
+
+##### memory
+
+`unknown`
+
+#### Returns
+
+`void`
+
+***
+
 ### setRecomputeMode()
 
 > **setRecomputeMode**(`mode`): `this`
 
-Defined in: [me.ts:163](https://github.com/neurons-me/.me/blob/be0fcc0288ad977c5c48673c15dee62b435195d3/npm/src/me.ts#L163)
+Defined in: [me.ts:323](https://github.com/neurons-me/.me/blob/c571ec78a420eef7f7b8151238de06919c99b3b5/npm/src/me.ts#L323)
+
+Control whether derivations recompute eagerly or lazily.
 
 #### Parameters
 
@@ -335,112 +255,14 @@ Defined in: [me.ts:163](https://github.com/neurons-me/.me/blob/be0fcc0288ad977c5
 
 ***
 
-### storeWrappedKey()
+### getRecomputeMode()
 
-> **storeWrappedKey**(`keyId`, `envelope`, `options?`): `this`
+> **getRecomputeMode**(): `"eager"` \| `"lazy"`
 
-Defined in: [me.ts:179](https://github.com/neurons-me/.me/blob/be0fcc0288ad977c5c48673c15dee62b435195d3/npm/src/me.ts#L179)
+Defined in: [me.ts:330](https://github.com/neurons-me/.me/blob/c571ec78a420eef7f7b8151238de06919c99b3b5/npm/src/me.ts#L330)
 
-#### Parameters
-
-##### keyId
-
-`string`
-
-##### envelope
-
-`WrappedSecretV1`
-
-##### options?
-
-###### recipientKeyId?
-
-`string`
+Read the current derivation recompute mode.
 
 #### Returns
 
-`this`
-
-***
-
-### uninstallRecipientKey()
-
-> **uninstallRecipientKey**(`recipientKeyId`): `this`
-
-Defined in: [me.ts:175](https://github.com/neurons-me/.me/blob/be0fcc0288ad977c5c48673c15dee62b435195d3/npm/src/me.ts#L175)
-
-#### Parameters
-
-##### recipientKeyId
-
-`string`
-
-#### Returns
-
-`this`
-
-***
-
-### unwrapSecretV1()
-
-> `static` **unwrapSecretV1**(`envelope`, `recipientPrivateKey`, `output?`): `Promise`\<`string` \| `Uint8Array`\<`ArrayBufferLike`\>\>
-
-Defined in: [me.ts:104](https://github.com/neurons-me/.me/blob/be0fcc0288ad977c5c48673c15dee62b435195d3/npm/src/me.ts#L104)
-
-#### Parameters
-
-##### envelope
-
-`WrappedSecretV1`
-
-##### recipientPrivateKey
-
-`CryptoKey`
-
-##### output?
-
-`"bytes"` | `"utf8"`
-
-#### Returns
-
-`Promise`\<`string` \| `Uint8Array`\<`ArrayBufferLike`\>\>
-
-***
-
-### wrapSecretV1()
-
-> `static` **wrapSecretV1**(`input`): `Promise`\<`WrappedSecretV1`\>
-
-Defined in: [me.ts:94](https://github.com/neurons-me/.me/blob/be0fcc0288ad977c5c48673c15dee62b435195d3/npm/src/me.ts#L94)
-
-#### Parameters
-
-##### input
-
-###### class
-
-`WrappedSecretClass`
-
-###### kid
-
-`string`
-
-###### policy?
-
-`WrappedSecretPolicy`
-
-###### publicKey?
-
-`P256PublicKeyCoordinates`
-
-###### recipientPublicKey
-
-`P256PublicKeyCoordinates` \| `CryptoKey`
-
-###### secret
-
-`string` \| `Uint8Array`\<`ArrayBufferLike`\>
-
-#### Returns
-
-`Promise`\<`WrappedSecretV1`\>
+`"eager"` \| `"lazy"`

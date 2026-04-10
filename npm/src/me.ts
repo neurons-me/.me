@@ -69,33 +69,35 @@ import * as Utils from "./utils.js";
 export type { MEProxy } from "./types.js";
 
 /**
- * The `.me` semantic kernel.
+ * The `.me` Semantic Kernel.
  *
- * `ME` is both:
+ * This is the core class of `.me`. When you do `new ME()`, you get much more than
+ * a normal class instance:
  *
- * - a stateful kernel that stores semantic memories, indexes, secrets, and derivations
- * - a callable proxy runtime that lets you navigate and execute semantic paths like `me.profile.name("Ana")`
+ * - a stateful semantic kernel that manages memories, indexes, secrets, and derivations
+ * - a callable proxy that lets you interact with infinite semantic paths like
+ *   `me.profile.name("Jose")`, `me("profile.name")`, or `me.wallet["_"]("key")`
  *
- * Practical mental model:
+ * Important:
  *
- * - property access builds a semantic path
- * - calling `()` writes, reads, or invokes an operator at that path
- * - explicit class methods such as `inspect()`, `explain()`, `exportSnapshot()`, and `replayMemories()`
- *   are the debugging, replay, and hydration surface around that runtime
- *
- * If you are reading the generated API docs:
- *
- * - this class page shows the explicit TypeScript class members
- * - the full language surface also includes the proxy/DSL behavior documented in
- *   `Runtime Surface`, `Proxy Calls`, `Operators`, and `Syntax`
+ * - this generated page only shows the explicit class API documented below
+ * - the main user experience is the callable proxy / DSL, documented in
+ *   [Runtime Surface](/Runtime-Surface),
+ *   [Proxy Calls](/Proxy-Calls),
+ *   [Operators](/Operators), and
+ *   [Syntax](/Syntax)
  */
 export class ME {
   [key: string]: any;
   private static readonly RUNTIME_ESCAPE_TOKEN = ProxyRuntime.RUNTIME_ESCAPE_TOKEN;
 
+  /** @internal Low-level crypto helper kept out of the main public docs surface. */
   static generateP256KeyPair = generateP256KeyPair;
+  /** @internal Low-level crypto helper kept out of the main public docs surface. */
   static exportP256PublicKey = exportP256PublicKey;
+  /** @internal Low-level crypto helper kept out of the main public docs surface. */
   static importP256PublicKey = importP256PublicKey;
+  /** @internal Low-level crypto helper kept out of the main public docs surface. */
   static wrapSecretV1(input: {
     secret: Uint8Array | string;
     recipientPublicKey: CryptoKey | P256PublicKeyCoordinates;
@@ -106,6 +108,7 @@ export class ME {
   }): Promise<WrappedSecretV1> {
     return wrapSecretV1(input);
   }
+  /** @internal Low-level crypto helper kept out of the main public docs surface. */
   static unwrapSecretV1(
     envelope: WrappedSecretV1,
     recipientPrivateKey: CryptoKey,
@@ -168,36 +171,20 @@ export class ME {
     return Core.inspect(this as unknown as MEKernelLike, opts);
   }
 
-  setRecomputeMode(mode: "eager" | "lazy"): this {
-    return Core.setRecomputeMode(this as unknown as MEKernelLike, mode) as unknown as this;
-  }
-
-  getRecomputeMode(): "eager" | "lazy" {
-    return Core.getRecomputeMode(this as unknown as MEKernelLike);
-  }
-
-  installRecipientKey(recipientKeyId: string, privateKey: CryptoKey): this {
-    return Core.installRecipientKey(this as unknown as MEKernelLike, recipientKeyId, privateKey) as unknown as this;
-  }
-
-  uninstallRecipientKey(recipientKeyId: string): this {
-    return Core.uninstallRecipientKey(this as unknown as MEKernelLike, recipientKeyId) as unknown as this;
-  }
-
-  storeWrappedKey(keyId: string, envelope: WrappedSecretV1, options?: { recipientKeyId?: string }): this {
-    return Core.storeWrappedKey(this as unknown as MEKernelLike, keyId, envelope, options) as unknown as this;
-  }
-
-  execute(rawTarget: string | MeTargetAst, body?: any): any {
-    return Core.execute(this as unknown as MEKernelLike, rawTarget, body);
-  }
-
-  private bumpSecretEpoch(): void {
-    return Secret.bumpSecretEpoch(this as unknown as MEKernelLike);
-  }
-
+  /**
+   * Explain how a semantic path is derived.
+   * Useful for debugging pointers, operators, and derived values.
+   */
   explain(path: string) {
     return Derivation.explain(this as unknown as MEKernelLike, path);
+  }
+
+  /**
+   * Execute a raw target string or parsed target AST without going through proxy property access.
+   * Useful for tooling, explicit runtime dispatch, and tests.
+   */
+  execute(rawTarget: string | MeTargetAst, body?: any): any {
+    return Core.execute(this as unknown as MEKernelLike, rawTarget, body);
   }
 
   private cloneValue<T>(value: T): T {
@@ -306,12 +293,12 @@ export class ME {
     return Core.importSnapshot(this as unknown as MEKernelLike, snapshot);
   }
 
+  /**
+   * Rehydrate the runtime from a snapshot payload.
+   * This is a hydration-oriented alias over the import flow.
+   */
   rehydrate(snapshot: MESnapshotInput): void {
     return Core.rehydrate(this as unknown as MEKernelLike, snapshot);
-  }
-
-  learn(memory: unknown): void {
-    return Core.learn(this as unknown as MEKernelLike, memory);
   }
 
   /**
@@ -323,10 +310,49 @@ export class ME {
   }
 
   /**
+   * Ingest a single memory-like payload into the runtime.
+   * Useful for tools that already operate at the memory-log layer.
+   */
+  learn(memory: unknown): void {
+    return Core.learn(this as unknown as MEKernelLike, memory);
+  }
+
+  /**
+   * Control whether derivations recompute eagerly or lazily.
+   */
+  setRecomputeMode(mode: "eager" | "lazy"): this {
+    return Core.setRecomputeMode(this as unknown as MEKernelLike, mode) as unknown as this;
+  }
+
+  /**
+   * Read the current derivation recompute mode.
+   */
+  getRecomputeMode(): "eager" | "lazy" {
+    return Core.getRecomputeMode(this as unknown as MEKernelLike);
+  }
+
+  /** @internal Low-level keyring helper kept out of the main public docs surface. */
+  installRecipientKey(recipientKeyId: string, privateKey: CryptoKey): this {
+    return Core.installRecipientKey(this as unknown as MEKernelLike, recipientKeyId, privateKey) as unknown as this;
+  }
+
+  /** @internal Low-level keyring helper kept out of the main public docs surface. */
+  uninstallRecipientKey(recipientKeyId: string): this {
+    return Core.uninstallRecipientKey(this as unknown as MEKernelLike, recipientKeyId) as unknown as this;
+  }
+
+  /** @internal Low-level keyring helper kept out of the main public docs surface. */
+  storeWrappedKey(keyId: string, envelope: WrappedSecretV1, options?: { recipientKeyId?: string }): this {
+    return Core.storeWrappedKey(this as unknown as MEKernelLike, keyId, envelope, options) as unknown as this;
+  }
+
+  /**
    * Re-encrypt existing secret branch chunks into blob v3.
    * This remains useful after v3 became the default write path because older snapshots
    * and mixed runtimes may still carry branch blobs in v2 or legacy layouts.
    * It only touches `encryptedBranches`; it never rewrites historical memories.
+   *
+   * @internal Maintenance helper for secret-blob upgrades.
    */
   migrateEncryptedBranchesToV3(): {
     migratedScopes: number;
@@ -381,6 +407,10 @@ export class ME {
     }
 
     return report;
+  }
+
+  private bumpSecretEpoch(): void {
+    return Secret.bumpSecretEpoch(this as unknown as MEKernelLike);
   }
 
   private normalizeArgs(args: any[]): any {

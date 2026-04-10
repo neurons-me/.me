@@ -1,10 +1,6 @@
-Here's the refined version exactly as you requested:
+# 𓋹 The Axioms of .me
 
----
-
-**𓋹 The Axioms of .me**
-
-In **.me**, axioms are the fundamental invariants of the kernel — the unbreakable rules that the core system (`src/me.ts`) must always respect.
+In **.me**, axioms are the fundamental invariants of the kernel — the unbreakable rules that the runtime must always respect.
 
 At its heart, **.me** is a **personal semantic kernel**: a single runtime value called `me` that acts simultaneously as a deeply navigable object and a callable function. This unified surface lets you store, organize, protect, query, link, and audit your digital identity and memory in a structured, consistent, and tamper-evident way.
 
@@ -16,7 +12,7 @@ The **axioms together create something unique**: they turn a simple JavaScript o
 
 This is the foundation that makes the entire `.me` experience feel natural and powerful.
 
-**Kernel evidence** (`src/me.ts`):
+**Kernel evidence** (runtime proxy + kernel surface):
 
 ```ts
 // Constructor returns a proxy that unifies both behaviors
@@ -52,7 +48,7 @@ console.log(me("profile.name"));           // "Abella"
 
 A secret subtree can be fully readable by its complete path, while its root remains completely invisible.
 
-**Kernel evidence** (`src/me.ts`):
+**Kernel evidence** (secret runtime behavior):
 
 ```ts
 // Secret branches are stored internally but never mirrored to the public index
@@ -84,7 +80,7 @@ console.log(me("wallet.income")); // 100
 
 Identity claims are automatically normalized and validated before being committed.
 
-**Kernel evidence** (`src/me.ts`):
+**Kernel evidence** (identity normalization path):
 
 ```ts
 private isIdentityCall(path: SemanticPath, expression: any): { id: string; targetPath: SemanticPath } | null {
@@ -268,3 +264,4 @@ node tests/axioms.test.ts
 
 ---
 
+**∴ Witness our seal**  

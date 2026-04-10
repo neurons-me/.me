@@ -13,8 +13,9 @@ Real-life example: two friends share a trip wallet, one person contributes funds
 ## Full Example
 
 ```ts
-import Me from "this.me";
-const me = new Me() as any;
+import ME from "this.me";
+
+const me = new ME();
 
 // 1) Identity
 me["@"]("jabellae");
@@ -48,7 +49,7 @@ console.log("ana_due ->", me("wallets.trip_vancouver.ana_due")); // 2.5
 ## Why this is useful
 - Uses semantic paths as accounting structure.
 - Uses `=` for deterministic derived math.
-- Keeps the model auditable with memory events (`me.inspect()`).
+- Keeps the model auditable with public memory events (`me.inspect().memories`).
 
 ---
 
