@@ -10,6 +10,11 @@ import {
   createDefaultOperators,
 } from "./utils.js";
 
+function deriveOwnerScope(localSecrets: Record<string, string>): string | null {
+  const values = Object.values(localSecrets);
+  return values.length > 0 ? values[values.length - 1] : null;
+}
+
 export function exportSnapshot(self: MEKernelLike): MESnapshot {
   return cloneValue({
     memories: toPublicMemories(self._memories),
@@ -28,6 +33,8 @@ export function importSnapshot(self: MEKernelLike, snapshot: MESnapshotInput): v
     : [];
   self.localSecrets = data.localSecrets && typeof data.localSecrets === "object" ? data.localSecrets : {};
   self.localNoises = data.localNoises && typeof data.localNoises === "object" ? data.localNoises : {};
+  (self as any)._ownerScope = deriveOwnerScope(self.localSecrets);
+  (self as any)._currentCallerScope = undefined;
   bumpSecretEpoch(self);
   self.encryptedBranches =
     data.encryptedBranches && typeof data.encryptedBranches === "object" ? data.encryptedBranches : {};

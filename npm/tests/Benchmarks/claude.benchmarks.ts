@@ -157,7 +157,7 @@ async function testKSensitivity() {
 // The post reports 0.75–0.88ms secret vs 0.016ms public.
 //
 // Design: same derivation, one public one secret. Measure read latency for both.
-// Also tests that secret path correctly returns undefined outside scope.
+// Also tests that a guest caller sees the path as opaque.
 
 async function testSecretScope() {
   hr("TEST 3 — Structural privacy: public vs secret path latency");
@@ -210,13 +210,13 @@ async function testSecretScope() {
     `Secret p95 sub-1ms: ${sec.p95 < 1 ? "✅ PASS" : "❌ FAIL"} (${sec.p95.toFixed(4)}ms)`
   );
 
-  // Verify correctness: secret path should be opaque outside scope
+  // Verify correctness: guest callers should not inherit the owner stealth scope
   const meCheck = new Me() as CallableMe;
   meCheck.finance["_"]("k-2026");
   meCheck.finance.fuel_price(99);
-  const leaked = meCheck("finance.fuel_price");
+  const leaked = (meCheck.as(null) as CallableMe)("finance.fuel_price");
   console.log(
-    `\nSecrecy correctness (should be undefined): ${leaked === undefined ? "✅ PASS" : `❌ FAIL — got ${leaked}`}`
+    `\nGuest secrecy correctness (should be undefined): ${leaked === undefined ? "✅ PASS" : `❌ FAIL — got ${leaked}`}`
   );
 }
 

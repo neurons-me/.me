@@ -232,6 +232,18 @@ test("runtime escape plane exposes reflective kernel helpers", () => {
   assert.equal(me2("profile.name"), "Abella");
 });
 
+test("explicit guest scope does not collapse back to owner scope", () => {
+  const me = new ME();
+  me.finance["_"]("k-2026");
+  me.finance.fuel_price(99);
+  me.finance.public_note("visible only to owner scope");
+
+  assert.equal(me("finance.fuel_price"), 99);
+  assert.equal(me("finance.public_note"), "visible only to owner scope");
+  assert.equal(me.as(null)("finance.fuel_price"), undefined);
+  assert.equal(me.as(null)("finance.public_note"), undefined);
+});
+
 test("secret branch blobs are non-deterministic across identical writes", () => {
   const me = new ME();
   me.wallet["_"]("steel-door");

@@ -13,6 +13,43 @@ import {
   parseTransformSelector,
 } from "./utils.js";
 
+function getCallerScope(self: MEKernelLike): string | null {
+  const value = (self as any)._currentCallerScope;
+  return typeof value === "string" && value.length > 0 ? value : null;
+}
+
+type StealthMetaCarrier = {
+  meta?: {
+    origin?: string;
+    scopeKey?: string;
+  };
+};
+
+function hasStealthBarrier(self: MEKernelLike, path: SemanticPath, callerScope: string | null = getCallerScope(self)): boolean {
+  for (let i = path.length; i > 0; i--) {
+    const ancestorKey = path.slice(0, i).join(".");
+    const localSecret = self.localSecrets[ancestorKey];
+    if (typeof localSecret === "string" && localSecret !== callerScope) {
+      return true;
+    }
+    const rawNode = self.index[ancestorKey] as StealthMetaCarrier | undefined;
+    if (rawNode && typeof rawNode === "object" && "meta" in rawNode) {
+      const meta = (rawNode as any).meta;
+      if (meta?.origin === "stealth" && meta.scopeKey !== callerScope) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+function readPathWithStealth(self: MEKernelLike, path: SemanticPath): any {
+  const normalized = normalizeSelectorPath(path);
+  if (normalized.length === 0) return self.readPath(normalized);
+  if (hasStealthBarrier(self, normalized)) return undefined;
+  return self.readPath(normalized);
+}
+
 export function collectIteratorIndices(self: MEKernelLike, path: SemanticPath): string[] {
   const firstIteratorPos = path.findIndex((segment) => segment.includes("[i]"));
   if (firstIteratorPos === -1) return [];
@@ -56,9 +93,9 @@ export function collectIteratorIndices(self: MEKernelLike, path: SemanticPath): 
 }
 
 export function resolveRelativeFirst(self: MEKernelLike, scope: SemanticPath, parts: SemanticPath): any {
-  const rel = self.readPath([...scope, ...parts]);
+  const rel = readPathWithStealth(self, [...scope, ...parts]);
   if (rel !== undefined && rel !== null) return rel;
-  return self.readPath(parts);
+  return readPathWithStealth(self, parts);
 }
 
 export function evaluateFilterClauseForScope(
@@ -166,21 +203,25 @@ export function evaluateSelectionPath(self: MEKernelLike, path: SemanticPath): a
     const value =
       suffix.length === 0
         ? buildPublicSubtree(self, scope)
-        : self.readPath([...scope, ...suffix]);
+        : readPathWithStealth(self, [...scope, ...suffix]);
     if (value !== undefined) out[key] = value;
   }
   return out;
 }
 
 export function buildPublicSubtree(self: MEKernelLike, prefix: SemanticPath): any {
-  const prefixKey = prefix.join(".");
+  const normalizedPrefix = normalizeSelectorPath(prefix);
+  const prefixKey = normalizedPrefix.join(".");
   const root: any = {};
   let wroteAny = false;
   for (const [k, v] of Object.entries(self.index)) {
+    const candidatePath = k.split(".").filter(Boolean);
     if (k === prefixKey) {
+      if (hasStealthBarrier(self, candidatePath)) return undefined;
       return v;
     }
     if (!k.startsWith(prefixKey + ".")) continue;
+    if (hasStealthBarrier(self, candidatePath)) continue;
     const rel = k.slice(prefixKey.length + 1).split(".").filter(Boolean);
     let ref = root;
     for (let i = 0; i < rel.length - 1; i++) {
@@ -214,7 +255,7 @@ export function evaluateFilterPath(self: MEKernelLike, path: SemanticPath): any 
     if (suffix.length === 0) {
       out[child] = buildPublicSubtree(self, scope);
     } else {
-      out[child] = self.readPath([...scope, ...suffix]);
+      out[child] = readPathWithStealth(self, [...scope, ...suffix]);
     }
   }
 

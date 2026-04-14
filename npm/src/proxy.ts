@@ -13,6 +13,20 @@ import type {
 
 export const RUNTIME_ESCAPE_TOKEN = "!";
 
+function withCallerScope<T>(self: MEKernelLike, scope: string | null | undefined, fn: () => T): T {
+  const prev = (self as any)._currentCallerScope;
+  (self as any)._currentCallerScope = scope;
+  try {
+    return fn();
+  } finally {
+    (self as any)._currentCallerScope = prev;
+  }
+}
+
+function getProxyCallerScope(self: MEKernelLike): string | null | undefined {
+  return (self as any)._currentCallerScope;
+}
+
 export function normalizeArgs(args: any[]): any {
   if (args.length === 0) return undefined;
   if (args.length === 1) return args[0];
@@ -161,17 +175,23 @@ export function resolveRuntimeValue(self: MEKernelLike, path: string[]): unknown
   return ref;
 }
 
-export function createRuntimeProxy(self: MEKernelLike, path: string[]): any {
+export function createRuntimeProxy(
+  self: MEKernelLike,
+  path: string[],
+  callerScope: string | null | undefined = getProxyCallerScope(self),
+): any {
   const fn: any = (...args: any[]) => {
-    const resolved = resolveRuntimeValue(self, path);
-    if (typeof resolved === "function") {
-      return resolved(...args);
-    }
-    if (resolved && typeof resolved === "object" && typeof (resolved as any).call === "function") {
-      return (resolved as any).call(...args);
-    }
-    if (path.length === 0) return describeRuntimeSurface();
-    return resolved;
+    return withCallerScope(self, callerScope, () => {
+      const resolved = resolveRuntimeValue(self, path);
+      if (typeof resolved === "function") {
+        return resolved(...args);
+      }
+      if (resolved && typeof resolved === "object" && typeof (resolved as any).call === "function") {
+        return (resolved as any).call(...args);
+      }
+      if (path.length === 0) return describeRuntimeSurface();
+      return resolved;
+    });
   };
 
   return new Proxy(fn, {
@@ -183,8 +203,8 @@ export function createRuntimeProxy(self: MEKernelLike, path: string[]): any {
       if (resolved === undefined) return undefined;
       if (resolved === null) return null;
       if (Array.isArray(resolved)) return resolved;
-      if (typeof resolved === "function") return createRuntimeProxy(self, nextPath);
-      if (typeof resolved === "object") return createRuntimeProxy(self, nextPath);
+      if (typeof resolved === "function") return createRuntimeProxy(self, nextPath, callerScope);
+      if (typeof resolved === "object") return createRuntimeProxy(self, nextPath, callerScope);
       return resolved;
     },
     apply(target, _thisArg, args) {
@@ -193,20 +213,26 @@ export function createRuntimeProxy(self: MEKernelLike, path: string[]): any {
   });
 }
 
-export function createProxy(self: MEKernelLike, path: string[]): MEProxy {
+export function createProxy(
+  self: MEKernelLike,
+  path: string[],
+  callerScope: string | null | undefined = getProxyCallerScope(self),
+): MEProxy {
   const fn: any = (...args: any[]) => {
-    return handleCallFn(
-      {
-        createProxy: (p) => createProxy(self, p),
-        normalizeArgs: (a) => self.normalizeArgs(a),
-        readPath: (p) => self.readPath(p),
-        postulate: (p, e) => self.postulate(p, e),
-        opKind: (op) => self.opKind(op),
-        splitPath,
-        isMemory,
-      },
-      path,
-      args,
+    return withCallerScope(self, callerScope, () =>
+      handleCallFn(
+        {
+          createProxy: (p) => createProxy(self, p, callerScope),
+          normalizeArgs: (a) => self.normalizeArgs(a),
+          readPath: (p) => self.readPath(p),
+          postulate: (p, e) => self.postulate(p, e),
+          opKind: (op) => self.opKind(op),
+          splitPath,
+          isMemory,
+        },
+        path,
+        args,
+      )
     );
   };
 
@@ -214,16 +240,18 @@ export function createProxy(self: MEKernelLike, path: string[]): MEProxy {
     get(target, prop) {
       if (typeof prop === "symbol") return (target as any)[prop];
       if (prop === RUNTIME_ESCAPE_TOKEN) {
-        return createRuntimeProxy(self, []);
+        return createRuntimeProxy(self, [], callerScope);
       }
       if (prop in self) {
         const existing = (self as any)[prop];
-        if (typeof existing === "function") return existing.bind(self);
+        if (typeof existing === "function") {
+          return (...args: any[]) => withCallerScope(self, callerScope, () => existing.apply(self, args));
+        }
         return existing;
       }
 
       const newPath = [...path, String(prop)];
-      return createProxy(self, newPath);
+      return createProxy(self, newPath, callerScope);
     },
     apply(target, _thisArg, args) {
       return Reflect.apply(target as any, undefined, args);

@@ -3,6 +3,17 @@
 // Runtime entry stays default-export-first so CommonJS consumers can do:
 //   const ME = require("this.me")
 // without having to reach through `.default`.
+//
+// Patch 3 note:
+// The caller-scope enforcement surface does NOT live in this barrel file.
+// This file should remain a thin export boundary.
+// The actual public API behavior for owner vs guest reads must be wired in
+// `./src/me.ts`, where the callable ME surface is constructed.
+//
+// Expected public contract after Patch 3:
+// - default owner reads keep working
+// - guest reads can be simulated with an explicit caller scope
+// - ergonomic sugar like `.as(null)` can be layered on top afterward
 export { ME as default } from "./src/me.ts";
 export type {
   Memory,

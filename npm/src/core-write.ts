@@ -57,6 +57,13 @@ import {
   pathContainsFilterSelector,
 } from "./core-read.js";
 
+function registerStealthScope(self: MEKernelLike, scopePath: SemanticPath, scopeValue: string): void {
+  const normalizedScopePath = normalizeSelectorPath(scopePath);
+  const scopeKey = normalizedScopePath.join(".");
+  self.localSecrets[scopeKey] = scopeValue;
+  (self as any)._ownerScope = scopeValue;
+}
+
 export function learn(self: MEKernelLike, memory: unknown): void {
   const next = cloneValue(memory ?? {}) as Partial<ReplayMemoryInput>;
   const path = String(next.path || "")
@@ -104,6 +111,8 @@ export function replayMemories(self: MEKernelLike, memories: ReplayMemoryInput[]
   self.localNoises = {};
   self.encryptedBranches = {};
   self.keySpaces = {};
+  (self as any)._ownerScope = null;
+  (self as any)._currentCallerScope = undefined;
   bumpSecretEpoch(self);
   self.index = {};
   self._memories = [];
@@ -266,10 +275,10 @@ export function commitMapping(
       return commitValueMapping(self, instruction.path, instruction.value, "@");
     case "secret": {
       if (typeof instruction.value !== "string") return undefined;
-      const scopeKey = instruction.path.join(".");
-      self.localSecrets[scopeKey] = instruction.value;
+      const normalizedScopePath = normalizeSelectorPath(instruction.path);
+      registerStealthScope(self, normalizedScopePath, instruction.value);
       bumpSecretEpoch(self);
-      return commitMemoryOnly(self, instruction.path, "_", "***", "***");
+      return commitMemoryOnly(self, normalizedScopePath, "_", "***", "***");
     }
     default:
       return undefined;

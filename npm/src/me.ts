@@ -141,6 +141,8 @@ export class ME {
   private readonly secretHashBuckets!: number;
   private readonly unsafeEval!: boolean;
   private operators!: Record<string, { kind: string }>;
+  _ownerScope: string | null = null;
+  _currentCallerScope: string | null | undefined = undefined;
 
   /**
    * Public redacted memory log.
@@ -726,8 +728,48 @@ export class ME {
     return Core.collectFilteredScopes(this as unknown as MEKernelLike, path);
   }
 
+  private isStealthBlocked(path: SemanticPath, callerScope: string | null): boolean {
+    const normalized = Utils.normalizeSelectorPath(path);
+    for (let i = normalized.length; i > 0; i--) {
+      const ancestorKey = normalized.slice(0, i).join(".");
+      const secretScope = this.localSecrets[ancestorKey];
+      if (secretScope !== undefined && secretScope !== callerScope) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   private readPath(path: SemanticPath): any {
+    const callerScope =
+      this._currentCallerScope !== undefined
+        ? this._currentCallerScope
+        : (this._ownerScope ?? null);
+    const normalized = Utils.normalizeSelectorPath(path);
+    if (this.isStealthBlocked(normalized, callerScope)) {
+      return undefined;
+    }
     return Core.readPath(this as unknown as MEKernelLike, path);
+  }
+
+  as(scope: string | null): ME {
+    const prev = this._currentCallerScope;
+    this._currentCallerScope = scope;
+    try {
+      return this.createProxy([]) as unknown as ME;
+    } finally {
+      this._currentCallerScope = prev;
+    }
+  }
+
+  withScope<T>(scope: string | null, fn: () => T): T {
+    const prev = this._currentCallerScope;
+    this._currentCallerScope = scope;
+    try {
+      return fn();
+    } finally {
+      this._currentCallerScope = prev;
+    }
   }
 
   private isRemoveCall(path: SemanticPath, expression: any): { targetPath: SemanticPath } | null {
