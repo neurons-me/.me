@@ -47,10 +47,19 @@
   "keywords": [
     "semantic kernel",
     "knowledge graph",
-    "encrypted memory",
     "decentralized authentication",
-    "this.me"
+    "Namespace Resolution Protocol",
+    "NRP",
+    "self-sovereign identity"
   ],
   "license": "MIT",
-  "author": "suiGn"
+  "author": "suiGn",
+  "homepage": "https://neurons.me",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/neurons-me/.me.git"
+  },
+  "bugs": {
+    "url": "https://github.com/neurons-me/.me/issues"
+  }
 }
