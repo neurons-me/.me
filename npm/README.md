@@ -70,6 +70,47 @@ console.log(me.explain("friends.ana.isAdult"));
 - Define once, use everywhere — stop repeating code across projects.
 - Full transparency — `me.explain("path")` shows exactly how any value was computed.
 
+## A3: Structural Privacy
+
+Secret scopes are structural in `.me`. When you mark a branch with `["_"]`, the root stays stealth, descendants remain usable, and guest callers do not inherit the owner scope by accident.
+
+```ts
+import ME from "this.me";
+
+const me = new ME();
+
+me.finance["_"]("k-2026");
+me.finance.fuel_price(24.5);
+me.finance.currency("USD");
+
+console.log(me("finance.fuel_price"));          // 24.5   owner/default scope
+console.log(me.as(null)("finance"));            // undefined
+console.log(me.as(null)("finance.fuel_price")); // undefined
+```
+
+`me.explain(path)` is also safe for audit trails. If a derivation depends on a secret input, the trace still shows that the dependency exists, but it redacts the value:
+
+```ts
+me.fleet.trucks[2].fuel(350);
+me.fleet.trucks[2]["="]("cost", "fuel * finance.fuel_price");
+
+console.log(me.explain("fleet.trucks.2.cost"));
+```
+
+Expected trace shape:
+
+```json
+{
+  "label": "finance.fuel_price",
+  "path": "finance.fuel_price",
+  "value": "●●●●",
+  "origin": "stealth",
+  "masked": true
+}
+```
+
+This gives you auditable dependency traces without leaking secret values into logs, dashboards, or shared debugging output.
+
 ## Quick Secret Test
 
 ```ts

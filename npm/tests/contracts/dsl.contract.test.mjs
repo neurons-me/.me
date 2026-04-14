@@ -244,6 +244,31 @@ test("explicit guest scope does not collapse back to owner scope", () => {
   assert.equal(me.as(null)("finance.public_note"), undefined);
 });
 
+test("explain() masks stealth inputs while keeping public inputs visible", () => {
+  const me = new ME();
+  me.finance["_"]("k-2026");
+  me.finance.fuel_price(24.5);
+  me.fleet.trucks[1].fuel(100);
+  me.fleet.trucks[1]["="]("cost", "fuel * finance.fuel_price");
+  me("fleet.trucks[1].cost");
+
+  const explanation = me.explain("fleet.trucks.1.cost");
+  assert.ok(explanation.derivation);
+
+  const fuelInput = explanation.derivation.inputs.find((input) => input.path === "fleet.trucks.1.fuel");
+  const priceInput = explanation.derivation.inputs.find((input) => input.path === "finance.fuel_price");
+
+  assert.ok(fuelInput);
+  assert.equal(fuelInput.origin, "public");
+  assert.equal(fuelInput.masked, false);
+  assert.equal(fuelInput.value, 100);
+
+  assert.ok(priceInput);
+  assert.equal(priceInput.origin, "stealth");
+  assert.equal(priceInput.masked, true);
+  assert.equal(priceInput.value, "●●●●");
+});
+
 test("secret branch blobs are non-deterministic across identical writes", () => {
   const me = new ME();
   me.wallet["_"]("steel-door");

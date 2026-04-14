@@ -267,15 +267,28 @@ async function testExplainOverhead() {
   console.log(`\nOverhead: ${overhead}% (post claims ~25%)`);
   console.log(`explain() p95 sub-0.05ms: ${exp.p95 < 0.05 ? "✅ PASS" : "⚠️  CHECK"} (${exp.p95.toFixed(4)}ms)`);
 
-  // Spot-check explain() output structure
+  // Spot-check explain() output structure with a stealth dependency
   const meCheck = new Me() as CallableMe;
+  meCheck.finance["_"]("k-2026");
   meCheck.finance.fuel_price(24.5);
   meCheck.fleet.trucks[2].fuel(350);
   meCheck.fleet.trucks[2]["="]("cost", "fuel * finance.fuel_price");
   meCheck("fleet.trucks[2].cost");
   const explanation = (meCheck as any).explain("fleet.trucks.2.cost");
+  const secretInput = explanation?.derivation?.inputs?.find(
+    (input: { path: string }) => input.path === "finance.fuel_price"
+  );
   console.log("\nexplain() output sample:");
   console.log(JSON.stringify(explanation, null, 2));
+  console.log(
+    `explain() stealth masking: ${
+      secretInput?.origin === "stealth" &&
+      secretInput?.masked === true &&
+      secretInput?.value === "●●●●"
+        ? "✅ PASS"
+        : `❌ FAIL (${JSON.stringify(secretInput)})`
+    }`
+  );
 }
 
 // ─── Test 5: Mutation latency as graph grows ──────────────────────────────────
