@@ -8,6 +8,7 @@ const TARGET_BYTES = 1024 * MB;
 const DEFAULT_DIMS = 1536;
 const CHUNK_SIZE = 100;
 const CHUNK_SAMPLE_READS = 25;
+const PROFILE_EVERY_CHUNKS = 100;
 
 function percentile(values, p) {
   if (!values.length) return 0;
@@ -47,6 +48,64 @@ function logSnapshot(label, snap) {
   console.log(
     `${label} rss=${formatMb(snap.rss)} heapUsed=${formatMb(snap.heapUsed)} heapTotal=${formatMb(snap.heapTotal)} external=${formatMb(snap.external)}`,
   );
+}
+
+function countObjectKeys(value) {
+  return value && typeof value === "object" ? Object.keys(value).length : 0;
+}
+
+function structuralSnapshot(me) {
+  return {
+    memories: Array.isArray(me?._memories) ? me._memories.length : 0,
+    indexKeys: countObjectKeys(me?.index),
+    derivationKeys: countObjectKeys(me?.derivations),
+    refSubscriberKeys: countObjectKeys(me?.refSubscribers),
+    derivationRefVersionKeys: countObjectKeys(me?.derivationRefVersions),
+    encryptedBranchScopes: countObjectKeys(me?.encryptedBranches),
+    decryptedChunkCache: me?.decryptedBranchCache?.size ?? 0,
+    staleDerivations: me?.staleDerivations?.size ?? 0,
+  };
+}
+
+function logStructuralSnapshot(label, me) {
+  const snap = structuralSnapshot(me);
+  console.log(
+    `${label} memories=${snap.memories} ` +
+    `indexKeys=${snap.indexKeys} ` +
+    `derivationKeys=${snap.derivationKeys} ` +
+    `refSubscriberKeys=${snap.refSubscriberKeys} ` +
+    `derivationRefVersionKeys=${snap.derivationRefVersionKeys} ` +
+    `encryptedBranchScopes=${snap.encryptedBranchScopes} ` +
+    `decryptedChunkCache=${snap.decryptedChunkCache} ` +
+    `staleDerivations=${snap.staleDerivations}`,
+  );
+}
+
+function inspectRecentMemories(me, count = 3) {
+  const arr = Array.isArray(me?._memories) ? me._memories : [];
+  const tail = arr.slice(-count);
+
+  console.log(`\n[RECENT MEMORIES - last ${tail.length}]`);
+  tail.forEach((m, i) => {
+    const exprType = Array.isArray(m?.expression) ? "array" : typeof m?.expression;
+    const valueType = Array.isArray(m?.value) ? "array" : typeof m?.value;
+    const exprLen = Array.isArray(m?.expression) ? m.expression.length : 0;
+    const valueLen = Array.isArray(m?.value) ? m.value.length : 0;
+
+    let approxBytes = 0;
+    if (Array.isArray(m?.expression)) {
+      try {
+        approxBytes = Buffer.byteLength(JSON.stringify(m.expression[0] || {})) * exprLen;
+      } catch {}
+    }
+
+    console.log(
+      `  [${i}] path="${m?.path}" op="${m?.operator}" ` +
+      `exprType=${exprType} exprLen=${exprLen} ` +
+      `valueType=${valueType} valueLen=${valueLen} ` +
+      `~${(approxBytes / 1024 / 1024).toFixed(2)}MB`,
+    );
+  });
 }
 
 function createCallableMe() {
@@ -225,6 +284,13 @@ async function main() {
       `writeΔheap=${formatMb(memAfterWrite.heapUsed - memAfterGenerate.heapUsed)} ` +
       `rss=${formatMb(memAfterWrite.rss)}`,
     );
+
+    if ((chunkIndex + 1) % PROFILE_EVERY_CHUNKS === 0 || chunkIndex > 1450) {
+      console.log(`\n  [profile @ ${chunkLabel}]`);
+      logSnapshot("  memory", memAfterWrite);
+      logStructuralSnapshot("  runtime", writer);
+      inspectRecentMemories(writer, 2);
+    }
   }
 
   const memAfterAllWrites = memorySnapshot();
@@ -234,6 +300,7 @@ async function main() {
   console.log(`peak write rss: ${formatMb(peakWriteRss)}`);
   console.log(`peak write heapUsed: ${formatMb(peakWriteHeap)}`);
   logSnapshot("after writes", memAfterAllWrites);
+  logStructuralSnapshot("after writes runtime", writer);
 
   const exported = writer.memories();
   assert(Array.isArray(exported) && exported.length > 0, "writer.memories() returned empty state");

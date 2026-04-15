@@ -208,6 +208,62 @@ type BatchRelEntry = {
   value: any;
 };
 
+function computeBatchHash(items: any[]): string {
+  const first = items[0];
+  const last = items[items.length - 1];
+  const middle = items.length > 2 ? items[Math.floor(items.length / 2)] : null;
+
+  return hashFn(JSON.stringify({
+    count: items.length,
+    firstId: first?.id ?? null,
+    lastId: last?.id ?? null,
+    middleId: middle?.id ?? null,
+  }));
+}
+
+function commitBatchMemoryOnly(
+  self: MEKernelLike,
+  basePath: SemanticPath,
+  startIndex: number,
+  items: any[],
+  operator: string | null,
+): KernelMemory {
+  const pathStr = "commitIndexedBatch";
+  const effectiveSecret = computeEffectiveSecret(self, basePath);
+  const prevHash = getPrevMemoryHash(self);
+  const timestamp = Date.now();
+  const metadata = {
+    basePath: basePath.join("."),
+    startIndex,
+    count: items.length,
+    batchHash: computeBatchHash(items),
+    firstId: items[0]?.id ?? null,
+    lastId: items[items.length - 1]?.id ?? null,
+  };
+  const hashInput = JSON.stringify({
+    path: pathStr,
+    operator,
+    expression: metadata,
+    value: metadata,
+    effectiveSecret,
+    prevHash,
+  });
+  const hash = hashFn(hashInput);
+  const memory: KernelMemory = {
+    path: pathStr,
+    operator,
+    expression: metadata,
+    value: metadata,
+    effectiveSecret,
+    hash,
+    prevHash,
+    timestamp,
+  };
+  self._memories.push(memory);
+  self.applyMemoryToIndex(memory);
+  return memory;
+}
+
 function loadMutableSecretBranch(
   self: MEKernelLike,
   scope: SemanticPath,
@@ -287,7 +343,7 @@ export function commitIndexedBatch(
     chunkId: string;
     relEntries: BatchRelEntry[];
   }>();
-  const pendingMemories: Array<{ targetPath: SemanticPath; value: any }> = [];
+  let touchedPaths: SemanticPath[] = [];
 
   for (let offset = 0; offset < items.length; offset++) {
     const index = startIndex + offset;
@@ -295,12 +351,14 @@ export function commitIndexedBatch(
     const scope = resolveBranchScope(self, targetPath);
     if (!scope || scope.length === 0) {
       commitValueMapping(self, targetPath, items[offset], operator);
+      touchedPaths.push(targetPath);
       continue;
     }
 
     const scopeSecret = computeEffectiveSecret(self, scope);
     if (!scopeSecret) {
       commitValueMapping(self, targetPath, items[offset], operator);
+      touchedPaths.push(targetPath);
       continue;
     }
 
@@ -313,20 +371,19 @@ export function commitIndexedBatch(
       grouped.set(groupKey, group);
     }
     group.relEntries.push({ rel, value: items[offset] });
-    pendingMemories.push({ targetPath, value: items[offset] });
+    touchedPaths.push(targetPath);
   }
 
   for (const group of grouped.values()) {
     commitChunkBatch(self, group.scope, group.scopeSecret, group.chunkId, group.relEntries);
   }
 
-  const out: KernelMemory[] = [];
-  for (const { targetPath, value } of pendingMemories) {
-    const memory = commitMemoryOnly(self, targetPath, operator, value, value);
+  for (const targetPath of touchedPaths) {
     invalidateFromPath(self, targetPath);
-    out.push(memory);
   }
-  return out;
+
+  const batchMemory = commitBatchMemoryOnly(self, basePath, startIndex, items, operator ?? "batch_set");
+  return [batchMemory];
 }
 
 export function commitValueMapping(
