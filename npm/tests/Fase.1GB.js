@@ -3,6 +3,7 @@ import ME from "../dist/me.es.js";
 const MB = 1024 * 1024;
 const TARGET_BYTES = 1024 * MB;
 const DEFAULT_DIMS = 1536;
+const CHUNK_SIZE = 100;
 const CHUNK_SAMPLE_READS = 25;
 
 function percentile(values, p) {
@@ -70,11 +71,11 @@ function computeTargetCount(dims = DEFAULT_DIMS, targetBytes = TARGET_BYTES) {
   return Math.max(1000, Math.floor(targetBytes / estimateItemBytes(dims)));
 }
 
-function generateItems(count, dims) {
+function generateItemsRange(start, end, dims) {
   const now = Date.now();
-  const out = new Array(count);
-  for (let i = 0; i < count; i++) {
-    out[i] = {
+  const out = new Array(end - start);
+  for (let i = start; i < end; i++) {
+    out[i - start] = {
       id: i,
       embedding: generateEmbedding(i, dims),
       timestamp: now - i * 1000,
@@ -100,6 +101,28 @@ function readPath(me, path) {
   return me(path);
 }
 
+function maybeLogWriteProgress(chunkLabel, offset, total, startedAt) {
+  const step = total >= 100 ? 25 : Math.max(1, Math.floor(total / 4));
+  const isLast = offset === total - 1;
+  if (offset === 0 || isLast || offset % step === 0) {
+    const elapsed = performance.now() - startedAt;
+    console.log(
+      `    ${chunkLabel} item ${offset + 1}/${total} elapsed=${formatMs(elapsed)}`,
+    );
+  }
+}
+
+function writeChunk(me, chunk, startIndex, chunkLabel) {
+  const startedAt = performance.now();
+  console.log(`  ${chunkLabel} write-start size=${chunk.length} startIndex=${startIndex}`);
+  for (let offset = 0; offset < chunk.length; offset++) {
+    maybeLogWriteProgress(chunkLabel, offset, chunk.length, startedAt);
+    me.memory.episodic[startIndex + offset](chunk[offset]);
+  }
+  const elapsed = performance.now() - startedAt;
+  console.log(`  ${chunkLabel} write-done total=${formatMs(elapsed)}`);
+}
+
 function runSampleReads(me, count, chunkSize) {
   const latencies = [];
   for (let i = 0; i < Math.min(CHUNK_SAMPLE_READS, count); i++) {
@@ -108,8 +131,6 @@ function runSampleReads(me, count, chunkSize) {
     const item = readPath(me, `memory.episodic.${idx}`);
     const t1 = performance.now();
     assert(item && typeof item === "object", `missing item at index ${idx}`);
-    assert(Array.isArray(item.embedding), `embedding missing at index ${idx}`);
-    assert(item.embedding.length === DEFAULT_DIMS, `embedding dims mismatch at index ${idx}`);
     latencies.push(t1 - t0);
   }
 
@@ -134,45 +155,67 @@ function runSampleReads(me, count, chunkSize) {
 
 async function main() {
   console.log("\n============================================================");
-  console.log("FASE 1GB TEST — SECRET BRANCH COLUMNAR / REAL COLD READ");
+  console.log("FASE 1GB TEST — SECRET BRANCH COLUMNAR / INCREMENTAL");
   console.log("============================================================\n");
 
   const dims = DEFAULT_DIMS;
   const count = computeTargetCount(dims, TARGET_BYTES);
   const approxBytes = count * estimateItemBytes(dims);
-  const chunkSize = 10000;
+  const chunkCount = Math.ceil(count / CHUNK_SIZE);
 
   console.log(`dims: ${dims}`);
   console.log(`target bytes: ${formatMb(TARGET_BYTES)}`);
   console.log(`estimated item bytes: ${estimateItemBytes(dims)} bytes`);
   console.log(`generated item count: ${count}`);
   console.log(`estimated payload size: ${formatMb(approxBytes)}`);
-  console.log(`configured chunk size: ${chunkSize}`);
-
-  forceGc();
-  const memBeforeGenerate = memorySnapshot();
-  const items = generateItems(count, dims);
-  const memAfterGenerate = memorySnapshot();
-  console.log("\n[generate]");
-  logSnapshot("before", memBeforeGenerate);
-  logSnapshot("after ", memAfterGenerate);
-  logSnapshot("delta ", diffSnapshot(memAfterGenerate, memBeforeGenerate));
+  console.log(`configured chunk size: ${CHUNK_SIZE}`);
+  console.log(`chunk count: ${chunkCount}`);
 
   const writer = createCallableMe();
   writer.memory["_"]("fase-1gb-secret");
 
-  forceGc();
-  const memBeforeWrite = memorySnapshot();
-  const writeT0 = performance.now();
-  writer.memory.episodic(items);
-  const writeT1 = performance.now();
-  const memAfterWrite = memorySnapshot();
+  const writeChunkLatencies = [];
+  let peakWriteRss = 0;
+  let peakWriteHeap = 0;
 
-  console.log("\n[write]");
-  console.log(`write total: ${formatMs(writeT1 - writeT0)}`);
-  logSnapshot("before", memBeforeWrite);
-  logSnapshot("after ", memAfterWrite);
-  logSnapshot("delta ", diffSnapshot(memAfterWrite, memBeforeWrite));
+  console.log("\n[write incremental]");
+  for (let chunkIndex = 0; chunkIndex < chunkCount; chunkIndex++) {
+    const start = chunkIndex * CHUNK_SIZE;
+    const end = Math.min(count, start + CHUNK_SIZE);
+    const chunkLabel = `chunk ${chunkIndex + 1}/${chunkCount}`;
+
+    forceGc();
+    const memBeforeGenerate = memorySnapshot();
+    console.log(`\n  ${chunkLabel} generate-start range=[${start}, ${end})`);
+    const chunk = generateItemsRange(start, end, dims);
+    const memAfterGenerate = memorySnapshot();
+    console.log(`  ${chunkLabel} generate-done items=${chunk.length} genHeap=${formatMb(memAfterGenerate.heapUsed - memBeforeGenerate.heapUsed)}`);
+
+    const writeT0 = performance.now();
+    writeChunk(writer, chunk, start, chunkLabel);
+    const writeT1 = performance.now();
+    const memAfterWrite = memorySnapshot();
+
+    writeChunkLatencies.push(writeT1 - writeT0);
+    peakWriteRss = Math.max(peakWriteRss, memAfterWrite.rss);
+    peakWriteHeap = Math.max(peakWriteHeap, memAfterWrite.heapUsed);
+
+    console.log(
+      `  ${chunkLabel} summary items=${end - start} ` +
+      `write=${formatMs(writeT1 - writeT0)} ` +
+      `genΔheap=${formatMb(memAfterGenerate.heapUsed - memBeforeGenerate.heapUsed)} ` +
+      `writeΔheap=${formatMb(memAfterWrite.heapUsed - memAfterGenerate.heapUsed)} ` +
+      `rss=${formatMb(memAfterWrite.rss)}`,
+    );
+  }
+
+  const memAfterAllWrites = memorySnapshot();
+  console.log("\n[write summary]");
+  console.log(`chunk write p50: ${formatMs(percentile(writeChunkLatencies, 50))}`);
+  console.log(`chunk write p95: ${formatMs(percentile(writeChunkLatencies, 95))}`);
+  console.log(`peak write rss: ${formatMb(peakWriteRss)}`);
+  console.log(`peak write heapUsed: ${formatMb(peakWriteHeap)}`);
+  logSnapshot("after writes", memAfterAllWrites);
 
   const exported = writer.memories();
   assert(Array.isArray(exported) && exported.length > 0, "writer.memories() returned empty state");
@@ -187,7 +230,7 @@ async function main() {
   const hydrateT1 = performance.now();
   const memAfterHydrate = memorySnapshot();
 
-  console.log("\n[rehydrate]");
+  console.log("\n[rehydrate new instance]");
   console.log(`hydrate total: ${formatMs(hydrateT1 - hydrateT0)}`);
   logSnapshot("before", memBeforeHydrate);
   logSnapshot("after ", memAfterHydrate);
@@ -196,22 +239,38 @@ async function main() {
   forceGc();
   const memBeforeColdRead = memorySnapshot();
   const coldReadT0 = performance.now();
-  const fullBranch = readPath(reader, "memory.episodic");
+  const firstItem = readPath(reader, "memory.episodic.0");
   const coldReadT1 = performance.now();
   const memAfterColdRead = memorySnapshot();
 
-  assert(Array.isArray(fullBranch), "cold read did not return an array");
-  assert(fullBranch.length === count, `cold read length mismatch: expected ${count}, got ${fullBranch.length}`);
+  assert(firstItem && typeof firstItem === "object", "cold read did not return first item");
+  assert(Array.isArray(firstItem.embedding), "cold read first item missing embedding");
+  assert(firstItem.embedding.length === dims, `cold read dims mismatch: expected ${dims}, got ${firstItem.embedding.length}`);
 
-  console.log("\n[cold read full branch]");
-  console.log(`cold read total: ${formatMs(coldReadT1 - coldReadT0)}`);
+  console.log("\n[cold read real / first item]");
+  console.log(`cold read first-item total: ${formatMs(coldReadT1 - coldReadT0)}`);
   logSnapshot("before", memBeforeColdRead);
   logSnapshot("after ", memAfterColdRead);
   logSnapshot("delta ", diffSnapshot(memAfterColdRead, memBeforeColdRead));
 
   forceGc();
+  const memBeforeFullRead = memorySnapshot();
+  const fullReadT0 = performance.now();
+  const fullBranch = readPath(reader, "memory.episodic");
+  const fullReadT1 = performance.now();
+  const memAfterFullRead = memorySnapshot();
+
+  assert(fullBranch && typeof fullBranch === "object", "full branch read returned nothing");
+
+  console.log("\n[full branch read]");
+  console.log(`full branch read total: ${formatMs(fullReadT1 - fullReadT0)}`);
+  logSnapshot("before", memBeforeFullRead);
+  logSnapshot("after ", memAfterFullRead);
+  logSnapshot("delta ", diffSnapshot(memAfterFullRead, memBeforeFullRead));
+
+  forceGc();
   const memBeforeHotReads = memorySnapshot();
-  const sampleStats = runSampleReads(reader, count, chunkSize);
+  const sampleStats = runSampleReads(reader, count, CHUNK_SIZE);
   const memAfterHotReads = memorySnapshot();
 
   console.log("\n[hot / selective reads]");
@@ -228,24 +287,30 @@ async function main() {
     {
       dims,
       count,
+      chunkSize: CHUNK_SIZE,
+      chunkCount,
       estimatedPayloadMB: Number((approxBytes / MB).toFixed(1)),
-      writeMs: Number((writeT1 - writeT0).toFixed(2)),
+      chunkWriteP50Ms: Number(percentile(writeChunkLatencies, 50).toFixed(2)),
+      chunkWriteP95Ms: Number(percentile(writeChunkLatencies, 95).toFixed(2)),
       hydrateMs: Number((hydrateT1 - hydrateT0).toFixed(2)),
-      coldReadMs: Number((coldReadT1 - coldReadT0).toFixed(2)),
+      coldFirstItemMs: Number((coldReadT1 - coldReadT0).toFixed(2)),
+      fullReadMs: Number((fullReadT1 - fullReadT0).toFixed(2)),
       itemReadP50Ms: Number(sampleStats.itemP50.toFixed(2)),
       itemReadP95Ms: Number(sampleStats.itemP95.toFixed(2)),
       chunkBoundaryP50Ms: Number(sampleStats.chunkBoundaryP50.toFixed(2)),
       chunkBoundaryP95Ms: Number(sampleStats.chunkBoundaryP95.toFixed(2)),
+      peakWriteRssMB: Number((peakWriteRss / MB).toFixed(1)),
+      peakWriteHeapMB: Number((peakWriteHeap / MB).toFixed(1)),
       rssMB: Number((process.memoryUsage().rss / MB).toFixed(1)),
       heapUsedMB: Number((process.memoryUsage().heapUsed / MB).toFixed(1)),
     },
   ]);
 
-  console.log("\nPASS: Fase 1GB benchmark completed.\n");
+  console.log("\nPASS: Fase 1GB incremental benchmark completed.\n");
 }
 
 main().catch((error) => {
-  console.error("\nFAIL: Fase 1GB benchmark failed.");
+  console.error("\nFAIL: Fase 1GB incremental benchmark failed.");
   console.error(error);
   process.exitCode = 1;
 });

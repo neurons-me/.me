@@ -5,6 +5,7 @@
   "main": "./dist/me.cjs",
   "module": "./dist/me.es.js",
   "types": "./dist/index.d.ts",
+  "status": "stable",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
