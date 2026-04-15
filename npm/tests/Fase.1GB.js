@@ -1,4 +1,7 @@
-import ME from "../dist/me.es.js";
+import * as ThisMeModule from "../dist/me.es.js";
+
+const ME = ThisMeModule.default;
+const commitIndexedBatchExport = ThisMeModule.commitIndexedBatch;
 
 const MB = 1024 * 1024;
 const TARGET_BYTES = 1024 * MB;
@@ -101,26 +104,41 @@ function readPath(me, path) {
   return me(path);
 }
 
-function maybeLogWriteProgress(chunkLabel, offset, total, startedAt) {
-  const step = total >= 100 ? 25 : Math.max(1, Math.floor(total / 4));
-  const isLast = offset === total - 1;
-  if (offset === 0 || isLast || offset % step === 0) {
-    const elapsed = performance.now() - startedAt;
-    console.log(
-      `    ${chunkLabel} item ${offset + 1}/${total} elapsed=${formatMs(elapsed)}`,
+function resolveBatchWriter(me) {
+  const candidates = [
+    typeof commitIndexedBatchExport === "function"
+      ? (startIndex, items) => commitIndexedBatchExport(me, ["memory", "episodic"], startIndex, items)
+      : null,
+    typeof me?.commitIndexedBatch === "function"
+      ? (startIndex, items) => me.commitIndexedBatch(["memory", "episodic"], startIndex, items)
+      : null,
+    typeof me?._commitIndexedBatch === "function"
+      ? (startIndex, items) => me._commitIndexedBatch(["memory", "episodic"], startIndex, items)
+      : null,
+    typeof me?.kernel?.commitIndexedBatch === "function"
+      ? (startIndex, items) => me.kernel.commitIndexedBatch(["memory", "episodic"], startIndex, items)
+      : null,
+    typeof me?._kernel?.commitIndexedBatch === "function"
+      ? (startIndex, items) => me._kernel.commitIndexedBatch(["memory", "episodic"], startIndex, items)
+      : null,
+  ].filter(Boolean);
+
+  if (candidates.length === 0) {
+    throw new Error(
+      "commitIndexedBatch is not reachable from the benchmark runtime. Rebuild exports or expose the helper on the ME instance before running this test.",
     );
   }
+
+  return candidates[0];
 }
 
 function writeChunk(me, chunk, startIndex, chunkLabel) {
   const startedAt = performance.now();
-  console.log(`  ${chunkLabel} write-start size=${chunk.length} startIndex=${startIndex}`);
-  for (let offset = 0; offset < chunk.length; offset++) {
-    maybeLogWriteProgress(chunkLabel, offset, chunk.length, startedAt);
-    me.memory.episodic[startIndex + offset](chunk[offset]);
-  }
+  const batchWrite = resolveBatchWriter(me);
+  console.log(`  ${chunkLabel} batch-write-start size=${chunk.length} startIndex=${startIndex}`);
+  batchWrite(startIndex, chunk);
   const elapsed = performance.now() - startedAt;
-  console.log(`  ${chunkLabel} write-done total=${formatMs(elapsed)}`);
+  console.log(`  ${chunkLabel} batch-write-done total=${formatMs(elapsed)}`);
 }
 
 function runSampleReads(me, count, chunkSize) {
@@ -201,7 +219,7 @@ async function main() {
     peakWriteHeap = Math.max(peakWriteHeap, memAfterWrite.heapUsed);
 
     console.log(
-      `  ${chunkLabel} summary items=${end - start} ` +
+      `  ${chunkLabel} batch-summary items=${end - start} ` +
       `write=${formatMs(writeT1 - writeT0)} ` +
       `genΔheap=${formatMb(memAfterGenerate.heapUsed - memBeforeGenerate.heapUsed)} ` +
       `writeΔheap=${formatMb(memAfterWrite.heapUsed - memAfterGenerate.heapUsed)} ` +

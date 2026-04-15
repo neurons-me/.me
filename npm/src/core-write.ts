@@ -203,6 +203,132 @@ export function commitMemoryOnly(
   return memory;
 }
 
+type BatchRelEntry = {
+  rel: SemanticPath;
+  value: any;
+};
+
+function loadMutableSecretBranch(
+  self: MEKernelLike,
+  scope: SemanticPath,
+  scopeSecret: string,
+  chunkId: string,
+): any {
+  let branchObj: any = {};
+  const dec = getDecryptedChunk(self, scope, scopeSecret, chunkId);
+  if (dec && typeof dec === "object") {
+    const materialized = materializeDecryptedChunk(dec as any);
+    if (materialized && typeof materialized === "object") branchObj = cloneValue(materialized);
+  }
+  return branchObj;
+}
+
+function persistSecretBranch(
+  self: MEKernelLike,
+  scope: SemanticPath,
+  scopeSecret: string,
+  chunkId: string,
+  branchObj: any,
+): void {
+  const useColumnar = Array.isArray(branchObj) && shouldUseColumnarEncoding(branchObj);
+  const cacheSeed = useColumnar ? materializeColumnarData(branchObj) : branchObj;
+  const encryptable = useColumnar
+    ? prepareColumnarChunkForEncryption(cacheSeed)
+    : branchObj;
+
+  const blob = self.secretBlobVersion === "v2"
+    ? xorEncrypt(encryptable, scopeSecret, scope)
+    : encryptBlobV3WithDerivedKeys(encryptable, getOrDeriveV3Keys(self, scope, "branch"));
+  setChunkBlob(self, scope, chunkId, blob, scopeSecret);
+  primeDecryptedBranchCache(self, scope, chunkId, cacheSeed);
+}
+
+export function commitChunkBatch(
+  self: MEKernelLike,
+  scope: SemanticPath,
+  scopeSecret: string,
+  chunkId: string,
+  relEntries: BatchRelEntry[],
+): void {
+  if (!scopeSecret || relEntries.length === 0) return;
+
+  const branchObj = loadMutableSecretBranch(self, scope, scopeSecret, chunkId);
+  for (const { rel, value } of relEntries) {
+    if (rel.length === 0) {
+      if (typeof branchObj !== "object" || branchObj === null) continue;
+      branchObj.expression = value;
+      continue;
+    }
+
+    let ref = branchObj;
+    for (let i = 0; i < rel.length - 1; i++) {
+      const part = rel[i];
+      if (!ref[part] || typeof ref[part] !== "object") ref[part] = {};
+      ref = ref[part];
+    }
+    ref[rel[rel.length - 1]] = value;
+  }
+
+  persistSecretBranch(self, scope, scopeSecret, chunkId, branchObj);
+}
+
+export function commitIndexedBatch(
+  self: MEKernelLike,
+  basePath: SemanticPath,
+  startIndex: number,
+  items: any[],
+  operator: string | null = null,
+): KernelMemory[] {
+  if (!Array.isArray(items) || items.length === 0) return [];
+
+  const grouped = new Map<string, {
+    scope: SemanticPath;
+    scopeSecret: string;
+    chunkId: string;
+    relEntries: BatchRelEntry[];
+  }>();
+  const pendingMemories: Array<{ targetPath: SemanticPath; value: any }> = [];
+
+  for (let offset = 0; offset < items.length; offset++) {
+    const index = startIndex + offset;
+    const targetPath = [...basePath, String(index)];
+    const scope = resolveBranchScope(self, targetPath);
+    if (!scope || scope.length === 0) {
+      commitValueMapping(self, targetPath, items[offset], operator);
+      continue;
+    }
+
+    const scopeSecret = computeEffectiveSecret(self, scope);
+    if (!scopeSecret) {
+      commitValueMapping(self, targetPath, items[offset], operator);
+      continue;
+    }
+
+    const chunkId = getChunkId(self, targetPath, scope);
+    const rel = targetPath.slice(scope.length);
+    const groupKey = `${scope.join(".")}::${chunkId}`;
+    let group = grouped.get(groupKey);
+    if (!group) {
+      group = { scope, scopeSecret, chunkId, relEntries: [] };
+      grouped.set(groupKey, group);
+    }
+    group.relEntries.push({ rel, value: items[offset] });
+    pendingMemories.push({ targetPath, value: items[offset] });
+  }
+
+  for (const group of grouped.values()) {
+    commitChunkBatch(self, group.scope, group.scopeSecret, group.chunkId, group.relEntries);
+  }
+
+  const out: KernelMemory[] = [];
+  for (const { targetPath, value } of pendingMemories) {
+    const memory = commitMemoryOnly(self, targetPath, operator, value, value);
+    invalidateFromPath(self, targetPath);
+    out.push(memory);
+  }
+  return out;
+}
+
 export function commitValueMapping(
   self: MEKernelLike,
   targetPath: SemanticPath,
@@ -223,11 +349,7 @@ export function commitValueMapping(
     const chunkId = getChunkId(self, targetPath, scope);
     let branchObj: any = {};
     if (scopeSecret) {
-      const dec = getDecryptedChunk(self, scope, scopeSecret, chunkId);
-      if (dec && typeof dec === "object") {
-        const materialized = materializeDecryptedChunk(dec as any);
-        if (materialized && typeof materialized === "object") branchObj = cloneValue(materialized);
-      }
+      branchObj = loadMutableSecretBranch(self, scope, scopeSecret, chunkId);
     }
 
     if (rel.length === 0) {
@@ -244,19 +366,7 @@ export function commitValueMapping(
     }
 
     if (scopeSecret) {
-      const useColumnar = Array.isArray(branchObj) && shouldUseColumnarEncoding(branchObj);
-      const cacheSeed = useColumnar ? materializeColumnarData(branchObj) : branchObj;
-      const encryptable = useColumnar
-        ? prepareColumnarChunkForEncryption(cacheSeed)
-        : branchObj;
-
-      // v3 is the primary write path. v2 remains available only for compatibility and rollback forcing.
-      const blob = self.secretBlobVersion === "v2"
-        ? xorEncrypt(encryptable, scopeSecret, scope)
-        : encryptBlobV3WithDerivedKeys(encryptable, getOrDeriveV3Keys(self, scope, "branch"));
-      setChunkBlob(self, scope, chunkId, blob, scopeSecret);
-      // Seed the decrypted branch cache with the exact logical shape we want reads to reuse.
-      primeDecryptedBranchCache(self, scope, chunkId, cacheSeed);
+      persistSecretBranch(self, scope, scopeSecret, chunkId, branchObj);
     }
     storedValue = expression;
   } else if (effectiveSecret) {
@@ -484,16 +594,7 @@ export function removeSubtree(self: MEKernelLike, targetPath: SemanticPath) {
     }
     if (ref && typeof ref === "object") {
       delete ref[rel[rel.length - 1]];
-      const useColumnar = Array.isArray(branchObj) && shouldUseColumnarEncoding(branchObj);
-      const cacheSeed = useColumnar ? materializeColumnarData(branchObj) : branchObj;
-      const encryptable = useColumnar
-        ? prepareColumnarChunkForEncryption(cacheSeed)
-        : branchObj;
-      const nextBlob = self.secretBlobVersion === "v2"
-        ? xorEncrypt(encryptable, scopeSecret, scope)
-        : encryptBlobV3WithDerivedKeys(encryptable, getOrDeriveV3Keys(self, scope, "branch"));
-      setChunkBlob(self, scope, writeChunkId, nextBlob, scopeSecret);
-      primeDecryptedBranchCache(self, scope, writeChunkId, cacheSeed);
+      persistSecretBranch(self, scope, scopeSecret, writeChunkId, branchObj);
     }
   }
 
