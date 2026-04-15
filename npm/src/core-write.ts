@@ -30,7 +30,13 @@ import {
   resolveBranchScope,
   setChunkBlob,
 } from "./secret.js";
+import { materializeDecryptedChunk } from "./secret-storage.js";
 import { getOrDeriveV3Keys } from "./secret-context.js";
+import {
+  materializeColumnarData,
+  prepareColumnarChunkForEncryption,
+  shouldUseColumnarEncoding,
+} from "./secret-storage-columnar.js";
 import type {
   KernelMemory,
   MappingInstruction,
@@ -218,7 +224,10 @@ export function commitValueMapping(
     let branchObj: any = {};
     if (scopeSecret) {
       const dec = getDecryptedChunk(self, scope, scopeSecret, chunkId);
-      if (dec && typeof dec === "object") branchObj = cloneValue(dec);
+      if (dec && typeof dec === "object") {
+        const materialized = materializeDecryptedChunk(dec as any);
+        if (materialized && typeof materialized === "object") branchObj = cloneValue(materialized);
+      }
     }
 
     if (rel.length === 0) {
@@ -235,14 +244,19 @@ export function commitValueMapping(
     }
 
     if (scopeSecret) {
+      const useColumnar = Array.isArray(branchObj) && shouldUseColumnarEncoding(branchObj);
+      const cacheSeed = useColumnar ? materializeColumnarData(branchObj) : branchObj;
+      const encryptable = useColumnar
+        ? prepareColumnarChunkForEncryption(cacheSeed)
+        : branchObj;
+
       // v3 is the primary write path. v2 remains available only for compatibility and rollback forcing.
       const blob = self.secretBlobVersion === "v2"
-        ? xorEncrypt(branchObj, scopeSecret, scope)
-        : encryptBlobV3WithDerivedKeys(branchObj, getOrDeriveV3Keys(self, scope, "branch"));
+        ? xorEncrypt(encryptable, scopeSecret, scope)
+        : encryptBlobV3WithDerivedKeys(encryptable, getOrDeriveV3Keys(self, scope, "branch"));
       setChunkBlob(self, scope, chunkId, blob, scopeSecret);
-      // Seed the decrypted branch cache with the exact object we just wrote so the first
-      // post-mutation read can hit cache instead of decrypting the freshly written chunk.
-      primeDecryptedBranchCache(self, scope, chunkId, branchObj);
+      // Seed the decrypted branch cache with the exact logical shape we want reads to reuse.
+      primeDecryptedBranchCache(self, scope, chunkId, cacheSeed);
     }
     storedValue = expression;
   } else if (effectiveSecret) {
@@ -456,7 +470,7 @@ export function removeSubtree(self: MEKernelLike, targetPath: SemanticPath) {
       writeChunkId = "default";
     }
     if (!branchObj || typeof branchObj !== "object") continue;
-    branchObj = cloneValue(branchObj);
+    branchObj = cloneValue(materializeDecryptedChunk(branchObj as any));
 
     const rel = targetPath.slice(scope.length);
     let ref: any = branchObj;
@@ -470,9 +484,16 @@ export function removeSubtree(self: MEKernelLike, targetPath: SemanticPath) {
     }
     if (ref && typeof ref === "object") {
       delete ref[rel[rel.length - 1]];
-      const nextBlob = xorEncrypt(branchObj, scopeSecret, scope);
+      const useColumnar = Array.isArray(branchObj) && shouldUseColumnarEncoding(branchObj);
+      const cacheSeed = useColumnar ? materializeColumnarData(branchObj) : branchObj;
+      const encryptable = useColumnar
+        ? prepareColumnarChunkForEncryption(cacheSeed)
+        : branchObj;
+      const nextBlob = self.secretBlobVersion === "v2"
+        ? xorEncrypt(encryptable, scopeSecret, scope)
+        : encryptBlobV3WithDerivedKeys(encryptable, getOrDeriveV3Keys(self, scope, "branch"));
       setChunkBlob(self, scope, writeChunkId, nextBlob, scopeSecret);
-      primeDecryptedBranchCache(self, scope, writeChunkId, branchObj);
+      primeDecryptedBranchCache(self, scope, writeChunkId, cacheSeed);
     }
   }
 

@@ -13,5 +13,5 @@
     "skipLibCheck": true,
     "allowSyntheticDefaultImports": true
   },
-  "include": ["src/**/*", "index.ts", "typedoc-entry.ts", "tests/**/*.ts", "tests/**/*.d.ts", "tests/grok.tests.js"]
+  "include": ["src/**/*", "index.ts", "typedoc-entry.ts", "tests/**/*.ts", "tests/**/*.d.ts", "tests/grok.tests.js", "tests/Fase.1GB.js"]
 }

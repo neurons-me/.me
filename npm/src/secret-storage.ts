@@ -12,8 +12,43 @@ import type {
   SemanticPath,
 } from "./types.js";
 import { hashFn } from "./utils.js";
+import {
+  type ColumnarChunkEnvelope,
+  type ColumnarChunkPayload,
+  getColumnarItem,
+  isColumnarChunkEnvelope,
+  materializeColumnarRange,
+  reconstructColumnarChunkPayload,
+} from "./secret-storage-columnar.js";
 
 const MAX_DECRYPTED_BRANCH_CACHE_ENTRIES = 64;
+
+export type DecryptedChunkData = any | ColumnarChunkEnvelope;
+
+export function isColumnarChunkData(data: unknown): data is ColumnarChunkEnvelope {
+  return isColumnarChunkEnvelope(data);
+}
+
+export function readDecryptedChunkItem(data: DecryptedChunkData, index: number): any {
+  if (isColumnarChunkData(data)) return getColumnarItem(data.payload, index);
+  if (Array.isArray(data)) return data[index];
+  return undefined;
+}
+
+export function readDecryptedChunkRange(
+  data: DecryptedChunkData,
+  start: number,
+  end: number,
+): any[] {
+  if (isColumnarChunkData(data)) return materializeColumnarRange(data.payload, start, end);
+  if (Array.isArray(data)) return data.slice(start, end);
+  return [];
+}
+
+export function materializeDecryptedChunk(data: DecryptedChunkData): any {
+  if (isColumnarChunkData(data)) return materializeColumnarRange(data.payload, 0, data.payload.meta.count);
+  return data;
+}
 
 function touchLruEntry<K, V>(cache: Map<K, V>, key: K, value: V): void {
   if (cache.has(key)) cache.delete(key);
@@ -180,7 +215,7 @@ export function getDecryptedChunk(
   scope: SemanticPath,
   scopeSecret: string,
   chunkId: string,
-): any | undefined {
+): DecryptedChunkData | undefined {
   const scopeKey = scope.join(".");
   const blob = getChunkBlob(self, scope, chunkId);
   if (!blob) return undefined;
@@ -188,11 +223,11 @@ export function getDecryptedChunk(
   const hit = self.decryptedBranchCache.get(ck);
   if (hit && hit.epoch === self.secretEpoch && hit.blob === blob) {
     touchLruEntry(self.decryptedBranchCache, ck, hit);
-    return hit.data;
+    return hit.data as DecryptedChunkData;
   }
 
   const version = detectBlobVersion(blob);
-  let data: any = null;
+  let data: unknown = null;
   if (version === "v3") {
     try {
       const keys = getOrDeriveV3Keys(self, scope, "branch");
@@ -204,7 +239,19 @@ export function getDecryptedChunk(
     data = xorDecrypt(blob, scopeSecret, scope);
   }
   if (!data || typeof data !== "object") return undefined;
-  touchLruEntry(self.decryptedBranchCache, ck, { epoch: self.secretEpoch, blob, data });
+
+  let decoded: DecryptedChunkData;
+  if (isColumnarChunkEnvelope(data)) {
+    const payload = reconstructColumnarChunkPayload((data as ColumnarChunkEnvelope).payload as ColumnarChunkPayload);
+    decoded = {
+      ...(data as ColumnarChunkEnvelope),
+      payload,
+    };
+  } else {
+    decoded = data as any;
+  }
+
+  touchLruEntry(self.decryptedBranchCache, ck, { epoch: self.secretEpoch, blob, data: decoded });
   trimLruCache(self.decryptedBranchCache, MAX_DECRYPTED_BRANCH_CACHE_ENTRIES);
-  return data;
+  return decoded;
 }
