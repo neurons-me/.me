@@ -3,7 +3,7 @@
   <img src="https://res.cloudinary.com/dkwnxf6gm/image/upload/v1761149332/this.me-removebg-preview_2_j1eoiy.png" alt=".me Logo" width="144" />
 </picture>
 
-# .me  
+# .me  - 
 ###### Minimal and Expressive.
 <table border="0" cellspacing="0" cellpadding="0" style="border:none;">
   <tr>
@@ -18,14 +18,18 @@
     </td>
   </tr>
 </table>
-
 Define who you are, what you own, and how everything connects — once.  
-Then use it across apps, websites, dashboards, and more.
+Then **use it across apps, websites, dashboards**, and more.
 
 ## What is .me?
-- A lightweight semantic kernel
+- A lightweight semantic kernel:  **100k encrypted vectors. 1.9 minutes. 146MB RAM.**
+
+  **Production-ready. O(1).**
+
 - You work with paths instead of complex state management
+
 - Supports secrets, pointers, derived values, and full state export/import
+
 - Works the same across languages and platforms
 
 ## Why use it?
@@ -34,12 +38,15 @@ Then use it across apps, websites, dashboards, and more.
 - Structural privacy (not just "trust us")
 - Simple, reactive, and portable
 
-Currently only available for npm:
+###### **Currently only available for npm:**
+
 https://www.npmjs.com/package/this.me
 
+```bash
 git clone https://github.com/neurons-me/.me.git
 cd .me/npm
 npm install
+```
 
 ----
 
@@ -69,3 +76,4 @@ What **.me** unlocks is:
 
 Not through passwords, dashboards, cookie banners, or corporate **“trust us”** slogans — but **through architecture**. 
 Your identity is **derived**, meaning it only exists when **you** decide to bring it into existence. 
+
