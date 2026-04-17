@@ -14,9 +14,23 @@
 // - default owner reads keep working
 // - guest reads can be simulated with an explicit caller scope
 // - ergonomic sugar like `.as(null)` can be layered on top afterward
-export { ME as default } from "./src/me.ts";
+import { ME } from "./src/me.ts";
+import { DiskStore, MemoryStore } from "./src/instance-store.ts";
+
+const MERuntime = ME as typeof ME & {
+  DiskStore: typeof DiskStore;
+  MemoryStore: typeof MemoryStore;
+};
+
+MERuntime.DiskStore = DiskStore;
+MERuntime.MemoryStore = MemoryStore;
+
+export default MERuntime;
 export type {
+  EncryptedBranchPlane,
+  EncryptedScopeEntry,
   Memory,
+  MEOptions,
   MeTargetAst,
   SemanticPath,
   StoredWrappedKey,
@@ -33,6 +47,10 @@ export type {
   OperatorResult,
   OperatorHandler,
 } from "./src/types.ts";
+export type {
+  DiskStoreOptions,
+  InstanceStore,
+} from "./src/instance-store.ts";
 
 /*
 ▄ ▄▄▄▄  ▗▞▀▚▖

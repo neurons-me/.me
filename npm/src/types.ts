@@ -1,3 +1,5 @@
+import type { InstanceStore } from "./instance-store.js";
+
 // -----------------------------
 // Core runtime data shapes
 // -----------------------------
@@ -65,6 +67,12 @@ export type MePointer = { __ptr: string };
 export type MeIdentityRef = { __id: string };
 export type MeMarker = MePointer | MeIdentityRef;
 export type EncryptedBlob = `0x${string}`;
+export type EncryptedScopeEntry = EncryptedBlob | Record<string, EncryptedBlob>;
+export type EncryptedBranchPlane = Record<string, EncryptedScopeEntry>;
+
+export interface MEOptions {
+  store?: InstanceStore;
+}
 
 // -----------------------------
 // Wrapped secret envelopes (v1)
@@ -225,7 +233,7 @@ export interface OperatorKernel {
   // --- storage planes (public + secret + config)
   localSecrets?: Record<string, string>;
   localNoises?: Record<string, string>;
-  encryptedBranches?: Record<string, EncryptedBlob>;
+  encryptedBranches?: EncryptedBranchPlane;
 
   // canonical log + index
   memories?: KernelMemory[];
@@ -542,7 +550,7 @@ export interface MESnapshot {
   memories: Memory[];
   localSecrets: Record<string, string>;
   localNoises: Record<string, string>;
-  encryptedBranches: Record<string, EncryptedBlob | Record<string, EncryptedBlob>>;
+  encryptedBranches: EncryptedBranchPlane;
   keySpaces: Record<string, StoredWrappedKey>;
   operators: Record<string, { kind: string }>;
 }
@@ -555,7 +563,7 @@ export interface MESnapshotInput {
   memories?: ReplayMemoryInput[];
   localSecrets?: Record<string, string>;
   localNoises?: Record<string, string>;
-  encryptedBranches?: Record<string, EncryptedBlob | Record<string, EncryptedBlob>>;
+  encryptedBranches?: EncryptedBranchPlane;
   keySpaces?: Record<string, StoredWrappedKey>;
   operators?: Record<string, { kind: string }>;
 }
@@ -577,7 +585,8 @@ export interface MERuntimeMethodDescriptor {
 export interface MEKernelLike extends Record<string, any> {
   localSecrets: Record<string, string>;
   localNoises: Record<string, string>;
-  encryptedBranches: Record<string, EncryptedBlob | Record<string, EncryptedBlob>>;
+  branchStore: InstanceStore;
+  encryptedBranches: EncryptedBranchPlane;
   /** Internal write preference. v3 is the default from Corte 4; v2 remains for compatibility and rollback. */
   secretBlobVersion: "v2" | "v3";
   keySpaces: Record<string, StoredWrappedKey>;

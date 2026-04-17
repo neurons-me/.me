@@ -11,6 +11,8 @@ export {
   flattenLeaves,
   migrateLegacyScopeToChunks,
   ensureScopeChunks,
+  listEncryptedScopes,
+  deleteEncryptedScope,
   getChunkBlob,
   setChunkBlob,
   primeDecryptedBranchCache,

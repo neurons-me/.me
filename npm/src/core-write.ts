@@ -115,7 +115,7 @@ export function learn(self: MEKernelLike, memory: unknown): void {
 export function replayMemories(self: MEKernelLike, memories: ReplayMemoryInput[]): void {
   self.localSecrets = {};
   self.localNoises = {};
-  self.encryptedBranches = {};
+  self.branchStore.clear();
   self.keySpaces = {};
   (self as any)._ownerScope = null;
   (self as any)._currentCallerScope = undefined;
@@ -613,14 +613,14 @@ export function removeSubtree(self: MEKernelLike, targetPath: SemanticPath) {
   }
   if (securityTopologyChanged) bumpSecretEpoch(self);
 
-  for (const key of Object.keys(self.encryptedBranches)) {
+  for (const key of self.branchStore.listScopes()) {
     if (prefix === "") {
-      delete self.encryptedBranches[key];
+      self.branchStore.deleteScope(key);
       clearScopeChunkCache(self, key);
       continue;
     }
     if (key === prefix || key.startsWith(prefix + ".")) {
-      delete self.encryptedBranches[key];
+      self.branchStore.deleteScope(key);
       clearScopeChunkCache(self, key);
       continue;
     }

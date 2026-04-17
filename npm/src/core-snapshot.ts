@@ -20,7 +20,7 @@ export function exportSnapshot(self: MEKernelLike): MESnapshot {
     memories: toPublicMemories(self._memories),
     localSecrets: self.localSecrets,
     localNoises: self.localNoises,
-    encryptedBranches: self.encryptedBranches,
+    encryptedBranches: self.branchStore.exportData(),
     keySpaces: self.keySpaces,
     operators: self.operators,
   });
@@ -36,8 +36,9 @@ export function importSnapshot(self: MEKernelLike, snapshot: MESnapshotInput): v
   (self as any)._ownerScope = deriveOwnerScope(self.localSecrets);
   (self as any)._currentCallerScope = undefined;
   bumpSecretEpoch(self);
-  self.encryptedBranches =
-    data.encryptedBranches && typeof data.encryptedBranches === "object" ? data.encryptedBranches : {};
+  self.branchStore.importData(
+    data.encryptedBranches && typeof data.encryptedBranches === "object" ? data.encryptedBranches : {},
+  );
   self.keySpaces = data.keySpaces && typeof data.keySpaces === "object" ? data.keySpaces : {};
   self.derivations = {};
   self.refSubscribers = {};

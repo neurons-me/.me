@@ -41,6 +41,7 @@ import * as Secret from "./secret.js";
 import { collectSecretChainV3 } from "./secret-context.js";
 import type {
   EncryptedBlob,
+  EncryptedBranchPlane,
   KernelMemory,
   MappingInstruction,
   MEBranchScopeCacheEntry,
@@ -50,6 +51,7 @@ import type {
   MEDerivationRecord,
   MEEffectiveSecretCacheEntry,
   MEKernelLike,
+  MEOptions,
   MEProxy,
   MESnapshot,
   MESnapshotInput,
@@ -119,7 +121,7 @@ export class ME {
 
   private localSecrets!: Record<string, string>;
   private localNoises!: Record<string, string>;
-  private encryptedBranches!: Record<string, EncryptedBlob | Record<string, EncryptedBlob>>;
+  private branchStore!: NonNullable<MEOptions["store"]>;
   private secretBlobVersion!: "v2" | "v3";
   private keySpaces!: Record<string, StoredWrappedKey>;
   private recipientKeyring!: Record<string, CryptoKey>;
@@ -152,8 +154,16 @@ export class ME {
     return toPublicMemories(this._memories);
   }
 
-  constructor(expression?: any) {
-    Object.assign(this, createInitialKernelFields());
+  get encryptedBranches(): EncryptedBranchPlane {
+    return this.branchStore.view();
+  }
+
+  set encryptedBranches(value: EncryptedBranchPlane) {
+    this.branchStore.importData(value && typeof value === "object" ? value : {});
+  }
+
+  constructor(expression?: any, options: MEOptions = {}) {
+    Object.assign(this, createInitialKernelFields(options));
     this.bumpSecretEpoch();
     if (expression !== undefined) {
       this.postulate([], expression);
@@ -369,7 +379,7 @@ export class ME {
       errors: 0,
     };
 
-    for (const scopeKey of Object.keys(this.encryptedBranches)) {
+    for (const scopeKey of this.branchStore.listScopes()) {
       const scope = scopeKey.split(".").filter(Boolean);
       const scopeSecret = this.computeEffectiveSecret(scope);
       if (!scopeSecret) {
@@ -526,6 +536,19 @@ export class ME {
     operator: string | null = null,
   ): KernelMemory {
     return Core.commitValueMapping(this as unknown as MEKernelLike, targetPath, expression, operator);
+  }
+
+  /**
+   * @internal Escape hatch for controlled benchmarks that need the real batch writer
+   * without going through the semantic proxy surface.
+   */
+  private _commitIndexedBatch(
+    basePath: SemanticPath,
+    startIndex: number,
+    items: any[],
+    operator: string | null = null,
+  ): KernelMemory[] {
+    return Core.commitIndexedBatch(this as unknown as MEKernelLike, basePath, startIndex, items, operator);
   }
 
   private commitMapping(instruction: MappingInstruction, fallbackOperator: string | null = null): KernelMemory | undefined {

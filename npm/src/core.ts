@@ -97,6 +97,7 @@ function setCachedValueDecrypt(self: MEKernelLike, path: SemanticPath, blob: `0x
 }
 
 export {
+  commitIndexedBatch,
   commitMapping,
   commitMemoryOnly,
   commitValueMapping,
@@ -168,7 +169,7 @@ export function inspect(self: MEKernelLike, opts?: { last?: number }): MEInspect
   return {
     memories: toPublicMemories(memories),
     index: { ...self.index },
-    encryptedScopes: Object.keys(self.encryptedBranches),
+    encryptedScopes: self.branchStore.listScopes(),
     secretScopes: Object.keys(self.localSecrets),
     noiseScopes: Object.keys(self.localNoises),
     recomputeMode: self.recomputeMode,

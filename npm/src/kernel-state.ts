@@ -1,13 +1,15 @@
 import * as Utils from "./utils.js";
+import { MemoryStore } from "./instance-store.js";
 import type {
-  EncryptedBlob,
   MEBlobV3KeyCacheEntry,
   KernelMemory,
   MEBranchScopeCacheEntry,
+  EncryptedBranchPlane,
   MEDecryptedBranchCacheEntry,
   MEDecryptedValueCacheEntry,
   MEDerivationRecord,
   MEEffectiveSecretCacheEntry,
+  MEOptions,
   StoredWrappedKey,
 } from "./types.js";
 
@@ -19,7 +21,7 @@ export type MemoryState = {
 export type SecretState = {
   localSecrets: Record<string, string>;
   localNoises: Record<string, string>;
-  encryptedBranches: Record<string, EncryptedBlob | Record<string, EncryptedBlob>>;
+  branchStore: NonNullable<MEOptions["store"]>;
   // v3 is the default write format from Corte 4. v2 remains available for rollback/tests.
   secretBlobVersion: "v2" | "v3";
   keySpaces: Record<string, StoredWrappedKey>;
@@ -61,7 +63,7 @@ export type KernelFields =
   & DerivationState
   & ConfigState;
 
-export function createInitialKernelState(): KernelState {
+export function createInitialKernelState(options: MEOptions = {}): KernelState {
   return {
     memory: {
       index: {},
@@ -70,7 +72,7 @@ export function createInitialKernelState(): KernelState {
     secrets: {
       localSecrets: {},
       localNoises: {},
-      encryptedBranches: {},
+      branchStore: options.store ?? new MemoryStore(),
       secretBlobVersion: "v3",
       keySpaces: {},
       recipientKeyring: {},
@@ -98,8 +100,8 @@ export function createInitialKernelState(): KernelState {
   };
 }
 
-export function createInitialKernelFields(): KernelFields {
-  const state = createInitialKernelState();
+export function createInitialKernelFields(options: MEOptions = {}): KernelFields {
+  const state = createInitialKernelState(options);
   const fields = {
     ...state.memory,
     ...state.secrets,

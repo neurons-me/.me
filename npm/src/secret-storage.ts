@@ -125,7 +125,8 @@ export function migrateLegacyScopeToChunks(
   const scopeKey = scope.join(".");
   const legacyObj = xorDecrypt(legacyBlob, scopeSecret, scope);
   if (!legacyObj || typeof legacyObj !== "object") {
-    self.encryptedBranches[scopeKey] = { default: legacyBlob };
+    self.branchStore.setScope(scopeKey, { default: legacyBlob });
+    clearScopeChunkCache(self, scopeKey);
     return;
   }
 
@@ -142,7 +143,7 @@ export function migrateLegacyScopeToChunks(
   for (const [chunkId, chunkObj] of Object.entries(chunkObjs)) {
     next[chunkId] = xorEncrypt(chunkObj, scopeSecret, scope);
   }
-  self.encryptedBranches[scopeKey] = next;
+  self.branchStore.setScope(scopeKey, next);
   clearScopeChunkCache(self, scopeKey);
 }
 
@@ -152,15 +153,13 @@ export function ensureScopeChunks(
   scopeSecret: string,
 ): Record<string, EncryptedBlob> {
   const scopeKey = scope.join(".");
-  const current = self.encryptedBranches[scopeKey];
+  const current = self.branchStore.getScope(scopeKey);
   if (!current) {
-    const next: Record<string, EncryptedBlob> = {};
-    self.encryptedBranches[scopeKey] = next;
-    return next;
+    return {};
   }
   if (typeof current === "string") {
     migrateLegacyScopeToChunks(self, scope, current as EncryptedBlob, scopeSecret);
-    return self.encryptedBranches[scopeKey] as Record<string, EncryptedBlob>;
+    return (self.branchStore.getScope(scopeKey) || {}) as Record<string, EncryptedBlob>;
   }
   return current as Record<string, EncryptedBlob>;
 }
@@ -171,10 +170,7 @@ export function getChunkBlob(
   chunkId: string,
 ): EncryptedBlob | undefined {
   const scopeKey = scope.join(".");
-  const current = self.encryptedBranches[scopeKey];
-  if (!current) return undefined;
-  if (typeof current === "string") return chunkId === "default" ? (current as EncryptedBlob) : undefined;
-  return (current as Record<string, EncryptedBlob>)[chunkId];
+  return self.branchStore.getChunk(scopeKey, chunkId);
 }
 
 export function setChunkBlob(
@@ -185,9 +181,21 @@ export function setChunkBlob(
   scopeSecret: string,
 ): void {
   const scopeKey = scope.join(".");
-  const chunks = ensureScopeChunks(self, scope, scopeSecret);
-  chunks[chunkId] = blob;
+  const current = self.branchStore.getScope(scopeKey);
+  if (typeof current === "string") {
+    ensureScopeChunks(self, scope, scopeSecret);
+  }
+  self.branchStore.setChunk(scopeKey, chunkId, blob);
   self.decryptedBranchCache.delete(chunkCacheKey(scopeKey, chunkId));
+}
+
+export function listEncryptedScopes(self: MEKernelLike): string[] {
+  return self.branchStore.listScopes();
+}
+
+export function deleteEncryptedScope(self: MEKernelLike, scopeKey: string): void {
+  self.branchStore.deleteScope(scopeKey);
+  clearScopeChunkCache(self, scopeKey);
 }
 
 export function primeDecryptedBranchCache(
