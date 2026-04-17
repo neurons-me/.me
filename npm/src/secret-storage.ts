@@ -259,8 +259,7 @@ export function setChunkBlob(
   scopeSecret: string,
 ): void {
   const scopeKey = scope.join(".");
-  const current = self.branchStore.getScope(scopeKey);
-  if (typeof current === "string") {
+  if (self.branchStore.getScopeMode(scopeKey) === "legacy") {
     ensureScopeChunks(self, scope, scopeSecret);
   }
   self.branchStore.setChunk(scopeKey, chunkId, blob);

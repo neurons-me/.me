@@ -28,6 +28,7 @@ const V3_ENC_INFO_LABEL = "this.me/blob/v3/enc";
 const V3_MAC_INFO_LABEL = "this.me/blob/v3/mac";
 const V3_STREAM_INFO_LABEL = "this.me/blob/v3/stream";
 const V3_TAG_INFO_LABEL = "this.me/blob/v3/tag";
+const BLOB_BASE64URL_PREFIX = "b64u:";
 
 type V3Purpose =
   | "this.me/blob/v3/branch"
@@ -37,6 +38,132 @@ type V3Purpose =
 
 type V3BlobMode = "branch" | "value";
 export type BlobV3DerivedKeys = { encKey: Uint8Array; macKey: Uint8Array; pathContext: Uint8Array };
+
+type CryptoMemorySnapshot = {
+  heapUsed: number;
+  external: number;
+  arrayBuffers: number;
+};
+
+type BlobCryptoDebugWindow = {
+  encryptCalls: number;
+  decryptCalls: number;
+  totalEncryptJsonMs: number;
+  totalEncryptAsciiMs: number;
+  totalEncryptKeystreamMs: number;
+  totalEncryptXorMs: number;
+  totalEncryptEncodeMs: number;
+  maxEncryptJsonMs: number;
+  maxEncryptAsciiMs: number;
+  maxEncryptKeystreamMs: number;
+  maxEncryptXorMs: number;
+  maxEncryptEncodeMs: number;
+  maxJsonBytes: number;
+  maxClearBytes: number;
+  maxKeystreamBytes: number;
+  maxCiphertextBytes: number;
+  maxHexBytes: number;
+  maxEncryptResidentBytes: number;
+  maxDecodedBytes: number;
+  maxDecryptClearBytes: number;
+  maxDecryptJsonBytes: number;
+  maxDecryptResidentBytes: number;
+  maxEncryptHeapDelta: number;
+  maxEncryptExternalDelta: number;
+  maxEncryptArrayBuffersDelta: number;
+  maxDecryptHeapDelta: number;
+  maxDecryptExternalDelta: number;
+  maxDecryptArrayBuffersDelta: number;
+};
+
+function createBlobCryptoDebugWindow(): BlobCryptoDebugWindow {
+  return {
+    encryptCalls: 0,
+    decryptCalls: 0,
+    totalEncryptJsonMs: 0,
+    totalEncryptAsciiMs: 0,
+    totalEncryptKeystreamMs: 0,
+    totalEncryptXorMs: 0,
+    totalEncryptEncodeMs: 0,
+    maxEncryptJsonMs: 0,
+    maxEncryptAsciiMs: 0,
+    maxEncryptKeystreamMs: 0,
+    maxEncryptXorMs: 0,
+    maxEncryptEncodeMs: 0,
+    maxJsonBytes: 0,
+    maxClearBytes: 0,
+    maxKeystreamBytes: 0,
+    maxCiphertextBytes: 0,
+    maxHexBytes: 0,
+    maxEncryptResidentBytes: 0,
+    maxDecodedBytes: 0,
+    maxDecryptClearBytes: 0,
+    maxDecryptJsonBytes: 0,
+    maxDecryptResidentBytes: 0,
+    maxEncryptHeapDelta: 0,
+    maxEncryptExternalDelta: 0,
+    maxEncryptArrayBuffersDelta: 0,
+    maxDecryptHeapDelta: 0,
+    maxDecryptExternalDelta: 0,
+    maxDecryptArrayBuffersDelta: 0,
+  };
+}
+
+const blobCryptoDebugState: {
+  enabled: boolean;
+  window: BlobCryptoDebugWindow;
+} = {
+  enabled: false,
+  window: createBlobCryptoDebugWindow(),
+};
+
+function currentCryptoMemory(): CryptoMemorySnapshot {
+  const runtimeProcess = typeof process !== "undefined" ? (process as any) : null;
+  const usage = runtimeProcess?.memoryUsage;
+  if (typeof usage !== "function") {
+    return {
+      heapUsed: 0,
+      external: 0,
+      arrayBuffers: 0,
+    };
+  }
+  const mem = usage.call(runtimeProcess);
+  return {
+    heapUsed: mem.heapUsed ?? 0,
+    external: mem.external ?? 0,
+    arrayBuffers: mem.arrayBuffers ?? 0,
+  };
+}
+
+function estimateStringBytes(value: string): number {
+  const text = String(value ?? "");
+  if (typeof Buffer !== "undefined") {
+    return Math.max(text.length * 2, Buffer.byteLength(text, "utf8"));
+  }
+  return text.length * 2;
+}
+
+function nowMs(): number {
+  if (typeof performance !== "undefined" && typeof performance.now === "function") {
+    return performance.now();
+  }
+  return Date.now();
+}
+
+function maxDelta(next: number, prev: number): number {
+  return Math.max(0, next - prev);
+}
+
+export function enableBlobCryptoDebug(enabled = true): void {
+  blobCryptoDebugState.enabled = enabled;
+  blobCryptoDebugState.window = createBlobCryptoDebugWindow();
+}
+
+export function takeBlobCryptoDebugWindow(): BlobCryptoDebugWindow {
+  const window = { ...blobCryptoDebugState.window };
+  blobCryptoDebugState.window = createBlobCryptoDebugWindow();
+  return window;
+}
 
 export function asciiToBytes(str: string): Uint8Array {
   const input = String(str ?? "");
@@ -81,6 +208,17 @@ export function bytesToHex(buf: Uint8Array): `0x${string}` {
     hex += buf[i].toString(16).padStart(2, "0");
   }
   return ("0x" + hex) as `0x${string}`;
+}
+
+function bytesToBlobBase64Url(buf: Uint8Array): EncryptedBlob {
+  return `${BLOB_BASE64URL_PREFIX}${bytesToBase64Url(buf)}`;
+}
+
+function blobToBytes(blob: EncryptedBlob): Uint8Array {
+  if (blob.startsWith(BLOB_BASE64URL_PREFIX)) {
+    return base64UrlToBytes(blob.slice(BLOB_BASE64URL_PREFIX.length));
+  }
+  return hexToBytes(blob);
 }
 
 function uint32ToBytes(value: number): Uint8Array {
@@ -131,7 +269,7 @@ function getRandomBytes(length: number): Uint8Array {
 function keccakBytes(...parts: Uint8Array[]): Uint8Array {
   const hash = keccak256.create();
   for (const part of parts) hash.update(part);
-  return hexToBytes(hash.hex());
+  return new Uint8Array(hash.arrayBuffer());
 }
 
 function normalizePathContext(path: string[]): Uint8Array {
@@ -205,16 +343,21 @@ function generateBlobV2Keystream(
   let offset = 0;
   let counter = 0;
   const streamLabel = asciiToBytes(V2_STREAM_INFO_LABEL);
+  const prefixedEncKey = lengthPrefixed(encKey);
+  const prefixedNonce = lengthPrefixed(nonce);
+  const prefixedPathContext = lengthPrefixed(pathContext);
+  const counterBytes = new Uint8Array(4);
+  const counterView = new DataView(counterBytes.buffer);
 
   try {
     while (offset < length) {
-      const counterBytes = uint32ToBytes(counter);
+      counterView.setUint32(0, counter >>> 0, false);
       const block = keccakBytes(
         streamLabel,
-        lengthPrefixed(encKey),
-        lengthPrefixed(nonce),
+        prefixedEncKey,
+        prefixedNonce,
         counterBytes,
-        lengthPrefixed(pathContext),
+        prefixedPathContext,
       );
       try {
         const chunkLength = Math.min(block.length, length - offset);
@@ -222,12 +365,12 @@ function generateBlobV2Keystream(
         offset += chunkLength;
         counter++;
       } finally {
-        wipeBytes(counterBytes, block);
+        wipeBytes(block);
       }
     }
     return out;
   } finally {
-    wipeBytes(streamLabel);
+    wipeBytes(streamLabel, prefixedEncKey, prefixedNonce, prefixedPathContext, counterBytes);
   }
 }
 
@@ -269,7 +412,7 @@ function decodeBlobV2(blob: EncryptedBlob): {
   tag: Uint8Array;
   ciphertext: Uint8Array;
 } | null {
-  const bytes = hexToBytes(blob);
+  const bytes = blobToBytes(blob);
   const headerLength = BLOB_V2_MAGIC.length + 1;
   const minLength = headerLength + BLOB_V2_NONCE_LENGTH + BLOB_V2_TAG_LENGTH + 1;
   if (bytes.length < minLength) return null;
@@ -293,7 +436,7 @@ function decodeBlobV2(blob: EncryptedBlob): {
 }
 
 function encodeBlobV3(nonce: Uint8Array, tag: Uint8Array, ciphertext: Uint8Array): EncryptedBlob {
-  return bytesToHex(
+  return bytesToBlobBase64Url(
     concatBytes(BLOB_V2_MAGIC, new Uint8Array([BLOB_V3_VERSION]), nonce, tag, ciphertext),
   );
 }
@@ -304,7 +447,7 @@ function decodeBlobV3(blob: EncryptedBlob): {
   tag: Uint8Array;
   ciphertext: Uint8Array;
 } | null {
-  const bytes = hexToBytes(blob);
+  const bytes = blobToBytes(blob);
   const headerLength = BLOB_V2_MAGIC.length + 1;
   const minLength = headerLength + BLOB_V3_NONCE_LENGTH + BLOB_V3_TAG_LENGTH + 1;
   if (bytes.length < minLength) return null;
@@ -356,16 +499,21 @@ function generateBlobV3Keystream(
   let offset = 0;
   let counter = 0;
   const streamLabel = asciiToBytes(V3_STREAM_INFO_LABEL);
+  const prefixedEncKey = lengthPrefixed(encKey);
+  const prefixedNonce = lengthPrefixed(nonce);
+  const prefixedPathContext = lengthPrefixed(pathContext);
+  const counterBytes = new Uint8Array(4);
+  const counterView = new DataView(counterBytes.buffer);
 
   try {
     while (offset < length) {
-      const counterBytes = uint32ToBytes(counter);
+      counterView.setUint32(0, counter >>> 0, false);
       const block = keccakBytes(
         streamLabel,
-        lengthPrefixed(encKey),
-        lengthPrefixed(nonce),
+        prefixedEncKey,
+        prefixedNonce,
         counterBytes,
-        lengthPrefixed(pathContext),
+        prefixedPathContext,
       );
       try {
         const chunkLength = Math.min(block.length, length - offset);
@@ -373,12 +521,12 @@ function generateBlobV3Keystream(
         offset += chunkLength;
         counter++;
       } finally {
-        wipeBytes(counterBytes, block);
+        wipeBytes(block);
       }
     }
     return out;
   } finally {
-    wipeBytes(streamLabel);
+    wipeBytes(streamLabel, prefixedEncKey, prefixedNonce, prefixedPathContext, counterBytes);
   }
 }
 
@@ -518,7 +666,7 @@ export function deriveSecretMaterialV3(chain: Uint8Array[], purpose: V3Purpose):
 // From Corte 4 onward, v3 is the default write format. Version detection keeps v2/legacy readable.
 export function detectBlobVersion(blob: EncryptedBlob): "v3" | "v2" | "legacy" {
   try {
-    const bytes = hexToBytes(blob);
+    const bytes = blobToBytes(blob);
     if (bytes.length < BLOB_V2_MAGIC.length + 1) return "legacy";
     for (let i = 0; i < BLOB_V2_MAGIC.length; i++) {
       if (bytes[i] !== BLOB_V2_MAGIC[i]) return "legacy";
@@ -547,23 +695,76 @@ export function encryptBlobV3(
 }
 
 export function encryptBlobV3WithDerivedKeys(value: any, keys: BlobV3DerivedKeys): EncryptedBlob {
+  const debugEnabled = blobCryptoDebugState.enabled;
+  const startedMem = debugEnabled ? currentCryptoMemory() : null;
+  const jsonStartedAt = debugEnabled ? nowMs() : 0;
   const json = JSON.stringify(value);
+  const jsonMs = debugEnabled ? nowMs() - jsonStartedAt : 0;
+  const jsonBytes = debugEnabled ? estimateStringBytes(json) : 0;
+  const asciiStartedAt = debugEnabled ? nowMs() : 0;
   const bytes = asciiToBytes(String(json));
+  const asciiMs = debugEnabled ? nowMs() - asciiStartedAt : 0;
+  const clearBytes = debugEnabled ? bytes.length : 0;
   const nonce = getRandomBytes(BLOB_V3_NONCE_LENGTH);
   let keystream: Uint8Array | null = null;
   let ciphertext: Uint8Array | null = null;
   let header: Uint8Array | null = null;
   let tag: Uint8Array | null = null;
+  let blob: EncryptedBlob | null = null;
   try {
+    const keystreamStartedAt = debugEnabled ? nowMs() : 0;
     keystream = generateBlobV3Keystream(keys.encKey, nonce, keys.pathContext, bytes.length);
+    const keystreamMs = debugEnabled ? nowMs() - keystreamStartedAt : 0;
+    const xorStartedAt = debugEnabled ? nowMs() : 0;
     ciphertext = new Uint8Array(bytes.length);
     for (let i = 0; i < bytes.length; i++) {
       ciphertext[i] = bytes[i] ^ keystream[i];
     }
+    const xorMs = debugEnabled ? nowMs() - xorStartedAt : 0;
 
+    const encodeStartedAt = debugEnabled ? nowMs() : 0;
     header = concatBytes(BLOB_V2_MAGIC, new Uint8Array([BLOB_V3_VERSION]));
     tag = computeBlobV3Tag(keys.macKey, header, nonce, keys.pathContext, ciphertext);
-    return encodeBlobV3(nonce, tag, ciphertext);
+    blob = encodeBlobV3(nonce, tag, ciphertext);
+    const encodeMs = debugEnabled ? nowMs() - encodeStartedAt : 0;
+    if (debugEnabled && startedMem) {
+      const keystreamBytes = keystream?.length ?? 0;
+      const ciphertextBytes = ciphertext?.length ?? 0;
+      const hexBytes = estimateStringBytes(blob);
+      const residentBytes = Math.max(
+        jsonBytes,
+        jsonBytes + clearBytes,
+        jsonBytes + clearBytes + keystreamBytes,
+        jsonBytes + clearBytes + keystreamBytes + ciphertextBytes,
+        jsonBytes + clearBytes + keystreamBytes + ciphertextBytes + hexBytes,
+      );
+      const endedMem = currentCryptoMemory();
+      const window = blobCryptoDebugState.window;
+      window.encryptCalls += 1;
+      window.totalEncryptJsonMs += jsonMs;
+      window.totalEncryptAsciiMs += asciiMs;
+      window.totalEncryptKeystreamMs += keystreamMs;
+      window.totalEncryptXorMs += xorMs;
+      window.totalEncryptEncodeMs += encodeMs;
+      window.maxEncryptJsonMs = Math.max(window.maxEncryptJsonMs, jsonMs);
+      window.maxEncryptAsciiMs = Math.max(window.maxEncryptAsciiMs, asciiMs);
+      window.maxEncryptKeystreamMs = Math.max(window.maxEncryptKeystreamMs, keystreamMs);
+      window.maxEncryptXorMs = Math.max(window.maxEncryptXorMs, xorMs);
+      window.maxEncryptEncodeMs = Math.max(window.maxEncryptEncodeMs, encodeMs);
+      window.maxJsonBytes = Math.max(window.maxJsonBytes, jsonBytes);
+      window.maxClearBytes = Math.max(window.maxClearBytes, clearBytes);
+      window.maxKeystreamBytes = Math.max(window.maxKeystreamBytes, keystreamBytes);
+      window.maxCiphertextBytes = Math.max(window.maxCiphertextBytes, ciphertextBytes);
+      window.maxHexBytes = Math.max(window.maxHexBytes, hexBytes);
+      window.maxEncryptResidentBytes = Math.max(window.maxEncryptResidentBytes, residentBytes);
+      window.maxEncryptHeapDelta = Math.max(window.maxEncryptHeapDelta, maxDelta(endedMem.heapUsed, startedMem.heapUsed));
+      window.maxEncryptExternalDelta = Math.max(window.maxEncryptExternalDelta, maxDelta(endedMem.external, startedMem.external));
+      window.maxEncryptArrayBuffersDelta = Math.max(
+        window.maxEncryptArrayBuffersDelta,
+        maxDelta(endedMem.arrayBuffers, startedMem.arrayBuffers),
+      );
+    }
+    return blob;
   } finally {
     wipeBytes(bytes, nonce, keystream, ciphertext, header, tag);
   }
@@ -584,12 +785,15 @@ export function decryptBlobV3(
 }
 
 export function decryptBlobV3WithDerivedKeys(blob: EncryptedBlob, keys: BlobV3DerivedKeys): any {
+  const debugEnabled = blobCryptoDebugState.enabled;
+  const startedMem = debugEnabled ? currentCryptoMemory() : null;
   const decoded = decodeBlobV3(blob);
   if (!decoded) return null;
 
   let expectedTag: Uint8Array | null = null;
   let keystream: Uint8Array | null = null;
   let clear: Uint8Array | null = null;
+  let json: string | null = null;
   try {
     expectedTag = computeBlobV3Tag(keys.macKey, decoded.header, decoded.nonce, keys.pathContext, decoded.ciphertext);
     const tagOk = constantTimeEqual(expectedTag, decoded.tag);
@@ -601,8 +805,38 @@ export function decryptBlobV3WithDerivedKeys(blob: EncryptedBlob, keys: BlobV3De
       clear[i] = decoded.ciphertext[i] ^ keystream[i];
     }
 
-    const json = utf8ToString(clear);
-    return JSON.parse(json);
+    json = utf8ToString(clear);
+    const value = JSON.parse(json);
+    if (debugEnabled && startedMem) {
+      const decodedBytes =
+        decoded.header.length +
+        decoded.nonce.length +
+        decoded.tag.length +
+        decoded.ciphertext.length;
+      const decryptClearBytes = clear.length;
+      const decryptJsonBytes = estimateStringBytes(json);
+      const residentBytes = Math.max(
+        decodedBytes,
+        decodedBytes + (expectedTag?.length ?? 0),
+        decodedBytes + (expectedTag?.length ?? 0) + (keystream?.length ?? 0),
+        decodedBytes + (expectedTag?.length ?? 0) + (keystream?.length ?? 0) + decryptClearBytes,
+        decodedBytes + (expectedTag?.length ?? 0) + (keystream?.length ?? 0) + decryptClearBytes + decryptJsonBytes,
+      );
+      const endedMem = currentCryptoMemory();
+      const window = blobCryptoDebugState.window;
+      window.decryptCalls += 1;
+      window.maxDecodedBytes = Math.max(window.maxDecodedBytes, decodedBytes);
+      window.maxDecryptClearBytes = Math.max(window.maxDecryptClearBytes, decryptClearBytes);
+      window.maxDecryptJsonBytes = Math.max(window.maxDecryptJsonBytes, decryptJsonBytes);
+      window.maxDecryptResidentBytes = Math.max(window.maxDecryptResidentBytes, residentBytes);
+      window.maxDecryptHeapDelta = Math.max(window.maxDecryptHeapDelta, maxDelta(endedMem.heapUsed, startedMem.heapUsed));
+      window.maxDecryptExternalDelta = Math.max(window.maxDecryptExternalDelta, maxDelta(endedMem.external, startedMem.external));
+      window.maxDecryptArrayBuffersDelta = Math.max(
+        window.maxDecryptArrayBuffersDelta,
+        maxDelta(endedMem.arrayBuffers, startedMem.arrayBuffers),
+      );
+    }
+    return value;
   } catch {
     return null;
   } finally {
@@ -626,13 +860,19 @@ export function xorDecrypt(hex: string, secret: string, path: string[]): any {
   }
 }
 
-export function isEncryptedBlob(v: any): v is `0x${string}` {
+export function isEncryptedBlob(v: any): v is EncryptedBlob {
   if (typeof v !== "string") return false;
-  if (!v.startsWith("0x")) return false;
-  const hex = v.slice(2);
-  if (hex.length < 2) return false; // at least 1 byte
-  if (hex.length % 2 !== 0) return false;
-  return /^[0-9a-fA-F]+$/.test(hex);
+  if (v.startsWith("0x")) {
+    const hex = v.slice(2);
+    if (hex.length < 2) return false;
+    if (hex.length % 2 !== 0) return false;
+    return /^[0-9a-fA-F]+$/.test(hex);
+  }
+  if (v.startsWith(BLOB_BASE64URL_PREFIX)) {
+    const payload = v.slice(BLOB_BASE64URL_PREFIX.length);
+    return payload.length > 0 && /^[A-Za-z0-9\-_]+$/.test(payload);
+  }
+  return false;
 }
 
 export function bytesToBase64Url(bytes: Uint8Array): string {

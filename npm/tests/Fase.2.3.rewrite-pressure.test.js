@@ -30,6 +30,8 @@ function memorySnapshot() {
   const mem = process.memoryUsage();
   return {
     heapUsed: mem.heapUsed,
+    external: mem.external,
+    arrayBuffers: mem.arrayBuffers,
     rss: mem.rss,
   };
 }
@@ -158,6 +160,66 @@ function takeDecryptDebugWindow(me) {
   return window;
 }
 
+function emptyBlobCryptoDebugWindow() {
+  return {
+    encryptCalls: 0,
+    decryptCalls: 0,
+    maxJsonBytes: 0,
+    maxClearBytes: 0,
+    maxKeystreamBytes: 0,
+    maxCiphertextBytes: 0,
+    maxHexBytes: 0,
+    maxEncryptResidentBytes: 0,
+    maxDecodedBytes: 0,
+    maxDecryptClearBytes: 0,
+    maxDecryptJsonBytes: 0,
+    maxDecryptResidentBytes: 0,
+    maxEncryptHeapDelta: 0,
+    maxEncryptExternalDelta: 0,
+    maxEncryptArrayBuffersDelta: 0,
+    maxDecryptHeapDelta: 0,
+    maxDecryptExternalDelta: 0,
+    maxDecryptArrayBuffersDelta: 0,
+  };
+}
+
+function takeBlobCryptoDebugWindow(me) {
+  if (typeof me?._takeBlobCryptoDebugWindow === "function") {
+    return me._takeBlobCryptoDebugWindow();
+  }
+  return emptyBlobCryptoDebugWindow();
+}
+
+function emptyDiskStoreDebugWindow() {
+  return {
+    appendCalls: 0,
+    readCalls: 0,
+    flushCalls: 0,
+    maxBlobBytes: 0,
+    maxRecordBytes: 0,
+    maxAppendResidentBytes: 0,
+    maxReadBufferBytes: 0,
+    maxReadResidentBytes: 0,
+    maxFlushIndexBytes: 0,
+    maxAppendHeapDelta: 0,
+    maxAppendExternalDelta: 0,
+    maxAppendArrayBuffersDelta: 0,
+    maxReadHeapDelta: 0,
+    maxReadExternalDelta: 0,
+    maxReadArrayBuffersDelta: 0,
+    maxFlushHeapDelta: 0,
+    maxFlushExternalDelta: 0,
+    maxFlushArrayBuffersDelta: 0,
+  };
+}
+
+function takeDiskStoreDebugWindow(me) {
+  if (typeof me?._takeDiskStoreDebugWindow === "function") {
+    return me._takeDiskStoreDebugWindow();
+  }
+  return emptyDiskStoreDebugWindow();
+}
+
 function structuralSnapshot(me) {
   const s = me;
   const store = s?.branchStore;
@@ -206,6 +268,12 @@ async function main() {
   if (typeof me?._enableDecryptedChunkDebug === "function") {
     me._enableDecryptedChunkDebug(true);
   }
+  if (typeof me?._enableBlobCryptoDebug === "function") {
+    me._enableBlobCryptoDebug(true);
+  }
+  if (typeof me?._enableDiskStoreDebug === "function") {
+    me._enableDiskStoreDebug(true);
+  }
 
   me.memory["_"]("fase-2-rewrite");
 
@@ -245,7 +313,7 @@ async function main() {
   console.log(
     `Heartbeat: cada ${(HEARTBEAT_EVERY_MS / 1000).toFixed(1)}s | primer reporte: ${FIRST_REPORT_AT.toLocaleString()} reescrituras | siguientes: ${REPORT_EVERY.toLocaleString()}`
   );
-  console.log("rewrites | window | preGCHeap | postGCHeap | retained | diskMB | genMs | commitMs | loadMs | matMs | cloneMs | colMs | prepMs | encMs | setMs | wHit/miss | wHitMs | hit/miss | hitMs | missMs | decMs | decdMs | vps | mems | hotEnt | hotMB/max | idxChk | decCache | pWr | brMB | blobMB");
+  console.log("rewrites | window | preGCHeap | postGCHeap | extMB | abMB | retained | diskMB | genMs | commitMs | loadMs | matMs | cloneMs | colMs | prepMs | encMs | setMs | eCryMB | dCryMB | recMB | rbufMB | fidxMB | wHit/miss | wHitMs | hit/miss | hitMs | missMs | decMs | decdMs | vps | mems | hotEnt | hotMB/max | idxChk | decCache | pWr | brMB | blobMB");
 
   let nextCountReportAt = Math.min(TOTAL_REWRITES, Math.max(BATCH, FIRST_REPORT_AT));
   let lastHeartbeatAt = t0;
@@ -253,6 +321,8 @@ async function main() {
   let lastPostGcHeap = 0;
   let peakPreGcHeap = 0;
   let peakPostGcHeap = 0;
+  let peakExternal = 0;
+  let peakArrayBuffers = 0;
   let peakRetained = 0;
   let peakRss = 0;
   let peakLoadWindowMs = 0;
@@ -286,6 +356,36 @@ async function main() {
   let peakMissSingleMs = 0;
   let peakDecryptSingleMs = 0;
   let peakDecodeSingleMs = 0;
+  let peakEncryptJsonBytes = 0;
+  let peakEncryptClearBytes = 0;
+  let peakEncryptKeystreamBytes = 0;
+  let peakEncryptCiphertextBytes = 0;
+  let peakEncryptHexBytes = 0;
+  let peakEncryptResidentBytes = 0;
+  let peakDecryptDecodedBytes = 0;
+  let peakDecryptClearBytes = 0;
+  let peakDecryptJsonBytes = 0;
+  let peakDecryptResidentBytes = 0;
+  let peakCryptoEncryptHeapDelta = 0;
+  let peakCryptoEncryptExternalDelta = 0;
+  let peakCryptoEncryptArrayBuffersDelta = 0;
+  let peakCryptoDecryptHeapDelta = 0;
+  let peakCryptoDecryptExternalDelta = 0;
+  let peakCryptoDecryptArrayBuffersDelta = 0;
+  let peakDiskRecordBytes = 0;
+  let peakDiskAppendResidentBytes = 0;
+  let peakDiskReadBufferBytes = 0;
+  let peakDiskReadResidentBytes = 0;
+  let peakDiskFlushIndexBytes = 0;
+  let peakDiskAppendHeapDelta = 0;
+  let peakDiskAppendExternalDelta = 0;
+  let peakDiskAppendArrayBuffersDelta = 0;
+  let peakDiskReadHeapDelta = 0;
+  let peakDiskReadExternalDelta = 0;
+  let peakDiskReadArrayBuffersDelta = 0;
+  let peakDiskFlushHeapDelta = 0;
+  let peakDiskFlushExternalDelta = 0;
+  let peakDiskFlushArrayBuffersDelta = 0;
   let stopReason = "";
 
   for (let rewritten = 0, batchIndex = 0; rewritten < TOTAL_REWRITES; rewritten += BATCH, batchIndex++) {
@@ -311,10 +411,14 @@ async function main() {
       const vps = rewrittenCount / Math.max(1, elapsedSeconds);
       const preGc = memorySnapshot();
       peakPreGcHeap = Math.max(peakPreGcHeap, preGc.heapUsed);
+      peakExternal = Math.max(peakExternal, preGc.external);
+      peakArrayBuffers = Math.max(peakArrayBuffers, preGc.arrayBuffers);
       peakRss = Math.max(peakRss, preGc.rss);
       forceGc();
       const postGc = memorySnapshot();
       peakPostGcHeap = Math.max(peakPostGcHeap, postGc.heapUsed);
+      peakExternal = Math.max(peakExternal, postGc.external);
+      peakArrayBuffers = Math.max(peakArrayBuffers, postGc.arrayBuffers);
       peakRss = Math.max(peakRss, postGc.rss);
       const retained = lastPostGcHeap === 0
         ? postGc.heapUsed
@@ -330,6 +434,14 @@ async function main() {
       const decrypt = {
         ...emptyDecryptDebugWindow(),
         ...takeDecryptDebugWindow(me),
+      };
+      const crypto = {
+        ...emptyBlobCryptoDebugWindow(),
+        ...takeBlobCryptoDebugWindow(me),
+      };
+      const disk = {
+        ...emptyDiskStoreDebugWindow(),
+        ...takeDiskStoreDebugWindow(me),
       };
 
       peakLoadWindowMs = Math.max(peakLoadWindowMs, persist.totalLoadChunkMs);
@@ -363,6 +475,51 @@ async function main() {
       peakMissSingleMs = Math.max(peakMissSingleMs, decrypt.maxMissMs);
       peakDecryptSingleMs = Math.max(peakDecryptSingleMs, decrypt.maxDecryptMs);
       peakDecodeSingleMs = Math.max(peakDecodeSingleMs, decrypt.maxDecodeMs);
+      peakEncryptJsonBytes = Math.max(peakEncryptJsonBytes, crypto.maxJsonBytes);
+      peakEncryptClearBytes = Math.max(peakEncryptClearBytes, crypto.maxClearBytes);
+      peakEncryptKeystreamBytes = Math.max(peakEncryptKeystreamBytes, crypto.maxKeystreamBytes);
+      peakEncryptCiphertextBytes = Math.max(peakEncryptCiphertextBytes, crypto.maxCiphertextBytes);
+      peakEncryptHexBytes = Math.max(peakEncryptHexBytes, crypto.maxHexBytes);
+      peakEncryptResidentBytes = Math.max(peakEncryptResidentBytes, crypto.maxEncryptResidentBytes);
+      peakDecryptDecodedBytes = Math.max(peakDecryptDecodedBytes, crypto.maxDecodedBytes);
+      peakDecryptClearBytes = Math.max(peakDecryptClearBytes, crypto.maxDecryptClearBytes);
+      peakDecryptJsonBytes = Math.max(peakDecryptJsonBytes, crypto.maxDecryptJsonBytes);
+      peakDecryptResidentBytes = Math.max(peakDecryptResidentBytes, crypto.maxDecryptResidentBytes);
+      peakCryptoEncryptHeapDelta = Math.max(peakCryptoEncryptHeapDelta, crypto.maxEncryptHeapDelta);
+      peakCryptoEncryptExternalDelta = Math.max(peakCryptoEncryptExternalDelta, crypto.maxEncryptExternalDelta);
+      peakCryptoEncryptArrayBuffersDelta = Math.max(
+        peakCryptoEncryptArrayBuffersDelta,
+        crypto.maxEncryptArrayBuffersDelta,
+      );
+      peakCryptoDecryptHeapDelta = Math.max(peakCryptoDecryptHeapDelta, crypto.maxDecryptHeapDelta);
+      peakCryptoDecryptExternalDelta = Math.max(peakCryptoDecryptExternalDelta, crypto.maxDecryptExternalDelta);
+      peakCryptoDecryptArrayBuffersDelta = Math.max(
+        peakCryptoDecryptArrayBuffersDelta,
+        crypto.maxDecryptArrayBuffersDelta,
+      );
+      peakDiskRecordBytes = Math.max(peakDiskRecordBytes, disk.maxRecordBytes);
+      peakDiskAppendResidentBytes = Math.max(peakDiskAppendResidentBytes, disk.maxAppendResidentBytes);
+      peakDiskReadBufferBytes = Math.max(peakDiskReadBufferBytes, disk.maxReadBufferBytes);
+      peakDiskReadResidentBytes = Math.max(peakDiskReadResidentBytes, disk.maxReadResidentBytes);
+      peakDiskFlushIndexBytes = Math.max(peakDiskFlushIndexBytes, disk.maxFlushIndexBytes);
+      peakDiskAppendHeapDelta = Math.max(peakDiskAppendHeapDelta, disk.maxAppendHeapDelta);
+      peakDiskAppendExternalDelta = Math.max(peakDiskAppendExternalDelta, disk.maxAppendExternalDelta);
+      peakDiskAppendArrayBuffersDelta = Math.max(
+        peakDiskAppendArrayBuffersDelta,
+        disk.maxAppendArrayBuffersDelta,
+      );
+      peakDiskReadHeapDelta = Math.max(peakDiskReadHeapDelta, disk.maxReadHeapDelta);
+      peakDiskReadExternalDelta = Math.max(peakDiskReadExternalDelta, disk.maxReadExternalDelta);
+      peakDiskReadArrayBuffersDelta = Math.max(
+        peakDiskReadArrayBuffersDelta,
+        disk.maxReadArrayBuffersDelta,
+      );
+      peakDiskFlushHeapDelta = Math.max(peakDiskFlushHeapDelta, disk.maxFlushHeapDelta);
+      peakDiskFlushExternalDelta = Math.max(peakDiskFlushExternalDelta, disk.maxFlushExternalDelta);
+      peakDiskFlushArrayBuffersDelta = Math.max(
+        peakDiskFlushArrayBuffersDelta,
+        disk.maxFlushArrayBuffersDelta,
+      );
 
       const prefix = shouldCountReport ? "" : "[heartbeat] ";
       console.log(
@@ -370,6 +527,8 @@ async function main() {
         `${windowIndex}/${windows} | ` +
         `${formatMb(preGc.heapUsed)} | ` +
         `${formatMb(postGc.heapUsed)} | ` +
+        `${formatMb(postGc.external)} | ` +
+        `${formatMb(postGc.arrayBuffers)} | ` +
         `${formatMb(retained)} | ` +
         `${formatMb(logSize)} | ` +
         `${formatMs(generateMs)} | ` +
@@ -381,6 +540,11 @@ async function main() {
         `${formatMs(persist.totalPrepareColumnarMs)} | ` +
         `${formatMs(persist.totalEncryptMs)} | ` +
         `${formatMs(persist.totalSetBlobMs)} | ` +
+        `${formatMb(crypto.maxEncryptResidentBytes)} | ` +
+        `${formatMb(crypto.maxDecryptResidentBytes)} | ` +
+        `${formatMb(disk.maxRecordBytes)} | ` +
+        `${formatMb(disk.maxReadBufferBytes)} | ` +
+        `${formatMb(disk.maxFlushIndexBytes)} | ` +
         `${persist.writeCacheHits}/${persist.writeCacheMisses} | ` +
         `${formatMs(persist.totalWriteCacheHitMs)} | ` +
         `${decrypt.hits}/${decrypt.misses} | ` +
@@ -425,13 +589,47 @@ async function main() {
   console.log(`Working set: ${WORKING_SET.toLocaleString()} vectors`);
   console.log(`Time: ${(ms / 1000 / 60).toFixed(1)} min`);
   console.log(`Final post-GC heap: ${formatMb(mem.heapUsed)}`);
+  console.log(`Final external: ${formatMb(mem.external)}`);
+  console.log(`Final arrayBuffers: ${formatMb(mem.arrayBuffers)}`);
   console.log(`Final RSS: ${formatMb(mem.rss)}`);
   console.log(`Peak pre-GC heap: ${formatMb(peakPreGcHeap)}`);
   console.log(`Peak post-GC heap: ${formatMb(peakPostGcHeap)}`);
+  console.log(`Peak external: ${formatMb(peakExternal)}`);
+  console.log(`Peak arrayBuffers: ${formatMb(peakArrayBuffers)}`);
   console.log(`Peak retained: ${formatMb(peakRetained)}`);
   console.log(`Peak RSS: ${formatMb(peakRss)}`);
   console.log(`Peak branchObj: ${formatMb(peakBranchBytes)}`);
   console.log(`Peak blob: ${formatMb(peakBlobBytes)}`);
+  console.log(`Peak encrypt json: ${formatMb(peakEncryptJsonBytes)}`);
+  console.log(`Peak encrypt clear: ${formatMb(peakEncryptClearBytes)}`);
+  console.log(`Peak encrypt keystream: ${formatMb(peakEncryptKeystreamBytes)}`);
+  console.log(`Peak encrypt ciphertext: ${formatMb(peakEncryptCiphertextBytes)}`);
+  console.log(`Peak encrypt hex: ${formatMb(peakEncryptHexBytes)}`);
+  console.log(`Peak encrypt resident: ${formatMb(peakEncryptResidentBytes)}`);
+  console.log(`Peak decrypt decoded: ${formatMb(peakDecryptDecodedBytes)}`);
+  console.log(`Peak decrypt clear: ${formatMb(peakDecryptClearBytes)}`);
+  console.log(`Peak decrypt json: ${formatMb(peakDecryptJsonBytes)}`);
+  console.log(`Peak decrypt resident: ${formatMb(peakDecryptResidentBytes)}`);
+  console.log(`Peak disk record: ${formatMb(peakDiskRecordBytes)}`);
+  console.log(`Peak disk append resident: ${formatMb(peakDiskAppendResidentBytes)}`);
+  console.log(`Peak disk read buffer: ${formatMb(peakDiskReadBufferBytes)}`);
+  console.log(`Peak disk read resident: ${formatMb(peakDiskReadResidentBytes)}`);
+  console.log(`Peak disk flush index: ${formatMb(peakDiskFlushIndexBytes)}`);
+  console.log(`Peak crypto encrypt heap delta: ${formatMb(peakCryptoEncryptHeapDelta)}`);
+  console.log(`Peak crypto encrypt external delta: ${formatMb(peakCryptoEncryptExternalDelta)}`);
+  console.log(`Peak crypto encrypt arrayBuffers delta: ${formatMb(peakCryptoEncryptArrayBuffersDelta)}`);
+  console.log(`Peak crypto decrypt heap delta: ${formatMb(peakCryptoDecryptHeapDelta)}`);
+  console.log(`Peak crypto decrypt external delta: ${formatMb(peakCryptoDecryptExternalDelta)}`);
+  console.log(`Peak crypto decrypt arrayBuffers delta: ${formatMb(peakCryptoDecryptArrayBuffersDelta)}`);
+  console.log(`Peak disk append heap delta: ${formatMb(peakDiskAppendHeapDelta)}`);
+  console.log(`Peak disk append external delta: ${formatMb(peakDiskAppendExternalDelta)}`);
+  console.log(`Peak disk append arrayBuffers delta: ${formatMb(peakDiskAppendArrayBuffersDelta)}`);
+  console.log(`Peak disk read heap delta: ${formatMb(peakDiskReadHeapDelta)}`);
+  console.log(`Peak disk read external delta: ${formatMb(peakDiskReadExternalDelta)}`);
+  console.log(`Peak disk read arrayBuffers delta: ${formatMb(peakDiskReadArrayBuffersDelta)}`);
+  console.log(`Peak disk flush heap delta: ${formatMb(peakDiskFlushHeapDelta)}`);
+  console.log(`Peak disk flush external delta: ${formatMb(peakDiskFlushExternalDelta)}`);
+  console.log(`Peak disk flush arrayBuffers delta: ${formatMb(peakDiskFlushArrayBuffersDelta)}`);
   console.log(`Peak load window: ${formatMs(peakLoadWindowMs)}ms`);
   console.log(`Peak materialize window: ${formatMs(peakMaterializeWindowMs)}ms`);
   console.log(`Peak clone window: ${formatMs(peakCloneWindowMs)}ms`);

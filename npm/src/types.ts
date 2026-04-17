@@ -66,7 +66,7 @@ export type ReplayMemoryInput = Memory | KernelMemory;
 export type MePointer = { __ptr: string };
 export type MeIdentityRef = { __id: string };
 export type MeMarker = MePointer | MeIdentityRef;
-export type EncryptedBlob = `0x${string}`;
+export type EncryptedBlob = string;
 export type EncryptedScopeEntry = EncryptedBlob | Record<string, EncryptedBlob>;
 export type EncryptedBranchPlane = Record<string, EncryptedScopeEntry>;
 

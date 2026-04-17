@@ -76,6 +76,7 @@ type PersistSecretBranchDebugWindow = {
   totalCloneMs: number;
   totalColumnarMaterializeMs: number;
   totalPrepareColumnarMs: number;
+  totalKeyDeriveMs: number;
   totalEncryptMs: number;
   totalSetBlobMs: number;
   maxLoadChunkMs: number;
@@ -83,6 +84,7 @@ type PersistSecretBranchDebugWindow = {
   maxCloneMs: number;
   maxColumnarMaterializeMs: number;
   maxPrepareColumnarMs: number;
+  maxKeyDeriveMs: number;
   maxEncryptMs: number;
   maxSetBlobMs: number;
   writeCacheHits: number;
@@ -104,6 +106,7 @@ function createPersistSecretBranchDebugWindow(): PersistSecretBranchDebugWindow 
     totalCloneMs: 0,
     totalColumnarMaterializeMs: 0,
     totalPrepareColumnarMs: 0,
+    totalKeyDeriveMs: 0,
     totalEncryptMs: 0,
     totalSetBlobMs: 0,
     maxLoadChunkMs: 0,
@@ -111,6 +114,7 @@ function createPersistSecretBranchDebugWindow(): PersistSecretBranchDebugWindow 
     maxCloneMs: 0,
     maxColumnarMaterializeMs: 0,
     maxPrepareColumnarMs: 0,
+    maxKeyDeriveMs: 0,
     maxEncryptMs: 0,
     maxSetBlobMs: 0,
     writeCacheHits: 0,
@@ -170,6 +174,7 @@ function recordPersistSecretBranchDebug(
   encryptable: any,
   blob: any,
   useColumnar: boolean,
+  keyDeriveMs: number,
   encryptMs: number,
   setBlobMs: number,
   columnarMaterializeMs: number,
@@ -192,10 +197,12 @@ function recordPersistSecretBranchDebug(
   window.maxBlobBytes = Math.max(window.maxBlobBytes, blobBytes);
   window.totalColumnarMaterializeMs += columnarMaterializeMs;
   window.totalPrepareColumnarMs += prepareColumnarMs;
+  window.totalKeyDeriveMs += keyDeriveMs;
   window.totalEncryptMs += encryptMs;
   window.totalSetBlobMs += setBlobMs;
   window.maxColumnarMaterializeMs = Math.max(window.maxColumnarMaterializeMs, columnarMaterializeMs);
   window.maxPrepareColumnarMs = Math.max(window.maxPrepareColumnarMs, prepareColumnarMs);
+  window.maxKeyDeriveMs = Math.max(window.maxKeyDeriveMs, keyDeriveMs);
   window.maxEncryptMs = Math.max(window.maxEncryptMs, encryptMs);
   window.maxSetBlobMs = Math.max(window.maxSetBlobMs, setBlobMs);
 }
@@ -550,10 +557,16 @@ function persistSecretBranch(
     prepareColumnarMs = nowMs() - prepareColumnarStartedAt;
   }
 
+  let keyDeriveMs = 0;
   const encryptStartedAt = nowMs();
   const blob = self.secretBlobVersion === "v2"
     ? xorEncrypt(encryptable, scopeSecret, scope)
-    : encryptBlobV3WithDerivedKeys(encryptable, getOrDeriveV3Keys(self, scope, "branch"));
+    : (() => {
+        const deriveStartedAt = nowMs();
+        const keys = getOrDeriveV3Keys(self, scope, "branch");
+        keyDeriveMs = nowMs() - deriveStartedAt;
+        return encryptBlobV3WithDerivedKeys(encryptable, keys);
+      })();
   const encryptMs = nowMs() - encryptStartedAt;
   const setBlobStartedAt = nowMs();
   setChunkBlob(self, scope, chunkId, blob, scopeSecret);
@@ -566,6 +579,7 @@ function persistSecretBranch(
     encryptable,
     blob,
     useColumnar,
+    keyDeriveMs,
     encryptMs,
     setBlobMs,
     columnarMaterializeMs,

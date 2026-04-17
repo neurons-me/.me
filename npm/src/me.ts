@@ -13,10 +13,12 @@
  */
 import {
   detectBlobVersion,
+  enableBlobCryptoDebug,
   encryptBlobV3,
   exportP256PublicKey,
   generateP256KeyPair,
   importP256PublicKey,
+  takeBlobCryptoDebugWindow,
   unwrapSecretV1,
   wrapSecretV1,
 } from "./crypto.js";
@@ -39,6 +41,7 @@ import {
 import * as ProxyRuntime from "./proxy.js";
 import * as Secret from "./secret.js";
 import { collectSecretChainV3 } from "./secret-context.js";
+import { enableDiskStoreDebug, takeDiskStoreDebugWindow } from "./instance-store.js";
 import type {
   EncryptedBlob,
   EncryptedBranchPlane,
@@ -571,6 +574,7 @@ export class ME {
         totalCloneMs: 0,
         totalColumnarMaterializeMs: 0,
         totalPrepareColumnarMs: 0,
+        totalKeyDeriveMs: 0,
         totalEncryptMs: 0,
         totalSetBlobMs: 0,
         maxLoadChunkMs: 0,
@@ -578,6 +582,7 @@ export class ME {
         maxCloneMs: 0,
         maxColumnarMaterializeMs: 0,
         maxPrepareColumnarMs: 0,
+        maxKeyDeriveMs: 0,
         maxEncryptMs: 0,
         maxSetBlobMs: 0,
         writeCacheHits: 0,
@@ -603,21 +608,23 @@ export class ME {
     totalMaterializeMs: number;
     totalCloneMs: number;
     totalColumnarMaterializeMs: number;
-      totalPrepareColumnarMs: number;
-      totalEncryptMs: number;
-      totalSetBlobMs: number;
-      maxLoadChunkMs: number;
-      maxMaterializeMs: number;
+    totalPrepareColumnarMs: number;
+    totalKeyDeriveMs: number;
+    totalEncryptMs: number;
+    totalSetBlobMs: number;
+    maxLoadChunkMs: number;
+    maxMaterializeMs: number;
     maxCloneMs: number;
     maxColumnarMaterializeMs: number;
-      maxPrepareColumnarMs: number;
-      maxEncryptMs: number;
-      maxSetBlobMs: number;
-      writeCacheHits: number;
-      writeCacheMisses: number;
-      totalWriteCacheHitMs: number;
-      maxWriteCacheHitMs: number;
-    } {
+    maxPrepareColumnarMs: number;
+    maxKeyDeriveMs: number;
+    maxEncryptMs: number;
+    maxSetBlobMs: number;
+    writeCacheHits: number;
+    writeCacheMisses: number;
+    totalWriteCacheHitMs: number;
+    maxWriteCacheHitMs: number;
+  } {
     const empty = {
       writes: 0,
       columnarWrites: 0,
@@ -630,6 +637,7 @@ export class ME {
       totalCloneMs: 0,
       totalColumnarMaterializeMs: 0,
       totalPrepareColumnarMs: 0,
+      totalKeyDeriveMs: 0,
       totalEncryptMs: 0,
       totalSetBlobMs: 0,
       maxLoadChunkMs: 0,
@@ -637,6 +645,7 @@ export class ME {
       maxCloneMs: 0,
       maxColumnarMaterializeMs: 0,
       maxPrepareColumnarMs: 0,
+      maxKeyDeriveMs: 0,
       maxEncryptMs: 0,
       maxSetBlobMs: 0,
       writeCacheHits: 0,
@@ -663,6 +672,92 @@ export class ME {
       this.writeBranchCache.clear();
     }
     return this;
+  }
+
+  /**
+   * @internal Benchmark hook: enable blob crypto allocation telemetry.
+   */
+  private _enableBlobCryptoDebug(enabled = true): this {
+    enableBlobCryptoDebug(enabled);
+    return this;
+  }
+
+  /**
+   * @internal Benchmark hook: drain the current blob crypto telemetry window.
+   */
+  private _takeBlobCryptoDebugWindow(): {
+    encryptCalls: number;
+    decryptCalls: number;
+    totalEncryptJsonMs: number;
+    totalEncryptAsciiMs: number;
+    totalEncryptKeystreamMs: number;
+    totalEncryptXorMs: number;
+    totalEncryptEncodeMs: number;
+    maxEncryptJsonMs: number;
+    maxEncryptAsciiMs: number;
+    maxEncryptKeystreamMs: number;
+    maxEncryptXorMs: number;
+    maxEncryptEncodeMs: number;
+    maxJsonBytes: number;
+    maxClearBytes: number;
+    maxKeystreamBytes: number;
+    maxCiphertextBytes: number;
+    maxHexBytes: number;
+    maxEncryptResidentBytes: number;
+    maxDecodedBytes: number;
+    maxDecryptClearBytes: number;
+    maxDecryptJsonBytes: number;
+    maxDecryptResidentBytes: number;
+    maxEncryptHeapDelta: number;
+    maxEncryptExternalDelta: number;
+    maxEncryptArrayBuffersDelta: number;
+    maxDecryptHeapDelta: number;
+    maxDecryptExternalDelta: number;
+    maxDecryptArrayBuffersDelta: number;
+  } {
+    return takeBlobCryptoDebugWindow();
+  }
+
+  /**
+   * @internal Benchmark hook: enable DiskStore serialization/allocation telemetry.
+   */
+  private _enableDiskStoreDebug(enabled = true): this {
+    enableDiskStoreDebug(enabled);
+    return this;
+  }
+
+  /**
+   * @internal Benchmark hook: drain the current DiskStore telemetry window.
+   */
+  private _takeDiskStoreDebugWindow(): {
+    appendCalls: number;
+    readCalls: number;
+    flushCalls: number;
+    totalRecordStringifyMs: number;
+    totalAppendMs: number;
+    totalReadMs: number;
+    totalFlushMs: number;
+    maxRecordStringifyMs: number;
+    maxAppendMs: number;
+    maxReadMs: number;
+    maxFlushMs: number;
+    maxBlobBytes: number;
+    maxRecordBytes: number;
+    maxAppendResidentBytes: number;
+    maxReadBufferBytes: number;
+    maxReadResidentBytes: number;
+    maxFlushIndexBytes: number;
+    maxAppendHeapDelta: number;
+    maxAppendExternalDelta: number;
+    maxAppendArrayBuffersDelta: number;
+    maxReadHeapDelta: number;
+    maxReadExternalDelta: number;
+    maxReadArrayBuffersDelta: number;
+    maxFlushHeapDelta: number;
+    maxFlushExternalDelta: number;
+    maxFlushArrayBuffersDelta: number;
+  } {
+    return takeDiskStoreDebugWindow();
   }
 
   /**

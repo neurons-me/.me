@@ -27,9 +27,131 @@ type DiskIndexSnapshot = Record<string, DiskScopeIndex>;
 
 type DiskEntryKind = "legacy" | "chunk";
 
+type DiskStoreMemorySnapshot = {
+  heapUsed: number;
+  external: number;
+  arrayBuffers: number;
+};
+
+type DiskStoreDebugWindow = {
+  appendCalls: number;
+  readCalls: number;
+  flushCalls: number;
+  totalRecordStringifyMs: number;
+  totalAppendMs: number;
+  totalReadMs: number;
+  totalFlushMs: number;
+  maxRecordStringifyMs: number;
+  maxAppendMs: number;
+  maxReadMs: number;
+  maxFlushMs: number;
+  maxBlobBytes: number;
+  maxRecordBytes: number;
+  maxAppendResidentBytes: number;
+  maxReadBufferBytes: number;
+  maxReadResidentBytes: number;
+  maxFlushIndexBytes: number;
+  maxAppendHeapDelta: number;
+  maxAppendExternalDelta: number;
+  maxAppendArrayBuffersDelta: number;
+  maxReadHeapDelta: number;
+  maxReadExternalDelta: number;
+  maxReadArrayBuffersDelta: number;
+  maxFlushHeapDelta: number;
+  maxFlushExternalDelta: number;
+  maxFlushArrayBuffersDelta: number;
+};
+
+function createDiskStoreDebugWindow(): DiskStoreDebugWindow {
+  return {
+    appendCalls: 0,
+    readCalls: 0,
+    flushCalls: 0,
+    totalRecordStringifyMs: 0,
+    totalAppendMs: 0,
+    totalReadMs: 0,
+    totalFlushMs: 0,
+    maxRecordStringifyMs: 0,
+    maxAppendMs: 0,
+    maxReadMs: 0,
+    maxFlushMs: 0,
+    maxBlobBytes: 0,
+    maxRecordBytes: 0,
+    maxAppendResidentBytes: 0,
+    maxReadBufferBytes: 0,
+    maxReadResidentBytes: 0,
+    maxFlushIndexBytes: 0,
+    maxAppendHeapDelta: 0,
+    maxAppendExternalDelta: 0,
+    maxAppendArrayBuffersDelta: 0,
+    maxReadHeapDelta: 0,
+    maxReadExternalDelta: 0,
+    maxReadArrayBuffersDelta: 0,
+    maxFlushHeapDelta: 0,
+    maxFlushExternalDelta: 0,
+    maxFlushArrayBuffersDelta: 0,
+  };
+}
+
+function nowMs(): number {
+  return typeof performance !== "undefined" && typeof performance.now === "function"
+    ? performance.now()
+    : Date.now();
+}
+
+const diskStoreDebugState: {
+  enabled: boolean;
+  window: DiskStoreDebugWindow;
+} = {
+  enabled: false,
+  window: createDiskStoreDebugWindow(),
+};
+
+function currentDiskStoreMemory(): DiskStoreMemorySnapshot {
+  const runtimeProcess = typeof process !== "undefined" ? (process as any) : null;
+  const usage = runtimeProcess?.memoryUsage;
+  if (typeof usage !== "function") {
+    return {
+      heapUsed: 0,
+      external: 0,
+      arrayBuffers: 0,
+    };
+  }
+  const mem = usage.call(runtimeProcess);
+  return {
+    heapUsed: mem.heapUsed ?? 0,
+    external: mem.external ?? 0,
+    arrayBuffers: mem.arrayBuffers ?? 0,
+  };
+}
+
+function estimateStringBytes(value: string): number {
+  const text = String(value ?? "");
+  if (typeof Buffer !== "undefined") {
+    return Math.max(text.length * 2, Buffer.byteLength(text, "utf8"));
+  }
+  return text.length * 2;
+}
+
+function positiveDelta(next: number, prev: number): number {
+  return Math.max(0, next - prev);
+}
+
+export function enableDiskStoreDebug(enabled = true): void {
+  diskStoreDebugState.enabled = enabled;
+  diskStoreDebugState.window = createDiskStoreDebugWindow();
+}
+
+export function takeDiskStoreDebugWindow(): DiskStoreDebugWindow {
+  const window = { ...diskStoreDebugState.window };
+  diskStoreDebugState.window = createDiskStoreDebugWindow();
+  return window;
+}
+
 export interface InstanceStore {
   readonly kind: "memory" | "disk";
   getScope(scopeKey: string): EncryptedScopeEntry | undefined;
+  getScopeMode(scopeKey: string): "none" | "legacy" | "chunks";
   setScope(scopeKey: string, value: EncryptedScopeEntry): void;
   deleteScope(scopeKey: string): void;
   listScopes(): string[];
@@ -149,6 +271,12 @@ export class MemoryStore implements InstanceStore {
 
   getScope(scopeKey: string): EncryptedScopeEntry | undefined {
     return this.data[scopeKey];
+  }
+
+  getScopeMode(scopeKey: string): "none" | "legacy" | "chunks" {
+    const current = this.data[scopeKey];
+    if (!current) return "none";
+    return typeof current === "string" ? "legacy" : "chunks";
   }
 
   setScope(scopeKey: string, value: EncryptedScopeEntry): void {
@@ -280,6 +408,12 @@ export class DiskStore implements InstanceStore {
       if (blob !== undefined) out[chunkId] = blob;
     }
     return out;
+  }
+
+  getScopeMode(scopeKey: string): "none" | "legacy" | "chunks" {
+    const meta = this.index[scopeKey];
+    if (!meta) return "none";
+    return meta.legacy ? "legacy" : "chunks";
   }
 
   setScope(scopeKey: string, value: EncryptedScopeEntry): void {
@@ -469,7 +603,18 @@ export class DiskStore implements InstanceStore {
   }
 
   private appendRecord(record: DiskRecord): BlobPointer {
+    const debugEnabled = diskStoreDebugState.enabled;
+    const startedMem = debugEnabled ? currentDiskStoreMemory() : null;
+    const startedAt = debugEnabled ? nowMs() : 0;
+    const blobBytes =
+      record.op === "scope:set"
+        ? estimateStringBytes(record.value)
+        : record.op === "chunk:set"
+          ? estimateStringBytes(record.blob)
+          : 0;
+    const stringifyStartedAt = debugEnabled ? nowMs() : 0;
     const line = `${JSON.stringify(record)}\n`;
+    const stringifyMs = debugEnabled ? nowMs() - stringifyStartedAt : 0;
     const length = Buffer.byteLength(line);
     const pointer = {
       offset: this.logSize,
@@ -477,6 +622,26 @@ export class DiskStore implements InstanceStore {
     };
     this.fs.writeSync(this.logFd, line);
     this.logSize += length;
+    if (debugEnabled && startedMem) {
+      const endedMem = currentDiskStoreMemory();
+      const elapsedMs = nowMs() - startedAt;
+      const lineBytes = estimateStringBytes(line);
+      const window = diskStoreDebugState.window;
+      window.appendCalls += 1;
+      window.totalRecordStringifyMs += stringifyMs;
+      window.totalAppendMs += elapsedMs;
+      window.maxRecordStringifyMs = Math.max(window.maxRecordStringifyMs, stringifyMs);
+      window.maxAppendMs = Math.max(window.maxAppendMs, elapsedMs);
+      window.maxBlobBytes = Math.max(window.maxBlobBytes, blobBytes);
+      window.maxRecordBytes = Math.max(window.maxRecordBytes, lineBytes);
+      window.maxAppendResidentBytes = Math.max(window.maxAppendResidentBytes, blobBytes + lineBytes);
+      window.maxAppendHeapDelta = Math.max(window.maxAppendHeapDelta, positiveDelta(endedMem.heapUsed, startedMem.heapUsed));
+      window.maxAppendExternalDelta = Math.max(window.maxAppendExternalDelta, positiveDelta(endedMem.external, startedMem.external));
+      window.maxAppendArrayBuffersDelta = Math.max(
+        window.maxAppendArrayBuffersDelta,
+        positiveDelta(endedMem.arrayBuffers, startedMem.arrayBuffers),
+      );
+    }
     return pointer;
   }
 
@@ -514,7 +679,26 @@ export class DiskStore implements InstanceStore {
   }
 
   private flushIndex(): void {
-    this.fs.writeFileSync(this.indexPath, JSON.stringify(this.index), "utf8");
+    const debugEnabled = diskStoreDebugState.enabled;
+    const startedMem = debugEnabled ? currentDiskStoreMemory() : null;
+    const startedAt = debugEnabled ? nowMs() : 0;
+    const json = JSON.stringify(this.index);
+    this.fs.writeFileSync(this.indexPath, json, "utf8");
+    if (debugEnabled && startedMem) {
+      const endedMem = currentDiskStoreMemory();
+      const elapsedMs = nowMs() - startedAt;
+      const window = diskStoreDebugState.window;
+      window.flushCalls += 1;
+      window.totalFlushMs += elapsedMs;
+      window.maxFlushMs = Math.max(window.maxFlushMs, elapsedMs);
+      window.maxFlushIndexBytes = Math.max(window.maxFlushIndexBytes, estimateStringBytes(json));
+      window.maxFlushHeapDelta = Math.max(window.maxFlushHeapDelta, positiveDelta(endedMem.heapUsed, startedMem.heapUsed));
+      window.maxFlushExternalDelta = Math.max(window.maxFlushExternalDelta, positiveDelta(endedMem.external, startedMem.external));
+      window.maxFlushArrayBuffersDelta = Math.max(
+        window.maxFlushArrayBuffersDelta,
+        positiveDelta(endedMem.arrayBuffers, startedMem.arrayBuffers),
+      );
+    }
     this.writesSinceFlush = 0;
   }
 
@@ -535,6 +719,9 @@ export class DiskStore implements InstanceStore {
     const hot = this.hot.get(cacheKey);
     if (hot !== undefined) return hot;
 
+    const debugEnabled = diskStoreDebugState.enabled;
+    const startedMem = debugEnabled ? currentDiskStoreMemory() : null;
+    const startedAt = debugEnabled ? nowMs() : 0;
     const buffer = Buffer.alloc(pointer.length);
     this.fs.readSync(this.logFd, buffer, 0, pointer.length, pointer.offset);
     const line = buffer.toString("utf8").trim();
@@ -545,6 +732,27 @@ export class DiskStore implements InstanceStore {
     if (blob === undefined) return undefined;
 
     this.hot.set(cacheKey, blob);
+    if (debugEnabled && startedMem) {
+      const endedMem = currentDiskStoreMemory();
+      const elapsedMs = nowMs() - startedAt;
+      const blobBytes = estimateStringBytes(blob);
+      const window = diskStoreDebugState.window;
+      window.readCalls += 1;
+      window.totalReadMs += elapsedMs;
+      window.maxReadMs = Math.max(window.maxReadMs, elapsedMs);
+      window.maxBlobBytes = Math.max(window.maxBlobBytes, blobBytes);
+      window.maxReadBufferBytes = Math.max(window.maxReadBufferBytes, pointer.length);
+      window.maxReadResidentBytes = Math.max(
+        window.maxReadResidentBytes,
+        pointer.length + estimateStringBytes(line) + blobBytes,
+      );
+      window.maxReadHeapDelta = Math.max(window.maxReadHeapDelta, positiveDelta(endedMem.heapUsed, startedMem.heapUsed));
+      window.maxReadExternalDelta = Math.max(window.maxReadExternalDelta, positiveDelta(endedMem.external, startedMem.external));
+      window.maxReadArrayBuffersDelta = Math.max(
+        window.maxReadArrayBuffersDelta,
+        positiveDelta(endedMem.arrayBuffers, startedMem.arrayBuffers),
+      );
+    }
     return blob;
   }
 

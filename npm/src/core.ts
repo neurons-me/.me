@@ -44,6 +44,7 @@ import {
   resolveBranchScope,
 } from "./secret.js";
 import type {
+  EncryptedBlob,
   MeTargetAst,
   MEInspectResult,
   MEKernelLike,
@@ -74,7 +75,7 @@ function cloneCachedValue<T>(value: T): T {
   return value;
 }
 
-function getCachedValueDecrypt(self: MEKernelLike, path: SemanticPath, blob: `0x${string}`): any {
+function getCachedValueDecrypt(self: MEKernelLike, path: SemanticPath, blob: EncryptedBlob): any {
   const cacheKey = path.join(".");
   const hit = self.decryptedValueCache.get(cacheKey);
   if (hit && hit.epoch === self.secretEpoch && hit.blob === blob) {
@@ -84,7 +85,7 @@ function getCachedValueDecrypt(self: MEKernelLike, path: SemanticPath, blob: `0x
   return undefined;
 }
 
-function setCachedValueDecrypt(self: MEKernelLike, path: SemanticPath, blob: `0x${string}`, value: any): any {
+function setCachedValueDecrypt(self: MEKernelLike, path: SemanticPath, blob: EncryptedBlob, value: any): any {
   const cacheKey = path.join(".");
   const cachedValue = cloneCachedValue(value);
   touchLruEntry(self.decryptedValueCache, cacheKey, {
