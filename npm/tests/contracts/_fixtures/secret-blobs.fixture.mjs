@@ -15,6 +15,29 @@ export function bytesToHex(buf) {
   return `0x${hex}`;
 }
 
+function base64UrlToBytes(b64u) {
+  const b64 = b64u.replace(/-/g, '+').replace(/_/g, '/');
+  const pad = b64.length % 4? 4 - (b64.length % 4) : 0;
+  const bin = atob(b64 + '='.repeat(pad));
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+
+function bytesToBase64Url(bytes) {
+  let bin = '';
+  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+}
+
+function isEncryptedBlob(val) {
+  if (val instanceof Uint8Array) return true;
+  if (typeof val === 'string') {
+    return val.startsWith('0x') || val.startsWith('b64u:');
+  }
+  return false;
+}
+
 export function legacyXorEncrypt(value, secret, path) {
   const json = JSON.stringify(value);
   const bytes = asciiToBytes(String(json));
@@ -38,15 +61,24 @@ export function hashFn(input) {
 
 export function clone(value) {
   return typeof structuredClone === "function"
-    ? structuredClone(value)
+   ? structuredClone(value)
     : JSON.parse(JSON.stringify(value));
 }
 
 export function flipLastHexNibble(blob) {
   const hex = String(blob).slice(2);
   const last = hex.slice(-1).toLowerCase();
-  const next = last === "a" ? "b" : "a";
+  const next = last === "a"? "b" : "a";
   return `0x${hex.slice(0, -1)}${next}`;
+}
+
+function flipLastB64uByte(blob) {
+  const raw = blob.slice(5); // after 'b64u:'
+  if (!raw.length) return blob;
+  const bytes = base64UrlToBytes(raw);
+  // flip last byte to force decrypt failure
+  bytes[bytes.length - 1] = bytes[bytes.length - 1] ^ 0xff;
+  return `b64u:${bytesToBase64Url(bytes)}`;
 }
 
 export function makeBranchSecretRuntime() {
@@ -118,7 +150,7 @@ export function makeLegacySecretSnapshot() {
 
 export function getFirstChunkKey(snapshot, scopeKey) {
   const scope = snapshot?.encryptedBranches?.[scopeKey];
-  if (!scope || typeof scope !== "object" || Array.isArray(scope)) {
+  if (!scope || typeof scope!== "object" || Array.isArray(scope)) {
     throw new Error(`No chunk map found at encryptedBranches.${scopeKey}`);
   }
   const keys = Object.keys(scope);
@@ -129,7 +161,12 @@ export function getFirstChunkKey(snapshot, scopeKey) {
 export function tamperBranchChunk(snapshot, scopeKey, chunkId = null) {
   const next = clone(snapshot);
   const key = chunkId || getFirstChunkKey(next, scopeKey);
-  next.encryptedBranches[scopeKey][key] = flipLastHexNibble(next.encryptedBranches[scopeKey][key]);
+  const blob = next.encryptedBranches[scopeKey][key];
+  if (typeof blob === 'string' && blob.startsWith('b64u:')) {
+    next.encryptedBranches[scopeKey][key] = flipLastB64uByte(blob);
+  } else {
+    next.encryptedBranches[scopeKey][key] = flipLastHexNibble(blob);
+  }
   return next;
 }
 
@@ -137,10 +174,19 @@ export function tamperValueMemory(snapshot, path) {
   const next = clone(snapshot);
   const memory = next.memories.find((entry) => entry.path === path);
   if (!memory) throw new Error(`No memory found at path "${path}"`);
-  if (typeof memory.value !== "string" || !memory.value.startsWith("0x")) {
+  if (!isEncryptedBlob(memory.value)) {
     throw new Error(`Memory at path "${path}" is not an encrypted blob value`);
   }
-  memory.value = flipLastHexNibble(memory.value);
+  if (typeof memory.value === 'string' && memory.value.startsWith('b64u:')) {
+    memory.value = flipLastB64uByte(memory.value);
+  } else if (typeof memory.value === 'string' && memory.value.startsWith('0x')) {
+    memory.value = flipLastHexNibble(memory.value);
+  } else if (memory.value instanceof Uint8Array) {
+    // flip last byte in-place on a copy
+    const copy = new Uint8Array(memory.value);
+    copy[copy.length - 1] = copy[copy.length - 1] ^ 0xff;
+    memory.value = copy;
+  }
   return next;
 }
 
@@ -165,7 +211,7 @@ export function transplantScope(snapshot, fromScopeKey, toScopeKey) {
   next.encryptedBranches[toScopeKey] = clone(source);
   next.localSecrets = next.localSecrets || {};
   next.localSecrets[toScopeKey] = next.localSecrets[fromScopeKey];
-  if (next.localNoises?.[fromScopeKey] !== undefined) {
+  if (next.localNoises?.[fromScopeKey]!== undefined) {
     next.localNoises[toScopeKey] = next.localNoises[fromScopeKey];
   }
   return next;
