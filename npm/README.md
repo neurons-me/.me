@@ -4,13 +4,16 @@
 </picture>
 
 # .me
-###### **Your personal semantic kernel.**
-Define who you are, **what you own**, and how everything connects — once.  
-Then use it everywhere: apps, websites, dashboards, tickets, and more.
+###### Your personal semantic kernel - 890 vps | 146MB | O(1)
+Define who you are, **what you own**, and how everything connects — once.  Then use it everywhere: apps, websites, dashboards, tickets, and more.
 
 ```bash
 npm install this.me
 ```
+
+> **100k encrypted vectors. 1.9 minutes. 146MB RAM.**
+>
+> **Production-ready. O(1).**
 
 ## In 30 seconds
 
