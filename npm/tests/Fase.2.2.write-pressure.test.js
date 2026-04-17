@@ -81,9 +81,47 @@ function forceGc() {
   if (typeof global.gc === "function") global.gc();
 }
 
+function emptyPersistDebugWindow() {
+  return {
+    writes: 0,
+    columnarWrites: 0,
+    maxBranchBytes: 0,
+    maxCacheSeedBytes: 0,
+    maxEncryptableBytes: 0,
+    maxBlobBytes: 0,
+    totalLoadChunkMs: 0,
+    totalMaterializeMs: 0,
+    totalCloneMs: 0,
+    totalColumnarMaterializeMs: 0,
+    totalPrepareColumnarMs: 0,
+    totalEncryptMs: 0,
+    totalSetBlobMs: 0,
+    maxLoadChunkMs: 0,
+    maxMaterializeMs: 0,
+    maxCloneMs: 0,
+    maxColumnarMaterializeMs: 0,
+    maxPrepareColumnarMs: 0,
+    maxEncryptMs: 0,
+    maxSetBlobMs: 0,
+  };
+}
+
+function takePersistDebugWindow(me) {
+  if (typeof me?._takePersistSecretBranchDebugWindow === "function") {
+    return me._takePersistSecretBranchDebugWindow();
+  }
+
+  const debug = me?.__persistSecretBranchDebug;
+  const window = debug?.window ?? emptyPersistDebugWindow();
+  if (debug) debug.window = emptyPersistDebugWindow();
+  return window;
+}
+
 function structuralSnapshot(me) {
   const s = me;
   const store = s?.branchStore;
+  const hot = typeof store?.getHotStats === "function" ? store.getHotStats() : {};
+  const idx = typeof store?.getIndexStats === "function" ? store.getIndexStats() : {};
 
   return {
     memories: Array.isArray(s?._memories) ? s._memories.length : 0,
@@ -97,6 +135,12 @@ function structuralSnapshot(me) {
     branchStoreScopes: typeof store?.listScopes === "function" ? store.listScopes().length : 0,
     decryptedChunkCache: s?.decryptedBranchCache?.size ?? 0,
     staleDerivations: s?.staleDerivations?.size ?? 0,
+    hotEntries: hot.entries ?? 0,
+    hotUsedMB: hot.usedBytes ? (hot.usedBytes / MB).toFixed(1) : "0.0",
+    hotMaxMB: hot.maxBytes ? (hot.maxBytes / MB).toFixed(1) : "0.0",
+    idxScopes: idx.scopes ?? 0,
+    idxChunks: idx.chunks ?? 0,
+    idxPointers: idx.pointers ?? 0,
   };
 }
 
@@ -112,6 +156,9 @@ async function main() {
       maxHotBytes: MAX_HOT_BYTES,
     }),
   });
+  if (typeof me?._enablePersistSecretBranchDebug === "function") {
+    me._enablePersistSecretBranchDebug(true);
+  }
 
   me.memory["_"]("fase-2-pressure");
 
@@ -124,7 +171,7 @@ async function main() {
   console.log(
     `Heartbeat: cada ${(HEARTBEAT_EVERY_MS / 1000).toFixed(1)}s | primer reporte: ${FIRST_REPORT_AT.toLocaleString()} vectores | siguientes: ${REPORT_EVERY.toLocaleString()}`
   );
-  console.log("vectors | preGCHeap | postGCHeap | retained | diskMB | genMs | commitMs | vps | mems | idxK | derivK | decCache | stale | scopes");
+  console.log("vectors | preGCHeap | postGCHeap | retained | diskMB | genMs | commitMs | loadMs | matMs | cloneMs | colMs | prepMs | encMs | setMs | vps | mems | hotEnt | hotMB/max | idxScp | idxChk | idxPtr | decCache | stale | scopes | pWr | colWr | brMB | seedMB | encMB | blobMB");
 
   let lastReportAt = 0;
   let nextCountReportAt = Math.min(TOTAL, Math.max(BATCH, FIRST_REPORT_AT));
@@ -135,6 +182,24 @@ async function main() {
   let peakPostGcHeap = 0;
   let peakRss = 0;
   let peakRetained = 0;
+  let peakBranchBytes = 0;
+  let peakCacheSeedBytes = 0;
+  let peakEncryptableBytes = 0;
+  let peakBlobBytes = 0;
+  let peakLoadWindowMs = 0;
+  let peakMaterializeWindowMs = 0;
+  let peakCloneWindowMs = 0;
+  let peakColumnarWindowMs = 0;
+  let peakPrepareWindowMs = 0;
+  let peakEncryptWindowMs = 0;
+  let peakSetBlobWindowMs = 0;
+  let peakLoadSingleMs = 0;
+  let peakMaterializeSingleMs = 0;
+  let peakCloneSingleMs = 0;
+  let peakColumnarSingleMs = 0;
+  let peakPrepareSingleMs = 0;
+  let peakEncryptSingleMs = 0;
+  let peakSetBlobSingleMs = 0;
   let stopReason = "";
 
   for (let i = 0; i < TOTAL; i += BATCH) {
@@ -168,6 +233,28 @@ async function main() {
       lastPostGcHeap = postGc.heapUsed;
       peakRetained = Math.max(peakRetained, retained);
       const struct = structuralSnapshot(me);
+      const persist = {
+        ...emptyPersistDebugWindow(),
+        ...takePersistDebugWindow(me),
+      };
+      peakBranchBytes = Math.max(peakBranchBytes, persist.maxBranchBytes);
+      peakCacheSeedBytes = Math.max(peakCacheSeedBytes, persist.maxCacheSeedBytes);
+      peakEncryptableBytes = Math.max(peakEncryptableBytes, persist.maxEncryptableBytes);
+      peakBlobBytes = Math.max(peakBlobBytes, persist.maxBlobBytes);
+      peakLoadWindowMs = Math.max(peakLoadWindowMs, persist.totalLoadChunkMs);
+      peakMaterializeWindowMs = Math.max(peakMaterializeWindowMs, persist.totalMaterializeMs);
+      peakCloneWindowMs = Math.max(peakCloneWindowMs, persist.totalCloneMs);
+      peakColumnarWindowMs = Math.max(peakColumnarWindowMs, persist.totalColumnarMaterializeMs);
+      peakPrepareWindowMs = Math.max(peakPrepareWindowMs, persist.totalPrepareColumnarMs);
+      peakEncryptWindowMs = Math.max(peakEncryptWindowMs, persist.totalEncryptMs);
+      peakSetBlobWindowMs = Math.max(peakSetBlobWindowMs, persist.totalSetBlobMs);
+      peakLoadSingleMs = Math.max(peakLoadSingleMs, persist.maxLoadChunkMs);
+      peakMaterializeSingleMs = Math.max(peakMaterializeSingleMs, persist.maxMaterializeMs);
+      peakCloneSingleMs = Math.max(peakCloneSingleMs, persist.maxCloneMs);
+      peakColumnarSingleMs = Math.max(peakColumnarSingleMs, persist.maxColumnarMaterializeMs);
+      peakPrepareSingleMs = Math.max(peakPrepareSingleMs, persist.maxPrepareColumnarMs);
+      peakEncryptSingleMs = Math.max(peakEncryptSingleMs, persist.maxEncryptMs);
+      peakSetBlobSingleMs = Math.max(peakSetBlobSingleMs, persist.maxSetBlobMs);
       const prefix = shouldCountReport ? "" : "[heartbeat] ";
 
       console.log(
@@ -178,13 +265,29 @@ async function main() {
         `${formatMb(logSize)} | ` +
         `${generateMs.toFixed(0)} | ` +
         `${commitMs.toFixed(0)} | ` +
+        `${persist.totalLoadChunkMs.toFixed(0)} | ` +
+        `${persist.totalMaterializeMs.toFixed(0)} | ` +
+        `${persist.totalCloneMs.toFixed(0)} | ` +
+        `${persist.totalColumnarMaterializeMs.toFixed(0)} | ` +
+        `${persist.totalPrepareColumnarMs.toFixed(0)} | ` +
+        `${persist.totalEncryptMs.toFixed(0)} | ` +
+        `${persist.totalSetBlobMs.toFixed(0)} | ` +
         `${vps.toFixed(0)}`
         + ` | ${struct.memories}`
-        + ` | ${struct.indexKeys}`
-        + ` | ${struct.derivationKeys}`
+        + ` | ${struct.hotEntries}`
+        + ` | ${struct.hotUsedMB}/${struct.hotMaxMB}`
+        + ` | ${struct.idxScopes}`
+        + ` | ${struct.idxChunks}`
+        + ` | ${struct.idxPointers}`
         + ` | ${struct.decryptedChunkCache}`
         + ` | ${struct.staleDerivations}`
         + ` | ${struct.branchStoreScopes}`
+        + ` | ${persist.writes}`
+        + ` | ${persist.columnarWrites}`
+        + ` | ${formatMb(persist.maxBranchBytes)}`
+        + ` | ${formatMb(persist.maxCacheSeedBytes)}`
+        + ` | ${formatMb(persist.maxEncryptableBytes)}`
+        + ` | ${formatMb(persist.maxBlobBytes)}`
       );
 
       lastHeartbeatAt = now;
@@ -222,6 +325,24 @@ async function main() {
   console.log(`Peak post-GC heap: ${formatMb(peakPostGcHeap)}`);
   console.log(`Peak retained: ${formatMb(peakRetained)}`);
   console.log(`Peak RSS: ${formatMb(peakRss)}`);
+  console.log(`Peak branchObj: ${formatMb(peakBranchBytes)}`);
+  console.log(`Peak cacheSeed: ${formatMb(peakCacheSeedBytes)}`);
+  console.log(`Peak encryptable: ${formatMb(peakEncryptableBytes)}`);
+  console.log(`Peak blob: ${formatMb(peakBlobBytes)}`);
+  console.log(`Peak load window: ${peakLoadWindowMs.toFixed(0)}ms`);
+  console.log(`Peak materialize window: ${peakMaterializeWindowMs.toFixed(0)}ms`);
+  console.log(`Peak clone window: ${peakCloneWindowMs.toFixed(0)}ms`);
+  console.log(`Peak columnar window: ${peakColumnarWindowMs.toFixed(0)}ms`);
+  console.log(`Peak prepare window: ${peakPrepareWindowMs.toFixed(0)}ms`);
+  console.log(`Peak encrypt window: ${peakEncryptWindowMs.toFixed(0)}ms`);
+  console.log(`Peak setChunkBlob window: ${peakSetBlobWindowMs.toFixed(0)}ms`);
+  console.log(`Peak load single: ${peakLoadSingleMs.toFixed(0)}ms`);
+  console.log(`Peak materialize single: ${peakMaterializeSingleMs.toFixed(0)}ms`);
+  console.log(`Peak clone single: ${peakCloneSingleMs.toFixed(0)}ms`);
+  console.log(`Peak columnar single: ${peakColumnarSingleMs.toFixed(0)}ms`);
+  console.log(`Peak prepare single: ${peakPrepareSingleMs.toFixed(0)}ms`);
+  console.log(`Peak encrypt single: ${peakEncryptSingleMs.toFixed(0)}ms`);
+  console.log(`Peak setChunkBlob single: ${peakSetBlobSingleMs.toFixed(0)}ms`);
   console.log(`Disk log: ${(logSize / 1e9).toFixed(2)} GB`);
   console.log(`Avg: ${(processedCount / (ms / 1000)).toFixed(0)} vps`);
   if (stopReason) {

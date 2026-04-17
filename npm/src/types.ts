@@ -603,6 +603,7 @@ export interface MEKernelLike extends Record<string, any> {
   scopeCache: Map<string, MEBranchScopeCacheEntry>;
   effectiveSecretCache: Map<string, MEEffectiveSecretCacheEntry>;
   decryptedBranchCache: Map<string, MEDecryptedBranchCacheEntry>;
+  writeBranchCache: Map<string, MEDecryptedBranchCacheEntry>;
   decryptedValueCache: Map<string, MEDecryptedValueCacheEntry>;
   v3KeyCache: Map<string, MEBlobV3KeyCacheEntry>;
   readonly secretChunkSize: number;

@@ -25,6 +25,81 @@ const MAX_DECRYPTED_BRANCH_CACHE_ENTRIES = 64;
 
 export type DecryptedChunkData = any | ColumnarChunkEnvelope;
 
+type DecryptedChunkDebugWindow = {
+  calls: number;
+  hits: number;
+  misses: number;
+  v2Misses: number;
+  v3Misses: number;
+  totalHitMs: number;
+  totalMissMs: number;
+  totalDecryptMs: number;
+  totalDecodeMs: number;
+  maxHitMs: number;
+  maxMissMs: number;
+  maxDecryptMs: number;
+  maxDecodeMs: number;
+};
+
+function createDecryptedChunkDebugWindow(): DecryptedChunkDebugWindow {
+  return {
+    calls: 0,
+    hits: 0,
+    misses: 0,
+    v2Misses: 0,
+    v3Misses: 0,
+    totalHitMs: 0,
+    totalMissMs: 0,
+    totalDecryptMs: 0,
+    totalDecodeMs: 0,
+    maxHitMs: 0,
+    maxMissMs: 0,
+    maxDecryptMs: 0,
+    maxDecodeMs: 0,
+  };
+}
+
+function nowMs(): number {
+  if (typeof performance !== "undefined" && typeof performance.now === "function") {
+    return performance.now();
+  }
+  return Date.now();
+}
+
+function recordDecryptedChunkCacheHit(self: MEKernelLike, hitMs: number): void {
+  const debug = (self as any).__decryptedChunkDebug;
+  if (!debug?.enabled) return;
+
+  const window = debug.window ?? (debug.window = createDecryptedChunkDebugWindow());
+  window.calls += 1;
+  window.hits += 1;
+  window.totalHitMs += hitMs;
+  window.maxHitMs = Math.max(window.maxHitMs, hitMs);
+}
+
+function recordDecryptedChunkMiss(
+  self: MEKernelLike,
+  version: "v2" | "v3",
+  missMs: number,
+  decryptMs: number,
+  decodeMs: number,
+): void {
+  const debug = (self as any).__decryptedChunkDebug;
+  if (!debug?.enabled) return;
+
+  const window = debug.window ?? (debug.window = createDecryptedChunkDebugWindow());
+  window.calls += 1;
+  window.misses += 1;
+  if (version === "v3") window.v3Misses += 1;
+  else window.v2Misses += 1;
+  window.totalMissMs += missMs;
+  window.totalDecryptMs += decryptMs;
+  window.totalDecodeMs += decodeMs;
+  window.maxMissMs = Math.max(window.maxMissMs, missMs);
+  window.maxDecryptMs = Math.max(window.maxDecryptMs, decryptMs);
+  window.maxDecodeMs = Math.max(window.maxDecodeMs, decodeMs);
+}
+
 export function isColumnarChunkData(data: unknown): data is ColumnarChunkEnvelope {
   return isColumnarChunkEnvelope(data);
 }
@@ -71,6 +146,9 @@ export function clearScopeChunkCache(self: MEKernelLike, scopeKey: string): void
   const prefix = `${scopeKey}::`;
   for (const k of Array.from(self.decryptedBranchCache.keys())) {
     if (k.startsWith(prefix)) self.decryptedBranchCache.delete(k);
+  }
+  for (const k of Array.from(self.writeBranchCache.keys())) {
+    if (k.startsWith(prefix)) self.writeBranchCache.delete(k);
   }
 }
 
@@ -187,6 +265,7 @@ export function setChunkBlob(
   }
   self.branchStore.setChunk(scopeKey, chunkId, blob);
   self.decryptedBranchCache.delete(chunkCacheKey(scopeKey, chunkId));
+  self.writeBranchCache.delete(chunkCacheKey(scopeKey, chunkId));
 }
 
 export function listEncryptedScopes(self: MEKernelLike): string[] {
@@ -224,6 +303,7 @@ export function getDecryptedChunk(
   scopeSecret: string,
   chunkId: string,
 ): DecryptedChunkData | undefined {
+  const startedAt = nowMs();
   const scopeKey = scope.join(".");
   const blob = getChunkBlob(self, scope, chunkId);
   if (!blob) return undefined;
@@ -231,11 +311,13 @@ export function getDecryptedChunk(
   const hit = self.decryptedBranchCache.get(ck);
   if (hit && hit.epoch === self.secretEpoch && hit.blob === blob) {
     touchLruEntry(self.decryptedBranchCache, ck, hit);
+    recordDecryptedChunkCacheHit(self, nowMs() - startedAt);
     return hit.data as DecryptedChunkData;
   }
 
   const version = detectBlobVersion(blob);
   let data: unknown = null;
+  const decryptStartedAt = nowMs();
   if (version === "v3") {
     try {
       const keys = getOrDeriveV3Keys(self, scope, "branch");
@@ -246,11 +328,18 @@ export function getDecryptedChunk(
   } else {
     data = xorDecrypt(blob, scopeSecret, scope);
   }
-  if (!data || typeof data !== "object") return undefined;
+  const decryptMs = nowMs() - decryptStartedAt;
+  let decodeMs = 0;
+  if (!data || typeof data !== "object") {
+    recordDecryptedChunkMiss(self, version === "v3" ? "v3" : "v2", nowMs() - startedAt, decryptMs, decodeMs);
+    return undefined;
+  }
 
   let decoded: DecryptedChunkData;
   if (isColumnarChunkEnvelope(data)) {
+    const decodeStartedAt = nowMs();
     const payload = reconstructColumnarChunkPayload((data as ColumnarChunkEnvelope).payload as ColumnarChunkPayload);
+    decodeMs = nowMs() - decodeStartedAt;
     decoded = {
       ...(data as ColumnarChunkEnvelope),
       payload,
@@ -261,5 +350,6 @@ export function getDecryptedChunk(
 
   touchLruEntry(self.decryptedBranchCache, ck, { epoch: self.secretEpoch, blob, data: decoded });
   trimLruCache(self.decryptedBranchCache, MAX_DECRYPTED_BRANCH_CACHE_ENTRIES);
+  recordDecryptedChunkMiss(self, version === "v3" ? "v3" : "v2", nowMs() - startedAt, decryptMs, decodeMs);
   return decoded;
 }

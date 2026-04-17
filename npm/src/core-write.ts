@@ -25,6 +25,7 @@ import {
   clearScopeChunkCache,
   computeEffectiveSecret,
   getChunkId,
+  getChunkBlob,
   getDecryptedChunk,
   primeDecryptedBranchCache,
   resolveBranchScope,
@@ -62,6 +63,232 @@ import {
   collectIteratorIndices,
   pathContainsFilterSelector,
 } from "./core-read.js";
+
+type PersistSecretBranchDebugWindow = {
+  writes: number;
+  columnarWrites: number;
+  maxBranchBytes: number;
+  maxCacheSeedBytes: number;
+  maxEncryptableBytes: number;
+  maxBlobBytes: number;
+  totalLoadChunkMs: number;
+  totalMaterializeMs: number;
+  totalCloneMs: number;
+  totalColumnarMaterializeMs: number;
+  totalPrepareColumnarMs: number;
+  totalEncryptMs: number;
+  totalSetBlobMs: number;
+  maxLoadChunkMs: number;
+  maxMaterializeMs: number;
+  maxCloneMs: number;
+  maxColumnarMaterializeMs: number;
+  maxPrepareColumnarMs: number;
+  maxEncryptMs: number;
+  maxSetBlobMs: number;
+  writeCacheHits: number;
+  writeCacheMisses: number;
+  totalWriteCacheHitMs: number;
+  maxWriteCacheHitMs: number;
+};
+
+function createPersistSecretBranchDebugWindow(): PersistSecretBranchDebugWindow {
+  return {
+    writes: 0,
+    columnarWrites: 0,
+    maxBranchBytes: 0,
+    maxCacheSeedBytes: 0,
+    maxEncryptableBytes: 0,
+    maxBlobBytes: 0,
+    totalLoadChunkMs: 0,
+    totalMaterializeMs: 0,
+    totalCloneMs: 0,
+    totalColumnarMaterializeMs: 0,
+    totalPrepareColumnarMs: 0,
+    totalEncryptMs: 0,
+    totalSetBlobMs: 0,
+    maxLoadChunkMs: 0,
+    maxMaterializeMs: 0,
+    maxCloneMs: 0,
+    maxColumnarMaterializeMs: 0,
+    maxPrepareColumnarMs: 0,
+    maxEncryptMs: 0,
+    maxSetBlobMs: 0,
+    writeCacheHits: 0,
+    writeCacheMisses: 0,
+    totalWriteCacheHitMs: 0,
+    maxWriteCacheHitMs: 0,
+  };
+}
+
+function nowMs(): number {
+  if (typeof performance !== "undefined" && typeof performance.now === "function") {
+    return performance.now();
+  }
+  return Date.now();
+}
+
+function estimateDebugBytes(value: any, seen = new WeakSet<object>()): number {
+  if (value == null) return 0;
+
+  const valueType = typeof value;
+  if (valueType === "string") return value.length * 2;
+  if (valueType === "number") return 8;
+  if (valueType === "boolean") return 4;
+  if (valueType === "bigint") return 8;
+  if (valueType === "symbol" || valueType === "function" || valueType === "undefined") return 0;
+
+  if (typeof Buffer !== "undefined" && Buffer.isBuffer(value)) return value.byteLength;
+  if (value instanceof ArrayBuffer) return value.byteLength;
+  if (ArrayBuffer.isView(value)) return value.byteLength;
+  if (value instanceof Date) return 8;
+
+  if (typeof value === "object") {
+    if (seen.has(value)) return 0;
+    seen.add(value);
+
+    if (Array.isArray(value)) {
+      let total = 24;
+      for (const item of value) total += estimateDebugBytes(item, seen);
+      return total;
+    }
+
+    let total = 32;
+    for (const [key, entry] of Object.entries(value)) {
+      total += key.length * 2;
+      total += estimateDebugBytes(entry, seen);
+    }
+    return total;
+  }
+
+  return 0;
+}
+
+function recordPersistSecretBranchDebug(
+  self: MEKernelLike,
+  branchObj: any,
+  cacheSeed: any,
+  encryptable: any,
+  blob: any,
+  useColumnar: boolean,
+  encryptMs: number,
+  setBlobMs: number,
+  columnarMaterializeMs: number,
+  prepareColumnarMs: number,
+): void {
+  const debug = (self as any).__persistSecretBranchDebug;
+  if (!debug?.enabled) return;
+
+  const window = debug.window ?? (debug.window = createPersistSecretBranchDebugWindow());
+  const branchBytes = estimateDebugBytes(branchObj);
+  const cacheSeedBytes = estimateDebugBytes(cacheSeed);
+  const encryptableBytes = estimateDebugBytes(encryptable);
+  const blobBytes = estimateDebugBytes(blob);
+
+  window.writes += 1;
+  if (useColumnar) window.columnarWrites += 1;
+  window.maxBranchBytes = Math.max(window.maxBranchBytes, branchBytes);
+  window.maxCacheSeedBytes = Math.max(window.maxCacheSeedBytes, cacheSeedBytes);
+  window.maxEncryptableBytes = Math.max(window.maxEncryptableBytes, encryptableBytes);
+  window.maxBlobBytes = Math.max(window.maxBlobBytes, blobBytes);
+  window.totalColumnarMaterializeMs += columnarMaterializeMs;
+  window.totalPrepareColumnarMs += prepareColumnarMs;
+  window.totalEncryptMs += encryptMs;
+  window.totalSetBlobMs += setBlobMs;
+  window.maxColumnarMaterializeMs = Math.max(window.maxColumnarMaterializeMs, columnarMaterializeMs);
+  window.maxPrepareColumnarMs = Math.max(window.maxPrepareColumnarMs, prepareColumnarMs);
+  window.maxEncryptMs = Math.max(window.maxEncryptMs, encryptMs);
+  window.maxSetBlobMs = Math.max(window.maxSetBlobMs, setBlobMs);
+}
+
+function recordLoadMutableSecretBranchDebug(
+  self: MEKernelLike,
+  loadChunkMs: number,
+  materializeMs: number,
+  cloneMs: number,
+): void {
+  const debug = (self as any).__persistSecretBranchDebug;
+  if (!debug?.enabled) return;
+
+  const window = debug.window ?? (debug.window = createPersistSecretBranchDebugWindow());
+  window.totalLoadChunkMs += loadChunkMs;
+  window.totalMaterializeMs += materializeMs;
+  window.totalCloneMs += cloneMs;
+  window.maxLoadChunkMs = Math.max(window.maxLoadChunkMs, loadChunkMs);
+  window.maxMaterializeMs = Math.max(window.maxMaterializeMs, materializeMs);
+  window.maxCloneMs = Math.max(window.maxCloneMs, cloneMs);
+}
+
+function touchLruEntry<K, V>(cache: Map<K, V>, key: K, value: V): void {
+  if (cache.has(key)) cache.delete(key);
+  cache.set(key, value);
+}
+
+function trimLruCache<K, V>(cache: Map<K, V>, limit: number): void {
+  while (cache.size > limit) {
+    const oldest = cache.keys().next();
+    if (oldest.done) return;
+    cache.delete(oldest.value);
+  }
+}
+
+function writeBranchCacheLimit(self: MEKernelLike): number {
+  const configured = Number((self as any).__writeBranchCacheConfig?.limit);
+  if (Number.isFinite(configured) && configured > 0) return Math.floor(configured);
+  return 8;
+}
+
+function isWriteBranchCacheEnabled(self: MEKernelLike): boolean {
+  return (self as any).__writeBranchCacheConfig?.enabled === true;
+}
+
+function recordWriteBranchCacheLookup(self: MEKernelLike, hit: boolean, hitMs: number): void {
+  const debug = (self as any).__persistSecretBranchDebug;
+  if (!debug?.enabled) return;
+  const window = debug.window ?? (debug.window = createPersistSecretBranchDebugWindow());
+  if (hit) {
+    window.writeCacheHits += 1;
+    window.totalWriteCacheHitMs += hitMs;
+    window.maxWriteCacheHitMs = Math.max(window.maxWriteCacheHitMs, hitMs);
+  } else {
+    window.writeCacheMisses += 1;
+  }
+}
+
+function readWriteBranchCache(
+  self: MEKernelLike,
+  scope: SemanticPath,
+  chunkId: string,
+  blob: any,
+): any | undefined {
+  if (!isWriteBranchCacheEnabled(self)) return undefined;
+  const startedAt = nowMs();
+  const ck = `${scope.join(".")}::${chunkId}`;
+  const hit = self.writeBranchCache.get(ck);
+  if (hit && hit.epoch === self.secretEpoch && hit.blob === blob) {
+    touchLruEntry(self.writeBranchCache, ck, hit);
+    recordWriteBranchCacheLookup(self, true, nowMs() - startedAt);
+    return hit.data;
+  }
+  recordWriteBranchCacheLookup(self, false, 0);
+  return undefined;
+}
+
+function seedWriteBranchCache(
+  self: MEKernelLike,
+  scope: SemanticPath,
+  chunkId: string,
+  blob: any,
+  data: any,
+): void {
+  if (!isWriteBranchCacheEnabled(self)) return;
+  const ck = `${scope.join(".")}::${chunkId}`;
+  touchLruEntry(self.writeBranchCache, ck, {
+    epoch: self.secretEpoch,
+    blob,
+    data,
+  });
+  trimLruCache(self.writeBranchCache, writeBranchCacheLimit(self));
+}
 
 function registerStealthScope(self: MEKernelLike, scopePath: SemanticPath, scopeValue: string): void {
   const normalizedScopePath = normalizeSelectorPath(scopePath);
@@ -271,11 +498,33 @@ function loadMutableSecretBranch(
   chunkId: string,
 ): any {
   let branchObj: any = {};
-  const dec = getDecryptedChunk(self, scope, scopeSecret, chunkId);
-  if (dec && typeof dec === "object") {
-    const materialized = materializeDecryptedChunk(dec as any);
-    if (materialized && typeof materialized === "object") branchObj = cloneValue(materialized);
+  const blob = getChunkBlob(self, scope, chunkId);
+  if (blob) {
+    const cached = readWriteBranchCache(self, scope, chunkId, blob);
+    if (cached && typeof cached === "object") {
+      const cloneStartedAt = nowMs();
+      const cloned = cloneValue(cached);
+      const cloneMs = nowMs() - cloneStartedAt;
+      recordLoadMutableSecretBranchDebug(self, 0, 0, cloneMs);
+      return cloned;
+    }
   }
+  const loadChunkStartedAt = nowMs();
+  const dec = getDecryptedChunk(self, scope, scopeSecret, chunkId);
+  const loadChunkMs = nowMs() - loadChunkStartedAt;
+  let materializeMs = 0;
+  let cloneMs = 0;
+  if (dec && typeof dec === "object") {
+    const materializeStartedAt = nowMs();
+    const materialized = materializeDecryptedChunk(dec as any);
+    materializeMs = nowMs() - materializeStartedAt;
+    if (materialized && typeof materialized === "object") {
+      const cloneStartedAt = nowMs();
+      branchObj = cloneValue(materialized);
+      cloneMs = nowMs() - cloneStartedAt;
+    }
+  }
+  recordLoadMutableSecretBranchDebug(self, loadChunkMs, materializeMs, cloneMs);
   return branchObj;
 }
 
@@ -285,18 +534,46 @@ function persistSecretBranch(
   scopeSecret: string,
   chunkId: string,
   branchObj: any,
+  primeDecryptedCache = true,
 ): void {
   const useColumnar = Array.isArray(branchObj) && shouldUseColumnarEncoding(branchObj);
-  const cacheSeed = useColumnar ? materializeColumnarData(branchObj) : branchObj;
-  const encryptable = useColumnar
-    ? prepareColumnarChunkForEncryption(cacheSeed)
-    : branchObj;
+  let columnarMaterializeMs = 0;
+  let prepareColumnarMs = 0;
+  let cacheSeed = branchObj;
+  let encryptable = branchObj;
+  if (useColumnar) {
+    const columnarMaterializeStartedAt = nowMs();
+    cacheSeed = materializeColumnarData(branchObj);
+    columnarMaterializeMs = nowMs() - columnarMaterializeStartedAt;
+    const prepareColumnarStartedAt = nowMs();
+    encryptable = prepareColumnarChunkForEncryption(cacheSeed);
+    prepareColumnarMs = nowMs() - prepareColumnarStartedAt;
+  }
 
+  const encryptStartedAt = nowMs();
   const blob = self.secretBlobVersion === "v2"
     ? xorEncrypt(encryptable, scopeSecret, scope)
     : encryptBlobV3WithDerivedKeys(encryptable, getOrDeriveV3Keys(self, scope, "branch"));
+  const encryptMs = nowMs() - encryptStartedAt;
+  const setBlobStartedAt = nowMs();
   setChunkBlob(self, scope, chunkId, blob, scopeSecret);
-  primeDecryptedBranchCache(self, scope, chunkId, cacheSeed);
+  const setBlobMs = nowMs() - setBlobStartedAt;
+  seedWriteBranchCache(self, scope, chunkId, blob, branchObj);
+  recordPersistSecretBranchDebug(
+    self,
+    branchObj,
+    cacheSeed,
+    encryptable,
+    blob,
+    useColumnar,
+    encryptMs,
+    setBlobMs,
+    columnarMaterializeMs,
+    prepareColumnarMs,
+  );
+  if (primeDecryptedCache) {
+    primeDecryptedBranchCache(self, scope, chunkId, cacheSeed);
+  }
 }
 
 export function commitChunkBatch(
@@ -305,6 +582,7 @@ export function commitChunkBatch(
   scopeSecret: string,
   chunkId: string,
   relEntries: BatchRelEntry[],
+  primeDecryptedCache = true,
 ): void {
   if (!scopeSecret || relEntries.length === 0) return;
 
@@ -325,7 +603,7 @@ export function commitChunkBatch(
     ref[rel[rel.length - 1]] = value;
   }
 
-  persistSecretBranch(self, scope, scopeSecret, chunkId, branchObj);
+  persistSecretBranch(self, scope, scopeSecret, chunkId, branchObj, primeDecryptedCache);
 }
 
 export function commitIndexedBatch(
@@ -375,7 +653,9 @@ export function commitIndexedBatch(
   }
 
   for (const group of grouped.values()) {
-    commitChunkBatch(self, group.scope, group.scopeSecret, group.chunkId, group.relEntries);
+    // Batch ingest is write-optimized: keep the encrypted store hot, but do not
+    // seed the decrypted branch cache for every written chunk.
+    commitChunkBatch(self, group.scope, group.scopeSecret, group.chunkId, group.relEntries, false);
   }
 
   for (const targetPath of touchedPaths) {

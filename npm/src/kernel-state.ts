@@ -30,6 +30,7 @@ export type SecretState = {
   scopeCache: Map<string, MEBranchScopeCacheEntry>;
   effectiveSecretCache: Map<string, MEEffectiveSecretCacheEntry>;
   decryptedBranchCache: Map<string, MEDecryptedBranchCacheEntry>;
+  writeBranchCache: Map<string, MEDecryptedBranchCacheEntry>;
   decryptedValueCache: Map<string, MEDecryptedValueCacheEntry>;
   v3KeyCache: Map<string, MEBlobV3KeyCacheEntry>;
   secretChunkSize: number;
@@ -80,6 +81,7 @@ export function createInitialKernelState(options: MEOptions = {}): KernelState {
       scopeCache: new Map(),
       effectiveSecretCache: new Map(),
       decryptedBranchCache: new Map(),
+      writeBranchCache: new Map(),
       decryptedValueCache: new Map(),
       v3KeyCache: new Map(),
       secretChunkSize: 256,

@@ -130,6 +130,7 @@ export function bumpSecretEpoch(self: MEKernelLike): void {
   self.scopeCache.clear();
   self.effectiveSecretCache.clear();
   self.decryptedBranchCache.clear();
+  self.writeBranchCache.clear();
   self.decryptedValueCache.clear();
   for (const cached of self.v3KeyCache.values()) {
     cached.encKey.fill(0);

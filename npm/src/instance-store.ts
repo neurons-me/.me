@@ -126,6 +126,14 @@ class BlobLruCache {
     this.usedBytes = 0;
   }
 
+  getStats(): { entries: number; usedBytes: number; maxBytes: number } {
+    return {
+      entries: this.entries.size,
+      usedBytes: this.usedBytes,
+      maxBytes: this.maxBytes,
+    };
+  }
+
   private trimFor(incomingBytes: number): void {
     while (this.usedBytes + incomingBytes > this.maxBytes && this.entries.size > 0) {
       const oldest = this.entries.keys().next();
@@ -398,6 +406,33 @@ export class DiskStore implements InstanceStore {
   close(): void {
     this.flushIndex();
     this.fs.closeSync(this.logFd);
+  }
+
+  getHotStats(): { entries: number; usedBytes: number; maxBytes: number } {
+    return this.hot.getStats();
+  }
+
+  getIndexStats(): { scopes: number; chunks: number; pointers: number } {
+    const scopeKeys = Object.keys(this.index);
+    let chunks = 0;
+    let pointers = 0;
+
+    for (const scopeKey of scopeKeys) {
+      const meta = this.index[scopeKey];
+      if (!meta) continue;
+      if (meta.legacy) {
+        pointers += 1;
+      }
+      const chunkKeys = Object.keys(meta.chunks || {});
+      chunks += chunkKeys.length;
+      pointers += chunkKeys.length;
+    }
+
+    return {
+      scopes: scopeKeys.length,
+      chunks,
+      pointers,
+    };
   }
 
   private loadIndex(): DiskIndexSnapshot {

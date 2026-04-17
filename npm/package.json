@@ -25,6 +25,7 @@
     "test:contracts": "node tests/contracts/run-contracts.mjs",
     "bench:phase2:explain": "node tests/Fase.2.1.explain-lookup.js",
     "bench:phase2:write": "node tests/Fase.2.2.write-pressure.test.js",
+    "bench:phase2:rewrite": "node tests/Fase.2.3.rewrite-pressure.test.js",
     "prepublishOnly": "npm run build",
     "docs:api": "typedoc",
     "docs:api:watch": "typedoc --watch",

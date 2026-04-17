@@ -137,6 +137,7 @@ export class ME {
   private scopeCache!: Map<string, MEBranchScopeCacheEntry>;
   private effectiveSecretCache!: Map<string, MEEffectiveSecretCacheEntry>;
   private decryptedBranchCache!: Map<string, MEDecryptedBranchCacheEntry>;
+  private writeBranchCache!: Map<string, MEDecryptedBranchCacheEntry>;
   private decryptedValueCache!: Map<string, MEDecryptedValueCacheEntry>;
   private v3KeyCache!: Map<string, MEBlobV3KeyCacheEntry>;
   private readonly secretChunkSize!: number;
@@ -549,6 +550,183 @@ export class ME {
     operator: string | null = null,
   ): KernelMemory[] {
     return Core.commitIndexedBatch(this as unknown as MEKernelLike, basePath, startIndex, items, operator);
+  }
+
+  /**
+   * @internal Benchmark hook: enable per-persist sizing metrics without routing
+   * through the semantic proxy plane.
+   */
+  private _enablePersistSecretBranchDebug(enabled = true): this {
+    (this as any).__persistSecretBranchDebug = {
+      enabled,
+      window: {
+        writes: 0,
+        columnarWrites: 0,
+        maxBranchBytes: 0,
+        maxCacheSeedBytes: 0,
+        maxEncryptableBytes: 0,
+        maxBlobBytes: 0,
+        totalLoadChunkMs: 0,
+        totalMaterializeMs: 0,
+        totalCloneMs: 0,
+        totalColumnarMaterializeMs: 0,
+        totalPrepareColumnarMs: 0,
+        totalEncryptMs: 0,
+        totalSetBlobMs: 0,
+        maxLoadChunkMs: 0,
+        maxMaterializeMs: 0,
+        maxCloneMs: 0,
+        maxColumnarMaterializeMs: 0,
+        maxPrepareColumnarMs: 0,
+        maxEncryptMs: 0,
+        maxSetBlobMs: 0,
+        writeCacheHits: 0,
+        writeCacheMisses: 0,
+        totalWriteCacheHitMs: 0,
+        maxWriteCacheHitMs: 0,
+      },
+    };
+    return this;
+  }
+
+  /**
+   * @internal Benchmark hook: drain the current persistSecretBranch window.
+   */
+  private _takePersistSecretBranchDebugWindow(): {
+    writes: number;
+    columnarWrites: number;
+    maxBranchBytes: number;
+    maxCacheSeedBytes: number;
+    maxEncryptableBytes: number;
+    maxBlobBytes: number;
+    totalLoadChunkMs: number;
+    totalMaterializeMs: number;
+    totalCloneMs: number;
+    totalColumnarMaterializeMs: number;
+      totalPrepareColumnarMs: number;
+      totalEncryptMs: number;
+      totalSetBlobMs: number;
+      maxLoadChunkMs: number;
+      maxMaterializeMs: number;
+    maxCloneMs: number;
+    maxColumnarMaterializeMs: number;
+      maxPrepareColumnarMs: number;
+      maxEncryptMs: number;
+      maxSetBlobMs: number;
+      writeCacheHits: number;
+      writeCacheMisses: number;
+      totalWriteCacheHitMs: number;
+      maxWriteCacheHitMs: number;
+    } {
+    const empty = {
+      writes: 0,
+      columnarWrites: 0,
+      maxBranchBytes: 0,
+      maxCacheSeedBytes: 0,
+      maxEncryptableBytes: 0,
+      maxBlobBytes: 0,
+      totalLoadChunkMs: 0,
+      totalMaterializeMs: 0,
+      totalCloneMs: 0,
+      totalColumnarMaterializeMs: 0,
+      totalPrepareColumnarMs: 0,
+      totalEncryptMs: 0,
+      totalSetBlobMs: 0,
+      maxLoadChunkMs: 0,
+      maxMaterializeMs: 0,
+      maxCloneMs: 0,
+      maxColumnarMaterializeMs: 0,
+      maxPrepareColumnarMs: 0,
+      maxEncryptMs: 0,
+      maxSetBlobMs: 0,
+      writeCacheHits: 0,
+      writeCacheMisses: 0,
+      totalWriteCacheHitMs: 0,
+      maxWriteCacheHitMs: 0,
+    };
+    const debug = (this as any).__persistSecretBranchDebug;
+    const window = debug?.window ? { ...debug.window } : empty;
+    if (debug) debug.window = { ...empty };
+    return window;
+  }
+
+  /**
+   * @internal Benchmark hook: configure the write-path chunk cache used only by
+   * mutation flows. Disabled by default.
+   */
+  private _configureWriteBranchCache(enabled = true, limit = 8): this {
+    (this as any).__writeBranchCacheConfig = {
+      enabled,
+      limit: Math.max(1, Math.floor(limit || 1)),
+    };
+    if (!enabled) {
+      this.writeBranchCache.clear();
+    }
+    return this;
+  }
+
+  /**
+   * @internal Benchmark hook: enable getDecryptedChunk cache/decrypt metrics.
+   */
+  private _enableDecryptedChunkDebug(enabled = true): this {
+    (this as any).__decryptedChunkDebug = {
+      enabled,
+      window: {
+        calls: 0,
+        hits: 0,
+        misses: 0,
+        v2Misses: 0,
+        v3Misses: 0,
+        totalHitMs: 0,
+        totalMissMs: 0,
+        totalDecryptMs: 0,
+        totalDecodeMs: 0,
+        maxHitMs: 0,
+        maxMissMs: 0,
+        maxDecryptMs: 0,
+        maxDecodeMs: 0,
+      },
+    };
+    return this;
+  }
+
+  /**
+   * @internal Benchmark hook: drain the current getDecryptedChunk window.
+   */
+  private _takeDecryptedChunkDebugWindow(): {
+    calls: number;
+    hits: number;
+    misses: number;
+    v2Misses: number;
+    v3Misses: number;
+    totalHitMs: number;
+    totalMissMs: number;
+    totalDecryptMs: number;
+    totalDecodeMs: number;
+    maxHitMs: number;
+    maxMissMs: number;
+    maxDecryptMs: number;
+    maxDecodeMs: number;
+  } {
+    const empty = {
+      calls: 0,
+      hits: 0,
+      misses: 0,
+      v2Misses: 0,
+      v3Misses: 0,
+      totalHitMs: 0,
+      totalMissMs: 0,
+      totalDecryptMs: 0,
+      totalDecodeMs: 0,
+      maxHitMs: 0,
+      maxMissMs: 0,
+      maxDecryptMs: 0,
+      maxDecodeMs: 0,
+    };
+    const debug = (this as any).__decryptedChunkDebug;
+    const window = debug?.window ? { ...debug.window } : empty;
+    if (debug) debug.window = { ...empty };
+    return window;
   }
 
   private commitMapping(instruction: MappingInstruction, fallbackOperator: string | null = null): KernelMemory | undefined {
