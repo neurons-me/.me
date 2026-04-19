@@ -70,6 +70,96 @@ export type EncryptedBlob = string;
 export type EncryptedScopeEntry = EncryptedBlob | Record<string, EncryptedBlob>;
 export type EncryptedBranchPlane = Record<string, EncryptedScopeEntry>;
 
+export interface MESearchExactOptions {
+  k?: number;
+  minScore?: number;
+}
+
+export interface MESearchHit {
+  path: string;
+  score: number;
+  index: number;
+  id: number;
+  chunkId: string;
+  chunkOffset: number;
+}
+
+export interface MESearchExactResult {
+  scopePath: string;
+  tookMs: number;
+  scannedChunks: number;
+  scannedVectors: number;
+  dims: number;
+  hits: MESearchHit[];
+}
+
+export interface MEVectorIndexBuildOptions {
+  k?: number;
+  nprobe?: number;
+  maxTrainingVectors?: number;
+  iterations?: number;
+  normalize?: boolean;
+  chunkRepresentativesPerChunk?: number;
+}
+
+export interface MEVectorSearchOptions {
+  k?: number;
+  nprobe?: number;
+  maxCandidateChunks?: number;
+  minScore?: number;
+}
+
+export interface MEVectorPostingEntry {
+  chunkId: string;
+  count: number;
+}
+
+export interface MEVectorIndexMeta {
+  version: 1;
+  scopePath: string;
+  dims: number;
+  k: number;
+  nprobe: number;
+  totalVectors: number;
+  totalChunks: number;
+  trainingVectors: number;
+  normalize: boolean;
+  builtAt: number;
+}
+
+export interface MEVectorIndex {
+  meta: MEVectorIndexMeta;
+  centroids: Float32Array;
+  postingLists: MEVectorPostingEntry[][];
+}
+
+export interface MEVectorIndexBuildResult {
+  scopePath: string;
+  tookMs: number;
+  dims: number;
+  k: number;
+  nprobe: number;
+  totalVectors: number;
+  totalChunks: number;
+  trainingVectors: number;
+  persisted: boolean;
+  indexPath: string | null;
+}
+
+export interface MEVectorSearchResult {
+  scopePath: string;
+  tookMs: number;
+  coarseMs: number;
+  exactMs: number;
+  dims: number;
+  k: number;
+  nprobe: number;
+  candidateChunks: number;
+  decryptedChunks: number;
+  scannedVectors: number;
+  hits: MESearchHit[];
+}
+
 export interface MEOptions {
   store?: InstanceStore;
 }
@@ -606,6 +696,7 @@ export interface MEKernelLike extends Record<string, any> {
   writeBranchCache: Map<string, MEDecryptedBranchCacheEntry>;
   decryptedValueCache: Map<string, MEDecryptedValueCacheEntry>;
   v3KeyCache: Map<string, MEBlobV3KeyCacheEntry>;
+  vectorIndexes: Map<string, MEVectorIndex>;
   readonly secretChunkSize: number;
   readonly secretHashBuckets: number;
   readonly unsafeEval: boolean;
@@ -614,6 +705,20 @@ export interface MEKernelLike extends Record<string, any> {
 
   inspect(opts?: { last?: number }): MEInspectResult;
   explain(path: string): MEExplainResult;
+  searchExact(
+    scopePath: string | SemanticPath,
+    query: ArrayLike<number>,
+    options?: MESearchExactOptions,
+  ): MESearchExactResult;
+  buildVectorIndex(
+    scopePath: string | SemanticPath,
+    options?: MEVectorIndexBuildOptions,
+  ): MEVectorIndexBuildResult;
+  searchVector(
+    scopePath: string | SemanticPath,
+    query: ArrayLike<number>,
+    options?: MEVectorSearchOptions,
+  ): MEVectorSearchResult;
   setRecomputeMode(mode: MERecomputeMode): this;
   getRecomputeMode(): MERecomputeMode;
   installRecipientKey(recipientKeyId: string, privateKey: CryptoKey): this;

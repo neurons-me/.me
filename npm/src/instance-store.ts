@@ -152,6 +152,7 @@ export interface InstanceStore {
   readonly kind: "memory" | "disk";
   getScope(scopeKey: string): EncryptedScopeEntry | undefined;
   getScopeMode(scopeKey: string): "none" | "legacy" | "chunks";
+  getAuxiliaryPath(name: string): string | null;
   setScope(scopeKey: string, value: EncryptedScopeEntry): void;
   deleteScope(scopeKey: string): void;
   listScopes(): string[];
@@ -277,6 +278,10 @@ export class MemoryStore implements InstanceStore {
     const current = this.data[scopeKey];
     if (!current) return "none";
     return typeof current === "string" ? "legacy" : "chunks";
+  }
+
+  getAuxiliaryPath(_name: string): string | null {
+    return null;
   }
 
   setScope(scopeKey: string, value: EncryptedScopeEntry): void {
@@ -414,6 +419,10 @@ export class DiskStore implements InstanceStore {
     const meta = this.index[scopeKey];
     if (!meta) return "none";
     return meta.legacy ? "legacy" : "chunks";
+  }
+
+  getAuxiliaryPath(name: string): string | null {
+    return this.path.join(this.baseDir, name);
   }
 
   setScope(scopeKey: string, value: EncryptedScopeEntry): void {
@@ -570,7 +579,7 @@ export class DiskStore implements InstanceStore {
   }
 
   private loadIndex(): DiskIndexSnapshot {
-    if (!this.fs.existsSync(this.indexPath)) return {};
+    if (!this.fs.existsSync(this.indexPath)) return this.rebuildIndexFromLog();
     try {
       const raw = JSON.parse(this.fs.readFileSync(this.indexPath, "utf8")) as DiskIndexSnapshot;
       return raw && typeof raw === "object" ? raw : {};

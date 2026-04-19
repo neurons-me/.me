@@ -24,11 +24,14 @@ import {
   bumpSecretEpoch,
   clearScopeChunkCache,
   computeEffectiveSecret,
+  createBranchContainerForRel,
   getChunkId,
   getChunkBlob,
+  getChunkRelativePath,
   getDecryptedChunk,
   primeDecryptedBranchCache,
   resolveBranchScope,
+  setAtPath,
   setChunkBlob,
 } from "./secret.js";
 import { materializeDecryptedChunk } from "./secret-storage.js";
@@ -535,6 +538,10 @@ function loadMutableSecretBranch(
   return branchObj;
 }
 
+function isEmptyPlainObject(value: unknown): value is Record<string, unknown> {
+  return !!value && typeof value === "object" && !Array.isArray(value) && Object.keys(value).length === 0;
+}
+
 function persistSecretBranch(
   self: MEKernelLike,
   scope: SemanticPath,
@@ -600,7 +607,10 @@ export function commitChunkBatch(
 ): void {
   if (!scopeSecret || relEntries.length === 0) return;
 
-  const branchObj = loadMutableSecretBranch(self, scope, scopeSecret, chunkId);
+  let branchObj = loadMutableSecretBranch(self, scope, scopeSecret, chunkId);
+  if (isEmptyPlainObject(branchObj)) {
+    branchObj = createBranchContainerForRel(relEntries[0]?.rel ?? []);
+  }
   for (const { rel, value } of relEntries) {
     if (rel.length === 0) {
       if (typeof branchObj !== "object" || branchObj === null) continue;
@@ -608,13 +618,7 @@ export function commitChunkBatch(
       continue;
     }
 
-    let ref = branchObj;
-    for (let i = 0; i < rel.length - 1; i++) {
-      const part = rel[i];
-      if (!ref[part] || typeof ref[part] !== "object") ref[part] = {};
-      ref = ref[part];
-    }
-    ref[rel[rel.length - 1]] = value;
+    setAtPath(branchObj, rel, value);
   }
 
   persistSecretBranch(self, scope, scopeSecret, chunkId, branchObj, primeDecryptedCache);
@@ -655,7 +659,7 @@ export function commitIndexedBatch(
     }
 
     const chunkId = getChunkId(self, targetPath, scope);
-    const rel = targetPath.slice(scope.length);
+    const rel = getChunkRelativePath(self, targetPath, scope);
     const groupKey = `${scope.join(".")}::${chunkId}`;
     let group = grouped.get(groupKey);
     if (!group) {
@@ -696,24 +700,21 @@ export function commitValueMapping(
 
   if (scope && scope.length > 0) {
     const scopeSecret = computeEffectiveSecret(self, scope);
-    const rel = targetPath.slice(scope.length);
+    const rel = getChunkRelativePath(self, targetPath, scope);
     const chunkId = getChunkId(self, targetPath, scope);
-    let branchObj: any = {};
+    let branchObj: any = createBranchContainerForRel(rel);
     if (scopeSecret) {
       branchObj = loadMutableSecretBranch(self, scope, scopeSecret, chunkId);
+      if (isEmptyPlainObject(branchObj)) {
+        branchObj = createBranchContainerForRel(rel);
+      }
     }
 
     if (rel.length === 0) {
       if (typeof branchObj !== "object" || branchObj === null) branchObj = {};
       branchObj.expression = expression;
     } else {
-      let ref = branchObj;
-      for (let i = 0; i < rel.length - 1; i++) {
-        const part = rel[i];
-        if (!ref[part] || typeof ref[part] !== "object") ref[part] = {};
-        ref = ref[part];
-      }
-      ref[rel[rel.length - 1]] = expression;
+      setAtPath(branchObj, rel, expression);
     }
 
     if (scopeSecret) {

@@ -24,6 +24,8 @@ export interface ColumnarChunkEnvelope {
   payload: ColumnarChunkPayload;
 }
 
+const MIN_COLUMNAR_VECTOR_COUNT = 128;
+
 type PreparedTypedArray = {
   __typedArray: true;
   kind: "Uint32Array" | "Float32Array" | "Float64Array";
@@ -41,18 +43,21 @@ type PreparedColumnarChunkPayload = {
 
 export function shouldUseColumnarEncoding(value: unknown): boolean {
   if (!Array.isArray(value)) return false;
-  if (value.length < 1000) return false;
+  if (value.length < MIN_COLUMNAR_VECTOR_COUNT) return false;
 
-  const sample = value.slice(0, Math.min(8, value.length));
+  const sample: unknown[] = [];
+  for (let i = 0; i < value.length && sample.length < 8; i++) {
+    if (value[i] !== undefined) sample.push(value[i]);
+  }
   if (sample.length === 0) return false;
 
   return sample.every((item) => {
     if (!item || typeof item !== "object") return false;
     const embedding = (item as Record<string, unknown>).embedding;
     return (
-      Array.isArray(embedding) &&
+      isVectorLike(embedding) &&
       embedding.length >= 128 &&
-      embedding.every((n) => typeof n === "number" && Number.isFinite(n))
+      vectorEveryFinite(embedding)
     );
   });
 }
@@ -82,7 +87,7 @@ export function materializeColumnarData(items: any[]): ColumnarChunkEnvelope {
     timestamps[i] = normalizeTimestamp(item.timestamp);
     texts[i] = typeof item.text === "string" ? item.text : "";
 
-    const embedding = Array.isArray(item.embedding) ? item.embedding : [];
+    const embedding = isVectorLike(item.embedding) ? item.embedding : [];
     for (let j = 0; j < dims; j++) {
       const value = embedding[j];
       embeddings[i * dims + j] = typeof value === "number" && Number.isFinite(value) ? value : 0;
@@ -205,9 +210,31 @@ export function reconstructColumnarChunkPayload(value: unknown): ColumnarChunkPa
 function inferEmbeddingDims(items: any[]): number {
   for (const item of items) {
     if (!item || typeof item !== "object") continue;
-    if (Array.isArray(item.embedding) && item.embedding.length > 0) return item.embedding.length;
+    if (isVectorLike(item.embedding) && item.embedding.length > 0) return item.embedding.length;
   }
   return 0;
+}
+
+function isVectorLike(value: unknown): value is ArrayLike<number> {
+  return (
+    Array.isArray(value) ||
+    value instanceof Float32Array ||
+    value instanceof Float64Array ||
+    value instanceof Uint32Array ||
+    value instanceof Int32Array ||
+    value instanceof Uint16Array ||
+    value instanceof Int16Array ||
+    value instanceof Uint8Array ||
+    value instanceof Int8Array
+  );
+}
+
+function vectorEveryFinite(value: ArrayLike<number>): boolean {
+  for (let i = 0; i < value.length; i++) {
+    const n = value[i];
+    if (typeof n !== "number" || !Number.isFinite(n)) return false;
+  }
+  return true;
 }
 
 function normalizeUint32(value: unknown, fallback: number): number {

@@ -11,9 +11,13 @@ Define who you are, **what you own**, and how everything connects — once.  The
 npm install this.me
 ```
 
-> **100k encrypted vectors. 1.9 minutes. 146MB RAM.**
->
-> **Production-ready. O(1).**
+## Performance
+
+**.me** runs 100% local with **end-to-end encryption.**
+**Realistic corpus (notes, documents):**
+100k vectors → 3.32s p95, recall@10 1.0, 18 chunks/query
+**Adversarial corpus (worst-case fragmented):** 
+100k vectors → 19.1s p95, recall@10 1.0, 98 chunks/query
 
 ## In 30 seconds
 

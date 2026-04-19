@@ -4,9 +4,13 @@ export {
   resolveBranchScope,
 } from "./secret-context.js";
 export {
+  createBranchContainerForRel,
   chunkCacheKey,
   clearScopeChunkCache,
   getChunkId,
+  getChunkRelativePath,
+  getLegacyChunkIdForPath,
+  readDecryptedChunkItem,
   setAtPath,
   flattenLeaves,
   migrateLegacyScopeToChunks,

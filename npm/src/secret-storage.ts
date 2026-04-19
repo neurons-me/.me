@@ -152,18 +152,56 @@ export function clearScopeChunkCache(self: MEKernelLike, scopeKey: string): void
   }
 }
 
+function parseIndexedSegment(segment: string | undefined): number | null {
+  if (typeof segment !== "string" || segment.length === 0) return null;
+  const n = Number(segment);
+  if (!Number.isInteger(n) || n < 0) return null;
+  return String(n) === segment ? n : null;
+}
+
+export function createBranchContainerForRel(rel: SemanticPath): any {
+  return parseIndexedSegment(rel[0]) !== null ? [] : {};
+}
+
 export function getChunkId(self: MEKernelLike, path: SemanticPath, scope: SemanticPath): string {
   const rel = path.slice(scope.length);
   if (rel.length === 0) return "root";
+  const rootIndex = parseIndexedSegment(rel[0]);
+  if (rootIndex !== null) {
+    return `idx_${Math.floor(rootIndex / self.secretChunkSize)}`;
+  }
   const head = rel[0] || "root";
   const next = rel[1];
   if (next === undefined) return `${head}_root`;
-  const n = Number(next);
-  if (Number.isFinite(n) && String(n) === String(next)) {
-    return `${head}_${Math.floor(Math.abs(n) / self.secretChunkSize)}`;
+  const n = parseIndexedSegment(next);
+  if (n !== null) {
+    return `${head}_${Math.floor(n / self.secretChunkSize)}`;
   }
   const h = parseInt(hashFn(String(next)).slice(-6), 16) % self.secretHashBuckets;
   return `${head}_h${h}`;
+}
+
+export function getChunkRelativePath(
+  self: MEKernelLike,
+  path: SemanticPath,
+  scope: SemanticPath,
+): SemanticPath {
+  const rel = path.slice(scope.length);
+  if (rel.length === 0) return rel;
+  const rootIndex = parseIndexedSegment(rel[0]);
+  if (rootIndex === null) return rel;
+  return [String(rootIndex % self.secretChunkSize), ...rel.slice(1)];
+}
+
+export function getLegacyChunkIdForPath(
+  _self: MEKernelLike,
+  path: SemanticPath,
+  scope: SemanticPath,
+): string | null {
+  const rel = path.slice(scope.length);
+  const rootIndex = parseIndexedSegment(rel[0]);
+  if (rootIndex === null) return null;
+  return `${rootIndex}_root`;
 }
 
 export function setAtPath(obj: any, rel: SemanticPath, value: any): void {
@@ -171,7 +209,10 @@ export function setAtPath(obj: any, rel: SemanticPath, value: any): void {
   let ref = obj;
   for (let i = 0; i < rel.length - 1; i++) {
     const part = rel[i];
-    if (!ref[part] || typeof ref[part] !== "object") ref[part] = {};
+    const nextPart = rel[i + 1];
+    if (!ref[part] || typeof ref[part] !== "object") {
+      ref[part] = parseIndexedSegment(nextPart) !== null ? [] : {};
+    }
     ref = ref[part];
   }
   ref[rel[rel.length - 1]] = value;
@@ -212,9 +253,13 @@ export function migrateLegacyScopeToChunks(
   flattenLeaves(legacyObj, [], leaves);
   const chunkObjs: Record<string, any> = {};
   for (const leaf of leaves) {
-    const chunkId = getChunkId(self, [...scope, ...leaf.rel], scope);
-    if (!chunkObjs[chunkId] || typeof chunkObjs[chunkId] !== "object") chunkObjs[chunkId] = {};
-    setAtPath(chunkObjs[chunkId], leaf.rel, leaf.value);
+    const leafPath = [...scope, ...leaf.rel];
+    const chunkId = getChunkId(self, leafPath, scope);
+    const localRel = getChunkRelativePath(self, leafPath, scope);
+    if (!chunkObjs[chunkId] || typeof chunkObjs[chunkId] !== "object") {
+      chunkObjs[chunkId] = createBranchContainerForRel(localRel);
+    }
+    setAtPath(chunkObjs[chunkId], localRel, leaf.value);
   }
 
   const next: Record<string, EncryptedBlob> = {};

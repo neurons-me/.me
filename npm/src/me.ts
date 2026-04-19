@@ -42,6 +42,8 @@ import * as ProxyRuntime from "./proxy.js";
 import * as Secret from "./secret.js";
 import { collectSecretChainV3 } from "./secret-context.js";
 import { enableDiskStoreDebug, takeDiskStoreDebugWindow } from "./instance-store.js";
+import { buildVectorIndex as buildVectorIndexSidecar, searchVector as searchVectorSidecar } from "./vector-index.js";
+import { searchExact as searchExactVectors } from "./vector-scan.js";
 import type {
   EncryptedBlob,
   EncryptedBranchPlane,
@@ -55,6 +57,13 @@ import type {
   MEEffectiveSecretCacheEntry,
   MEKernelLike,
   MEOptions,
+  MEVectorIndex,
+  MEVectorIndexBuildOptions,
+  MEVectorIndexBuildResult,
+  MEVectorSearchOptions,
+  MEVectorSearchResult,
+  MESearchExactOptions,
+  MESearchExactResult,
   MEProxy,
   MESnapshot,
   MESnapshotInput,
@@ -143,6 +152,7 @@ export class ME {
   private writeBranchCache!: Map<string, MEDecryptedBranchCacheEntry>;
   private decryptedValueCache!: Map<string, MEDecryptedValueCacheEntry>;
   private v3KeyCache!: Map<string, MEBlobV3KeyCacheEntry>;
+  private vectorIndexes!: Map<string, MEVectorIndex>;
   private readonly secretChunkSize!: number;
   private readonly secretHashBuckets!: number;
   private readonly unsafeEval!: boolean;
@@ -201,6 +211,41 @@ export class ME {
    */
   execute(rawTarget: string | MeTargetAst, body?: any): any {
     return Core.execute(this as unknown as MEKernelLike, rawTarget, body);
+  }
+
+  /**
+   * Exact vector search over a collection-scoped secret branch backed by chunked columnar storage.
+   * This is the correctness baseline used before approximate indexes such as IVF.
+   */
+  searchExact(
+    scopePath: string | SemanticPath,
+    query: ArrayLike<number>,
+    options: MESearchExactOptions = {},
+  ): MESearchExactResult {
+    return searchExactVectors(this as unknown as MEKernelLike, scopePath, query, options);
+  }
+
+  /**
+   * Build an approximate IVF sidecar for a collection-scoped secret vector corpus.
+   * The sidecar lives outside the kernel log and is intended to reduce chunk decrypts during search.
+   */
+  buildVectorIndex(
+    scopePath: string | SemanticPath,
+    options: MEVectorIndexBuildOptions = {},
+  ): MEVectorIndexBuildResult {
+    return buildVectorIndexSidecar(this as unknown as MEKernelLike, scopePath, options);
+  }
+
+  /**
+   * Approximate vector search backed by the IVF sidecar.
+   * Uses centroids for coarse routing and exact scan only on the selected candidate chunks.
+   */
+  searchVector(
+    scopePath: string | SemanticPath,
+    query: ArrayLike<number>,
+    options: MEVectorSearchOptions = {},
+  ): MEVectorSearchResult {
+    return searchVectorSidecar(this as unknown as MEKernelLike, scopePath, query, options);
   }
 
   private cloneValue<T>(value: T): T {

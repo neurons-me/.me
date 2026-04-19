@@ -10,6 +10,7 @@ import type {
   MEDerivationRecord,
   MEEffectiveSecretCacheEntry,
   MEOptions,
+  MEVectorIndex,
   StoredWrappedKey,
 } from "./types.js";
 
@@ -33,6 +34,7 @@ export type SecretState = {
   writeBranchCache: Map<string, MEDecryptedBranchCacheEntry>;
   decryptedValueCache: Map<string, MEDecryptedValueCacheEntry>;
   v3KeyCache: Map<string, MEBlobV3KeyCacheEntry>;
+  vectorIndexes: Map<string, MEVectorIndex>;
   secretChunkSize: number;
   secretHashBuckets: number;
 };
@@ -84,6 +86,7 @@ export function createInitialKernelState(options: MEOptions = {}): KernelState {
       writeBranchCache: new Map(),
       decryptedValueCache: new Map(),
       v3KeyCache: new Map(),
+      vectorIndexes: new Map(),
       secretChunkSize: 256,
       secretHashBuckets: 16,
     },

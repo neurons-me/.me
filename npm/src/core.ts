@@ -41,6 +41,9 @@ import {
   computeEffectiveSecret,
   getChunkId,
   getDecryptedChunk,
+  getChunkRelativePath,
+  getLegacyChunkIdForPath,
+  readDecryptedChunkItem,
   resolveBranchScope,
 } from "./secret.js";
 import type {
@@ -56,6 +59,27 @@ import {
 } from "./utils.js";
 
 const MAX_DECRYPTED_VALUE_CACHE_ENTRIES = 128;
+
+function readBranchRef(branchObj: any, rel: SemanticPath): any {
+  let ref = branchObj;
+  for (const part of rel) {
+    const n = Number(part);
+    if (
+      ref &&
+      typeof ref === "object" &&
+      (ref as { __columnar?: unknown }).__columnar === true &&
+      Number.isInteger(n) &&
+      n >= 0 &&
+      String(n) === part
+    ) {
+      ref = readDecryptedChunkItem(ref, n);
+      continue;
+    }
+    if (!ref || typeof ref !== "object") return undefined;
+    ref = ref[part];
+  }
+  return ref;
+}
 
 function touchLruEntry<K, V>(cache: Map<K, V>, key: K, value: V): void {
   if (cache.has(key)) cache.delete(key);
@@ -266,17 +290,38 @@ export function readPath(self: MEKernelLike, rawPath: SemanticPath): any {
     const scopeSecret = computeEffectiveSecret(self, scope);
     if (!scopeSecret) return null;
     const chunkId = getChunkId(self, path, scope);
+    const absoluteRel = path.slice(scope.length);
+    const localRel = getChunkRelativePath(self, path, scope);
+    const legacyChunkId = getLegacyChunkIdForPath(self, path, scope);
+
     let branchObj = getDecryptedChunk(self, scope, scopeSecret, chunkId);
+    let resolvedRel = localRel;
+    let usedLegacyRel = false;
+
+    if (!branchObj && legacyChunkId && legacyChunkId !== chunkId) {
+      branchObj = getDecryptedChunk(self, scope, scopeSecret, legacyChunkId);
+      resolvedRel = absoluteRel;
+      usedLegacyRel = true;
+    }
     if (!branchObj && chunkId !== "default") {
       branchObj = getDecryptedChunk(self, scope, scopeSecret, "default");
     }
     if (!branchObj) return undefined;
-    const rel = path.slice(scope.length);
-    let ref: any = branchObj;
-    for (const part of rel) {
-      if (!ref || typeof ref !== "object") return undefined;
-      ref = ref[part];
+
+    let ref: any = readBranchRef(branchObj, resolvedRel);
+    if (
+      ref === undefined &&
+      legacyChunkId &&
+      legacyChunkId !== chunkId &&
+      !usedLegacyRel
+    ) {
+      const legacyBranchObj = getDecryptedChunk(self, scope, scopeSecret, legacyChunkId);
+      if (legacyBranchObj) {
+        ref = readBranchRef(legacyBranchObj, absoluteRel);
+      }
     }
+
+    if (ref === undefined) return undefined;
     if (isPointer(ref)) return self.readPath(ref.__ptr.split(".").filter(Boolean));
     if (isIdentityRef(ref)) return cloneValue(ref);
     if (ref && typeof ref === "object") return cloneValue(ref);
