@@ -43,6 +43,21 @@ console.log(me("friends[age >= 18].name"));       // → { ana: "Ana" }
 - Secrets are **structural**: entire branches can be hidden and encrypted by design.
 - Export your entire state and restore it anywhere — it works exactly the same.
 
+### Performance Snapshot
+
+`April 19, 2026` local closure profiles:
+
+| Profile | Corpus | Exact p95 | IVF p95 | Recall@10 | Chunks / Query |
+|---|---|---:|---:|---:|---:|
+| realistic | `chunk_coherent` | `77129.34ms` | `3318.42ms` | `1.000` | `18.40` |
+| hostile | `legacy_fragmented` | `166603.63ms` | `19353.27ms` | `1.000` | `97.60` |
+
+Storage and ingest milestones:
+
+- Phase 1 closed with stable batch writes and lightweight journals; the practical ceiling was V8 heap residency, not write-path collapse.
+- Phase 2 closed with chunked columnar secret vector storage, `Float32Array` payloads on read, and a 100k encrypted leaf-write microbenchmark at `1886 vps` with `~122MB` post-GC heap.
+- Phase 3 closed for realistic chunk-coherent corpora with IVF sidecars, `23.2x` speedup over exact scan at `100k`, and `recall@10 = 1.000`.
+
 ### Why people like it
 - No schemas needed — if you can imagine a path, it exists.
 - Real privacy — not promises, but built into the structure.

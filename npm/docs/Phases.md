@@ -2,6 +2,10 @@
 
 This document defines the **behavioral contract** of the `.me` kernel, validated by `tests/phases.test.js`.
 
+> Note:
+> This page documents the semantic/runtime phases `0–8`.
+> The separate performance delivery phases (storage, bounded residency, exact search, IVF) are summarized in [Kernel Benchmarks](/kernel/Benchmarks).
+
 Each phase represents a foundational capability that builds upon the previous ones, culminating in a fully expressive, secure, and observable personal semantic engine.
 
 ## Phase 0 | Identity + Secret Scope

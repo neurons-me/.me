@@ -4,7 +4,7 @@
 </picture>
 
 # .me
-###### Your personal semantic kernel - 890 vps | 146MB | O(1)
+###### Your personal semantic kernel - 100k IVF p95 3.32s | recall@10 1.0 | realistic corpus
 Define who you are, **what you own**, and how everything connects — once.  Then use it everywhere: apps, websites, dashboards, tickets, and more.
 
 ```bash
@@ -14,10 +14,17 @@ npm install this.me
 ## Performance
 
 **.me** runs 100% local with **end-to-end encryption.**
-**Realistic corpus (notes, documents):**
-100k vectors → 3.32s p95, recall@10 1.0, 18 chunks/query
-**Adversarial corpus (worst-case fragmented):** 
-100k vectors → 19.1s p95, recall@10 1.0, 98 chunks/query
+
+| Profile | Corpus | Exact p95 | IVF p95 | Recall@10 | Chunks / Query |
+|---|---|---:|---:|---:|---:|
+| realistic | `chunk_coherent` | `77129.34ms` | `3318.42ms` | `1.000` | `18.40` |
+| hostile | `legacy_fragmented` | `166603.63ms` | `19353.27ms` | `1.000` | `97.60` |
+
+Storage milestones:
+
+- Phase 1 closed with stable batch writes and lightweight journals; the limit was V8 heap residency, not write-path collapse.
+- Phase 2 closed with chunked columnar secret vector storage, typed `Float32Array` payloads, and a 100k encrypted leaf-write microbenchmark at `1886 vps` with `~122MB` post-GC heap.
+- Phase 3 closed for realistic chunk-coherent corpora with `23.2x` speedup over exact scan at `100k`.
 
 ## In 30 seconds
 
