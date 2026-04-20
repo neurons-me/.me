@@ -1,6 +1,6 @@
 {
   "name": "this.me",
-  "version": "3.6.4",
+  "version": "3.6.41",
   "description": "Centralize the Self, Distribute the Data.",
   "type": "module",
   "main": "./dist/me.cjs",

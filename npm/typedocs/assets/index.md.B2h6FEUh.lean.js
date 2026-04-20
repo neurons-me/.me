@@ -1,0 +1,1 @@
+import{_ as a,o as t,c as e,ae as i}from"./chunks/framework.CY_fclge.js";const c=JSON.parse('{"title":".me","description":"","frontmatter":{},"headers":[],"relativePath":"index.md","filePath":"index.md"}'),n={name:"index.md"};function l(r,s,h,p,o,d){return t(),e("div",null,[...s[0]||(s[0]=[i("",23)])])}const u=a(n,[["render",l]]);export{c as __pageData,u as default};

@@ -3,85 +3,57 @@
   <img src="https://res.cloudinary.com/dkwnxf6gm/image/upload/v1761149332/this.me-removebg-preview_2_j1eoiy.png" alt=".me Logo" width="144" />
 </picture>
 
-# .me 
-###### Minimal and Expressive.
-<table border="0" cellspacing="0" cellpadding="0" style="border:none;">
-  <tr>
-    <td width="260" align="center" valign="middle">
-      <picture>
-        <source media="(prefers-color-scheme: dark)" srcset="https://res.cloudinary.com/dkwnxf6gm/image/upload/v1760915741/this.me-removebg-preview_1_nrj6pe.png" />
-        <img src="https://suign.github.io/assets/imgs/monads.png" alt=".me as a coordinate" width="200" />
-      </picture>
-    </td>
-    <td valign="middle">
-      <h2>Hello, I am <code>.me</code></h2>
-    </td>
-  </tr>
-</table>
-Define who you are, what you own, and how everything connects — once.  
-Then **use it across apps, websites, dashboards**, and more.
+# .me
+##### **100k vectors · 3.32s search · recall 1.0 · fully encrypted · runs local**
+Your personal semantic kernel — **own your knowledge**, your way: agents, notes, relationships, wallet, groups, secrets — all in one reactive tree.
 
-## What is .me?
-- You work with paths instead of complex state management
+Define who you are, **what you own**, and how everything connects — once. Then use it everywhere: apps, websites, dashboards, tickets, and more.
 
-- Supports secrets, pointers, derived values, and full state export/import
+**.me** runs 100% local with **end-to-end encryption.** No cloud, no vendor lock.
 
-- Works the same across languages and platforms
+---
 
-## Performance
+## Install
 
-**.me** runs 100% local with **end-to-end encryption.**
+| Package     | Install               | Status            |
+| ----------- | --------------------- | ----------------- |
+| **Node.js** | `npm install this.me` | **Stable 3.6.40** |
+| **Python**  | `pip install this-me` | Not Available     |
+| **Rust**    | `cargo add this-me`   | Not Available     |
 
-**Realistic corpus (notes, documents):**
-100k vectors → 3.32s p95, recall@10 1.0, 18 chunks/query
+[Full documentation →](https://neurons-me.github.io/.me/npm/typedocs/) · [Examples](https://neurons-me.github.io/.me/npm/typedocs/examples/Social_Graph.html) · [Benchmarks](https://neurons-me.github.io/.me/npm/typedocs/kernel/Benchmarks.html)
 
-**Adversarial corpus (worst-case fragmented):** 
-100k vectors → 19.1s p95, recall@10 1.0, 98 chunks/query
+---
 
-###### No server. No API key. Your data never leaves your machine.
+## **▵** The primitives
+**.me** ships 3 things **cloud architecture can't:**
 
-## Why use it?
-- Stop repeating boilerplate across multiple apps
-- Have real control over your data and identity
-- Structural privacy (not just "trust us")
-- Simple, reactive, and portable
+1. **Structural privacy** — Secrets are holes in the graph, not flags on rows. Access control is topology, not policy.
+2. **Native provenance** — Every derived value carries inputs, expression, and origin. Stealth stays masked but auditable. `me.explain("path")` works everywhere.
+3. **Subjective state** — Same graph resolves different shapes per viewer. O(k) recompute means privacy doesn’t cost latency.
 
-###### **Currently only available for npm:**
+> **Local compute makes memory an OS primitive. Cloud makes it a service.**
 
-https://www.npmjs.com/package/this.me
+---
 
-```bash
-git clone https://github.com/neurons-me/.me.git
-cd .me/npm
-npm install
-```
+## **𓅓** Self-Semantic Runtime Invariance
+The runtime of `.me` is written **in the same semantic model that it interprets**. This makes it *self-describing* and *self-sustaining*.
 
-----
+**The language can describe itself.** The runtime’s behavior is encoded in the same declarative structures users write. Every operation is both computation and meaning. The system is *reflexive*: it can observe and narrate its own evolution.
 
-# 𓅓 Self-Semantic Runtime Invariance
-The runtime of `.me` is written **in the same semantic model that it interprets**, making it a *self-describing* and *self-sustaining* identity system.  
-This property is known as **Self‑Semantic Runtime Invariance**.
+---
 
-#### Why this matters
-- The language can describe itself using its own primitives.  
-- The runtime’s behavior is encoded in the same declarative structures users write.  
-- Every semantic operation becomes both:
-  - a computation, and  
-  - a piece of meaning inside the identity universe.  
-- The system is *reflexive*: the runtime can observe, narrate, and export its own evolution.
+**∴ Witness our seal**  
 
-## **▵ The Philosophy**
+**suiGn**
 
-**\> Human owns meaning. Everything else asks.**
-A semantic language for identity, built from recursive declarations and symbolic paths.
-**▵ meaning** / **⊙ identities** / **● universes.**
-With one primitive:
+**MIT License** © 2025 https://neurons.me
 
-> me
 
-What **.me** unlocks is: 
->**Ownership through derivation.** 
 
-Not through passwords, dashboards, cookie banners, or corporate **“trust us”** slogans — but **through architecture**. 
-Your identity is **derived**, meaning it only exists when **you** decide to bring it into existence. 
+<p align="center">
+  <a href="https://neuron.me/">
+    <img src="https://res.cloudinary.com/dkwnxf6gm/image/upload/v1760629064/neurons.me_b50f6a.png" alt="neurons.me" width="89" />
+  </a>
+</p>
 

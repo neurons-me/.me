@@ -2,29 +2,21 @@
   <source media="(prefers-color-scheme: dark)" srcset="https://res.cloudinary.com/dkwnxf6gm/image/upload/v1769890772/this.me.png" />
   <img src="https://res.cloudinary.com/dkwnxf6gm/image/upload/v1761149332/this.me-removebg-preview_2_j1eoiy.png" alt=".me Logo" width="144" />
 </picture>
-
 # .me
-###### Your personal semantic kernel - 100k IVF p95 3.32s | recall@10 1.0 | realistic corpus
+
+##### **100k vectors · 3.32s search · recall 1.0 · fully encrypted · runs local**
+
+Your personal semantic kernel - **own your knowledge** graph, your way: agents, notes, relationships, wallet, groups, secrets — all in one reactive tree.
+
 Define who you are, **what you own**, and how everything connects — once.  Then use it everywhere: apps, websites, dashboards, tickets, and more.
+
+# Install .me
 
 ```bash
 npm install this.me
 ```
 
-## Performance
-
 **.me** runs 100% local with **end-to-end encryption.**
-
-| Profile | Corpus | Exact p95 | IVF p95 | Recall@10 | Chunks / Query |
-|---|---|---:|---:|---:|---:|
-| realistic | `chunk_coherent` | `77129.34ms` | `3318.42ms` | `1.000` | `18.40` |
-| hostile | `legacy_fragmented` | `166603.63ms` | `19353.27ms` | `1.000` | `97.60` |
-
-Storage milestones:
-
-- Phase 1 closed with stable batch writes and lightweight journals; the limit was V8 heap residency, not write-path collapse.
-- Phase 2 closed with chunked columnar secret vector storage, typed `Float32Array` payloads, and a 100k encrypted leaf-write microbenchmark at `1886 vps` with `~122MB` post-GC heap.
-- Phase 3 closed for realistic chunk-coherent corpora with `23.2x` speedup over exact scan at `100k`.
 
 ## In 30 seconds
 
@@ -71,20 +63,34 @@ console.log(me("groups.vancouver.messages[0].text"));
 console.log(me.explain("friends.ana.isAdult"));
 ```
 
+`["[i]"]["="]` = “for every i, derive”. No loops, no re-runs, **O(k)** updates.
+
 ## What is .me?
-- An **infinite semantic tree** where you define the rules.
-- Create data, relationships, formulas, and private universes.
-- Everything is **reactive** — change one value and everything that depends on it updates automatically.
-- Secrets are **structural**: entire branches can be hidden and encrypted by design.
-- Export your entire state and restore it anywhere — it works exactly the same.
 
-## Why people like it
-- No schemas needed — if you can imagine a path, it exists.
-- Real privacy — not promises, but built into the structure.
-- Define once, use everywhere — stop repeating code across projects.
-- Full transparency — `me.explain("path")` shows exactly how any value was computed.
+- **Own all structures** (profile, contacts, money, chats) as code
+- No cloud or vendor lock
+- Privacy by default & **explainability built-in**
+- Audit any answer **explain(why_did_you_say_that)** — *log how **“AI”** arrived at a value*
+- Compose logic, not tables — everything is reactivity and references
 
-## A3: Structural Privacy
+## Why .me?
+
+- **No schemas** — if you can imagine a path, it exists.
+- **Define once, use everywhere** — your profile, wallet, chats, and logic as one reactive tree.
+- **No cloud, no vendor lock** — 100% local, end-to-end encrypted.
+- **Audit everything** — `me.explain("path")` shows how any value was computed.
+
+## The primitives
+
+**.me** ships 3 things **cloud architecture can't:**
+
+1. **Structural privacy** — Secrets are holes in the graph, not flags on rows. Access control is topology, not policy.
+2. **Native provenance** — Every derived value carries inputs, expression, and origin. Stealth stays masked but auditable.
+3. **Subjective state** — Same graph resolves different shapes per viewer. O(k) recompute means privacy doesn’t cost latency.
+
+> **Local compute makes memory an OS primitive. Cloud makes it a service.**
+
+## Structural Privacy
 
 Secret scopes are structural in `.me`. When you mark a branch with `["_"]`, the root stays stealth, descendants remain usable, and guest callers do not inherit the owner scope by accident.
 
@@ -102,7 +108,7 @@ console.log(me.as(null)("finance"));            // undefined
 console.log(me.as(null)("finance.fuel_price")); // undefined
 ```
 
-`me.explain(path)` is also safe for audit trails. If a derivation depends on a secret input, the trace still shows that the dependency exists, but it redacts the value:
+`me.explain(path)` is also safe for audit trails. If a **derivation depends on a secret** input, the trace still shows that the dependency exists, but it redacts the value:
 
 ```ts
 me.fleet.trucks[2].fuel(350);
@@ -111,7 +117,7 @@ me.fleet.trucks[2]["="]("cost", "fuel * finance.fuel_price");
 console.log(me.explain("fleet.trucks.2.cost"));
 ```
 
-Expected trace shape:
+**Expected trace shape:**
 
 ```json
 {
@@ -178,16 +184,10 @@ console.log(me.explain("wallet.balance"));
 ## Who is .me for?
 Developers and creators who want to:
 
-- Stop repeating the same infrastructure across multiple apps
+- **Stop repeating the same infrastructure** across multiple apps
 - Own and control their digital identity
 - Have real structural privacy
 - Build clean, scalable systems without the usual mess
-
-## Installation
-
-```bash
-npm install this.me
-```
 
 ## Canonical Example
 
@@ -235,10 +235,42 @@ console.log(me.explain("friends.ana.isAdult"));
 
 [Read the Docs →](https://neurons-me.github.io/.me/npm/docs/)
 
----
+# Performance
 
-**MIT License** © 2025 [neurons.me](https://neurons.me)
+| Profile   | Corpus            | Exact p95 | IVF p95 | Speedup   | Recall | Chunks |
+| --------- | ----------------- | --------- | ------- | --------- | ------ | ------ |
+| realistic | chunk_coherent    | 77.1s     | 3.32s   | **23.2x** | 1.000  | 18.40  |
+| hostile   | legacy_fragmented | 166.6s    | 19.35s  | **8.6x**  | 1.000  | 97.60  |
+
+`Chunks decrypted per query out of 100k total`.
+
+_“‘Realistic’ = default UX (coherent), ‘hostile’ = worst-case/adversarial stress test. Chunks decrypted/query.”_
+
+**Storage milestones:**
+
+- **Phase 1 closed ✅ ** with stable batch writes and lightweight journals; the limit was V8 heap residency, not write-path collapse.
+- **Phase 2 closed ✅ ** with chunked columnar secret vector storage, typed `Float32Array` payloads, and a 100k encrypted leaf-write microbenchmark at `1886 vps` with `~122MB` post-GC heap.
+- **Phase 3 closed ✅ ** for realistic chunk-coherent corpora with `23.2x` speedup over exact scan at `100k`.
+
+## The Ecosystem
+
+- **.me** — semantic kernel (this package)
+- **cleaker** — **Who are you, relative to where you are?**
+- **monad.ai** — local daemon.
+- **NetGet** — Build, Expose, Route — Effortlessly.
+
+---
 
 **∴ Witness our seal**  
 
 **suiGn**
+
+**MIT License** © 2025 https://neurons.me
+
+
+
+<p align="center">
+  <a href="https://neuron.me/">
+    <img src="https://res.cloudinary.com/dkwnxf6gm/image/upload/v1760629064/neurons.me_b50f6a.png" alt="neurons.me" width="89" />
+  </a>
+</p>

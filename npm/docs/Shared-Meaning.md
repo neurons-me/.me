@@ -25,19 +25,19 @@ Two graphs can use different labels and still be equivalent if their derivations
 
 ## Key Insights
 
-1. Logic as the common layer
+1. ##### Logic as the common layer
 - Natural languages diverge, but many domain relations (tax math, inventory flows, family trees) are structurally stable.
 - In `.me`, convergence happens when dependency graphs and derivation logic are equivalent.
 
-2. No single global schema
+2. ##### No single global schema
 - Traditional systems force naming consensus first.
 - `.me` allows local schemas and aligns meaning through structural relations plus pointers.
 
-3. Dynamic convergence through pointers
+3. ##### Dynamic convergence through pointers
 - `->` does not claim ontological identity by itself.
 - It creates functional aliasing in resolution paths, and network-level meaning strengthens as structural links accumulate.
 
-## 1. Structure Before Vocabulary
+## Structure Before Vocabulary
 
 If two communities build the same structural graph with different labels, `.me` can treat them as the same semantic pattern.
 
@@ -63,7 +63,7 @@ Both graphs compute the same relation:
 
 Different labels, same semantic geometry.
 
-## 2. Pointers as Semantic Synapses
+## Pointers as Semantic Synapses
 
 A pointer in `.me` is not only a technical redirect.  
 It can also act as a community-created semantic bridge.
@@ -82,7 +82,7 @@ That means communities can build living bridges:
 - no single static dictionary required,
 - links evolve with usage.
 
-## 3. From Local Trees to Collective Meaning
+## From Local Trees to Collective Meaning
 
 Every `.me` runtime starts local.  
 But when paths, operators, and pointers are shared, local trees can converge into a distributed semantic fabric.
@@ -96,7 +96,7 @@ You can think of it as:
 
 Over time, recurring structures form clusters of shared meaning.
 
-## 4. Why This Matters for `cleaker.me`
+## Why This Matters for `cleaker.me`
 
 `cleaker.me` can be the coordination layer where these clusters meet:
 
@@ -111,25 +111,25 @@ Possible shape:
 
 So `perro.cleaker.me`, `dog.cleaker.me`, and `犬.cleaker.me` can be views over the same semantic locus.
 
-## 5. Realistic Use Cases
+## Realistic Use Cases
 
-## Cross-language commerce
+#### Cross-language commerce
 
 - One region models `tienda.articulos.precio`
 - Another models `shop.items.price`
 - Shared derivation logic and pointers align analytics/automation without forcing one vocabulary.
 
-## Clinical terminology bridging
+#### Clinical terminology bridging
 
 - Hospitals use different naming conventions.
 - Shared derivation + pointers map local terms to common clinical concepts.
 
-## Multilingual AI memory
+#### Multilingual AI memory
 
 - User writes memories in mixed languages.
 - Runtime links recurring patterns structurally, not by brittle literal translation.
 
-## 6. Design Principle
+## Design Principle
 
 `.me` does not ask:
 

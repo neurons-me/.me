@@ -4,99 +4,69 @@
 </picture>
 
 # .me
-###### **Your personal semantic kernel.**
-Define who you are, **what you own**, and how everything connects — once.  
-Then use it everywhere: apps, websites, dashboards, tickets, and more.
 
-### Installation
+##### **100k vectors · 3.32s search · recall 1.0 · fully encrypted · runs local**
+
+Your personal semantic kernel — **own your knowledge**, your way: agents, notes, relationships, wallet, groups, secrets — all in one reactive tree.
+
+**`.me` runs 100% local with end-to-end encryption.** No cloud, no vendor lock.
+
+---
+
+## Installation
 
 ```bash
 npm install this.me
 ```
 
-### In 30 seconds
+## Quick start
 
 ```ts
 import ME from "this.me";
-
 const me = new ME();
 
 me["@"]("jabellae");
 me.profile.name("José Abella");
-me.profile.bio("Building the semantic web.");
 
-me.users.ana.name("Ana");
-me.users.ana.age(22);
+me.wallet["_"]("key-2026");
+me.wallet.balance(12480);
 
-me.friends.ana["->"]("users.ana");
-
-// Derived logic
-me.friends["[i]"]["="]("isAdult", "age >= 18");
-console.log(me("friends.ana.isAdult"));           // → true
-console.log(me("friends[age >= 18].name"));       // → { ana: "Ana" }
+me.explain("wallet.balance"); // → shows derivation, masks secrets
 ```
 
-### What is .me?
-- An **infinite semantic tree** where you define the rules.
-- Create data, relationships, formulas, and private universes.
-- Everything is **reactive** — change one value and everything that depends on it updates automatically.
-- Secrets are **structural**: entire branches can be hidden and encrypted by design.
-- Export your entire state and restore it anywhere — it works exactly the same.
+## Core concepts
 
-### Performance Snapshot
+**Reactive tree** — Change one value, dependents update in O(k).
 
-`April 19, 2026` local closure profiles:
+**Structural privacy** — Mark branches with ["_"] to make them stealth. Roots hide, leaves resolve.
 
-| Profile | Corpus | Exact p95 | IVF p95 | Recall@10 | Chunks / Query |
-|---|---|---:|---:|---:|---:|
-| realistic | `chunk_coherent` | `77129.34ms` | `3318.42ms` | `1.000` | `18.40` |
-| hostile | `legacy_fragmented` | `166603.63ms` | `19353.27ms` | `1.000` | `97.60` |
-
-Storage and ingest milestones:
-
-- Phase 1 closed with stable batch writes and lightweight journals; the practical ceiling was V8 heap residency, not write-path collapse.
-- Phase 2 closed with chunked columnar secret vector storage, `Float32Array` payloads on read, and a 100k encrypted leaf-write microbenchmark at `1886 vps` with `~122MB` post-GC heap.
-- Phase 3 closed for realistic chunk-coherent corpora with IVF sidecars, `23.2x` speedup over exact scan at `100k`, and `recall@10 = 1.000`.
-
-### Why people like it
-- No schemas needed — if you can imagine a path, it exists.
-- Real privacy — not promises, but built into the structure.
-- Define once, use everywhere — stop repeating code across projects.
-- Full transparency — `me.explain("path")` shows exactly how any value was computed.
-
-### Quick Secret Example
+**Native provenance** — Every value carries inputs, expression, origin. Use 
 
 ```ts
-me.wallet["_"]("my-secret-key");   // Create a hidden universe
-
-me.wallet.balance(12480);
-me.wallet.note("Private savings");
-
-console.log(me("wallet"));           // → undefined
-console.log(me("wallet.balance"));   // → 12480   (still accessible by full path)
+me.explain(path)
 ```
 
-## Who is .me for?
-Developers and creators who want to:
+**Subjective state** — Same graph, different shapes per viewer via me.as(scope).
 
-- Stop repeating the same infrastructure across multiple apps
-- Own and control their digital identity
-- Have real structural privacy
-- Build clean, scalable systems without the usual mess
+## API surface
 
-For anyone who wants to own their intelligence.
+| Module     | Description                                            |
+| ---------- | ------------------------------------------------------ |
+| Runtime    | Core class. Get, set, derive, explain.                 |
+| Operators  | `["->"]` refs, `["[i]"]["="]` derive, `["_"]` stealth. |
+| Axioms     | Invariants: reactivity, privacy, provenance.           |
+| Query      | `me("path")`, filters `[age >= 18]`, traversal.        |
+| Benchmarks | 100k corpus: 3.32s p95, recall 1.0, 23.2x speedup.     |
 
-### Explore
+## Performance snapshot
 
-- [Quick Start](/QuickStart)
-- [Runtime Surface](/Runtime-Surface)
-- [Operators](/Operators)
-- [Axioms](/Axioms)
-- [Kernel Benchmarks](/kernel/Benchmarks)
-- [API Reference](/api/)
+April 19, 2026 · 100k encrypted vectors
 
----
+| Profile   | Corpus            | Exact p95 | IVF p95 |
+| --------- | ----------------- | --------- | ------- |
+| Realistic | chunk_coherent    | 77.1s     | 3.32s   |
+| Hostile   | Legacy_fragmented | 166.6s    | 19.35s  |
 
-**MIT License** © 2025 
+Chunks decrypted per query out of 100k total
 
-[neurons.me](https://neurons.me)
+**MIT License** © 2025 neurons.me 
