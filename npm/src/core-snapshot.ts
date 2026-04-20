@@ -45,6 +45,8 @@ export function importSnapshot(self: MEKernelLike, snapshot: MESnapshotInput): v
   self.refVersions = {};
   self.derivationRefVersions = {};
   self.staleDerivations.clear();
+  self.lastRecomputeWaveByTarget = {};
+  self.activeRecomputeWave = null;
 
   const defaults = createDefaultOperators();
   self.operators =

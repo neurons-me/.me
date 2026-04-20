@@ -34,7 +34,7 @@ export default defineConfig({
       { text: "Home", link: "/" },
       { text: "API", link: "/api/" },
       { text: "Runtime", link: "/Runtime-Surface" },
-      { text: "Space", link: "/Space-Algebra" },
+      { text: "Algebra of Contexts", link: "/Algebra-of-Contexts" },
       { text: "Installation", link: "/Builds" },
       { text: "Operators", link: "/Operators" },
       { text: "Syntax", link: "/Syntax" },
@@ -49,14 +49,15 @@ export default defineConfig({
         items: [
           { text: "Home", link: "/" },
           { text: "Installation", link: "/Installation" },
-          { text: "Quick Start", link: "/QuickStart" }
+          { text: "Quick Start", link: "/QuickStart" },
+          { text: "Namespace Resolution Protocol", link: "/Namespace-Resolution-Protocol" }
         ]
       },
       {
         text: "Core Concepts",
         items: [
           { text: "Runtime Surface", link: "/Runtime-Surface" },
-          { text: "Space Algebra", link: "/Space-Algebra" },
+          { text: "Algebra of Contexts", link: "/Algebra-of-Contexts" },
           { text: "Proxy Calls", link: "/Proxy-Calls" },
           { text: "Operators", link: "/Operators" },
           { text: "Syntax", link: "/Syntax" },
@@ -76,7 +77,8 @@ export default defineConfig({
         items: [
         { text: "Social Graph", link: "/examples/Social_Graph" },
         { text: "CoffeeShops", link: "/examples/Shops_Admin" },
-        { text: "Wallet Split", link: "/examples/WalletSplit" }],
+        { text: "Affinity Model", link: "/examples/Affinity-Model"},
+        { text: "Wallet Split", link: "/examples/WalletSplit" }]
       },
       {
         text: "Kernel",

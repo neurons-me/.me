@@ -2,7 +2,7 @@
 
 `.me` is built on spaces, subspaces, and set laws.
 
-- [Space Algebra](/Space-Algebra)
+- [Algebra of Contexts](/Algebra-of-Contexts)
 
 ## **Start .me in 60 seconds**
 ###### Import

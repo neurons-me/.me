@@ -1,17 +1,12 @@
 # Algebra of Contexts
 
 ###### Set Law Applied to Context
-
 `.me` thinks in **spaces**.
-
 Not schemas. Not tables. Not object classes.
-
 A **space** is a region of meaning **(context)** that can contain other spaces.
-
 Everything else follows from set laws.
 
 ## Core Rule
-
 A space can contain spaces.
 
 ```txt
@@ -35,7 +30,6 @@ me.wallet.hidden.note("private");
 ```
 
 ## Namespace
-
 A **namespace** is a named space.
 
 Examples:
@@ -60,7 +54,6 @@ So:
 - `path` identifies the subspace
 
 ## Set View
-
 We can describe a space by the sets that act on it:
 
 - `A` = audience set
@@ -72,7 +65,6 @@ These are not different ontologies.
 They are different views of the same space.
 
 ## Space Predicates
-
 The common adjectives are just set statements:
 
 - **public space**: the readable audience is broadly open
@@ -90,7 +82,6 @@ Examples:
 No new noun is required beyond `space`.
 
 ## Refinement
-
 More specific spaces are subsets of less specific spaces.
 
 ```txt
@@ -106,15 +97,12 @@ This same law appears across the system:
 - tighter capability -> smaller action set
 
 ## Encryption As Membership
-
 Encryption does not create a different universe.
 It creates a stricter readable membership over a space.
 
 Examples:
-
 - a private space may have `A = {self}`
 - a shared encrypted space may have `A = {me ∪ wife}`
-
 The topology can be large while the readable audience stays small:
 
 ```txt
@@ -125,13 +113,10 @@ A = {me, wife}
 That means the same space may be replicated widely without becoming readable widely.
 
 ## Why This Matters
-
 This gives `.me` one ontology instead of many.
-
 - `.me` declares, creates, and navigates spaces
 - `cleaker` records, routes, and transports spaces
 - `monad.ai` serves, resolves, and persists spaces
-
 The system stays unified because everything still reduces to:
 
 ```txt

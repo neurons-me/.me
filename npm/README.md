@@ -250,6 +250,15 @@ _“‘Realistic’ = default UX (coherent), ‘hostile’ = worst-case/adversar
 - **Phase 2 closed ✅ ** with chunked columnar secret vector storage, typed `Float32Array` payloads, and a 100k encrypted leaf-write microbenchmark at `1886 vps` with `~122MB` post-GC heap.
 - **Phase 3 closed ✅ ** for realistic chunk-coherent corpora with `23.2x` speedup over exact scan at `100k`.
 
+.me is a reactive semantic tree.
+
+- No tables. You store events, derive meaning with `=`.
+- No RLS. You mark scopes with `["_"]`. Guests can't see in.
+- No triggers. Mutations recompute `O(k)` automatically.
+- No hidden state. `explain(path)` shows the full dependency graph.
+
+4 demos, <200 lines total, replace Postgres + RLS + triggers + views.
+
 ## The Ecosystem
 - **.me** — semantic kernel (this package)
 - **cleaker** — **Who are you, relative to where you are?**

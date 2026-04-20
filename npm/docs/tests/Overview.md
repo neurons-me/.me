@@ -20,6 +20,7 @@ This page maps the full `tests/` directory: what exists, what each test validate
 |---|---|
 | `npm run test:prebuild` | Build + Axioms + Phases + CJS/ESM/TS/UMD checks |
 | `npm run test:contracts` | DSL contract suite |
+| `npm run test:demos` | Runs the three practical walkthrough demos under `tests/Demos/*` |
 | `npm run test:ts` | Type-check (`tsc --noEmit`) |
 | `npm run test:umd` | UMD runtime compatibility test |
 | `npm run test:phase3:exact` | Exact vector-search correctness baseline |

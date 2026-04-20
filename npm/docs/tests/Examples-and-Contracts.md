@@ -23,13 +23,21 @@ npm run test:contracts
 
 | File | Purpose |
 |---|---|
+| `tests/Demos/Affinity_Model.ts` | Affinity scoring, selectors, explainability, and private policy lane |
 | `tests/Demos/Social_Graph.ts` | Pointer-based social graph walkthrough |
 | `tests/Demos/ShopsExample.ts` | Collection + selectors + derivation example |
 | `tests/sand.ts` | Sandbox/experimental script space |
 
+Run all demos:
+
+```bash
+npm run test:demos
+```
+
 Run directly:
 
 ```bash
+node tests/Demos/Affinity_Model.ts
 node tests/Demos/Social_Graph.ts
 node tests/Demos/ShopsExample.ts
 node tests/sand.ts

@@ -1,6 +1,6 @@
 {
   "name": "this.me",
-  "version": "3.6.42",
+  "version": "3.6.43",
   "description": "Centralize the Self, Distribute the Data.",
   "type": "module",
   "main": "./dist/me.cjs",
@@ -19,6 +19,7 @@
     "dev": "vite --config vite.config.ts",
     "build": "vite build --config vite.config.ts",
     "preview": "vite preview --config vite.config.ts",
+    "test:demos": "node tests/Demos/run-all.ts",
     "test:ts": "tsc --noEmit",
     "test:smoke:disk": "node tests/Fase.2.0.smoke.test.js",
     "test:umd": "node tests/Builds/umd.test.cjs",

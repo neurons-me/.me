@@ -57,6 +57,7 @@ import type {
   MEEffectiveSecretCacheEntry,
   MEKernelLike,
   MEOptions,
+  MERecomputeWave,
   MEVectorIndex,
   MEVectorIndexBuildOptions,
   MEVectorIndexBuildResult,
@@ -145,6 +146,8 @@ export class ME {
   private refVersions!: Record<string, number>;
   private derivationRefVersions!: Record<string, Record<string, number>>;
   private staleDerivations!: Set<string>;
+  private lastRecomputeWaveByTarget!: Record<string, MERecomputeWave>;
+  private activeRecomputeWave!: MERecomputeWave | null;
   private secretEpoch!: number;
   private scopeCache!: Map<string, MEBranchScopeCacheEntry>;
   private effectiveSecretCache!: Map<string, MEEffectiveSecretCacheEntry>;

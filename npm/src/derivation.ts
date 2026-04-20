@@ -14,12 +14,24 @@ export function explain(self: MEKernelLike, path: string): MEExplainResult {
   if (self.recomputeMode === "lazy") ensureTargetFresh(self, key);
   const value = self.readPath(target);
   const d = self.derivations[key];
+  const wave = self.lastRecomputeWaveByTarget[key];
   if (!d) {
     return {
       path: key,
       value,
+      expr: null,
       derivation: null,
-      meta: { dependsOn: [] },
+      meta: {
+        dependsOn: [],
+        ...(wave
+          ? {
+              k: wave.recomputed.length,
+              recomputed: [...wave.recomputed],
+              sourcePath: wave.sourcePath,
+              recomputedAt: wave.at,
+            }
+          : {}),
+      },
     };
   }
 
@@ -40,6 +52,7 @@ export function explain(self: MEKernelLike, path: string): MEExplainResult {
   return {
     path: key,
     value,
+    expr: d.expression,
     derivation: {
       expression: d.expression,
       inputs,
@@ -47,8 +60,47 @@ export function explain(self: MEKernelLike, path: string): MEExplainResult {
     meta: {
       dependsOn: d.refs.map((r) => r.path),
       lastComputedAt: d.lastComputedAt,
+      ...(wave
+        ? {
+            k: wave.recomputed.length,
+            recomputed: [...wave.recomputed],
+            sourcePath: wave.sourcePath,
+            recomputedAt: wave.at,
+          }
+        : {}),
     },
   };
+}
+
+function beginRecomputeWave(self: MEKernelLike, sourcePath: string): boolean {
+  if (self.activeRecomputeWave) return false;
+  self.activeRecomputeWave = {
+    sourcePath,
+    recomputed: [],
+    at: Date.now(),
+  };
+  return true;
+}
+
+function recordRecomputedTarget(self: MEKernelLike, targetKey: string): void {
+  const wave = self.activeRecomputeWave;
+  if (!wave) return;
+  if (!wave.recomputed.includes(targetKey)) wave.recomputed.push(targetKey);
+}
+
+function finalizeRecomputeWave(self: MEKernelLike): void {
+  const wave = self.activeRecomputeWave;
+  if (!wave) return;
+  self.activeRecomputeWave = null;
+  if (wave.recomputed.length === 0) return;
+  const committedWave = {
+    sourcePath: wave.sourcePath,
+    recomputed: [...wave.recomputed],
+    at: Date.now(),
+  };
+  for (const targetKey of committedWave.recomputed) {
+    self.lastRecomputeWaveByTarget[targetKey] = committedWave;
+  }
 }
 
 export function extractExpressionRefs(expr: string): string[] {
@@ -86,6 +138,7 @@ export function unregisterDerivation(self: MEKernelLike, targetKey: string): voi
   }
   delete self.derivations[targetKey];
   delete self.derivationRefVersions[targetKey];
+  delete self.lastRecomputeWaveByTarget[targetKey];
   self.staleDerivations.delete(targetKey);
 }
 
@@ -143,7 +196,9 @@ export function recomputeTarget(self: MEKernelLike, targetKey: string): boolean 
   if (!d) return false;
   const targetPath = normalizeSelectorPath(targetKey.split(".").filter(Boolean));
   const evaluated = tryEvaluateAssignExpression(self, d.evalScope, d.expression);
-  self.postulate(targetPath, evaluated.ok ? evaluated.value : d.expression, "=");
+  recordRecomputedTarget(self, targetKey);
+  self.commitValueMapping(targetPath, evaluated.ok ? evaluated.value : d.expression, "=");
+  bumpRefVersion(self, targetKey);
   d.lastComputedAt = Date.now();
   snapshotDerivationRefVersions(self, targetKey);
   self.staleDerivations.delete(targetKey);
@@ -166,9 +221,16 @@ export function ensureTargetFresh(
   visiting: Set<string> = new Set(),
 ): boolean {
   if (self.recomputeMode !== "lazy") return false;
+  const startedWave = beginRecomputeWave(self, targetKey);
   const d = self.derivations[targetKey];
-  if (!d) return false;
-  if (visiting.has(targetKey)) return false;
+  if (!d) {
+    if (startedWave) finalizeRecomputeWave(self);
+    return false;
+  }
+  if (visiting.has(targetKey)) {
+    if (startedWave) finalizeRecomputeWave(self);
+    return false;
+  }
   visiting.add(targetKey);
 
   for (const ref of d.refs) {
@@ -181,15 +243,18 @@ export function ensureTargetFresh(
   if (needsRefresh) changed = recomputeTarget(self, targetKey);
 
   visiting.delete(targetKey);
+  if (startedWave) finalizeRecomputeWave(self);
   return changed;
 }
 
 export function invalidateFromPath(self: MEKernelLike, path: SemanticPath): void {
   const root = normalizeSelectorPath(path).join(".");
   if (!root) return;
+  const startedWave = beginRecomputeWave(self, root);
   bumpRefVersion(self, root);
 
   if (self.recomputeMode === "lazy") {
+    if (startedWave) finalizeRecomputeWave(self);
     return;
   }
 
@@ -206,6 +271,8 @@ export function invalidateFromPath(self: MEKernelLike, path: SemanticPath): void
       if (updated) queue.push(target);
     }
   }
+
+  if (startedWave) finalizeRecomputeWave(self);
 }
 
 export function clearDerivationsByPrefix(self: MEKernelLike, prefixPath: SemanticPath): void {

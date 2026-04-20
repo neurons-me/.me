@@ -269,6 +269,23 @@ test("explain() masks stealth inputs while keeping public inputs visible", () =>
   assert.equal(priceInput.value, "●●●●");
 });
 
+test("explain() exposes expr plus recompute wave metadata for the selected target", () => {
+  const me = new ME();
+  me.units[1].seed(1);
+  me.units[1]["="]("mid", "seed + 1");
+  me.units[1]["="]("out", "mid * 2");
+
+  me.units[1].seed(2);
+
+  const trace = me.explain("units.1.out");
+
+  assert.equal(trace.expr, "mid * 2");
+  assert.deepEqual(trace.meta.dependsOn, ["units.1.mid"]);
+  assert.equal(trace.meta.k, 2);
+  assert.deepEqual(trace.meta.recomputed, ["units.1.mid", "units.1.out"]);
+  assert.equal(trace.meta.sourcePath, "units.1.seed");
+});
+
 test("secret branch blobs are non-deterministic across identical writes", () => {
   const me = new ME();
   me.wallet["_"]("steel-door");

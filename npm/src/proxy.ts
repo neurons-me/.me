@@ -69,7 +69,7 @@ export function buildRuntimeSurface(self: MEKernelLike): Record<string, any> {
       "explain",
       (path: string) => self.explain(path),
       "Explain how a derived value was computed, including dependency inputs and masking for stealth sources.",
-      "explain(path: string): { path, value, derivation, meta }",
+      "explain(path: string): { path, value, expr, derivation, meta }",
     ),
     memories: {
       docs: "Memory log helpers and replay controls.",

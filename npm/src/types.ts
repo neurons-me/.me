@@ -616,6 +616,7 @@ export interface MEInspectResult {
 export interface MEExplainResult {
   path: string;
   value: any;
+  expr: string | null;
   derivation: null | {
     expression: string;
     inputs: Array<{
@@ -629,7 +630,17 @@ export interface MEExplainResult {
   meta: {
     dependsOn: string[];
     lastComputedAt?: number;
+    k?: number;
+    recomputed?: string[];
+    sourcePath?: string;
+    recomputedAt?: number;
   };
+}
+
+export interface MERecomputeWave {
+  sourcePath: string;
+  recomputed: string[];
+  at: number;
 }
 
 /**
@@ -689,6 +700,8 @@ export interface MEKernelLike extends Record<string, any> {
   refVersions: Record<string, number>;
   derivationRefVersions: Record<string, Record<string, number>>;
   staleDerivations: Set<string>;
+  lastRecomputeWaveByTarget: Record<string, MERecomputeWave>;
+  activeRecomputeWave: MERecomputeWave | null;
   secretEpoch: number;
   scopeCache: Map<string, MEBranchScopeCacheEntry>;
   effectiveSecretCache: Map<string, MEEffectiveSecretCacheEntry>;

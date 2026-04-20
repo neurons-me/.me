@@ -10,6 +10,7 @@ import type {
   MEDerivationRecord,
   MEEffectiveSecretCacheEntry,
   MEOptions,
+  MERecomputeWave,
   MEVectorIndex,
   StoredWrappedKey,
 } from "./types.js";
@@ -46,6 +47,8 @@ export type DerivationState = {
   refVersions: Record<string, number>;
   derivationRefVersions: Record<string, Record<string, number>>;
   staleDerivations: Set<string>;
+  lastRecomputeWaveByTarget: Record<string, MERecomputeWave>;
+  activeRecomputeWave: MERecomputeWave | null;
 };
 
 export type ConfigState = {
@@ -97,6 +100,8 @@ export function createInitialKernelState(options: MEOptions = {}): KernelState {
       refVersions: {},
       derivationRefVersions: {},
       staleDerivations: new Set(),
+      lastRecomputeWaveByTarget: {},
+      activeRecomputeWave: null,
     },
     config: {
       unsafeEval: false,

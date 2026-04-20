@@ -364,6 +364,8 @@ export function replayMemories(self: MEKernelLike, memories: ReplayMemoryInput[]
   self.refVersions = {};
   self.derivationRefVersions = {};
   self.staleDerivations.clear();
+  self.lastRecomputeWaveByTarget = {};
+  self.activeRecomputeWave = null;
 
   for (const t of toKernelMemories(memories || [])) {
     const path = String(t.path || "")
