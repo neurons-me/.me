@@ -1,13 +1,16 @@
 ----
 
-### Mental model of ME
+### Mental model of .me
 
-ME is basically:
-	•	A semantic tree writer/reader (paths like wallet.income)
-	•	With two storage planes:
-	1.	Public plane: index (derived from _memories, excludes secret-scope content)
-	2.	Secret plane: encryptedBranches (ciphertext blobs stored at scope roots, totally hidden from index)
-	•	And a canonical append-only-ish log: _memories: MeThought[] (the only “truth” used to rebuild index).
+**.me** is basically:
+	A semantic tree writer/reader (paths like wallet.income)
+	**With two storage planes:**
+
+​	**1. Public plane:** index (derived from _memories, excludes secret-scope content)
+
+​	**2. Secret plane:** encryptedBranches (ciphertext blobs stored at scope roots, totally hidden from index)
+
+**And a canonical append-only-ish log: ** _memories: MeThought[] (the only “truth” used to rebuild index).
 
 The Proxy “chaining API” is just a way to build path[] and then funnel everything through handleCall(...) -> postulate(...).
 

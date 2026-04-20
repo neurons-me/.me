@@ -3,7 +3,7 @@
 `.me` does not treat language as a fixed dictionary.  
 It treats language as structure plus relation.
 
-In this model:
+**In this model:**
 
 - words are labels,
 - operators are logic,
@@ -12,7 +12,7 @@ In this model:
 
 ## Semantic Fingerprint
 
-Meaning in `.me` is behavior + structure, not raw string similarity.
+Meaning in `.me` is **behavior + structure**, not raw string similarity.
 
 | Component | Role in Shared Meaning | Analogy |
 |---|---|---|
@@ -41,7 +41,7 @@ Two graphs can use different labels and still be equivalent if their derivations
 
 If two communities build the same structural graph with different labels, `.me` can treat them as the same semantic pattern.
 
-Example:
+**Example:**
 
 ```ts
 // Spanish-shaped graph
@@ -55,7 +55,7 @@ me.店舗.税率(0.16);
 me.店舗.商品[1]["="]("合計", "価格 + (価格 * 店舗.税率)");
 ```
 
-Both graphs compute the same relation:
+**Both graphs compute the same relation:**
 
 - base value
 - shared rate
@@ -74,9 +74,9 @@ me.dog["->"]("inu");
 ```
 
 This is more than translation text.  
-It encodes: these symbols should collapse to one shared reference path during resolution.
+**It encodes:** these symbols should collapse to one shared reference path during resolution.
 
-That means communities can build living bridges:
+**That means communities can build living bridges:**
 
 - no global authority required,
 - no single static dictionary required,
@@ -87,29 +87,14 @@ That means communities can build living bridges:
 Every `.me` runtime starts local.  
 But when paths, operators, and pointers are shared, local trees can converge into a distributed semantic fabric.
 
-You can think of it as:
+**You can think of it as:**
 
 - **Path labels**: the visible surface (language, culture, domain jargon)
 - **Operators**: the computational grammar
 - **Pointers**: cross-community wiring
 - **Derivations**: reproducible logic
 
-Over time, recurring structures form clusters of shared meaning.
-
-## Why This Matters for `cleaker.me`
-
-`cleaker.me` can be the coordination layer where these clusters meet:
-
-- not as a centralized “truth editor,”
-- but as a shared coordinate space for semantic references.
-
-Possible shape:
-
-- canonical concept coordinate (structural core),
-- multiple language/domain views as aliases,
-- pointers maintaining alignment.
-
-So `perro.cleaker.me`, `dog.cleaker.me`, and `犬.cleaker.me` can be views over the same semantic locus.
+Over time, recurring structures form clusters of **shared meaning.**
 
 ## Realistic Use Cases
 
@@ -137,7 +122,7 @@ So `perro.cleaker.me`, `dog.cleaker.me`, and `犬.cleaker.me` can be views over 
 
 It asks:
 
-"What are the stable relations, and how are communities linking them?"
+**"What are the stable relations, and how are communities linking them?"**
 
 That is why shared meaning in `.me` is:
 

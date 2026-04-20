@@ -13,8 +13,9 @@ import {
   parseTransformSelector,
 } from "./utils.js";
 
-function getCallerScope(self: MEKernelLike): string | null {
+function getCallerScope(self: MEKernelLike): string | null | undefined {
   const value = (self as any)._currentCallerScope;
+  if (value === undefined) return undefined;
   return typeof value === "string" && value.length > 0 ? value : null;
 }
 
@@ -25,7 +26,12 @@ type StealthMetaCarrier = {
   };
 };
 
-function hasStealthBarrier(self: MEKernelLike, path: SemanticPath, callerScope: string | null = getCallerScope(self)): boolean {
+function hasStealthBarrier(
+  self: MEKernelLike,
+  path: SemanticPath,
+  callerScope: string | null | undefined = getCallerScope(self),
+): boolean {
+  if (callerScope === undefined) return false;
   for (let i = path.length; i > 0; i--) {
     const ancestorKey = path.slice(0, i).join(".");
     const localSecret = self.localSecrets[ancestorKey];

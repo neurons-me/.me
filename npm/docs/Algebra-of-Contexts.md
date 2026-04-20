@@ -1,10 +1,12 @@
-# Space Algebra
+# Algebra of Contexts
+
+###### Set Law Applied to Context
 
 `.me` thinks in **spaces**.
 
 Not schemas. Not tables. Not object classes.
 
-A **space** is a region of meaning that can contain other spaces.
+A **space** is a region of meaning **(context)** that can contain other spaces.
 
 Everything else follows from set laws.
 
@@ -43,7 +45,7 @@ Examples:
 - `ana`
 - `family.photos`
 
-In protocol form:
+**In protocol form:**
 
 ```txt
 me://self:read/profile

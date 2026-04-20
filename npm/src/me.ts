@@ -1069,7 +1069,8 @@ export class ME {
     return Core.collectFilteredScopes(this as unknown as MEKernelLike, path);
   }
 
-  private isStealthBlocked(path: SemanticPath, callerScope: string | null): boolean {
+  private isStealthBlocked(path: SemanticPath, callerScope: string | null | undefined): boolean {
+    if (callerScope === undefined) return false;
     const normalized = Utils.normalizeSelectorPath(path);
     for (let i = normalized.length; i > 0; i--) {
       const ancestorKey = normalized.slice(0, i).join(".");
@@ -1082,10 +1083,7 @@ export class ME {
   }
 
   private readPath(path: SemanticPath): any {
-    const callerScope =
-      this._currentCallerScope !== undefined
-        ? this._currentCallerScope
-        : (this._ownerScope ?? null);
+    const callerScope = this._currentCallerScope;
     const normalized = Utils.normalizeSelectorPath(path);
     if (this.isStealthBlocked(normalized, callerScope)) {
       return undefined;

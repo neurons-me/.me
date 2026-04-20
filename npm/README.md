@@ -2,8 +2,8 @@
   <source media="(prefers-color-scheme: dark)" srcset="https://res.cloudinary.com/dkwnxf6gm/image/upload/v1769890772/this.me.png" />
   <img src="https://res.cloudinary.com/dkwnxf6gm/image/upload/v1761149332/this.me-removebg-preview_2_j1eoiy.png" alt=".me Logo" width="144" />
 </picture>
-# .me
 
+# .me
 ##### **100k vectors · 3.32s search · recall 1.0 · fully encrypted · runs local**
 
 Your personal semantic kernel - **own your knowledge** graph, your way: agents, notes, relationships, wallet, groups, secrets — all in one reactive tree.
@@ -25,7 +25,7 @@ import ME from "this.me";
 
 const me = new ME();
 
-me["@"]("jabellae");                    // Your digital identity
+me["@"]("jabellae");// Your digital identity
 
 // Public profile
 me.profile.name("José Abella");
@@ -53,12 +53,12 @@ me.groups.vancouver["_"]("group-key-2026");
 me.groups.vancouver.messages[0].from("jabellae");
 me.groups.vancouver.messages[0].text("Who is bringing the car?");
 
-console.log(me("profile.name"));                  // "José Abella"
-console.log(me("friends.ana.isAdult"));           // true
-console.log(me("friends[age >= 18].name"));       // { ana: "Ana", pablo: "Pablo" }
-console.log(me("wallet"));                        // undefined
-console.log(me("wallet.balance"));                // 12480
-console.log(me("groups.vancouver"));              // undefined
+console.log(me("profile.name")); // "José Abella"
+console.log(me("friends.ana.isAdult")); // true
+console.log(me("friends[age >= 18].name")); // { ana: "Ana", pablo: "Pablo" }
+console.log(me("wallet")); // undefined
+console.log(me("wallet.balance")); // 12480
+console.log(me("groups.vancouver")); // undefined
 console.log(me("groups.vancouver.messages[0].text"));
 console.log(me.explain("friends.ana.isAdult"));
 ```
@@ -81,7 +81,6 @@ console.log(me.explain("friends.ana.isAdult"));
 - **Audit everything** — `me.explain("path")` shows how any value was computed.
 
 ## The primitives
-
 **.me** ships 3 things **cloud architecture can't:**
 
 1. **Structural privacy** — Secrets are holes in the graph, not flags on rows. Access control is topology, not policy.
@@ -91,7 +90,6 @@ console.log(me.explain("friends.ana.isAdult"));
 > **Local compute makes memory an OS primitive. Cloud makes it a service.**
 
 ## Structural Privacy
-
 Secret scopes are structural in `.me`. When you mark a branch with `["_"]`, the root stays stealth, descendants remain usable, and guest callers do not inherit the owner scope by accident.
 
 ```ts
@@ -103,8 +101,8 @@ me.finance["_"]("k-2026");
 me.finance.fuel_price(24.5);
 me.finance.currency("USD");
 
-console.log(me("finance.fuel_price"));          // 24.5   owner/default scope
-console.log(me.as(null)("finance"));            // undefined
+console.log(me("finance.fuel_price")); // 24.5   owner/default scope
+console.log(me.as(null)("finance")); // undefined
 console.log(me.as(null)("finance.fuel_price")); // undefined
 ```
 
@@ -224,11 +222,11 @@ me.groups.vancouver.members.count(4);
 me.groups.vancouver.messages[0].from("jabellae");
 me.groups.vancouver.messages[0].text("Who is bringing the car?");
 
-console.log(me("friends.ana.isAdult"));             // true
-console.log(me("friends[age >= 18].name"));         // { ana: "Ana", pablo: "Pablo" }
-console.log(me("wallet"));                          // undefined
-console.log(me("wallet.balance"));                  // 12480
-console.log(me("groups.vancouver"));                // undefined
+console.log(me("friends.ana.isAdult"));  // true
+console.log(me("friends[age >= 18].name")); // { ana: "Ana", pablo: "Pablo" }
+console.log(me("wallet")); // undefined
+console.log(me("wallet.balance")); // 12480
+console.log(me("groups.vancouver")); // undefined
 console.log(me("groups.vancouver.messages[0].text"));
 console.log(me.explain("friends.ana.isAdult"));
 ```
@@ -253,7 +251,6 @@ _“‘Realistic’ = default UX (coherent), ‘hostile’ = worst-case/adversar
 - **Phase 3 closed ✅ ** for realistic chunk-coherent corpora with `23.2x` speedup over exact scan at `100k`.
 
 ## The Ecosystem
-
 - **.me** — semantic kernel (this package)
 - **cleaker** — **Who are you, relative to where you are?**
 - **monad.ai** — local daemon.

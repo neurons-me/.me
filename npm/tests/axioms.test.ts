@@ -279,6 +279,68 @@ const axioms: AxiomCase[] = [
     },
   },
   {
+    id: "A3b",
+    title: "Nested secret owner reads remain accessible",
+    challenge: "Can the default owner still read through nested secret scopes without being blocked by ancestor stealth gates?",
+    resolution: "Owner/default reads bypass guest stealth gating, so deeper secret scopes remain readable when the runtime owns the full tree.",
+    checks: [
+      "Ancestor secret root remains stealth",
+      "Nested secret root remains stealth",
+      "Leaf under nested secret stays readable for default owner",
+      "Guest caller remains blocked",
+    ],
+    run(me) {
+      me["@"]("jabellae");
+      me.root["_"]("alpha");
+      me.root.child["_"]("beta");
+      me.root.child.leaf("x");
+      dumpIfVerbose(me, "A3b");
+
+      assertStealthRoot(me, "root");
+      assertStealthRoot(me, "root.child");
+      assert.equal(me("root.child.leaf"), "x");
+      assert.equal(me.as(null)("root.child.leaf"), undefined);
+    },
+    proofs(me) {
+      return [
+        { label: "me('root')", expected: undefined, actual: me("root") },
+        { label: "me('root.child')", expected: undefined, actual: me("root.child") },
+        { label: "me('root.child.leaf')", expected: "x", actual: me("root.child.leaf") },
+        { label: "me.as(null)('root.child.leaf')", expected: undefined, actual: me.as(null)("root.child.leaf") },
+      ];
+    },
+  },
+  {
+    id: "A3c",
+    title: "Nested secret plus same-node noise stays readable for owner",
+    challenge: "Can a nested secret scope survive a same-node noise reset without the owner losing access to fresh writes?",
+    resolution: "Noise changes effective lineage, but it must not trip owner stealth gating for descendants of the nested secret scope.",
+    checks: [
+      "Nested secret root remains stealth",
+      "Leaf written after same-node noise reset is readable",
+      "Guest caller remains blocked",
+    ],
+    run(me) {
+      me["@"]("jabellae");
+      me.root["_"]("alpha");
+      me.root.child["_"]("beta");
+      me.root.child["~"]("noise");
+      me.root.child.leaf("x");
+      dumpIfVerbose(me, "A3c");
+
+      assertStealthRoot(me, "root.child");
+      assert.equal(me("root.child.leaf"), "x");
+      assert.equal(me.as(null)("root.child.leaf"), undefined);
+    },
+    proofs(me) {
+      return [
+        { label: "me('root.child')", expected: undefined, actual: me("root.child") },
+        { label: "me('root.child.leaf')", expected: "x", actual: me("root.child.leaf") },
+        { label: "me.as(null)('root.child.leaf')", expected: undefined, actual: me.as(null)("root.child.leaf") },
+      ];
+    },
+  },
+  {
     id: "A4",
     title: "'__' pointer is structural and traversable",
     challenge: "Can references remain first-class data while still enabling deep dereference reads?",
