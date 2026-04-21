@@ -1,6 +1,6 @@
 # Namespace Resolution Protocol v0.1
-**neurons.me / suiGn**
-**Status:** Draft — Working Document
+**neurons.me  /  suiGn **
+** Status:** Draft — Working Document
 **License:** CC0 1.0 Universal — Public Domain
 
 ---
