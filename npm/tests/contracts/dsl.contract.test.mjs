@@ -28,7 +28,7 @@ test("boot + basic set/get", () => {
   assert.equal(me("profile.age"), 30);
 });
 
-test("constructor bootstrap preserves callable proxy after rehydrate", () => {
+test("constructor bootstrap preserves callable proxy after hydrate", () => {
   const me = new ME();
   me.profile.name("Bootstrap");
   me.wallet["_"]("ctor-steel-door");
@@ -40,7 +40,7 @@ test("constructor bootstrap preserves callable proxy after rehydrate", () => {
   assert.equal(typeof restored, "function");
   assert.equal(typeof restored["!"].inspect, "function");
 
-  restored.rehydrate(snapshot);
+  restored.hydrate(snapshot);
 
   assert.equal(restored("profile.name"), "Bootstrap");
   assert.equal(restored("wallet.balance"), 7);
@@ -111,7 +111,7 @@ test("snapshot import accepts both public and legacy memory payloads", () => {
 
   const publicSnapshot = me.exportSnapshot();
   const publicRestored = new ME();
-  publicRestored.importSnapshot(publicSnapshot);
+  publicRestored.hydrate(publicSnapshot);
 
   assert.equal(publicRestored("profile.name"), "Legacy");
   assert.equal(publicRestored("vault"), undefined);
@@ -222,14 +222,16 @@ test("runtime escape plane exposes reflective kernel helpers", () => {
   assert.equal(me["!"].methods.inspect.path, "inspect");
   assert.equal(typeof me["!"].methods.inspect.docs, "string");
   assert.equal(me["!"].runtime.getRecomputeMode(), "eager");
+  assert.equal(me["!"].methods.hydrate.path, "snapshot.hydrate");
 
   me["!"].runtime.setRecomputeMode("lazy");
   assert.equal(me["!"].runtime.getRecomputeMode(), "lazy");
 
   const snapshot = me["!"].snapshot.export();
   const me2 = new ME();
-  me2["!"].snapshot.import(snapshot);
+  me2["!"].snapshot.hydrate(snapshot);
   assert.equal(me2("profile.name"), "Abella");
+  assert.equal(typeof me2["!"].snapshot.rehydrate, "function");
 });
 
 test("explicit guest scope does not collapse back to owner scope", () => {

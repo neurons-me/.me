@@ -135,6 +135,7 @@ export {
 export {
   getRecomputeMode,
   handleKernelExport,
+  handleKernelHydrate,
   handleKernelGet,
   handleKernelImport,
   handleKernelRead,
@@ -168,6 +169,7 @@ export {
 } from "./core-keyspace.js";
 export {
   exportSnapshot,
+  hydrate,
   importSnapshot,
   rehydrate,
 } from "./core-snapshot.js";

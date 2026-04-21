@@ -138,7 +138,7 @@ import ME from "this.me";
 
 const snapshot = me.exportSnapshot();
 const me3 = new ME();
-me3.rehydrate(snapshot);
+me3.hydrate(snapshot);
 ```
 
 Preserves public state, encrypted branches, secrets, and noises exactly.

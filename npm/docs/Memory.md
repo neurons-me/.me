@@ -13,7 +13,6 @@ This public `Memory` shape is **intentionally redacted** — it never exposes in
 If you need the full internal log (for kernel debugging), you can access `me._memories`. Note that this is **not** part of the public API.
 
 ### Preferred APIs
-
 - Read public memories: `me.memories` or `me.inspect().memories`
 - Export safe state: `me.exportSnapshot()`
 - Restore / replay: `me.replayMemories(memories)`
@@ -55,6 +54,15 @@ me2.replayMemories(snapshot.memories); // Resets + rebuilds the full runtime
 - me.exportSnapshot() — Portable, redacted state sharing
 - me.replayMemories() — Full restore, cloning, or test setup
 - me._memories — Only when debugging the internal kernel
+
+Summary Table
+README Claim	API/Code Status
+me.memories	Present, redacted, public
+me.inspect()	Exposes memories, safe
+me.exportSnapshot().memories	Redacted/safe
+me._memories	Present, internal only
+Internal field hidden	Yes, effectiveSecret removed
+replayMemories()/importSnapshot()	Supported and resets from log
 
 ------
 

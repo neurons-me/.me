@@ -8,7 +8,7 @@ process.on("uncaughtException", e => {
   process.exit(1);
 });
 
-import * as ThisMeModule from "../dist/me.es.js";
+import * as ThisMeModule from "../../dist/me.es.js";
 import fs from "node:fs";
 
 console.log("IMPORTS OK");

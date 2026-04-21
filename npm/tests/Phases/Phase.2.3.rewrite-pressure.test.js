@@ -1,4 +1,4 @@
-import * as ThisMeModule from "../dist/me.es.js";
+import * as ThisMeModule from "../../dist/me.es.js";
 import fs from "node:fs";
 
 const ME = ThisMeModule.default;

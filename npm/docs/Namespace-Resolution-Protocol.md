@@ -31,7 +31,6 @@ The NRP specifies the topological layer. The semantic layer is already specified
 ---
 
 ## 1. Definitions
-
 **Namespace** — A named semantic domain. Represented as a human-readable label (e.g., `jabellae.cleaker.me`). A namespace is owned by whoever holds its root key material. There is no central authority that grants or revokes a namespace.
 
 **Surface** — A physical or logical runtime context that can hold a `.me` kernel instance and participate in the mesh. Examples: an iPhone app, a MacBook daemon, a server process, a browser tab. A surface has a name within a namespace.

@@ -739,6 +739,7 @@ export interface MEKernelLike extends Record<string, any> {
   storeWrappedKey(keyId: string, envelope: WrappedSecretV1, options?: { recipientKeyId?: string }): this;
   execute(rawTarget: string | MeTargetAst, body?: any): any;
   exportSnapshot(): MESnapshot;
+  hydrate(snapshot: MESnapshotInput): void;
   importSnapshot(snapshot: MESnapshotInput): void;
   rehydrate(snapshot: MESnapshotInput): void;
   learn(memory: unknown): void;

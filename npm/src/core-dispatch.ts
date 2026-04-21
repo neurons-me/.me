@@ -34,6 +34,9 @@ export function handleKernelTarget(
     case "import":
       if (body === undefined) throw new Error("kernel:import requires a payload.");
       return handleKernelImport(self, key, body);
+    case "hydrate":
+      if (body === undefined) throw new Error("kernel:hydrate requires a payload.");
+      return handleKernelHydrate(self, key, body);
     case "replay":
       if (body === undefined) throw new Error("kernel:replay requires a payload.");
       return handleKernelReplay(self, key, body);
@@ -89,6 +92,16 @@ export function handleKernelImport(self: MEKernelLike, key: string, body: any): 
   }
 }
 
+export function handleKernelHydrate(self: MEKernelLike, key: string, body: any): any {
+  switch (key) {
+    case "snapshot":
+      self.hydrate(body ?? {});
+      return self.exportSnapshot();
+    default:
+      throw new Error(`Unsupported kernel:hydrate path: ${key || "<root>"}`);
+  }
+}
+
 export function handleKernelReplay(self: MEKernelLike, key: string, body: any): any {
   switch (key) {
     case "memory":
@@ -103,13 +116,7 @@ export function handleKernelReplay(self: MEKernelLike, key: string, body: any): 
 }
 
 export function handleKernelRehydrate(self: MEKernelLike, key: string, body: any): any {
-  switch (key) {
-    case "snapshot":
-      self.rehydrate(body ?? {});
-      return self.exportSnapshot();
-    default:
-      throw new Error(`Unsupported kernel:rehydrate path: ${key || "<root>"}`);
-  }
+  return handleKernelHydrate(self, key, body);
 }
 
 export function handleKernelGet(self: MEKernelLike, key: string): any {

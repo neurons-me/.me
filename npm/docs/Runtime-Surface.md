@@ -34,6 +34,7 @@ This is the meta surface — an escape hatch that gives you direct access to the
 me["!"].inspect()
 me["!"].explain("wallet.balance")
 me["!"].snapshot.export()
+me["!"].snapshot.hydrate(snapshot)
 me["!"].runtime.setRecomputeMode("lazy")
 ```
 
@@ -59,6 +60,7 @@ These are the explicit methods and properties documented in the generated API:
 - `inspect()`
 - `explain()`
 - `exportSnapshot()`
+- `hydrate()`
 - `importSnapshot()`
 - `rehydrate()`
 - `learn()`

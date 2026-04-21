@@ -50,10 +50,15 @@ console.log("   • kernel:get/set recompute.mode controls the live kernel state
 
 console.log("\n--- Step 3: snapshot import and memory replay reconstruct state deterministically ---");
 const imported = new ME();
-imported.execute("me://kernel:import/snapshot", exportedSnapshot);
+imported.execute("me://kernel:hydrate/snapshot", exportedSnapshot);
 assert.equal(imported("profile.name"), "Abella");
 assert.equal(imported("profile.city"), "Veracruz");
-console.log("   • kernel:import/snapshot rehydrated a fresh kernel");
+console.log("   • kernel:hydrate/snapshot restored a fresh kernel");
+
+const legacyImported = new ME();
+legacyImported.execute("me://kernel:import/snapshot", exportedSnapshot);
+assert.equal(legacyImported("profile.name"), "Abella");
+console.log("   • kernel:import/snapshot remains supported as a compatibility alias");
 
 const replayed = new ME();
 replayed.execute("me://kernel:replay/memory", memoryLog);

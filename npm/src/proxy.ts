@@ -89,7 +89,7 @@ export function buildRuntimeSurface(self: MEKernelLike): Record<string, any> {
       ),
     },
     snapshot: {
-      docs: "Snapshot import/export helpers for full kernel state.",
+      docs: "Snapshot import/export helpers for full kernel state. Prefer hydrate() to restore a saved kernel.",
       export: describeRuntimeMethod(
         self,
         "snapshot.export",
@@ -97,18 +97,25 @@ export function buildRuntimeSurface(self: MEKernelLike): Record<string, any> {
         "Export the current kernel snapshot with public memories plus secrets, noises, encrypted branches, key spaces, and operators.",
         "snapshot.export(): Snapshot",
       ),
+      hydrate: describeRuntimeMethod(
+        self,
+        "snapshot.hydrate",
+        (snapshot: MESnapshotInput) => self.hydrate(snapshot),
+        "Primary restore API. Bring a saved kernel snapshot back to life in the current runtime.",
+        "snapshot.hydrate(snapshot: Snapshot): void",
+      ),
       import: describeRuntimeMethod(
         self,
         "snapshot.import",
         (snapshot: MESnapshotInput) => self.importSnapshot(snapshot),
-        "Import a full snapshot into the current kernel and rebuild runtime state.",
+        "Compatibility alias for snapshot.hydrate() that preserves the older import-oriented naming.",
         "snapshot.import(snapshot: Snapshot): void",
       ),
       rehydrate: describeRuntimeMethod(
         self,
         "snapshot.rehydrate",
         (snapshot: MESnapshotInput) => self.rehydrate(snapshot),
-        "Alias for importSnapshot that emphasizes bringing a kernel back to life from a persisted snapshot.",
+        "Backward-compatible alias for snapshot.hydrate() with the older rehydrate naming.",
         "snapshot.rehydrate(snapshot: Snapshot): void",
       ),
     },
@@ -134,6 +141,7 @@ export function buildRuntimeSurface(self: MEKernelLike): Record<string, any> {
       inspect: null,
       explain: null,
       exportSnapshot: null,
+      hydrate: null,
       importSnapshot: null,
       rehydrate: null,
       replayMemories: null,
@@ -159,6 +167,7 @@ export function resolveRuntimeValue(self: MEKernelLike, path: string[]): unknown
   surface.methods.inspect = surface.inspect;
   surface.methods.explain = surface.explain;
   surface.methods.exportSnapshot = surface.snapshot.export;
+  surface.methods.hydrate = surface.snapshot.hydrate;
   surface.methods.importSnapshot = surface.snapshot.import;
   surface.methods.rehydrate = surface.snapshot.rehydrate;
   surface.methods.replayMemories = surface.memories.replay;

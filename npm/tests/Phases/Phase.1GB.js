@@ -1,4 +1,4 @@
-import * as ThisMeModule from "../dist/me.es.js";
+import * as ThisMeModule from "../../dist/me.es.js";
 
 const ME = ThisMeModule.default;
 const commitIndexedBatchExport = ThisMeModule.commitIndexedBatch;

@@ -26,7 +26,7 @@ export function exportSnapshot(self: MEKernelLike): MESnapshot {
   });
 }
 
-export function importSnapshot(self: MEKernelLike, snapshot: MESnapshotInput): void {
+export function hydrate(self: MEKernelLike, snapshot: MESnapshotInput): void {
   const data = cloneValue(snapshot ?? {});
   self._memories = Array.isArray(data.memories)
     ? toKernelMemories(data.memories)
@@ -57,6 +57,10 @@ export function importSnapshot(self: MEKernelLike, snapshot: MESnapshotInput): v
   self.rebuildIndex();
 }
 
+export function importSnapshot(self: MEKernelLike, snapshot: MESnapshotInput): void {
+  hydrate(self, snapshot);
+}
+
 export function rehydrate(self: MEKernelLike, snapshot: MESnapshotInput): void {
-  self.importSnapshot(snapshot);
+  hydrate(self, snapshot);
 }

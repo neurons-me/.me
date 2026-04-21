@@ -119,7 +119,7 @@ Secret scopes remain compatible with state portability:
 
 - `inspect()` shows public index + scope metadata
 - `exportSnapshot()` includes encrypted branch storage
-- `rehydrate()` restores encrypted state deterministically
+- `hydrate()` restores encrypted state deterministically
 
 ## Practical Rulebook
 

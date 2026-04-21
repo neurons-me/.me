@@ -66,7 +66,6 @@ console.log(me.explain("friends.ana.isAdult"));
 `["[i]"]["="]` = “for every i, derive”. No loops, no re-runs, **O(k)** updates.
 
 ## What is .me?
-
 - **Own all structures** (profile, contacts, money, chats) as code
 - No cloud or vendor lock
 - Privacy by default & **explainability built-in**
@@ -74,7 +73,6 @@ console.log(me.explain("friends.ana.isAdult"));
 - Compose logic, not tables — everything is reactivity and references
 
 ## Why .me?
-
 - **No schemas** — if you can imagine a path, it exists.
 - **Define once, use everywhere** — your profile, wallet, chats, and logic as one reactive tree.
 - **No cloud, no vendor lock** — 100% local, end-to-end encrypted.
@@ -231,6 +229,12 @@ console.log(me("groups.vancouver.messages[0].text"));
 console.log(me.explain("friends.ana.isAdult"));
 ```
 
+```ts
+const snapshot = me.exportSnapshot();
+const restored = new ME();
+restored.hydrate(snapshot);
+```
+
 [Read the Docs →](https://neurons-me.github.io/.me/npm/docs/)
 
 # Performance
@@ -264,6 +268,21 @@ _“‘Realistic’ = default UX (coherent), ‘hostile’ = worst-case/adversar
 - **cleaker** — **Who are you, relative to where you are?**
 - **monad.ai** — local daemon.
 - **NetGet** — Build, Expose, Route — Effortlessly.
+
+## Tests and Benchmarks
+
+* npm run test:phase2
+* npm run bench:phase2
+* npm run phase2
+* npm run test:phase3
+* npm run bench:phase3
+* npm run phase3
+
+**Plus:**
+
+* npm run test → runs all tests
+* npm run bench → runs all benchmarks
+* npm run phases → runs phase2 y runs phase3
 
 ---
 

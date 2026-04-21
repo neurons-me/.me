@@ -1,5 +1,5 @@
 //.me/npm/tests/Fase.2.2.write-pressure.test.js
-import * as ThisMeModule from "../dist/me.es.js";
+import * as ThisMeModule from "../../dist/me.es.js";
 import fs from "node:fs";
 
 const ME = ThisMeModule.default;

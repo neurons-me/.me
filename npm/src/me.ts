@@ -350,8 +350,17 @@ export class ME {
   }
 
   /**
+   * Hydrate the runtime from a snapshot payload.
+   * This is the primary restore API for bringing a saved kernel back to life in memory.
+   */
+  hydrate(snapshot: MESnapshotInput): void {
+    return Core.hydrate(this as unknown as MEKernelLike, snapshot);
+  }
+
+  /**
    * Import a snapshot into the current runtime.
    * Accepts both redacted public snapshots and legacy/internal payloads.
+   * Prefer `hydrate()` in user-facing code.
    */
   importSnapshot(snapshot: MESnapshotInput): void {
     return Core.importSnapshot(this as unknown as MEKernelLike, snapshot);
@@ -359,7 +368,7 @@ export class ME {
 
   /**
    * Rehydrate the runtime from a snapshot payload.
-   * This is a hydration-oriented alias over the import flow.
+   * Backward-compatible alias for `hydrate()`.
    */
   rehydrate(snapshot: MESnapshotInput): void {
     return Core.rehydrate(this as unknown as MEKernelLike, snapshot);
