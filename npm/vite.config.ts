@@ -36,6 +36,7 @@ export default defineConfig({
     },
     rollupOptions: {
       output: {
+        exports: 'named',
         globals: {
           // Example: 'vue': 'Vue'
         },

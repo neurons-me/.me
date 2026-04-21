@@ -11,3 +11,5 @@ tailwind.config.mjs
 vite.config.js
 stats.html
 docs
+typedocs
+tests

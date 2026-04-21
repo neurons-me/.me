@@ -4,7 +4,10 @@
 </picture>
 
 # .me
-##### **100k vectors · 3.32s search · recall 1.0 · fully encrypted · runs local**
+**0.001ms p50** write enqueue
+**0.003ms p50** cascadeLazy 10-dep flush
+**0.137ms p99** cascadeLazy 10-dep flush
+**~700 vps** sustained write with 1536-dim vectors
 
 Your personal semantic kernel - **own your knowledge** graph, your way: agents, notes, relationships, wallet, groups, secrets — all in one reactive tree.
 

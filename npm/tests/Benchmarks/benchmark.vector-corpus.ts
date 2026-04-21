@@ -1,5 +1,5 @@
+// @ts-expect-error generated dist file has no local declarations during typecheck
 import * as ThisMeModule from "../../dist/me.es.js";
-
 const ME = ThisMeModule.default;
 const commitIndexedBatchExport = ThisMeModule.commitIndexedBatch;
 

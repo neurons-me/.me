@@ -16,6 +16,7 @@
 // - ergonomic sugar like `.as(null)` can be layered on top afterward
 import { ME } from "./src/me.ts";
 import { DiskStore, MemoryStore } from "./src/instance-store.ts";
+export { createMe, write, define, subscribe } from "./src/kernel/cascade.ts";
 
 const MERuntime = ME as typeof ME & {
   DiskStore: typeof DiskStore;
