@@ -6,7 +6,7 @@
 
 In the current checkout, that locality is implemented by registering derivation references in `refSubscribers`, invalidating from the changed path, and recording recompute waves that `explain()` can surface. Secret branches are stored off the public index, their roots stay stealth, and derivation traces can expose masked origins without leaking secret values.
 
-The repo passed the full `fire.test.ts` suite, passed all demos, and cleanly demonstrates small-`k` reactive behavior in `City_Scale` and `Hemisphere_1M`. It also exposes real costs and real gaps: secret paths are much slower than public ones, `explain()` is not free, `k=100000` is expensive, and `benchmark.1` is not a valid proof point in the current checkout.
+The repo passed the full `fire.test.ts` suite, passed all demos, and cleanly demonstrates small-`k` reactive behavior in `benchmark.1` through `benchmark.4`, `City_Scale`, and `Hemisphere_1M`. It also exposes real costs and real gaps: secret paths are much slower than public ones, `explain()` is not free, and `k=100000` is expensive when the dependency frontier itself becomes large.
 
 ## 2. The Axioms
 
@@ -24,10 +24,10 @@ All numbers below came from the April 21, 2026 local runs of `node tests/fire.te
 | Item | Actual run | What it showed | Caveat |
 |---|---:|---|---|
 | `phases` | `11/11` passed; Phase 8 setup `189ms`, global recompute `46ms`, local recompute `0ms` | Phases 0-8 are operational | Phase 8 numbers are a smoke signal, not a benchmark harness |
-| `benchmark.1` | `N=5000`, `0.0187ms`, reported `steps=2`, `result=50` | File reports constant dependency inputs per node | Not a valid small-`k` proof in this checkout; post-mutation result stayed at the pre-mutation value |
-| `benchmark.2` | `N=10..10000`, `0.0168ms-0.1346ms`, reported `effort=2` | More of the same shape as `benchmark.1` | Also reports a fixed "effort" field, not recompute-wave `k` |
-| `benchmark.3` | `N=10..10000`, `0.0150ms-0.1496ms`, reported `effort=2` | Progress-logged version of the same profile | Same caveat as `benchmark.2` |
-| `benchmark.4` | Deep `10.4812ms`, wide `20.9804ms`, financial `125.5046ms` | Deep nesting, wide broadcast, and financial formula scenarios all reacted | Labels `dependsOn.length` as `k`; that is not recompute-wave size |
+| `benchmark.1` | `N=5000`, `0.0661ms`, `k=2`, `result=100`, `overThreshold=true` | Local-lineage recompute stays flat as `N` grows | Synthetic local proof; O(N) baseline is estimated, not measured in-file |
+| `benchmark.2` | `N=10..10000`, `0.0485ms-0.2295ms`, `k=2`, `result=100`, `overThreshold=true` | CSV profile of the same corrected local-lineage contract | Consistency check more than a distinct benchmark shape |
+| `benchmark.3` | `N=10..10000`, `0.0583ms-0.1154ms`, `k=2`, `result=100`, `overThreshold=true` | Progress-logged profile with the same stale-value correctness gate | Still synthetic; no direct O(N) scan baseline |
+| `benchmark.4` | Deep `14.4675ms`, wide `0.1338ms`, financial `0.2403ms`, all `k=2` | Deep nesting, wide datasets, and financial logic all recompute through real local waves | The deep case pays path-depth cost; these are locality proofs, not scan-vs-reactive comparisons |
 | `benchmark.5` | `p50=0.00746ms`, `p95=0.01396ms`, `p99=0.04304ms`, `max=0.62629ms`, drift `-44.47%` | Sustained mutation throughput stayed stable | Good throughput benchmark, not an energy proof by itself |
 | `benchmark.6` | Fanout `10..5000`, reported `k=2`, `p95=0.0076ms-0.0202ms` | Fanout curve stays low-latency in this harness | The file hard-codes the small-`k` story rather than reading recompute-wave metadata |
 | `benchmark.7` | `100/1000/5000` nodes, steady avg `0.0211/0.0071/0.0117ms` | Cold vs warm vs steady-state separated | Useful profiling split, not a semantic comparison baseline |
@@ -50,7 +50,7 @@ Calibration used here:
 
 | Scenario | N | k | k/N ratio | Mutation time | O(N) equivalent | Speedup | Status |
 |---|---:|---:|---:|---:|---:|---:|---|
-| `benchmark.1` | `5000` | reported `2` inputs | `0.04%` | `0.0187ms` | `53.87ms` estimated | not claimable | Disqualified: benchmark reports `dependsOn.length`, and the post-mutation result stayed `50` |
+| `benchmark.1` | `5000` | `2` | `0.04%` | `0.0661ms` | `53.87ms` estimated | `814.98x` estimated | Valid local-lineage proof; scan baseline is calibrated |
 | `City_Scale` | `10000` | `3` | `0.03%` | `0.903ms` | `107.74ms` measured scan | `119.31x` | Valid proof point |
 | `Hemisphere_1M` | `1000000` | `6` | `0.0006%` | `4.346ms` | `10774ms` estimated scan | `2479.06x` estimated | Valid local-lineage proof; scan baseline is calibrated |
 
@@ -76,8 +76,8 @@ What this supports:
 
 ## 6. The Honest Gaps
 
-- `benchmark.1` is not a valid proof of the small-`k` thesis in the current checkout. It reports `dependsOn.length`, not recompute-wave `k`, and its post-mutation read stayed at the pre-mutation value.
-- `benchmark.2`, `benchmark.3`, and `benchmark.4` inherit the same reporting problem: they use fixed dependency-input counts where the energy argument needs actual recompute-wave size.
+- Benchmarks `1` through `4` now measure actual recompute-wave propagation and fail if the selected value goes stale, but only `City_Scale` directly measures an O(N) semantic scan in the same file.
+- `benchmark.2` and `benchmark.3` are now internally correct but still mostly duplicate the local-lineage shape of `benchmark.1`; they are consistency profiles more than new proof classes.
 - `City_Scale` is the only demo that directly measures an O(N) scan cost. `Hemisphere_1M` needs a calibrated scan estimate, not a directly measured one.
 - Setup/allocation is O(N) and must stay separate from mutation-time claims: `City_Scale` setup was `1976.54ms`, `Hemisphere_1M` setup was `21899ms`, and `Root_Fanout_100k` setup was `137451.08ms`.
 - Secret-path and explainability benchmarks are noisy. The full firetest run and isolated reruns produced materially different numbers.

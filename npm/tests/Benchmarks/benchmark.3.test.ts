@@ -1,47 +1,60 @@
 import ME from "this.me";
+import assert from "node:assert/strict";
 
 type CallableMe = InstanceType<typeof ME> & ((expr: string) => unknown);
 
 async function runProfile(n: number) {
   const me = new ME() as CallableMe;
-  
-  // 1. Setup (esto es lo que tarda, estamos creando miles de Proxies)
+
   for (let i = 1; i <= n; i++) {
     me.x[i].value(10);
+    me.x[i].factor(5);
   }
-  
-  me.factor(5);
-  // Definimos la regla broadcast
-  me.x["[i]"]["="]("y", "value * factor");
-  
-  // Warmup: forzamos al Kernel a mapear los cables (Inverted Index)
-  me(`x[${n}].y`); 
 
-  // --- LA PRUEBA DE FUEGO ---
+  me.x["[i]"]["="]("y", "value * factor");
+  me.x["[i]"]["="]("overThreshold", "y >= 100");
+
+  assert.equal(me(`x[${n}].y`), 50);
+  assert.equal(me(`x[${n}].overThreshold`), false);
+
   const start = performance.now();
-  
-  me.factor(10); // Mutación de 1 solo nodo
-  const val = me(`x[${n}].y`); // Verificación de reacción
-  
+  me.x[n].factor(10);
+  const result = me(`x[${n}].y`);
+  const overThreshold = me(`x[${n}].overThreshold`);
   const end = performance.now();
-  const time = (end - start).toFixed(4);
-  
-  return { n, time, effort: 2, result: val };
+
+  const trace = me.explain(`x.${n}.overThreshold`);
+
+  assert.equal(result, 100);
+  assert.equal(overThreshold, true);
+  assert.equal(trace.expr, "y >= 100");
+  assert.equal(trace.meta?.sourcePath, `x.${n}.factor`);
+  assert.equal(trace.meta?.k, 2);
+  assert.deepEqual(trace.meta?.recomputed, [
+    `x.${n}.y`,
+    `x.${n}.overThreshold`,
+  ]);
+
+  return {
+    n,
+    time: (end - start).toFixed(4),
+    k: trace.meta?.k ?? 0,
+    result,
+    overThreshold,
+  };
 }
 
 async function start() {
   const sizes = [10, 100, 1000, 5000, 10000];
-  console.log("n,time_ms,effort_steps,status");
+  console.log("n,time_ms,wave_k,result,over_threshold,status");
 
   for (const n of sizes) {
-    // Mensaje de progreso para que no pienses que se trabó
-    process.stderr.write(`> Procesando N=${n}... `); 
-    
+    process.stderr.write(`> Procesando N=${n}... `);
     const r = await runProfile(n);
-    
-    process.stderr.write(`Hecho.\n`);
-    console.log(`${r.n},${r.time},${r.effort},OK`);
+    process.stderr.write("Hecho.\n");
+    console.log(`${r.n},${r.time},${r.k},${r.result},${r.overThreshold},OK`);
   }
+
   console.log("\n--- Benchmark Finalizado ---");
 }
 

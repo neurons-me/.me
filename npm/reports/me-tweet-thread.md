@@ -12,4 +12,4 @@
 
 6. The `Robots_Contexts` demo shows the semantic side of the thesis. One shared object, three robots, three different truths, no object copy. Meaning is path-local. Warehouse, hospital, and street contexts derive different actions from the same signal, and `explain()` shows why each robot acted.
 
-7. One benchmark still needs fixing: `benchmark.1` currently reports `dependsOn.length`, not recompute-wave `k`, and its post-mutation result stayed at the pre-mutation value. So the clean proof points today are `City_Scale`, `Hemisphere_1M`, and the large-`k` counterexample. The defensible thesis is still the same: make comprehension as cheap as the signal by spending work on `k`, not on `N`.
+7. Benchmarks `1` through `4` now all read `trace.meta.k` and fail if a selected value goes stale. The honest counterexample is still `Root_Fanout_100k`: `k=100000`, one mutation took `21.283s`. That is the whole thesis in one line: `.me` wins when `k << N`, because comprehension stays as cheap as the signal.

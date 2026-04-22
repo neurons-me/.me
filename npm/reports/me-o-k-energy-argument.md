@@ -42,27 +42,28 @@ Those are real caveats, not exceptions to hide.
 
 ### `benchmark.1`
 
-This is not a valid proof point in the current checkout.
+`benchmark.1` is now a valid local-lineage proof point.
 
-What the file actually does:
+What the corrected file does:
 
-- reports `trace.meta.dependsOn.length` as `steps`
-- mutates `master_switch`
-- reads `collection[n].result`
+- mutates a node-local dependency, not a shared master path
+- reads `k` from `trace.meta.k`
+- asserts the selected value changes from `50` to `100`
+- asserts `overThreshold` flips from `false` to `true`
+- asserts the recompute wave is exactly `["...result", "...overThreshold"]`
 
-What the current run showed:
+What the current firetest run showed:
 
-- at `N=5000`, reported time `0.0187ms`
-- reported `steps=2`
-- returned `result=50`
+- at `N=5000`, mutation time `0.0661ms`
+- recompute wave `k=2`
+- selected result `100`
 
-Why that disqualifies it:
+Using the `City_Scale` scan as calibration:
 
-- the pre-mutation value was already `50`
-- after changing `master_switch` from `5` to `10`, the selected result should have been `100`
-- `explain()` on the selected node did not expose a recompute wave `k`
+- estimated `O(N)` scan cost at `N=5000`: `53.87ms`
+- estimated speedup: `53.87 / 0.0661 = 814.98x`
 
-Conclusion: `benchmark.1` does not currently prove the small-`k` energy thesis.
+Conclusion: `benchmark.1` now supports the small-`k` thesis as a synthetic local-lineage benchmark, with a calibrated rather than directly measured scan baseline.
 
 ### `City_Scale`
 
@@ -113,7 +114,7 @@ Conclusion: the mutation-time locality claim holds at one million nodes, but the
 
 | Scenario | N | k | k/N ratio | Mutation time | O(N) scan cost | Speedup | Evidence status |
 |---|---:|---:|---:|---:|---:|---:|---|
-| `benchmark.1` | `5000` | reported `2` inputs | `0.04%` | `0.0187ms` | `53.87ms` estimated | not claimable | Invalid proof point in current checkout |
+| `benchmark.1` | `5000` | `2` | `0.04%` | `0.0661ms` | `53.87ms` estimated | `814.98x` estimated | Valid local synthetic proof |
 | `City_Scale` | `10000` | `3` | `0.03%` | `0.903ms` | `107.74ms` measured | `119.31x` | Clean direct evidence |
 | `Hemisphere_1M` | `1000000` | `6` | `0.0006%` | `4.346ms` | `10774ms` estimated | `2479.06x` estimated | Clean locality evidence, calibrated scan baseline |
 
@@ -171,6 +172,13 @@ The observability surface is useful, but it has a measurable budget.
 
 `.me` does not win by definition. It wins when `k << N`.
 
+### Benchmarks 1–4 are now internally consistent, but not identical in evidentiary weight
+
+- Benchmarks `1`, `2`, `3`, and `4` now all read real recompute-wave metadata and fail on stale values.
+- `benchmark.1`, `benchmark.2`, and `benchmark.3` are synthetic local-lineage profiles.
+- `benchmark.4` adds deep-path and wide-dataset scenarios under the same correctness gate.
+- `City_Scale` remains the strongest direct scan-vs-reactive comparison because it measures both in one run.
+
 ## 6. What This Means at Scale
 
 At `N=10000`, `k=3` means `.me` touched `0.03%` of the candidate space.
@@ -184,4 +192,4 @@ That is the strongest defensible version of the claim in the current repo:
 - supported directly by `City_Scale`
 - supported on locality grounds by `Hemisphere_1M`
 - bounded honestly by `Root_Fanout_100k`
-- weakened, not strengthened, by the current state of `benchmark.1`
+- reinforced by corrected benchmarks `1` through `4`, which now measure actual recompute waves instead of declaration shape
