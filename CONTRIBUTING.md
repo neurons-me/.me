@@ -25,5 +25,4 @@ We ship `0.003ms` p50. PRs must keep it fast or make it faster.
 3. One maintainer approval
 
 Let's ship `0.001ms`.
-
 neurons.me

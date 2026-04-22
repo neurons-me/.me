@@ -18,6 +18,7 @@ These tests verify that published artifacts work across module systems.
 - basic semantic write/read works after build.
 - exports are correctly wired in each module format.
 - UMD global export exists and is executable in a sandbox.
+- helper statics remain attached to the runtime export across ESM, CJS, and UMD.
 
 ## Run
 
@@ -32,6 +33,13 @@ or via gate:
 ```bash
 npm run test:prebuild
 ```
+
+Current expected export shape:
+
+- ESM: default export is the `ME` constructor
+- CommonJS: `require("this.me")` returns the `ME` constructor directly
+- UMD: global `Me` is the constructor
+- helper statics such as `createMe`, `write`, `define`, and `subscribe` are attached to that constructor object
 
 ## Release Relevance
 

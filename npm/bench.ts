@@ -48,12 +48,18 @@ import { performance } from 'perf_hooks'
 
 console.log('me:// v0.1.1 Benchmark - 10K nodes, 10 deps cascade\n')
 
+if (global.gc) global.gc()
+const baselineHeap = process.memoryUsage().heapUsed
+
 const k = MeKernel()
 ;(k as any).districts = {}
 
 for(let i = 0; i < 1e4; i++) {
   ;(k as any).districts[i] = { nrp: new Float32Array(128) }
 }
+
+if (global.gc) global.gc()
+const afterAllocHeap = process.memoryUsage().heapUsed
 
 const runs: number[] = []
 for(let i = 0; i < 100; i++) {
@@ -67,7 +73,7 @@ for(let i = 0; i < 100; i++) {
 runs.sort((a, b) => a - b)
 const p50 = runs[49].toFixed(3)
 const p99 = runs[98].toFixed(3)
-const ram = (process.memoryUsage().heapUsed / 1024).toFixed(1)
+const ram = ((afterAllocHeap - baselineHeap) / 1024 / 1024).toFixed(1)
 
 console.log(`Write + Cascade Latency`)
 console.log(`p50: ${p50}ms | p99: ${p99}ms`)

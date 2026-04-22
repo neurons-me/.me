@@ -1,0 +1,1 @@
+import{_ as s,o as i,c as a,ae as t}from"./chunks/framework.CY_fclge.js";const c=JSON.parse('{"title":"Memory","description":"","frontmatter":{},"headers":[],"relativePath":"Memory.md","filePath":"Memory.md"}'),n={name:"Memory.md"};function l(r,e,o,h,p,d){return i(),a("div",null,[...e[0]||(e[0]=[t("",19)])])}const m=s(n,[["render",l]]);export{c as __pageData,m as default};

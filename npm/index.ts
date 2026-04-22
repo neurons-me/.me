@@ -16,15 +16,23 @@
 // - ergonomic sugar like `.as(null)` can be layered on top afterward
 import { ME } from "./src/me.ts";
 import { DiskStore, MemoryStore } from "./src/instance-store.ts";
-export { createMe, write, define, subscribe } from "./src/kernel/cascade.ts";
+import { createMe, write, define, subscribe } from "./src/kernel/cascade.ts";
 
 const MERuntime = ME as typeof ME & {
   DiskStore: typeof DiskStore;
   MemoryStore: typeof MemoryStore;
+  createMe: typeof createMe;
+  write: typeof write;
+  define: typeof define;
+  subscribe: typeof subscribe;
 };
 
 MERuntime.DiskStore = DiskStore;
 MERuntime.MemoryStore = MemoryStore;
+MERuntime.createMe = createMe;
+MERuntime.write = write;
+MERuntime.define = define;
+MERuntime.subscribe = subscribe;
 
 export default MERuntime;
 export type {
@@ -58,6 +66,7 @@ export type {
   OperatorResult,
   OperatorHandler,
 } from "./src/types.ts";
+export type { MeDB } from "./src/kernel/cascade.ts";
 export type {
   DiskStoreOptions,
   InstanceStore,

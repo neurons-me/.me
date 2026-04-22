@@ -48,7 +48,15 @@ yarn add this.me
 pnpm add this.me
 ```
 
-### 3. CDN (UMD) – For quick prototyping
+### 3. CommonJS
+
+```js
+const ME = require("this.me");
+
+const me = new ME();
+```
+
+### 4. CDN (UMD) – For quick prototyping
 
 ```html
 <script src="https://unpkg.com/this.me@latest/dist/me.umd.js"></script>
@@ -58,6 +66,8 @@ pnpm add this.me
 ```
 
 > **Note**: The CDN is convenient for demos and experiments, but we recommend using a bundler for production applications.
+
+Across ESM, CommonJS, and UMD, the runtime export is the constructor itself. Helper statics such as `createMe`, `write`, `define`, and `subscribe` are attached to that constructor object.
 
 ## Next Steps
 
