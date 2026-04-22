@@ -202,8 +202,8 @@ const courierTrace = showExplain("robots.courier.canProceed");
 
 assert.equal(nurseTrace.value, true);
 assert.equal(courierTrace.value, true);
-assert.ok((nurseTrace.meta?.dependsOn ?? []).includes("robots.nurse.target.sterile"));
-assert.ok((courierTrace.meta?.dependsOn ?? []).includes("robots.courier.context.movingVehicles"));
+assert.ok((nurseTrace.meta?.dependsOn ?? []).includes("robots.nurse.contextAllowsMotion"));
+assert.ok((courierTrace.meta?.dependsOn ?? []).includes("robots.courier.contextAllowsMotion"));
 
 console.log(`
 +------------------------------------------------------------------+
