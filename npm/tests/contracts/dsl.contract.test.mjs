@@ -209,6 +209,8 @@ test("runtime escape plane exposes reflective kernel helpers", () => {
   assert.deepEqual(me["!"].docs.namespaces, [
     "inspect",
     "explain",
+    "identity",
+    "currentExpression",
     "memories",
     "snapshot",
     "runtime",
@@ -221,6 +223,8 @@ test("runtime escape plane exposes reflective kernel helpers", () => {
 
   assert.equal(me["!"].methods.inspect.path, "inspect");
   assert.equal(typeof me["!"].methods.inspect.docs, "string");
+  assert.equal(me["!"].methods.identity.path, "identity");
+  assert.equal(me["!"].methods.currentExpression.path, "currentExpression");
   assert.equal(me["!"].runtime.getRecomputeMode(), "eager");
   assert.equal(me["!"].methods.hydrate.path, "snapshot.hydrate");
 

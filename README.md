@@ -34,6 +34,19 @@ Define who you are, **what you own**, and how everything connects — once. Then
 
 > **Local compute makes memory an OS primitive. Cloud makes it a service.**
 
+ *me*    **← the seed. the root. the trunk.**
+ │
+ ├─ *me[@]("jabellae")*    ***← a branch. one identity expression.***
+│    ├─ *me.profile.name*     ***← leaf***
+│    ├─ *me.wallet*  ***← secret scope branch***
+│   └─ *me.surface("iphone")* ***← derived surface***
+│
+ ├─ *me[@]("ana")*  ***← another branch. different identity. same tree.***
+
+│       └─ *me.profile.name*
+│
+└─ *me[@]("suign")*  ***← another branch.***
+
 ---
 
 ## **𓅓** Self-Semantic Runtime Invariance
@@ -56,4 +69,3 @@ The runtime of `.me` is written **in the same semantic model that it interprets*
     <img src="https://res.cloudinary.com/dkwnxf6gm/image/upload/v1760629064/neurons.me_b50f6a.png" alt="neurons.me" width="89" />
   </a>
 </p>
-

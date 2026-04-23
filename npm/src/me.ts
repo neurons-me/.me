@@ -11,6 +11,7 @@
  * Licensed under MIT.
  * ---------------------------------------------------------
  */
+import sha3 from "js-sha3";
 import {
   detectBlobVersion,
   enableBlobCryptoDebug,
@@ -44,6 +45,13 @@ import { collectSecretChainV3 } from "./secret-context.js";
 import { enableDiskStoreDebug, takeDiskStoreDebugWindow } from "./instance-store.js";
 import { buildVectorIndex as buildVectorIndexSidecar, searchVector as searchVectorSidecar } from "./vector-index.js";
 import { searchExact as searchExactVectors } from "./vector-scan.js";
+import {
+  ME_EXPRESSION_SYMBOL,
+  ME_IDENTITY_SYMBOL,
+  ME_SEED_SYMBOL,
+  ME_SET_ACTIVE_EXPRESSION_SYMBOL,
+  NODE_INSPECT_CUSTOM,
+} from "./kernel-symbols.js";
 import type {
   EncryptedBlob,
   EncryptedBranchPlane,
@@ -83,10 +91,72 @@ import * as Utils from "./utils.js";
 
 export type { MEProxy } from "./types.js";
 
+const DEFAULT_SEED_STORAGE_KEY = "this.me.seed:v1";
+const IDENTITY_HASH_DOMAIN = "this.me/identity:v1::";
+
+const { keccak256 } = sha3;
+
+let runtimeDefaultSeed: string | null = null;
+
+function bytesToHex(bytes: Uint8Array): string {
+  let out = "";
+  for (const byte of bytes) out += byte.toString(16).padStart(2, "0");
+  return out;
+}
+
+function generateSeed(): string {
+  const cryptoRef = globalThis.crypto;
+  if (!cryptoRef?.getRandomValues) {
+    throw new Error("Secure random values are required to initialize .me.");
+  }
+  const bytes = new Uint8Array(32);
+  cryptoRef.getRandomValues(bytes);
+  return bytesToHex(bytes);
+}
+
+function normalizeSeedInput(seed: unknown): string | undefined {
+  if (seed === undefined || seed === null) return undefined;
+  return typeof seed === "string" ? seed : String(seed);
+}
+
+function deriveIdentityHash(seed: string): string {
+  return keccak256(IDENTITY_HASH_DOMAIN + seed);
+}
+
+function readStoredSeed(): string | undefined {
+  if (runtimeDefaultSeed !== null) return runtimeDefaultSeed;
+  try {
+    const stored = globalThis.localStorage?.getItem(DEFAULT_SEED_STORAGE_KEY);
+    if (stored !== null) {
+      runtimeDefaultSeed = stored;
+      return stored;
+    }
+  } catch {
+    // Storage access is best-effort only; ephemeral runtimes fall back to memory.
+  }
+  return undefined;
+}
+
+function persistSeed(seed: string): void {
+  runtimeDefaultSeed = seed;
+  try {
+    globalThis.localStorage?.setItem(DEFAULT_SEED_STORAGE_KEY, seed);
+  } catch {
+    // Ignore storage failures; the current runtime still retains the active seed.
+  }
+}
+
+function resolveSeed(seed: unknown): string {
+  const normalized = normalizeSeedInput(seed);
+  const resolved = normalized ?? readStoredSeed() ?? generateSeed();
+  persistSeed(resolved);
+  return resolved;
+}
+
 /**
  * The `.me` Semantic Kernel.
  *
- * This is the core class of `.me`. When you do `new ME()`, you get much more than
+ * This is the core class of `.me`. When you do `new ME(seed?)`, you get much more than
  * a normal class instance:
  *
  * - a stateful semantic kernel that manages memories, indexes, secrets, and derivations
@@ -105,6 +175,9 @@ export type { MEProxy } from "./types.js";
 export class ME {
   [key: string]: any;
   private static readonly RUNTIME_ESCAPE_TOKEN = ProxyRuntime.RUNTIME_ESCAPE_TOKEN;
+  #seed!: string;
+  #identityHash!: string;
+  #activeExpression: string | null = null;
 
   /** @internal Low-level crypto helper kept out of the main public docs surface. */
   static generateP256KeyPair = generateP256KeyPair;
@@ -179,16 +252,67 @@ export class ME {
     this.branchStore.importData(value && typeof value === "object" ? value : {});
   }
 
-  constructor(expression?: any, options: MEOptions = {}) {
+  constructor(seed?: string, options: MEOptions = {}) {
     Object.assign(this, createInitialKernelFields(options));
+    this.#seed = resolveSeed(seed);
+    this.#identityHash = deriveIdentityHash(this.#seed);
+    this.#activeExpression = null;
     this.bumpSecretEpoch();
-    if (expression !== undefined) {
-      this.postulate([], expression);
-    }
     this.rebuildIndex();
+    Object.defineProperty(this as object, ME_SEED_SYMBOL, {
+      configurable: true,
+      enumerable: false,
+      get: () => this.#seed,
+    });
+    Object.defineProperty(this as object, ME_EXPRESSION_SYMBOL, {
+      configurable: true,
+      enumerable: false,
+      get: () => this.#activeExpression,
+    });
+    Object.defineProperty(this as object, ME_IDENTITY_SYMBOL, {
+      configurable: true,
+      enumerable: false,
+      get: () => ({
+        hash: this.#identityHash,
+        expression: this.#activeExpression,
+      }),
+    });
+    Object.defineProperty(this as object, ME_SET_ACTIVE_EXPRESSION_SYMBOL, {
+      configurable: true,
+      enumerable: false,
+      value: (expression: string | null) => {
+        this.#activeExpression = expression;
+      },
+    });
     const rootProxy = this.createProxy([]);
     Object.setPrototypeOf(rootProxy as any, ME.prototype);
     Object.assign(rootProxy as any, this);
+    Object.defineProperty(rootProxy as object, NODE_INSPECT_CUSTOM, {
+      configurable: true,
+      enumerable: false,
+      value: () => ({
+        seed: this.#seed,
+        expression: this.#activeExpression,
+      }),
+    });
+    Object.defineProperty(rootProxy as object, ME_SEED_SYMBOL, {
+      configurable: true,
+      enumerable: false,
+      get: () => this.#seed,
+    });
+    Object.defineProperty(rootProxy as object, ME_EXPRESSION_SYMBOL, {
+      configurable: true,
+      enumerable: false,
+      get: () => this.#activeExpression,
+    });
+    Object.defineProperty(rootProxy as object, ME_IDENTITY_SYMBOL, {
+      configurable: true,
+      enumerable: false,
+      get: () => ({
+        hash: this.#identityHash,
+        expression: this.#activeExpression,
+      }),
+    });
     return rootProxy as unknown as ME;
   }
 

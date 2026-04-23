@@ -1,4 +1,5 @@
 import { handleCall as handleCallFn } from "./handleCall.js";
+import { ME_EXPRESSION_SYMBOL, ME_IDENTITY_SYMBOL } from "./kernel-symbols.js";
 import { isMemory, splitPath } from "./operators.js";
 import type {
   EncryptedBlob,
@@ -54,8 +55,8 @@ export function buildRuntimeSurface(self: MEKernelLike): Record<string, any> {
     docs: {
       kind: "runtime-surface",
       description:
-        "Reflective runtime plane for .me. Use me['!'] to access inspection, replay, snapshots, and kernel controls.",
-      namespaces: ["inspect", "explain", "memories", "snapshot", "runtime", "methods"],
+        "Reflective runtime plane for .me. Use me['!'] to access inspection, replay, snapshots, identity, and kernel controls.",
+      namespaces: ["inspect", "explain", "identity", "currentExpression", "memories", "snapshot", "runtime", "methods"],
     },
     inspect: describeRuntimeMethod(
       self,
@@ -70,6 +71,20 @@ export function buildRuntimeSurface(self: MEKernelLike): Record<string, any> {
       (path: string) => self.explain(path),
       "Explain how a derived value was computed, including dependency inputs and masking for stealth sources.",
       "explain(path: string): { path, value, expr, derivation, meta }",
+    ),
+    identity: describeRuntimeMethod(
+      self,
+      "identity",
+      () => (self as any)[ME_IDENTITY_SYMBOL],
+      "Return the deterministic seed-derived identity hash together with the current active expression.",
+      "identity(): { hash: string, expression: string | null }",
+    ),
+    currentExpression: describeRuntimeMethod(
+      self,
+      "currentExpression",
+      () => (self as any)[ME_EXPRESSION_SYMBOL],
+      "Return the current active expression selected by the root identity operator.",
+      "currentExpression(): string | null",
     ),
     memories: {
       docs: "Memory log helpers and replay controls.",
@@ -140,6 +155,8 @@ export function buildRuntimeSurface(self: MEKernelLike): Record<string, any> {
       docs: "Self-described method registry for the runtime surface.",
       inspect: null,
       explain: null,
+      identity: null,
+      currentExpression: null,
       exportSnapshot: null,
       hydrate: null,
       importSnapshot: null,
@@ -157,7 +174,7 @@ export function describeRuntimeSurface(): Record<string, any> {
     escape: RUNTIME_ESCAPE_TOKEN,
     description:
       "Use me['!'] to enter the reflective runtime plane. This plane exposes snapshots, replay, explainability, and kernel controls.",
-    namespaces: ["inspect", "explain", "memories", "snapshot", "runtime", "methods"],
+    namespaces: ["inspect", "explain", "identity", "currentExpression", "memories", "snapshot", "runtime", "methods"],
   };
 }
 
@@ -166,6 +183,8 @@ export function resolveRuntimeValue(self: MEKernelLike, path: string[]): unknown
 
   surface.methods.inspect = surface.inspect;
   surface.methods.explain = surface.explain;
+  surface.methods.identity = surface.identity;
+  surface.methods.currentExpression = surface.currentExpression;
   surface.methods.exportSnapshot = surface.snapshot.export;
   surface.methods.hydrate = surface.snapshot.hydrate;
   surface.methods.importSnapshot = surface.snapshot.import;

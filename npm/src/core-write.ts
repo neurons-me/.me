@@ -9,6 +9,7 @@ import {
 } from "./derivation.js";
 import { tryEvaluateAssignExpression } from "./evaluator.js";
 import { normalizeCall } from "./normalizeCall.js";
+import { ME_SET_ACTIVE_EXPRESSION_SYMBOL } from "./kernel-symbols.js";
 import {
   isDefineOpCall,
   isIdentityRef,
@@ -791,6 +792,12 @@ export function postulate(
         for (const instruction of normalized.instructions) {
           const maybe = commitMapping(self, instruction, operator);
           if (maybe) {
+            if (instruction.op === "id" && instruction.path.length === 0 && isIdentityRef(instruction.value)) {
+              const setActiveExpression = (self as any)[ME_SET_ACTIVE_EXPRESSION_SYMBOL];
+              if (typeof setActiveExpression === "function") {
+                setActiveExpression(instruction.value.__id);
+              }
+            }
             out = maybe;
             changed.push(maybe.path.split(".").filter(Boolean));
           }

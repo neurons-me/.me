@@ -20,6 +20,7 @@ const npmBin = process.platform === "win32" ? "npm.cmd" : "npm";
 
 const tasks: Task[] = [
   { label: "phases", kind: "node", target: path.join(ROOT_DIR, "tests/phases.test.js") },
+  { label: "reconstruction", kind: "node", target: path.join(ROOT_DIR, "tests/reconstruction.test.ts") },
   { label: "secret-material-v3", kind: "node", target: path.join(ROOT_DIR, "tests/secret-material-v3.test.ts") },
   { label: "secret-blob-v3.read", kind: "node", target: path.join(ROOT_DIR, "tests/secret-blob-v3.read.test.ts") },
   { label: "secret-blob-v3.write", kind: "node", target: path.join(ROOT_DIR, "tests/secret-blob-v3.write.test.ts") },

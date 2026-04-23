@@ -1,6 +1,6 @@
 # Namespace Resolution Protocol v0.1
 **neurons.me  /  suiGn **
-** Status:** Draft — Working Document
+**Status:** Draft — Working Document
 **License:** CC0 1.0 Universal — Public Domain
 
 ---
@@ -8,9 +8,9 @@
 ## Preamble
 This document specifies the **Namespace Resolution Protocol (NRP)** for the `me://` URI scheme.
 
-The NRP defines how a `me://` URI is resolved from a symbolic address into a concrete semantic value, across a distributed mesh of surfaces — without a central registry, without a central server, and without requiring persistent connectivity.
+The **NRP** defines how a `me://` URI is resolved *from a symbolic address into a concrete semantic value*, across a **distributed mesh** of surfaces — without a central registry, without a central server, and without requiring persistent connectivity.
 
-It is the protocol that closes the gap between:
+It is the *protocol* that closes the gap between:
 
 - **Semantic resolution** — already implemented in `this.me`: local, mathematical, derivation-based. The kernel resolves `me.get("wallet.balance")` entirely offline.
 
@@ -26,14 +26,14 @@ me://jabellae.cleaker.me[surface:iphone]/wallet.balance
      namespace)            surface)           path locally)
 ```
 
-The NRP specifies the topological layer. The semantic layer is already specified by `this.me`.
+The **NRP** specifies the topological layer. The semantic layer is already specified by `this.me`.
 
 ---
 
 ## 1. Definitions
-**Namespace** — A named semantic domain. Represented as a human-readable label (e.g., `jabellae.cleaker.me`). A namespace is owned by whoever holds its root key material. There is no central authority that grants or revokes a namespace.
+**Namespace** — A named semantic domain. Represented as a human-readable label (e.g., `jabellae.cleaker.me`). **A namespace is owned by whoever holds its root key material.** There is no central authority that grants or revokes a namespace.
 
-**Surface** — A physical or logical runtime context that can hold a `.me` kernel instance and participate in the mesh. Examples: an iPhone app, a MacBook daemon, a server process, a browser tab. A surface has a name within a namespace.
+**Surface** — A physical or logical runtime context that can hold a `.me` kernel instance and **participate in the mesh**. Examples: an iPhone app, a MacBook daemon, a server process, a browser tab. A surface has a name within a namespace.
 
 **Surface identity** — The cryptographic identifier of a surface within a namespace:
 
@@ -66,7 +66,7 @@ Resolution of a `me://` URI proceeds in two phases, always in this order.
 **Input:** `namespace` + `selector`
 **Output:** a reachable surface endpoint
 
-The requesting surface must find the surface that can serve the requested path. This involves:
+The requesting surface must find **the surface that can serve the requested path.** This involves:
 
 1. Deriving the target `surface_id` from the local namespace key and the selector's surface name.
 
