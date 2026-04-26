@@ -9,6 +9,7 @@ import type {
 // --- crypto helpers (portable) ---
 const { keccak256 } = sha3;
 const WRAPPED_SECRET_INFO = "this.me/wrapped-secret/v1";
+const PROVE_KDF_INFO = "me.prove.v1";
 const LEGACY_XOR_DOMAIN_SEPARATOR = ":";
 const BLOB_V2_MAGIC = new Uint8Array([0xfe, 0x6d, 0x65]);
 const BLOB_V2_VERSION = 0x02;
@@ -905,6 +906,20 @@ export function base64UrlToBytes(input: string): Uint8Array {
   return out;
 }
 
+export function normalizeProofMessage(value: unknown): string {
+  if (value === null || typeof value !== "object") {
+    return JSON.stringify(value);
+  }
+
+  if (Array.isArray(value)) {
+    return `[${value.map((item) => normalizeProofMessage(item)).join(",")}]`;
+  }
+
+  const record = value as Record<string, unknown>;
+  const keys = Object.keys(record).sort();
+  return `{${keys.map((key) => `${JSON.stringify(key)}:${normalizeProofMessage(record[key])}`).join(",")}}`;
+}
+
 function getWebCrypto(): Crypto {
   const cryptoRef = globalThis.crypto;
   if (!cryptoRef?.subtle) {
@@ -928,6 +943,149 @@ function toArrayBuffer(bytes: Uint8Array): ArrayBuffer {
 
 function normalizeSecretInput(secret: Uint8Array | string): Uint8Array {
   return typeof secret === "string" ? asciiToBytes(secret) : new Uint8Array(secret);
+}
+
+function decodeSeedMaterial(seedHex: string): Uint8Array {
+  const raw = String(seedHex || "").trim();
+  if (!raw) throw new Error("Seed material is required.");
+
+  const normalized = raw.startsWith("0x") ? raw.slice(2) : raw;
+  const isHex = normalized.length > 0 && normalized.length % 2 === 0 && /^[0-9a-fA-F]+$/.test(normalized);
+  return isHex ? hexToBytes(normalized) : asciiToBytes(raw);
+}
+
+function normalizeDerivationLength(length = 32): number {
+  const normalized = Number(length);
+  if (!Number.isInteger(normalized) || normalized <= 0) {
+    throw new Error("HKDF output length must be a positive integer.");
+  }
+  return normalized;
+}
+
+function concatUint8Arrays(...parts: Uint8Array[]): Uint8Array {
+  const total = parts.reduce((sum, part) => sum + part.length, 0);
+  const out = new Uint8Array(total);
+  let offset = 0;
+  for (const part of parts) {
+    out.set(part, offset);
+    offset += part.length;
+  }
+  return out;
+}
+
+export async function deriveHkdfBytes(
+  ikm: Uint8Array,
+  salt: string,
+  info: string,
+  length = 32,
+): Promise<Uint8Array> {
+  const outputLength = normalizeDerivationLength(length);
+  const { subtle } = getWebCrypto();
+  const hkdfKey = await subtle.importKey("raw", toArrayBuffer(new Uint8Array(ikm)), "HKDF", false, ["deriveBits"]);
+  const bits = await subtle.deriveBits(
+    {
+      name: "HKDF",
+      hash: "SHA-256",
+      salt: toArrayBuffer(asciiToBytes(String(salt || ""))),
+      info: toArrayBuffer(asciiToBytes(String(info || ""))),
+    },
+    hkdfKey,
+    outputLength * 8,
+  );
+  return new Uint8Array(bits);
+}
+
+export async function deriveBranchProofSeed(
+  seedHex: string,
+  expression: string,
+): Promise<Uint8Array> {
+  const normalizedExpression = String(expression || "").trim();
+  if (!normalizedExpression) throw new Error("Active expression is required to derive a branch proof seed.");
+
+  return deriveHkdfBytes(
+    decodeSeedMaterial(seedHex),
+    PROVE_KDF_INFO,
+    normalizedExpression,
+    32,
+  );
+}
+
+export async function importEd25519SigningKey(seed32: Uint8Array): Promise<CryptoKeyPair> {
+  if (!(seed32 instanceof Uint8Array) || seed32.length !== 32) {
+    throw new Error("Ed25519 signing seed must be exactly 32 bytes.");
+  }
+
+  const { subtle } = getWebCrypto();
+  const pkcs8Prefix = hexToBytes("302e020100300506032b657004220420");
+  const pkcs8Bytes = concatUint8Arrays(pkcs8Prefix, new Uint8Array(seed32));
+  const privateKey = await subtle.importKey(
+    "pkcs8",
+    toArrayBuffer(pkcs8Bytes),
+    { name: "Ed25519" },
+    true,
+    ["sign"],
+  );
+
+  const jwk = await subtle.exportKey("jwk", privateKey);
+  if (jwk.kty !== "OKP" || jwk.crv !== "Ed25519" || !jwk.x) {
+    throw new Error("Unable to derive Ed25519 public key from signing seed.");
+  }
+
+  const publicKey = await subtle.importKey(
+    "raw",
+    toArrayBuffer(base64UrlToBytes(jwk.x)),
+    { name: "Ed25519" },
+    true,
+    ["verify"],
+  );
+
+  return { privateKey, publicKey };
+}
+
+export async function signEd25519Proof(
+  privateKey: CryptoKey,
+  message: string,
+): Promise<string> {
+  const { subtle } = getWebCrypto();
+  const signature = await subtle.sign(
+    "Ed25519",
+    privateKey,
+    toArrayBuffer(asciiToBytes(String(message || ""))),
+  );
+  return bytesToBase64Url(new Uint8Array(signature));
+}
+
+export async function verifyEd25519Signature(
+  publicKey: string,
+  message: string,
+  signature: string,
+): Promise<boolean> {
+  try {
+    const { subtle } = getWebCrypto();
+    const key = await subtle.importKey(
+      "raw",
+      toArrayBuffer(base64UrlToBytes(String(publicKey || ""))),
+      { name: "Ed25519" },
+      true,
+      ["verify"],
+    );
+    return await subtle.verify(
+      "Ed25519",
+      key,
+      toArrayBuffer(base64UrlToBytes(String(signature || ""))),
+      toArrayBuffer(asciiToBytes(String(message || ""))),
+    );
+  } catch {
+    return false;
+  }
+}
+
+export async function exportEd25519PublicKey(
+  publicKey: CryptoKey,
+): Promise<string> {
+  const { subtle } = getWebCrypto();
+  const raw = await subtle.exportKey("raw", publicKey);
+  return bytesToBase64Url(new Uint8Array(raw));
 }
 
 async function deriveWrappingAesKey(

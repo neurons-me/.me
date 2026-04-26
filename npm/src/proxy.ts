@@ -5,6 +5,7 @@ import type {
   EncryptedBlob,
   Memory,
   MEKernelLike,
+  MEProofInput,
   MERuntimeMethodDescriptor,
   MEProxy,
   MESnapshotInput,
@@ -56,7 +57,7 @@ export function buildRuntimeSurface(self: MEKernelLike): Record<string, any> {
       kind: "runtime-surface",
       description:
         "Reflective runtime plane for .me. Use me['!'] to access inspection, replay, snapshots, identity, and kernel controls.",
-      namespaces: ["inspect", "explain", "identity", "currentExpression", "memories", "snapshot", "runtime", "methods"],
+      namespaces: ["inspect", "explain", "identity", "currentExpression", "prove", "memories", "snapshot", "runtime", "methods"],
     },
     inspect: describeRuntimeMethod(
       self,
@@ -85,6 +86,13 @@ export function buildRuntimeSurface(self: MEKernelLike): Record<string, any> {
       () => (self as any)[ME_EXPRESSION_SYMBOL],
       "Return the current active expression selected by the root identity operator.",
       "currentExpression(): string | null",
+    ),
+    prove: describeRuntimeMethod(
+      self,
+      "prove",
+      (input: MEProofInput) => self.prove(input),
+      "Derive a branch-scoped Ed25519 proof for the current active expression and root namespace.",
+      "prove(input: { rootNamespace: string, challenge?: string | null }): Promise<{ identityHash, expression, namespace, rootNamespace, publicKey, message, signature, timestamp }>",
     ),
     memories: {
       docs: "Memory log helpers and replay controls.",
@@ -157,6 +165,7 @@ export function buildRuntimeSurface(self: MEKernelLike): Record<string, any> {
       explain: null,
       identity: null,
       currentExpression: null,
+      prove: null,
       exportSnapshot: null,
       hydrate: null,
       importSnapshot: null,
@@ -174,7 +183,7 @@ export function describeRuntimeSurface(): Record<string, any> {
     escape: RUNTIME_ESCAPE_TOKEN,
     description:
       "Use me['!'] to enter the reflective runtime plane. This plane exposes snapshots, replay, explainability, and kernel controls.",
-    namespaces: ["inspect", "explain", "identity", "currentExpression", "memories", "snapshot", "runtime", "methods"],
+    namespaces: ["inspect", "explain", "identity", "currentExpression", "prove", "memories", "snapshot", "runtime", "methods"],
   };
 }
 
@@ -185,6 +194,7 @@ export function resolveRuntimeValue(self: MEKernelLike, path: string[]): unknown
   surface.methods.explain = surface.explain;
   surface.methods.identity = surface.identity;
   surface.methods.currentExpression = surface.currentExpression;
+  surface.methods.prove = surface.prove;
   surface.methods.exportSnapshot = surface.snapshot.export;
   surface.methods.hydrate = surface.snapshot.hydrate;
   surface.methods.importSnapshot = surface.snapshot.import;

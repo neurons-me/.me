@@ -13,12 +13,17 @@
  */
 import sha3 from "js-sha3";
 import {
+  deriveBranchProofSeed,
   detectBlobVersion,
   enableBlobCryptoDebug,
   encryptBlobV3,
+  exportEd25519PublicKey,
   exportP256PublicKey,
   generateP256KeyPair,
   importP256PublicKey,
+  importEd25519SigningKey,
+  normalizeProofMessage,
+  signEd25519Proof,
   takeBlobCryptoDebugWindow,
   unwrapSecretV1,
   wrapSecretV1,
@@ -74,6 +79,8 @@ import type {
   MESearchExactOptions,
   MESearchExactResult,
   MEProxy,
+  MEProofInput,
+  MEProofResult,
   MESnapshot,
   MESnapshotInput,
   MeTargetAst,
@@ -121,6 +128,15 @@ function normalizeSeedInput(seed: unknown): string | undefined {
 
 function deriveIdentityHash(seed: string): string {
   return keccak256(IDENTITY_HASH_DOMAIN + seed);
+}
+
+function normalizeRootNamespace(rootNamespace: string): string {
+  return String(rootNamespace || "")
+    .trim()
+    .replace(/^https?:\/\//i, "")
+    .replace(/\/+$/g, "")
+    .replace(/^\.+/, "")
+    .replace(/\.+$/g, "");
 }
 
 function readStoredSeed(): string | undefined {
@@ -512,6 +528,47 @@ export class ME {
    */
   learn(memory: unknown): void {
     return Core.learn(this as unknown as MEKernelLike, memory);
+  }
+
+  /**
+   * Derive a branch-scoped proof for the current active expression.
+   * This signs a canonical payload with an Ed25519 key deterministically derived
+   * from the root seed and active branch expression.
+   */
+  async prove(input: MEProofInput): Promise<MEProofResult> {
+    const expression = String(this.#activeExpression || "").trim();
+    if (!expression) throw new Error("ACTIVE_EXPRESSION_REQUIRED");
+
+    const rootNamespace = normalizeRootNamespace(input.rootNamespace);
+    if (!rootNamespace) throw new Error("ROOT_NAMESPACE_REQUIRED");
+
+    const timestamp = Date.now();
+    const challenge = input.challenge == null ? null : String(input.challenge);
+    const namespace = `${expression}.${rootNamespace}`;
+    const branchSeed = await deriveBranchProofSeed(this.#seed, expression);
+    const { privateKey, publicKey } = await importEd25519SigningKey(branchSeed);
+    const payload = {
+      identityHash: this.#identityHash,
+      expression,
+      namespace,
+      rootNamespace,
+      challenge,
+      timestamp,
+    };
+    const message = normalizeProofMessage(payload);
+    const signature = await signEd25519Proof(privateKey, message);
+    const publicKeyRaw = await exportEd25519PublicKey(publicKey);
+
+    return {
+      identityHash: this.#identityHash,
+      expression,
+      namespace,
+      rootNamespace,
+      publicKey: publicKeyRaw,
+      message,
+      signature,
+      timestamp,
+    };
   }
 
   /**

@@ -675,6 +675,22 @@ export interface MEWrappedKeyOpenOptions {
   output?: "bytes" | "utf8";
 }
 
+export interface MEProofInput {
+  rootNamespace: string;
+  challenge?: string | null;
+}
+
+export interface MEProofResult {
+  identityHash: string;
+  expression: string;
+  namespace: string;
+  rootNamespace: string;
+  publicKey: string;
+  message: string;
+  signature: string;
+  timestamp: number;
+}
+
 export interface MERuntimeMethodDescriptor {
   kind: "method";
   path: string;
@@ -744,6 +760,7 @@ export interface MEKernelLike extends Record<string, any> {
   rehydrate(snapshot: MESnapshotInput): void;
   learn(memory: unknown): void;
   replayMemories(memories: ReplayMemoryInput[]): void;
+  prove(input: MEProofInput): Promise<MEProofResult>;
   cloneValue<T>(value: T): T;
   normalizeArgs(args: any[]): any;
   opKind(op: string): string | null;

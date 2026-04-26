@@ -15,6 +15,7 @@
 // - guest reads can be simulated with an explicit caller scope
 // - ergonomic sugar like `.as(null)` can be layered on top afterward
 import { ME } from "./src/me.ts";
+import { normalizeProofMessage, verifyEd25519Signature } from "./src/crypto.ts";
 import { DiskStore, MemoryStore } from "./src/instance-store.ts";
 import { createMe, write, define, subscribe } from "./src/kernel/cascade.ts";
 
@@ -25,6 +26,8 @@ const MERuntime = ME as typeof ME & {
   write: typeof write;
   define: typeof define;
   subscribe: typeof subscribe;
+  normalizeProofMessage: typeof normalizeProofMessage;
+  verifyEd25519Signature: typeof verifyEd25519Signature;
 };
 
 MERuntime.DiskStore = DiskStore;
@@ -33,8 +36,14 @@ MERuntime.createMe = createMe;
 MERuntime.write = write;
 MERuntime.define = define;
 MERuntime.subscribe = subscribe;
+MERuntime.normalizeProofMessage = normalizeProofMessage;
+MERuntime.verifyEd25519Signature = verifyEd25519Signature;
 
 export default MERuntime;
+export {
+  normalizeProofMessage,
+  verifyEd25519Signature,
+};
 export type {
   EncryptedBranchPlane,
   EncryptedScopeEntry,
