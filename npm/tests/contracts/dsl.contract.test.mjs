@@ -211,6 +211,7 @@ test("runtime escape plane exposes reflective kernel helpers", () => {
     "explain",
     "identity",
     "currentExpression",
+    'prove',
     "memories",
     "snapshot",
     "runtime",
