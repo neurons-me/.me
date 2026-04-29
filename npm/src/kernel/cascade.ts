@@ -2,7 +2,7 @@ type NodeId = string;
 type Listener = (val: any) => void;
 
 interface DepGraph {
-  [key: NodeId]: NodeId[];
+  [key: NodeId]: Set<NodeId>;
 }
 
 export interface MeDB {
@@ -14,20 +14,20 @@ export interface MeDB {
   scheduled: boolean;
 }
 
-function listFor(graph: DepGraph, key: NodeId): NodeId[] {
-  return graph[key] || [];
+function listFor(graph: DepGraph, key: NodeId): Set<NodeId> {
+  return graph[key] || new Set();
 }
 
 function addUnique(graph: DepGraph, key: NodeId, value: NodeId): void {
-  const list = graph[key] || (graph[key] = []);
-  if (!list.includes(value)) list.push(value);
+  const set = graph[key] || (graph[key] = new Set());
+  set.add(value);
 }
 
 function removeValue(graph: DepGraph, key: NodeId, value: NodeId): void {
-  const list = graph[key];
-  if (!list) return;
-  graph[key] = list.filter((entry) => entry !== value);
-  if (graph[key].length === 0) delete graph[key];
+  const set = graph[key];
+  if (!set) return;
+  set.delete(value);
+  if (set.size === 0) delete graph[key];
 }
 
 export function createMe(): MeDB {
@@ -54,8 +54,8 @@ function markDirty(db: MeDB, key: NodeId): void {
   db.dirty.add(key);
 
   const dependents = listFor(db.dependents, key);
-  for (let i = 0; i < dependents.length; i++) {
-    markDirty(db, dependents[i]);
+  for (const dep of dependents) {
+    markDirty(db, dep);
   }
 
   scheduleFlush(db);
@@ -95,8 +95,8 @@ function topoSort(dirty: Set<NodeId>, deps: DepGraph): NodeId[] {
     visiting.add(node);
 
     const nodeDeps = listFor(deps, node);
-    for (let i = 0; i < nodeDeps.length; i++) {
-      if (dirty.has(nodeDeps[i])) visit(nodeDeps[i]);
+    for (const dep of nodeDeps) {
+      if (dirty.has(dep)) visit(dep);
     }
 
     visiting.delete(node);
@@ -109,17 +109,17 @@ function topoSort(dirty: Set<NodeId>, deps: DepGraph): NodeId[] {
 }
 
 export function define(db: MeDB, key: NodeId, depKeys: NodeId[]): void {
-  const nextDeps = Array.from(new Set(depKeys));
+  const nextDeps = new Set(depKeys);
   const prevDeps = listFor(db.deps, key);
 
-  for (let i = 0; i < prevDeps.length; i++) {
-    removeValue(db.dependents, prevDeps[i], key);
+  for (const dep of prevDeps) {
+    removeValue(db.dependents, dep, key);
   }
 
   db.deps[key] = nextDeps;
 
-  for (let i = 0; i < nextDeps.length; i++) {
-    addUnique(db.dependents, nextDeps[i], key);
+  for (const dep of nextDeps) {
+    addUnique(db.dependents, dep, key);
   }
 }
 

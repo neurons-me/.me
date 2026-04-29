@@ -18,8 +18,39 @@ import { ME } from "./src/me.ts";
 import { normalizeProofMessage, verifyEd25519Signature } from "./src/crypto.ts";
 import { DiskStore, MemoryStore } from "./src/instance-store.ts";
 import { createMe, write, define, subscribe } from "./src/kernel/cascade.ts";
+import { createThisMe } from "./src/factory.ts";
+import {
+  canonicalizeHumanIdentity,
+  formatCanonicalMeUri,
+  normalizeCanonicalHandle,
+  normalizeCanonicalSpace,
+  parseCanonicalMeUri,
+  parseMeUri,
+  projectDnsHostToNamespace,
+  tryParseMeUri,
+} from "./src/me-uri.ts";
+import type { MEOptions } from "./src/types.ts";
+import type { ThisMeInput } from "./src/factory.ts";
 
-const MERuntime = ME as typeof ME & {
+function ThisMe(input?: Parameters<typeof createThisMe>[0], options?: Parameters<typeof createThisMe>[1]) {
+  return createThisMe(input, options);
+}
+
+Object.setPrototypeOf(ThisMe, ME);
+ThisMe.prototype = ME.prototype;
+
+export type ThisMeFactory = typeof ME & {
+  (input?: ThisMeInput, options?: MEOptions): ME;
+  ME: typeof ME;
+  createThisMe: typeof createThisMe;
+  parseMeUri: typeof parseMeUri;
+  tryParseMeUri: typeof tryParseMeUri;
+  parseCanonicalMeUri: typeof parseCanonicalMeUri;
+  formatCanonicalMeUri: typeof formatCanonicalMeUri;
+  canonicalizeHumanIdentity: typeof canonicalizeHumanIdentity;
+  projectDnsHostToNamespace: typeof projectDnsHostToNamespace;
+  normalizeCanonicalHandle: typeof normalizeCanonicalHandle;
+  normalizeCanonicalSpace: typeof normalizeCanonicalSpace;
   DiskStore: typeof DiskStore;
   MemoryStore: typeof MemoryStore;
   createMe: typeof createMe;
@@ -30,6 +61,18 @@ const MERuntime = ME as typeof ME & {
   verifyEd25519Signature: typeof verifyEd25519Signature;
 };
 
+const MERuntime: ThisMeFactory = ThisMe as unknown as ThisMeFactory;
+
+MERuntime.ME = ME;
+MERuntime.createThisMe = createThisMe;
+MERuntime.parseMeUri = parseMeUri;
+MERuntime.tryParseMeUri = tryParseMeUri;
+MERuntime.parseCanonicalMeUri = parseCanonicalMeUri;
+MERuntime.formatCanonicalMeUri = formatCanonicalMeUri;
+MERuntime.canonicalizeHumanIdentity = canonicalizeHumanIdentity;
+MERuntime.projectDnsHostToNamespace = projectDnsHostToNamespace;
+MERuntime.normalizeCanonicalHandle = normalizeCanonicalHandle;
+MERuntime.normalizeCanonicalSpace = normalizeCanonicalSpace;
 MERuntime.DiskStore = DiskStore;
 MERuntime.MemoryStore = MemoryStore;
 MERuntime.createMe = createMe;
@@ -41,7 +84,17 @@ MERuntime.verifyEd25519Signature = verifyEd25519Signature;
 
 export default MERuntime;
 export {
+  ME,
+  canonicalizeHumanIdentity,
+  createThisMe,
+  formatCanonicalMeUri,
+  normalizeCanonicalHandle,
+  normalizeCanonicalSpace,
   normalizeProofMessage,
+  parseCanonicalMeUri,
+  parseMeUri,
+  projectDnsHostToNamespace,
+  tryParseMeUri,
   verifyEd25519Signature,
 };
 export type {
@@ -75,7 +128,21 @@ export type {
   OperatorResult,
   OperatorHandler,
 } from "./src/types.ts";
+export type { ThisMeInit, ThisMeInput } from "./src/factory.ts";
 export type { MeDB } from "./src/kernel/cascade.ts";
+export type {
+  CanonicalizeHumanIdentityOptions,
+  FormatCanonicalMeUriInput,
+  MeCanonicalNamespace,
+  MeCanonicalPath,
+  MeCanonicalSelector,
+  MeCanonicalSelectorKind,
+  MeCanonicalUri,
+  MeDnsProjectionFailureReason,
+  MeDnsProjectionResult,
+  MeHumanIdentity,
+  ParseCanonicalMeUriOptions,
+} from "./src/me-uri.ts";
 export type {
   DiskStoreOptions,
   InstanceStore,

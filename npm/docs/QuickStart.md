@@ -12,6 +12,20 @@ npm install this.me
 ## First Kernel
 
 ```ts
+import me from "this.me";
+
+const identity = me({
+  name: "suign",
+  space: "neurons.me",
+});
+
+console.log(identity("profile.name")); // "suign"
+console.log(identity("profile.namespace")); // "suign.neurons.me"
+```
+
+If you want the lower-level runtime directly, the constructor form still works:
+
+```ts
 import ME from "this.me";
 
 const me = new ME();

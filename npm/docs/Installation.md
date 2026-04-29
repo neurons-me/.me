@@ -11,16 +11,15 @@ npm install this.me
 ### Basic Usage
 
 ```ts
-import ME from "this.me";
+import me from "this.me";
 
-const me = new ME();
+const identity = me({
+  name: "suign",
+  space: "neurons.me",
+});
 
-me["@"]("jabellae");
-
-me.profile.name("Jose Abella");
-me.profile.bio("Building the semantic web.");
-
-console.log(me("profile.name")); // "Jose Abella"
+console.log(identity("profile.name")); // "suign"
+console.log(identity("profile.namespace")); // "suign.neurons.me"
 ```
 
 ## Supported Environments
@@ -67,7 +66,7 @@ const me = new ME();
 
 > **Note**: The CDN is convenient for demos and experiments, but we recommend using a bundler for production applications.
 
-Across ESM, CommonJS, and UMD, the runtime export is the constructor itself. Helper statics such as `createMe`, `write`, `define`, and `subscribe` are attached to that constructor object.
+Across ESM, CommonJS, and UMD, the default export works as both a factory and a constructor-compatible runtime. Helper statics such as `createMe`, `write`, `define`, and `subscribe` are attached to that export object.
 
 ## Next Steps
 

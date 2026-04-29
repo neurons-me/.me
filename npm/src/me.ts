@@ -230,7 +230,7 @@ export class ME {
   private index!: Record<string, any>;
   private _memories!: KernelMemory[];
   private derivations!: Record<string, MEDerivationRecord>;
-  private refSubscribers!: Record<string, string[]>;
+  private refSubscribers!: Record<string, Set<string>>;
   private recomputeMode!: "eager" | "lazy";
   private refVersions!: Record<string, number>;
   private derivationRefVersions!: Record<string, Record<string, number>>;

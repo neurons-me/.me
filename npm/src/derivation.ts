@@ -25,7 +25,7 @@ export function explain(self: MEKernelLike, path: string): MEExplainResult {
         dependsOn: [],
         ...(wave
           ? {
-              k: wave.recomputed.length,
+              k: wave.recomputed.size,
               recomputed: [...wave.recomputed],
               sourcePath: wave.sourcePath,
               recomputedAt: wave.at,
@@ -62,7 +62,7 @@ export function explain(self: MEKernelLike, path: string): MEExplainResult {
       lastComputedAt: d.lastComputedAt,
       ...(wave
         ? {
-            k: wave.recomputed.length,
+            k: wave.recomputed.size,
             recomputed: [...wave.recomputed],
             sourcePath: wave.sourcePath,
             recomputedAt: wave.at,
@@ -76,7 +76,7 @@ function beginRecomputeWave(self: MEKernelLike, sourcePath: string): boolean {
   if (self.activeRecomputeWave) return false;
   self.activeRecomputeWave = {
     sourcePath,
-    recomputed: [],
+    recomputed: new Set<string>(),
     at: Date.now(),
   };
   return true;
@@ -85,17 +85,17 @@ function beginRecomputeWave(self: MEKernelLike, sourcePath: string): boolean {
 function recordRecomputedTarget(self: MEKernelLike, targetKey: string): void {
   const wave = self.activeRecomputeWave;
   if (!wave) return;
-  if (!wave.recomputed.includes(targetKey)) wave.recomputed.push(targetKey);
+  wave.recomputed.add(targetKey);
 }
 
 function finalizeRecomputeWave(self: MEKernelLike): void {
   const wave = self.activeRecomputeWave;
   if (!wave) return;
   self.activeRecomputeWave = null;
-  if (wave.recomputed.length === 0) return;
+  if (wave.recomputed.size === 0) return;
   const committedWave = {
     sourcePath: wave.sourcePath,
-    recomputed: [...wave.recomputed],
+    recomputed: new Set(wave.recomputed),
     at: Date.now(),
   };
   for (const targetKey of committedWave.recomputed) {
@@ -132,9 +132,11 @@ export function unregisterDerivation(self: MEKernelLike, targetKey: string): voi
   const old = self.derivations[targetKey];
   if (!old) return;
   for (const ref of old.refs) {
-    const arr = self.refSubscribers[ref.path] || [];
-    self.refSubscribers[ref.path] = arr.filter((t) => t !== targetKey);
-    if (self.refSubscribers[ref.path].length === 0) delete self.refSubscribers[ref.path];
+    const s = self.refSubscribers[ref.path];
+    if (s) {
+      s.delete(targetKey);
+      if (s.size === 0) delete self.refSubscribers[ref.path];
+    }
   }
   delete self.derivations[targetKey];
   delete self.derivationRefVersions[targetKey];
@@ -176,9 +178,8 @@ export function registerDerivation(
     if (seen.has(resolved)) continue;
     seen.add(resolved);
     refs.push({ label, path: resolved });
-    const arr = self.refSubscribers[resolved] || [];
-    if (!arr.includes(targetKey)) arr.push(targetKey);
-    self.refSubscribers[resolved] = arr;
+    const s = self.refSubscribers[resolved] || (self.refSubscribers[resolved] = new Set());
+    s.add(targetKey);
   }
 
   self.derivations[targetKey] = {
@@ -263,7 +264,7 @@ export function invalidateFromPath(self: MEKernelLike, path: SemanticPath): void
 
   while (queue.length > 0) {
     const changed = queue.shift()!;
-    const subs = self.refSubscribers[changed] || [];
+    const subs = self.refSubscribers[changed] || new Set<string>();
     for (const target of subs) {
       if (seenTargets.has(target)) continue;
       seenTargets.add(target);

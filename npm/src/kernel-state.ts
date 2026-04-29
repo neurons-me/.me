@@ -42,7 +42,7 @@ export type SecretState = {
 
 export type DerivationState = {
   derivations: Record<string, MEDerivationRecord>;
-  refSubscribers: Record<string, string[]>;
+  refSubscribers: Record<string, Set<string>>;
   recomputeMode: "eager" | "lazy";
   refVersions: Record<string, number>;
   derivationRefVersions: Record<string, Record<string, number>>;

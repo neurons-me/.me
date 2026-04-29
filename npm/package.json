@@ -1,6 +1,6 @@
 {
   "name": "this.me",
-  "version": "3.7.1",
+  "version": "3.7.2",
   "description": "Centralize the Self, Distribute the Data.",
   "type": "module",
   "main": "./dist/me.cjs",
@@ -20,6 +20,7 @@
     "build": "vite build --config vite.config.ts",
     "preview": "vite preview --config vite.config.ts",
     "test:ts": "tsc --noEmit",
+    "test:me-uri": "node tests/me-uri.test.ts",
     "test:demos:run-all": "node tests/Demos/run-all.ts",
     "test:umd": "node tests/Builds/umd.test.cjs",
     "test:prebuild": "node tests/pre-build.test.mjs",

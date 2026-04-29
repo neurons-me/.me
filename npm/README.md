@@ -19,7 +19,40 @@ Define who you are, **what you own**, and how everything connects — once.  The
 npm install this.me
 ```
 
-**.me** runs 100% local with **end-to-end encryption.**
+**.me** runs 100% local with *end-to-end encryption.*
+
+**Then in your app:**
+
+```ts
+import me from 'this.me'
+
+const identity = me({
+  name: 'suiGn',
+  space: 'neurons.me'
+})
+
+console.log(identity)
+```
+
+For a **Vite/React app**, put it somewhere like:
+
+```js
+// src/me.js
+import me from 'this.me'
+
+export const thisMe = me({
+  name: 'suiGn',
+  space: 'neurons.me'
+})
+```
+
+Then use it:
+
+```js
+import { thisMe } from './me'
+
+console.log(thisMe)
+```
 
 ## In 30 seconds
 

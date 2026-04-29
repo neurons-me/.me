@@ -21,16 +21,14 @@ npm install this.me
 ## Quick start
 
 ```ts
-import ME from "this.me";
-const me = new ME();
+import me from "this.me";
 
-me["@"]("jabellae");
-me.profile.name("José Abella");
+const identity = me({
+  name: "suign",
+  space: "neurons.me",
+});
 
-me.wallet["_"]("key-2026");
-me.wallet.balance(12480);
-
-me.explain("wallet.balance"); // → shows derivation, masks secrets
+identity.explain("profile.namespace");
 ```
 
 ## Core concepts

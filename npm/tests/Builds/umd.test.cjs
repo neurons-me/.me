@@ -8,8 +8,10 @@ try {
   const umdPath = path.resolve(__dirname, "../../dist/me.umd.js");
   const umdCode = fs.readFileSync(umdPath, "utf8");
 
+  const crypto = globalThis.crypto ?? require("node:crypto").webcrypto;
   const sandbox = {
     console,
+    crypto,
     window: {},
     self: {},
     global: {},

@@ -639,7 +639,7 @@ export interface MEExplainResult {
 
 export interface MERecomputeWave {
   sourcePath: string;
-  recomputed: string[];
+  recomputed: Set<string>;
   at: number;
 }
 
@@ -711,7 +711,7 @@ export interface MEKernelLike extends Record<string, any> {
   index: Record<string, any>;
   _memories: KernelMemory[];
   derivations: Record<string, MEDerivationRecord>;
-  refSubscribers: Record<string, string[]>;
+  refSubscribers: Record<string, Set<string>>;
   recomputeMode: MERecomputeMode;
   refVersions: Record<string, number>;
   derivationRefVersions: Record<string, Record<string, number>>;

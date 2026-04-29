@@ -1,6 +1,16 @@
 const ME = require("../../dist/me.cjs");
 console.log("=== CJS BUILD TEST ===");
 try {
+  const identity = ME({ name: "suiGn", space: "neurons.me" });
+  if (typeof identity !== "function") {
+    throw new Error("Factory instance is not callable");
+  }
+  if (identity("profile.namespace") !== "suign.neurons.me") {
+    throw new Error("Factory namespace bootstrap failed");
+  }
+  if (identity("profile.username") !== "suign") {
+    throw new Error("Factory username bootstrap failed");
+  }
   const me = new ME();
   if (typeof me !== "function") {
     throw new Error("ME instance is not callable");
@@ -11,9 +21,24 @@ try {
   // semantic read
   const name = me("profile.name");
   const age = me("profile.age");
+  const parsed = ME.parseCanonicalMeUri("me://suign.neurons.me[macbook]/profile.name", {
+    knownSpaces: ["neurons.me"],
+  });
+  const human = ME.canonicalizeHumanIdentity("suign@neurons.me", {
+    knownSpaces: ["neurons.me"],
+  });
+  const projection = ME.projectDnsHostToNamespace("https://suign.neurons.me", ["neurons.me"]);
   console.log("profile.name =", name);
   console.log("profile.age  =", age);
-  if (name === "Abella" && age === 30) {
+  if (
+    name === "Abella" &&
+    age === 30 &&
+    parsed.href === "me://suign.neurons.me[surface:macbook]/profile.name" &&
+    human.uri === "me://suign.neurons.me" &&
+    projection.ok &&
+    projection.kind === "namespace" &&
+    projection.namespace === "suign.neurons.me"
+  ) {
     console.log("✔ CJS Test PASSED");
   } else {
     console.log("❌ CJS Test FAILED (values mismatch)");
