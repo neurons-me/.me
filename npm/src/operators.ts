@@ -16,6 +16,7 @@
  * - The actual postulate()/readPath() machinery
  */
 
+import { normalizeCanonicalHandle } from "./me-uri.js";
 import type {
   KernelMemory,
   OperatorKind,
@@ -82,27 +83,19 @@ export function pathStartsWith(path: SemanticPath, prefix: SemanticPath): boolea
 /**
  * Domain-safe label rules (DNS-like):
  * - 3..63 chars total
- * - a-z, 0-9, hyphen, dot
- * - labels separated by dots
- * - each label must start/end with alphanumeric
+ * - a-z, 0-9, hyphen
+ * - single structural label only
+ * - each handle must start/end with alphanumeric
  */
 export function normalizeAndValidateUsername(input: string): string {
   const id = input.trim().toLowerCase();
   if (id.length < 3 || id.length > 63) {
     throw new Error(`Invalid username length: ${id.length}. Expected 3..63 characters.`);
   }
-  if (id.startsWith(".") || id.endsWith(".") || id.includes("..")) {
-    throw new Error(`Invalid username. Dot-separated labels only. Got: ${input}`);
+  if (id.includes(".")) {
+    throw new Error(`Invalid username. "." is reserved as structure. Got: ${input}`);
   }
-  const labelRe = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
-  const labels = id.split(".");
-  for (const label of labels) {
-    if (!labelRe.test(label)) {
-      throw new Error(
-        `Invalid username. Use dot-separated labels with [a-z0-9-], each starting/ending with [a-z0-9]. Got: ${input}`
-      );
-    }
-  }
+  normalizeCanonicalHandle(id);
   return id;
 }
 

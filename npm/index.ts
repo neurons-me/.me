@@ -20,6 +20,7 @@ import { DiskStore, MemoryStore } from "./src/instance-store.ts";
 import { createMe, write, define, subscribe } from "./src/kernel/cascade.ts";
 import { createThisMe } from "./src/factory.ts";
 import {
+  canonicalizeLegacyAtOperator,
   canonicalizeHumanIdentity,
   formatCanonicalMeUri,
   normalizeCanonicalHandle,
@@ -47,6 +48,7 @@ export type ThisMeFactory = typeof ME & {
   tryParseMeUri: typeof tryParseMeUri;
   parseCanonicalMeUri: typeof parseCanonicalMeUri;
   formatCanonicalMeUri: typeof formatCanonicalMeUri;
+  canonicalizeLegacyAtOperator: typeof canonicalizeLegacyAtOperator;
   canonicalizeHumanIdentity: typeof canonicalizeHumanIdentity;
   projectDnsHostToNamespace: typeof projectDnsHostToNamespace;
   normalizeCanonicalHandle: typeof normalizeCanonicalHandle;
@@ -69,6 +71,7 @@ MERuntime.parseMeUri = parseMeUri;
 MERuntime.tryParseMeUri = tryParseMeUri;
 MERuntime.parseCanonicalMeUri = parseCanonicalMeUri;
 MERuntime.formatCanonicalMeUri = formatCanonicalMeUri;
+MERuntime.canonicalizeLegacyAtOperator = canonicalizeLegacyAtOperator;
 MERuntime.canonicalizeHumanIdentity = canonicalizeHumanIdentity;
 MERuntime.projectDnsHostToNamespace = projectDnsHostToNamespace;
 MERuntime.normalizeCanonicalHandle = normalizeCanonicalHandle;
@@ -85,6 +88,7 @@ MERuntime.verifyEd25519Signature = verifyEd25519Signature;
 export default MERuntime;
 export {
   ME,
+  canonicalizeLegacyAtOperator,
   canonicalizeHumanIdentity,
   createThisMe,
   formatCanonicalMeUri,
@@ -131,6 +135,7 @@ export type {
 export type { ThisMeInit, ThisMeInput } from "./src/factory.ts";
 export type { MeDB } from "./src/kernel/cascade.ts";
 export type {
+  CanonicalizeLegacyAtOperatorOptions,
   CanonicalizeHumanIdentityOptions,
   FormatCanonicalMeUriInput,
   MeCanonicalNamespace,

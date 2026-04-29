@@ -38,6 +38,10 @@ export interface CanonicalizeHumanIdentityOptions {
   knownSpaces?: readonly string[];
 }
 
+export interface CanonicalizeLegacyAtOperatorOptions {
+  knownSpaces?: readonly string[];
+}
+
 export interface FormatCanonicalMeUriInput {
   handle: string;
   space: string;
@@ -370,6 +374,20 @@ export function canonicalizeHumanIdentity(
     namespace: `${handle}.${space}`,
     uri,
   };
+}
+
+export function canonicalizeLegacyAtOperator(
+  rawInput: string,
+  options: CanonicalizeLegacyAtOperatorOptions = {},
+): string | null {
+  const raw = String(rawInput ?? "").trim();
+  if (!raw.includes("@")) return null;
+
+  try {
+    return canonicalizeHumanIdentity(raw, options).uri;
+  } catch {
+    return null;
+  }
 }
 
 export function projectDnsHostToNamespace(

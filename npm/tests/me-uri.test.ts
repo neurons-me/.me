@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import {
+  canonicalizeLegacyAtOperator,
   canonicalizeHumanIdentity,
   parseCanonicalMeUri,
   projectDnsHostToNamespace,
@@ -42,6 +43,22 @@ const human = canonicalizeHumanIdentity("SuiGn@Neurons.me", {
 assert.equal(human.alias, "suign@neurons.me");
 assert.equal(human.namespace, "suign.neurons.me");
 assert.equal(human.uri, "me://suign.neurons.me");
+
+assert.equal(
+  canonicalizeLegacyAtOperator("suign@neurons.me", {
+    knownSpaces: ["neurons.me"],
+  }),
+  "me://suign.neurons.me",
+);
+assert.equal(
+  canonicalizeLegacyAtOperator("alice@community.neurons.me", {
+    knownSpaces: ["neurons.me"],
+  }),
+  null,
+);
+assert.equal(canonicalizeLegacyAtOperator("sui_gn@neurons.me", {
+  knownSpaces: ["neurons.me"],
+}), null);
 
 const rootProjection = projectDnsHostToNamespace("https://neurons.me", ["neurons.me"]);
 assert.equal(rootProjection.ok, true);
