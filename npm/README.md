@@ -8,7 +8,6 @@
 **0.003ms p50** cascadeLazy 10-dep flush
 **0.137ms p99** cascadeLazy 10-dep flush
 **~700 vps** sustained write with 1536-dim vectors
-
 Your personal semantic kernel - **own your knowledge** graph, your way: agents, notes, relationships, wallet, groups, secrets — all in one reactive tree.
 
 Define who you are, **what you own**, and how everything connects — once.  Then use it everywhere: apps, websites, dashboards, tickets, and more.
@@ -20,7 +19,6 @@ npm install this.me
 ```
 
 **.me** runs 100% local with *end-to-end encryption.*
-
 **Then in your app:**
 
 ```ts
@@ -50,7 +48,6 @@ Then use it:
 
 ```js
 import { thisMe } from './me'
-
 console.log(thisMe)
 ```
 
