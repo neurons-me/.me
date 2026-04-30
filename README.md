@@ -5,7 +5,7 @@
 
 # .me
 ##### **100k vectors · 3.32s search · recall 1.0 · fully encrypted · runs local**
-Your personal semantic kernel — **own your knowledge**, your way: agents, notes, relationships, wallet, groups, secrets — all in one reactive tree.
+Your personal semantic kernel — **own your knowledge**: agents, notes, relationships, wallet, groups, secrets — all in one reactive tree.
 
 Define who you are, **what you own**, and how everything connects — once. Then use it everywhere: apps, websites, dashboards, tickets, and more.
 
