@@ -3,7 +3,6 @@
   <img src="https://res.cloudinary.com/dkwnxf6gm/image/upload/v1761149332/this.me-removebg-preview_2_j1eoiy.png" alt=".me Logo" width="144" />
 </picture>
 
-
 # .me
 **Go Algorithmic.**
 **.me** is a **semantic knowledge graph engine** that runs 100% locally with end-to-end encryption.
@@ -28,14 +27,12 @@ Scale the graph to 10 million nodes — if your change has 6 dependents, it stil
 ```bash
 git clone https://github.com/neurons-me/.me.git
 ```
-
-| Language    | Source          | Status            |
-| ----------- | --------------- | ----------------- |
-| **Node.js** | `cd .me/npm/`   | **Stable 3.6.40** |
-| **Python**  | `cd .me/pip/`   | Not Available     |
-| **Rust**    | `cd .me/crate/` | Not Available     |
-
-[Full documentation ⟡ ](https://neurons-me.github.io/.me/npm/typedocs/)
+Select your language:
+| Language    | Source                      | Status            | Documentation                                                |
+| ----------- | --------------------------- | ----------------- | ------------------------------------------------------------ |
+| **Node.js** | `cd .me/npm && npm install` | **Stable 3.6.40** | [node.js Docs ⟡ ](https://neurons-me.github.io/.me/npm/typedocs/) |
+| **Python**  | `cd .me/pip/`               | Not Available     |                                                              |
+| **Rust**    | `cd .me/crate/`             | Not Available     |                                                              |
 
 ### Demos
 - **Robots that Understand Context 🤖⟐🤖** — Same physical object, radically different meaning and behavior per robot.
