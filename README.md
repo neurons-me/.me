@@ -8,19 +8,22 @@
 
 **Go Algorithmic.**
 
-Build artificial intelligence that reveals its logic — evolve it consciously and collectively.
-
 **.me** is a **semantic knowledge graph engine** that runs 100% locally with end-to-end encryption.
 
 ### Core Idea
 
-The same object can mean completely different things depending on context — and everything updates automatically when something changes.
+The same object can mean completely different things depending on context — and everything updates automatically when something changes. 
 
 ### Real Performance
 
-- **1 change → 100,000** dependents updated
-- **1 sensor → 6 systems** react in **0.256ms**
-- 100,000 reactive nodes wired in ~2.7 seconds
+**.me** uses **true O(K) reactivity** — when a value changes, only its actual dependents update. *Not the whole graph.*
+
+- 1 million nodes in memory
+- 1 sensor changed → exactly **6 dependent nodes** recomputed
+- Time to propagate: **0.256ms**
+- K=6 out of 1,000,000 — the rest of the graph is untouched
+
+Scale the graph to 10 million nodes — if your change has 6 dependents, it still takes the same time.
 
 **Data that thinks. Logic that explains itself.**
 
@@ -38,8 +41,8 @@ The same object can mean completely different things depending on context — an
 
 ### Demos
 
-- **Robots that Understand Context** — Same physical object, radically different meaning and behavior per robot.
-- **Smart City** — A full city reacting in real time as interconnected nodes.
+- **Robots that Understand Context ⟐** — Same physical object, radically different meaning and behavior per robot.
+- **Smart City ⌬◉⌬** — A full city reacting in real time as interconnected nodes.
 - **Hemisphere Scale** — 1 million nodes with cross-domain reactive updates.
 - **Extreme Fan-Out** — One write instantly updates 100k dependents.
 
@@ -55,6 +58,37 @@ The same object can mean completely different things depending on context — an
 
 > **Local compute makes memory an OS primitive.**  
 > Cloud makes it a service.
+
+Even with 100,000 nodes needing a simultaneous recompute, you're looking at about **62 microseconds per node** (6252ms / 100k) for the full propagation. That’s incredibly consistent.
+
+### Syntax
+
+`.me` uses an infinite proxy — any path you write becomes a node in the graph.
+No schema. No migrations. No declarations upfront.
+
+```ts
+me.city.population = 700_000
+me.city.name = "Veracruz"
+
+// derived — recomputes automatically
+me.city.density = () => me.city.population / me.city.area
+
+// context-aware
+me.robot.canProceed = () => me.robot.canLift && !me.robot.needsHumanReview
+
+// stealth — structurally invisible to outside observers  
+me.wallet["_"].balance = 1000
+
+// explain any value
+me.explain("city.density")
+// → { value: 3500, expression: "population / area", dependsOn: [...] }
+
+// query across the graph
+me.robots[r => r.canProceed === true].name
+```
+
+Write anything. Chain anything. The kernel figures out the dependencies.
+**If it changes, everything that depends on it updates — automatically.**
 
 ---
 
