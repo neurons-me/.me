@@ -5,17 +5,13 @@
 
 
 # .me
-
 **Go Algorithmic.**
-
 **.me** is a **semantic knowledge graph engine** that runs 100% locally with end-to-end encryption.
 
 ### Core Idea
-
 The same object can mean completely different things depending on context — and everything updates automatically when something changes. 
 
 ### Real Performance
-
 **.me** uses **true O(K) reactivity** — when a value changes, only its actual dependents update. *Not the whole graph.*
 
 - 1 million nodes in memory
@@ -24,13 +20,11 @@ The same object can mean completely different things depending on context — an
 - K=6 out of 1,000,000 — the rest of the graph is untouched
 
 Scale the graph to 10 million nodes — if your change has 6 dependents, it still takes the same time.
-
 **Data that thinks. Logic that explains itself.**
 
 ---
 
 ### Getting Started
-
 | Language    | Source          | Status            |
 | ----------- | --------------- | ----------------- |
 | **Node.js** | `cd .me/npm/`   | **Stable 3.6.40** |
@@ -40,7 +34,6 @@ Scale the graph to 10 million nodes — if your change has 6 dependents, it stil
 [Full documentation ⟡ ](https://neurons-me.github.io/.me/npm/typedocs/)
 
 ### Demos
-
 - **Robots that Understand Context 🤖⟐🤖** — Same physical object, radically different meaning and behavior per robot.
 - **Smart City ⌬◉⌬** — A full city reacting in real time as interconnected nodes.
 - **Hemisphere Scale** — 1 million nodes with cross-domain reactive updates.
@@ -51,7 +44,6 @@ Scale the graph to 10 million nodes — if your change has 6 dependents, it stil
 ---
 
 ## **▵** Why .me?
-
 1. **Structural Privacy** — Private data is structurally invisible (not just hidden by rules).
 2. **Full Explainability** — Every derived value can explain exactly how it was computed.
 3. **Subjective Reality** — Same graph, different views per agent.
@@ -93,7 +85,6 @@ Write anything. Chain anything. The kernel figures out the dependencies.
 ---
 
 **𓅓 Own your intelligence.**
-
 **suiGn**  MIT License © 2025 · [neurons.me](https://neurons.me)
 
 <p align="center">
