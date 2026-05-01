@@ -85,6 +85,7 @@ Write anything. Chain anything. The kernel figures out the dependencies.
 ---
 
 **𓅓 Own your intelligence.**
+
 **suiGn**  MIT License © 2025 · [neurons.me](https://neurons.me)
 
 <p align="center">
