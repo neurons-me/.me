@@ -41,7 +41,7 @@ Scale the graph to 10 million nodes — if your change has 6 dependents, it stil
 
 ### Demos
 
-- **Robots that Understand Context ⟐** — Same physical object, radically different meaning and behavior per robot.
+- **Robots that Understand Context 🤖⟐🤖** — Same physical object, radically different meaning and behavior per robot.
 - **Smart City ⌬◉⌬** — A full city reacting in real time as interconnected nodes.
 - **Hemisphere Scale** — 1 million nodes with cross-domain reactive updates.
 - **Extreme Fan-Out** — One write instantly updates 100k dependents.
