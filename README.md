@@ -25,6 +25,10 @@ Scale the graph to 10 million nodes — if your change has 6 dependents, it stil
 ---
 
 ### Getting Started
+```bash
+git clone https://github.com/neurons-me/.me.git
+```
+
 | Language    | Source          | Status            |
 | ----------- | --------------- | ----------------- |
 | **Node.js** | `cd .me/npm/`   | **Stable 3.6.40** |
@@ -93,4 +97,3 @@ Write anything. Chain anything. The kernel figures out the dependencies.
     <img src="https://res.cloudinary.com/dkwnxf6gm/image/upload/v1760629064/neurons.me_b50f6a.png" alt="neurons.me" width="89" />
   </a>
 </p>
-
