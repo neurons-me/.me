@@ -3,69 +3,68 @@
   <img src="https://res.cloudinary.com/dkwnxf6gm/image/upload/v1761149332/this.me-removebg-preview_2_j1eoiy.png" alt=".me Logo" width="144" />
 </picture>
 
+
 # .me
-##### **100k vectors · 3.32s search · recall 1.0 · fully encrypted · runs local**
-Your personal semantic kernel — **own your knowledge**: agents, notes, relationships, wallet, groups, secrets — all in one reactive tree.
 
-Define who you are, **what you own**, and how everything connects — once. Then use it everywhere: apps, websites, dashboards, tickets, and more.
+**Go Algorithmic.**
 
-**.me** runs 100% local with **end-to-end encryption.** No cloud, no vendor lock.
+Build artificial intelligence that reveals its logic — evolve it consciously and collectively.
 
----
+**.me** is a **semantic knowledge graph engine** that runs 100% locally with end-to-end encryption.
 
-## Install
+### Core Idea
 
-| Package     | Install               | Status            |
-| ----------- | --------------------- | ----------------- |
-| **Node.js** | `npm install this.me` | **Stable 3.6.40** |
-| **Python**  | `pip install this-me` | Not Available     |
-| **Rust**    | `cargo add this-me`   | Not Available     |
+The same object can mean completely different things depending on context — and everything updates automatically when something changes.
 
-[Full documentation →](https://neurons-me.github.io/.me/npm/typedocs/) · [Examples](https://neurons-me.github.io/.me/npm/typedocs/examples/Social_Graph.html) · [Benchmarks](https://neurons-me.github.io/.me/npm/typedocs/kernel/Benchmarks.html)
+### Real Performance
 
----
+- **1 change → 100,000** dependents updated
+- **1 sensor → 6 systems** react in **0.256ms**
+- 100,000 reactive nodes wired in ~2.7 seconds
 
-## **▵** The primitives
-**.me** ships 3 things **cloud architecture can't:**
-
-1. **Structural privacy** — Secrets are holes in the graph, not flags on rows. Access control is topology, not policy.
-2. **Native provenance** — Every derived value carries inputs, expression, and origin. Stealth stays masked but auditable. `me.explain("path")` works everywhere.
-3. **Subjective state** — Same graph resolves different shapes per viewer. O(k) recompute means privacy doesn’t cost latency.
-
-> **Local compute makes memory an OS primitive. Cloud makes it a service.**
-
- *me*    **← the seed. the root. the trunk.**
- │
- ├─ *me[@]("jabellae")*    ***← a branch. one identity expression.***
-│    ├─ *me.profile.name*     ***← leaf***
-│    ├─ *me.wallet*  ***← secret scope branch***
-│   └─ *me.surface("iphone")* ***← derived surface***
-│
- ├─ *me[@]("ana")*  ***← another branch. different identity. same tree.***
-
-│       └─ *me.profile.name*
-│
-└─ *me[@]("suign")*  ***← another branch.***
+**Data that thinks. Logic that explains itself.**
 
 ---
 
-## **𓅓** Self-Semantic Runtime Invariance
-The runtime of `.me` is written **in the same semantic model that it interprets**. This makes it *self-describing* and *self-sustaining*.
+### Getting Started
 
-**The language can describe itself.** The runtime’s behavior is encoded in the same declarative structures users write. Every operation is both computation and meaning. The system is *reflexive*: it can observe and narrate its own evolution.
+| Language    | Source          | Status            |
+| ----------- | --------------- | ----------------- |
+| **Node.js** | `cd .me/npm/`   | **Stable 3.6.40** |
+| **Python**  | `cd .me/pip/`   | Not Available     |
+| **Rust**    | `cd .me/crate/` | Not Available     |
+
+[Full documentation ⟡ ](https://neurons-me.github.io/.me/npm/typedocs/)
+
+### Demos
+
+- **Robots that Understand Context** — Same physical object, radically different meaning and behavior per robot.
+- **Smart City** — A full city reacting in real time as interconnected nodes.
+- **Hemisphere Scale** — 1 million nodes with cross-domain reactive updates.
+- **Extreme Fan-Out** — One write instantly updates 100k dependents.
+
+[View all demos → ](https://github.com/neurons-me/.me/tree/main/npm/tests/Demos) 
 
 ---
 
-**∴ Witness our seal**  
+## **▵** Why .me?
 
-**suiGn**
+1. **Structural Privacy** — Private data is structurally invisible (not just hidden by rules).
+2. **Full Explainability** — Every derived value can explain exactly how it was computed.
+3. **Subjective Reality** — Same graph, different views per agent.
 
-**MIT License** © 2025 https://neurons.me
+> **Local compute makes memory an OS primitive.**  
+> Cloud makes it a service.
 
+---
 
+**𓅓 Own your intelligence.**
+
+**suiGn**  MIT License © 2025 · [neurons.me](https://neurons.me)
 
 <p align="center">
-  <a href="https://neuron.me/">
+  <a href="https://neurons.me/">
     <img src="https://res.cloudinary.com/dkwnxf6gm/image/upload/v1760629064/neurons.me_b50f6a.png" alt="neurons.me" width="89" />
   </a>
 </p>
+
