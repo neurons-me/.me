@@ -5,6 +5,7 @@
 
 # .me
 **Go Algorithmic.**
+
 **.me** is a **semantic knowledge graph engine** that runs 100% locally with end-to-end encryption.
 
 ### Core Idea
