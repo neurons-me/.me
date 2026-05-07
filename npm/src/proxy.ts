@@ -1,5 +1,5 @@
 import { handleCall as handleCallFn } from "./handleCall.js";
-import { ME_EXPRESSION_SYMBOL, ME_IDENTITY_SYMBOL } from "./kernel-symbols.js";
+import { ME_EXPRESSION_SYMBOL, ME_IDENTITY_SYMBOL, ME_RESEED_SYMBOL, ME_SET_ACTIVE_EXPRESSION_SYMBOL } from "./kernel-symbols.js";
 import { isMemory, splitPath } from "./operators.js";
 import type {
   EncryptedBlob,
@@ -267,6 +267,8 @@ export function createProxy(
           opKind: (op) => self.opKind(op),
           splitPath,
           isMemory,
+          reseedIdentity: (who, secret) => (self as any)[ME_RESEED_SYMBOL]?.(who, secret),
+          setActiveExpression: (expr) => (self as any)[ME_SET_ACTIVE_EXPRESSION_SYMBOL]?.(expr),
         },
         path,
         args,

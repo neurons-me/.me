@@ -53,6 +53,7 @@ import { searchExact as searchExactVectors } from "./vector-scan.js";
 import {
   ME_EXPRESSION_SYMBOL,
   ME_IDENTITY_SYMBOL,
+  ME_RESEED_SYMBOL,
   ME_SEED_SYMBOL,
   ME_SET_ACTIVE_EXPRESSION_SYMBOL,
   NODE_INSPECT_CUSTOM,
@@ -300,6 +301,20 @@ export class ME {
         this.#activeExpression = expression;
       },
     });
+    // me("ana", "luna") → seed = keccak256("me.seed/compound:v1::" + who + "::" + secret)
+    // Derives a deterministic compound seed and re-initialises the kernel identity.
+    Object.defineProperty(this as object, ME_RESEED_SYMBOL, {
+      configurable: true,
+      enumerable: false,
+      value: (who: string, secret: string) => {
+        const COMPOUND_SEED_DOMAIN = "me.seed/compound:v1::";
+        this.#seed = keccak256(COMPOUND_SEED_DOMAIN + who + "::" + secret);
+        this.#identityHash = deriveIdentityHash(this.#seed);
+        this.#activeExpression = who;
+        this.bumpSecretEpoch();
+        this.rebuildIndex();
+      },
+    });
     const rootProxy = this.createProxy([]);
     Object.setPrototypeOf(rootProxy as any, ME.prototype);
     Object.assign(rootProxy as any, this);
@@ -328,6 +343,18 @@ export class ME {
         hash: this.#identityHash,
         expression: this.#activeExpression,
       }),
+    });
+    Object.defineProperty(rootProxy as object, ME_RESEED_SYMBOL, {
+      configurable: true,
+      enumerable: false,
+      value: (who: string, secret: string) => {
+        const COMPOUND_SEED_DOMAIN = "me.seed/compound:v1::";
+        this.#seed = keccak256(COMPOUND_SEED_DOMAIN + who + "::" + secret);
+        this.#identityHash = deriveIdentityHash(this.#seed);
+        this.#activeExpression = who;
+        this.bumpSecretEpoch();
+        this.rebuildIndex();
+      },
     });
     return rootProxy as unknown as ME;
   }

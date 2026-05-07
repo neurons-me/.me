@@ -15,6 +15,13 @@ export interface HandleCallDeps {
   opKind(op: string): string | null;
   splitPath(path: SemanticPath): { scope: SemanticPath; leaf: string | null };
   isMemory(obj: any): obj is KernelMemory;
+  /**
+   * me("ana", "luna") — derive compound seed from (who, secret) and re-initialise kernel identity.
+   * seed = keccak256("me.seed/compound:v1::" + who + "::" + secret)
+   */
+  reseedIdentity?(who: string, secret: string): void;
+  /** me("ana") — declare identity expression without reseeding (no secret). */
+  setActiveExpression?(expression: string): void;
 }
 
 function splitPathExpr(input: string): string[] {
@@ -74,15 +81,37 @@ function splitPathExpr(input: string): string[] {
 export function handleCall(deps: HandleCallDeps, path: SemanticPath, args: any[]): MEProxy | any {
   // Root call
   if (path.length === 0) {
-    // GET bias: me("a.b.c") or me("username")
     if (args.length === 1 && typeof args[0] === "string") {
       const s = (args[0] as string).trim();
       const isOperatorPrefixed = s.startsWith("_") || s.startsWith("~") || s.startsWith("@");
       const isDottedPath = s.includes(".");
       const isSingleLabelPath = /^[a-zA-Z][a-zA-Z0-9_-]*$/.test(s);
-      if (isDottedPath || isOperatorPrefixed || isSingleLabelPath) {
-        const getPath = splitPathExpr(s);
-        return deps.readPath(getPath);
+
+      // Dotted paths and operator-prefixed strings remain GET operations.
+      if (isDottedPath || isOperatorPrefixed) {
+        return deps.readPath(splitPathExpr(s));
+      }
+
+      // me("ana") — canonical identity declaration. Sets the expression (who I am)
+      // without reseeding. Use me("ana", "secret") to derive a compound seed.
+      if (isSingleLabelPath) {
+        deps.setActiveExpression?.(s);
+        return deps.createProxy([]);
+      }
+    }
+
+    // me("ana", "luna") — canonical compound seed: who + secret → deterministic identity.
+    if (
+      args.length === 2 &&
+      typeof args[0] === "string" &&
+      typeof args[1] === "string"
+    ) {
+      const who = (args[0] as string).trim();
+      const secret = (args[1] as string).trim();
+      const isBareLabel = /^[a-zA-Z][a-zA-Z0-9_-]*$/.test(who);
+      if (isBareLabel && who && secret) {
+        deps.reseedIdentity?.(who, secret);
+        return deps.createProxy([]);
       }
     }
 
