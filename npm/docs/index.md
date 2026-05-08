@@ -105,7 +105,7 @@ audienceSeed = keccak256("me.seed/audience:v1::" + sort([seed1, seed2]).join("::
 
 ---
 
-## Architecture notes (2026-05-07)
+## Architecture notes (2026-05-08)
 
 NRP chemistry frozen at `nrp-chemistry-v0.1`. Implementation status:
 
@@ -117,9 +117,11 @@ NRP chemistry frozen at `nrp-chemistry-v0.1`. Implementation status:
 | `POST /.mesh/announce` incoming | ✅ |
 | `MONAD_SURFACE_URL` outgoing announce | ✅ |
 | `namespace:fallback` / `namespace:failed` events | ✅ |
-| KDF domain separation | planned |
-| `surface[]` mesh resolver in bridge | planned |
-| Audience compound `me.compound(...others)` | planned |
+| KDF domain separation (`SEED` → Ed25519 via HKDF) | ✅ |
+| `monads proxy` browser gateway (PAC file) | ✅ |
+| `netget reload` CLI (no nginx in PATH needed) | ✅ |
+| `surface[]` mesh resolver in bridge | 🔲 planned |
+| Audience compound `surface[a+b]` | 🔲 planned |
 
 ---
 
