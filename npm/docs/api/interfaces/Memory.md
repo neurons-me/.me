@@ -6,7 +6,7 @@
 
 # Interface: Memory
 
-Defined in: [types.ts:35](https://github.com/neurons-me/.me/blob/c571ec78a420eef7f7b8151238de06919c99b3b5/npm/src/types.ts#L35)
+Defined in: [types.ts:37](https://github.com/neurons-me/.me/blob/ec31d2b86e5ca3a8aa2ab013e282fe9e794962ac/npm/src/types.ts#L37)
 
 Public semantic log item exposed by `.me` surfaces such as inspect(),
 `me.memories`, and exported snapshots.
@@ -17,7 +17,7 @@ Public semantic log item exposed by `.me` surfaces such as inspect(),
 
 > **path**: `string`
 
-Defined in: [types.ts:37](https://github.com/neurons-me/.me/blob/c571ec78a420eef7f7b8151238de06919c99b3b5/npm/src/types.ts#L37)
+Defined in: [types.ts:39](https://github.com/neurons-me/.me/blob/ec31d2b86e5ca3a8aa2ab013e282fe9e794962ac/npm/src/types.ts#L39)
 
 semantic destination path (where the write/claim lands). root is ""
 
@@ -27,7 +27,7 @@ semantic destination path (where the write/claim lands). root is ""
 
 > **operator**: `string` \| `null`
 
-Defined in: [types.ts:39](https://github.com/neurons-me/.me/blob/c571ec78a420eef7f7b8151238de06919c99b3b5/npm/src/types.ts#L39)
+Defined in: [types.ts:41](https://github.com/neurons-me/.me/blob/ec31d2b86e5ca3a8aa2ab013e282fe9e794962ac/npm/src/types.ts#L41)
 
 operator used to produce this memory (null for normal writes)
 
@@ -35,9 +35,9 @@ operator used to produce this memory (null for normal writes)
 
 ### expression?
 
-> `optional` **expression**: `any`
+> `optional` **expression?**: `any`
 
-Defined in: [types.ts:41](https://github.com/neurons-me/.me/blob/c571ec78a420eef7f7b8151238de06919c99b3b5/npm/src/types.ts#L41)
+Defined in: [types.ts:43](https://github.com/neurons-me/.me/blob/ec31d2b86e5ca3a8aa2ab013e282fe9e794962ac/npm/src/types.ts#L43)
 
 expression as provided by the user (pre-eval / pre-resolve).
 
@@ -47,7 +47,7 @@ expression as provided by the user (pre-eval / pre-resolve).
 
 > **value**: `any`
 
-Defined in: [types.ts:43](https://github.com/neurons-me/.me/blob/c571ec78a420eef7f7b8151238de06919c99b3b5/npm/src/types.ts#L43)
+Defined in: [types.ts:45](https://github.com/neurons-me/.me/blob/ec31d2b86e5ca3a8aa2ab013e282fe9e794962ac/npm/src/types.ts#L45)
 
 value that was actually committed at `path` (post-eval / post-collect; may be encrypted)
 
@@ -57,7 +57,7 @@ value that was actually committed at `path` (post-eval / post-collect; may be en
 
 > **hash**: `string`
 
-Defined in: [types.ts:45](https://github.com/neurons-me/.me/blob/c571ec78a420eef7f7b8151238de06919c99b3b5/npm/src/types.ts#L45)
+Defined in: [types.ts:47](https://github.com/neurons-me/.me/blob/ec31d2b86e5ca3a8aa2ab013e282fe9e794962ac/npm/src/types.ts#L47)
 
 portable hash (FNV-1a 32-bit in me.ts)
 
@@ -65,9 +65,9 @@ portable hash (FNV-1a 32-bit in me.ts)
 
 ### prevHash?
 
-> `optional` **prevHash**: `string`
+> `optional` **prevHash?**: `string`
 
-Defined in: [types.ts:47](https://github.com/neurons-me/.me/blob/c571ec78a420eef7f7b8151238de06919c99b3b5/npm/src/types.ts#L47)
+Defined in: [types.ts:49](https://github.com/neurons-me/.me/blob/ec31d2b86e5ca3a8aa2ab013e282fe9e794962ac/npm/src/types.ts#L49)
 
 previous memory hash for chain integrity (genesis = "")
 
@@ -77,4 +77,4 @@ previous memory hash for chain integrity (genesis = "")
 
 > **timestamp**: `number`
 
-Defined in: [types.ts:48](https://github.com/neurons-me/.me/blob/c571ec78a420eef7f7b8151238de06919c99b3b5/npm/src/types.ts#L48)
+Defined in: [types.ts:50](https://github.com/neurons-me/.me/blob/ec31d2b86e5ca3a8aa2ab013e282fe9e794962ac/npm/src/types.ts#L50)

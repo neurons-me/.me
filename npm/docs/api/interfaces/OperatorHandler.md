@@ -6,7 +6,7 @@
 
 # Interface: OperatorHandler
 
-Defined in: [types.ts:299](https://github.com/neurons-me/.me/blob/c571ec78a420eef7f7b8151238de06919c99b3b5/npm/src/types.ts#L299)
+Defined in: [types.ts:397](https://github.com/neurons-me/.me/blob/ec31d2b86e5ca3a8aa2ab013e282fe9e794962ac/npm/src/types.ts#L397)
 
 ## Methods
 
@@ -14,7 +14,7 @@ Defined in: [types.ts:299](https://github.com/neurons-me/.me/blob/c571ec78a420ee
 
 > **match**(`call`, `kernel`): [`OperatorMatch`](../type-aliases/OperatorMatch.md)
 
-Defined in: [types.ts:308](https://github.com/neurons-me/.me/blob/c571ec78a420eef7f7b8151238de06919c99b3b5/npm/src/types.ts#L308)
+Defined in: [types.ts:406](https://github.com/neurons-me/.me/blob/ec31d2b86e5ca3a8aa2ab013e282fe9e794962ac/npm/src/types.ts#L406)
 
 Return a match if this operator applies to the call.
 IMPORTANT: matching depends on:
@@ -43,7 +43,7 @@ IMPORTANT: matching depends on:
 
 > **execute**(`match`, `call`, `kernel`): `any`
 
-Defined in: [types.ts:317](https://github.com/neurons-me/.me/blob/c571ec78a420eef7f7b8151238de06919c99b3b5/npm/src/types.ts#L317)
+Defined in: [types.ts:415](https://github.com/neurons-me/.me/blob/ec31d2b86e5ca3a8aa2ab013e282fe9e794962ac/npm/src/types.ts#L415)
 
 Execute behavior.
 This function may:

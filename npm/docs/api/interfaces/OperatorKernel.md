@@ -6,7 +6,7 @@
 
 # Interface: OperatorKernel
 
-Defined in: [types.ts:217](https://github.com/neurons-me/.me/blob/c571ec78a420eef7f7b8151238de06919c99b3b5/npm/src/types.ts#L217)
+Defined in: [types.ts:315](https://github.com/neurons-me/.me/blob/ec31d2b86e5ca3a8aa2ab013e282fe9e794962ac/npm/src/types.ts#L315)
 
 A minimal “kernel facade” for operator modules.
 These are *capabilities* the ME kernel must expose so ops can behave exactly like me.ts.
@@ -15,41 +15,41 @@ These are *capabilities* the ME kernel must expose so ops can behave exactly lik
 
 ### operators?
 
-> `optional` **operators**: [`OperatorRegistry`](../type-aliases/OperatorRegistry.md)
+> `optional` **operators?**: [`OperatorRegistry`](../type-aliases/OperatorRegistry.md)
 
-Defined in: [types.ts:220](https://github.com/neurons-me/.me/blob/c571ec78a420eef7f7b8151238de06919c99b3b5/npm/src/types.ts#L220)
+Defined in: [types.ts:318](https://github.com/neurons-me/.me/blob/ec31d2b86e5ca3a8aa2ab013e282fe9e794962ac/npm/src/types.ts#L318)
 
 ***
 
 ### localSecrets?
 
-> `optional` **localSecrets**: `Record`\<`string`, `string`\>
+> `optional` **localSecrets?**: `Record`\<`string`, `string`\>
 
-Defined in: [types.ts:226](https://github.com/neurons-me/.me/blob/c571ec78a420eef7f7b8151238de06919c99b3b5/npm/src/types.ts#L226)
+Defined in: [types.ts:324](https://github.com/neurons-me/.me/blob/ec31d2b86e5ca3a8aa2ab013e282fe9e794962ac/npm/src/types.ts#L324)
 
 ***
 
 ### localNoises?
 
-> `optional` **localNoises**: `Record`\<`string`, `string`\>
+> `optional` **localNoises?**: `Record`\<`string`, `string`\>
 
-Defined in: [types.ts:227](https://github.com/neurons-me/.me/blob/c571ec78a420eef7f7b8151238de06919c99b3b5/npm/src/types.ts#L227)
+Defined in: [types.ts:325](https://github.com/neurons-me/.me/blob/ec31d2b86e5ca3a8aa2ab013e282fe9e794962ac/npm/src/types.ts#L325)
 
 ***
 
 ### encryptedBranches?
 
-> `optional` **encryptedBranches**: `Record`\<`string`, `` `0x${string}` ``\>
+> `optional` **encryptedBranches?**: `EncryptedBranchPlane`
 
-Defined in: [types.ts:228](https://github.com/neurons-me/.me/blob/c571ec78a420eef7f7b8151238de06919c99b3b5/npm/src/types.ts#L228)
+Defined in: [types.ts:326](https://github.com/neurons-me/.me/blob/ec31d2b86e5ca3a8aa2ab013e282fe9e794962ac/npm/src/types.ts#L326)
 
 ***
 
 ### memories?
 
-> `optional` **memories**: `KernelMemory`[]
+> `optional` **memories?**: `KernelMemory`[]
 
-Defined in: [types.ts:231](https://github.com/neurons-me/.me/blob/c571ec78a420eef7f7b8151238de06919c99b3b5/npm/src/types.ts#L231)
+Defined in: [types.ts:329](https://github.com/neurons-me/.me/blob/ec31d2b86e5ca3a8aa2ab013e282fe9e794962ac/npm/src/types.ts#L329)
 
 ## Methods
 
@@ -57,7 +57,7 @@ Defined in: [types.ts:231](https://github.com/neurons-me/.me/blob/c571ec78a420ee
 
 > **opKind**(`op`): [`OperatorKind`](../type-aliases/OperatorKind.md) \| `null`
 
-Defined in: [types.ts:219](https://github.com/neurons-me/.me/blob/c571ec78a420eef7f7b8151238de06919c99b3b5/npm/src/types.ts#L219)
+Defined in: [types.ts:317](https://github.com/neurons-me/.me/blob/ec31d2b86e5ca3a8aa2ab013e282fe9e794962ac/npm/src/types.ts#L317)
 
 #### Parameters
 
@@ -75,7 +75,7 @@ Defined in: [types.ts:219](https://github.com/neurons-me/.me/blob/c571ec78a420ee
 
 > **splitPath**(`path`): `object`
 
-Defined in: [types.ts:223](https://github.com/neurons-me/.me/blob/c571ec78a420eef7f7b8151238de06919c99b3b5/npm/src/types.ts#L223)
+Defined in: [types.ts:321](https://github.com/neurons-me/.me/blob/ec31d2b86e5ca3a8aa2ab013e282fe9e794962ac/npm/src/types.ts#L321)
 
 #### Parameters
 
@@ -101,7 +101,7 @@ Defined in: [types.ts:223](https://github.com/neurons-me/.me/blob/c571ec78a420ee
 
 > **rebuildIndex**(): `void`
 
-Defined in: [types.ts:232](https://github.com/neurons-me/.me/blob/c571ec78a420eef7f7b8151238de06919c99b3b5/npm/src/types.ts#L232)
+Defined in: [types.ts:330](https://github.com/neurons-me/.me/blob/ec31d2b86e5ca3a8aa2ab013e282fe9e794962ac/npm/src/types.ts#L330)
 
 #### Returns
 
@@ -113,7 +113,7 @@ Defined in: [types.ts:232](https://github.com/neurons-me/.me/blob/c571ec78a420ee
 
 > **computeEffectiveSecret**(`path`): `string`
 
-Defined in: [types.ts:235](https://github.com/neurons-me/.me/blob/c571ec78a420eef7f7b8151238de06919c99b3b5/npm/src/types.ts#L235)
+Defined in: [types.ts:333](https://github.com/neurons-me/.me/blob/ec31d2b86e5ca3a8aa2ab013e282fe9e794962ac/npm/src/types.ts#L333)
 
 #### Parameters
 
@@ -129,9 +129,9 @@ Defined in: [types.ts:235](https://github.com/neurons-me/.me/blob/c571ec78a420ee
 
 ### xorEncrypt()
 
-> **xorEncrypt**(`value`, `secret`, `path`): `` `0x${string}` ``
+> **xorEncrypt**(`value`, `secret`, `path`): `string`
 
-Defined in: [types.ts:236](https://github.com/neurons-me/.me/blob/c571ec78a420eef7f7b8151238de06919c99b3b5/npm/src/types.ts#L236)
+Defined in: [types.ts:334](https://github.com/neurons-me/.me/blob/ec31d2b86e5ca3a8aa2ab013e282fe9e794962ac/npm/src/types.ts#L334)
 
 #### Parameters
 
@@ -149,7 +149,7 @@ Defined in: [types.ts:236](https://github.com/neurons-me/.me/blob/c571ec78a420ee
 
 #### Returns
 
-`` `0x${string}` ``
+`string`
 
 ***
 
@@ -157,13 +157,13 @@ Defined in: [types.ts:236](https://github.com/neurons-me/.me/blob/c571ec78a420ee
 
 > **xorDecrypt**(`blob`, `secret`, `path`): `any`
 
-Defined in: [types.ts:237](https://github.com/neurons-me/.me/blob/c571ec78a420eef7f7b8151238de06919c99b3b5/npm/src/types.ts#L237)
+Defined in: [types.ts:335](https://github.com/neurons-me/.me/blob/ec31d2b86e5ca3a8aa2ab013e282fe9e794962ac/npm/src/types.ts#L335)
 
 #### Parameters
 
 ##### blob
 
-`` `0x${string}` ``
+`string`
 
 ##### secret
 
@@ -181,9 +181,9 @@ Defined in: [types.ts:237](https://github.com/neurons-me/.me/blob/c571ec78a420ee
 
 ### isEncryptedBlob()
 
-> **isEncryptedBlob**(`v`): `` v is `0x${string}` ``
+> **isEncryptedBlob**(`v`): `v is string`
 
-Defined in: [types.ts:238](https://github.com/neurons-me/.me/blob/c571ec78a420eef7f7b8151238de06919c99b3b5/npm/src/types.ts#L238)
+Defined in: [types.ts:336](https://github.com/neurons-me/.me/blob/ec31d2b86e5ca3a8aa2ab013e282fe9e794962ac/npm/src/types.ts#L336)
 
 #### Parameters
 
@@ -193,7 +193,7 @@ Defined in: [types.ts:238](https://github.com/neurons-me/.me/blob/c571ec78a420ee
 
 #### Returns
 
-`` v is `0x${string}` ``
+`v is string`
 
 ***
 
@@ -201,7 +201,7 @@ Defined in: [types.ts:238](https://github.com/neurons-me/.me/blob/c571ec78a420ee
 
 > **makePointer**(`targetPath`): `MePointer`
 
-Defined in: [types.ts:241](https://github.com/neurons-me/.me/blob/c571ec78a420eef7f7b8151238de06919c99b3b5/npm/src/types.ts#L241)
+Defined in: [types.ts:339](https://github.com/neurons-me/.me/blob/ec31d2b86e5ca3a8aa2ab013e282fe9e794962ac/npm/src/types.ts#L339)
 
 #### Parameters
 
@@ -219,7 +219,7 @@ Defined in: [types.ts:241](https://github.com/neurons-me/.me/blob/c571ec78a420ee
 
 > **isPointer**(`v`): `v is MePointer`
 
-Defined in: [types.ts:242](https://github.com/neurons-me/.me/blob/c571ec78a420eef7f7b8151238de06919c99b3b5/npm/src/types.ts#L242)
+Defined in: [types.ts:340](https://github.com/neurons-me/.me/blob/ec31d2b86e5ca3a8aa2ab013e282fe9e794962ac/npm/src/types.ts#L340)
 
 #### Parameters
 
@@ -237,7 +237,7 @@ Defined in: [types.ts:242](https://github.com/neurons-me/.me/blob/c571ec78a420ee
 
 > **makeIdentityRef**(`id`): `MeIdentityRef`
 
-Defined in: [types.ts:244](https://github.com/neurons-me/.me/blob/c571ec78a420eef7f7b8151238de06919c99b3b5/npm/src/types.ts#L244)
+Defined in: [types.ts:342](https://github.com/neurons-me/.me/blob/ec31d2b86e5ca3a8aa2ab013e282fe9e794962ac/npm/src/types.ts#L342)
 
 #### Parameters
 
@@ -255,7 +255,7 @@ Defined in: [types.ts:244](https://github.com/neurons-me/.me/blob/c571ec78a420ee
 
 > **isIdentityRef**(`v`): `v is MeIdentityRef`
 
-Defined in: [types.ts:245](https://github.com/neurons-me/.me/blob/c571ec78a420eef7f7b8151238de06919c99b3b5/npm/src/types.ts#L245)
+Defined in: [types.ts:343](https://github.com/neurons-me/.me/blob/ec31d2b86e5ca3a8aa2ab013e282fe9e794962ac/npm/src/types.ts#L343)
 
 #### Parameters
 
@@ -273,7 +273,7 @@ Defined in: [types.ts:245](https://github.com/neurons-me/.me/blob/c571ec78a420ee
 
 > **readPath**(`path`): `any`
 
-Defined in: [types.ts:254](https://github.com/neurons-me/.me/blob/c571ec78a420eef7f7b8151238de06919c99b3b5/npm/src/types.ts#L254)
+Defined in: [types.ts:352](https://github.com/neurons-me/.me/blob/ec31d2b86e5ca3a8aa2ab013e282fe9e794962ac/npm/src/types.ts#L352)
 
 Read semantic data using the same rules as me.ts:
 - Secret scope roots return undefined (stealth)
@@ -296,7 +296,7 @@ Read semantic data using the same rules as me.ts:
 
 > `optional` **commitMemory**(`t`): `void`
 
-Defined in: [types.ts:260](https://github.com/neurons-me/.me/blob/c571ec78a420eef7f7b8151238de06919c99b3b5/npm/src/types.ts#L260)
+Defined in: [types.ts:358](https://github.com/neurons-me/.me/blob/ec31d2b86e5ca3a8aa2ab013e282fe9e794962ac/npm/src/types.ts#L358)
 
 Append an event to memories and rebuild index.
 Operators that are “kernel-only” should avoid emitting memories.
@@ -317,7 +317,7 @@ Operators that are “kernel-only” should avoid emitting memories.
 
 > **removeSubtree**(`targetPath`): `void`
 
-Defined in: [types.ts:265](https://github.com/neurons-me/.me/blob/c571ec78a420eef7f7b8151238de06919c99b3b5/npm/src/types.ts#L265)
+Defined in: [types.ts:363](https://github.com/neurons-me/.me/blob/ec31d2b86e5ca3a8aa2ab013e282fe9e794962ac/npm/src/types.ts#L363)
 
 Remove a subtree: deletes matching localSecrets/localNoises/encryptedBranches and emits a "-" memory.
 
@@ -337,7 +337,7 @@ Remove a subtree: deletes matching localSecrets/localNoises/encryptedBranches an
 
 > **normalizeAndValidateUsername**(`input`): `string`
 
-Defined in: [types.ts:270](https://github.com/neurons-me/.me/blob/c571ec78a420eef7f7b8151238de06919c99b3b5/npm/src/types.ts#L270)
+Defined in: [types.ts:368](https://github.com/neurons-me/.me/blob/ec31d2b86e5ca3a8aa2ab013e282fe9e794962ac/npm/src/types.ts#L368)
 
 For ops that need username normalization.
 
@@ -357,7 +357,7 @@ For ops that need username normalization.
 
 > **hashFn**(`input`): `string`
 
-Defined in: [types.ts:275](https://github.com/neurons-me/.me/blob/c571ec78a420eef7f7b8151238de06919c99b3b5/npm/src/types.ts#L275)
+Defined in: [types.ts:373](https://github.com/neurons-me/.me/blob/ec31d2b86e5ca3a8aa2ab013e282fe9e794962ac/npm/src/types.ts#L373)
 
 Portable hash function used to populate Memory.hash
 
@@ -377,7 +377,7 @@ Portable hash function used to populate Memory.hash
 
 > **now**(): `number`
 
-Defined in: [types.ts:280](https://github.com/neurons-me/.me/blob/c571ec78a420eef7f7b8151238de06919c99b3b5/npm/src/types.ts#L280)
+Defined in: [types.ts:378](https://github.com/neurons-me/.me/blob/ec31d2b86e5ca3a8aa2ab013e282fe9e794962ac/npm/src/types.ts#L378)
 
 Current time. me.ts uses Date.now().
 

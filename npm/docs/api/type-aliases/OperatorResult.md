@@ -8,7 +8,7 @@
 
 > **OperatorResult** = `KernelMemory` \| `any` \| `undefined`
 
-Defined in: [types.ts:293](https://github.com/neurons-me/.me/blob/c571ec78a420eef7f7b8151238de06919c99b3b5/npm/src/types.ts#L293)
+Defined in: [types.ts:391](https://github.com/neurons-me/.me/blob/ec31d2b86e5ca3a8aa2ab013e282fe9e794962ac/npm/src/types.ts#L391)
 
 Operators in me.ts can yield:
 - a Memory (most writes)

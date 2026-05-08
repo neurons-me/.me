@@ -6,7 +6,7 @@
 
 # Interface: MeTargetAst
 
-Defined in: [types.ts:125](https://github.com/neurons-me/.me/blob/c571ec78a420eef7f7b8151238de06919c99b3b5/npm/src/types.ts#L125)
+Defined in: [types.ts:223](https://github.com/neurons-me/.me/blob/ec31d2b86e5ca3a8aa2ab013e282fe9e794962ac/npm/src/types.ts#L223)
 
 ## Properties
 
@@ -14,7 +14,7 @@ Defined in: [types.ts:125](https://github.com/neurons-me/.me/blob/c571ec78a420ee
 
 > **scheme**: `"me"`
 
-Defined in: [types.ts:126](https://github.com/neurons-me/.me/blob/c571ec78a420eef7f7b8151238de06919c99b3b5/npm/src/types.ts#L126)
+Defined in: [types.ts:224](https://github.com/neurons-me/.me/blob/ec31d2b86e5ca3a8aa2ab013e282fe9e794962ac/npm/src/types.ts#L224)
 
 ***
 
@@ -22,7 +22,7 @@ Defined in: [types.ts:126](https://github.com/neurons-me/.me/blob/c571ec78a420ee
 
 > **namespace**: `string`
 
-Defined in: [types.ts:127](https://github.com/neurons-me/.me/blob/c571ec78a420eef7f7b8151238de06919c99b3b5/npm/src/types.ts#L127)
+Defined in: [types.ts:225](https://github.com/neurons-me/.me/blob/ec31d2b86e5ca3a8aa2ab013e282fe9e794962ac/npm/src/types.ts#L225)
 
 ***
 
@@ -30,7 +30,7 @@ Defined in: [types.ts:127](https://github.com/neurons-me/.me/blob/c571ec78a420ee
 
 > **operation**: `string`
 
-Defined in: [types.ts:128](https://github.com/neurons-me/.me/blob/c571ec78a420eef7f7b8151238de06919c99b3b5/npm/src/types.ts#L128)
+Defined in: [types.ts:226](https://github.com/neurons-me/.me/blob/ec31d2b86e5ca3a8aa2ab013e282fe9e794962ac/npm/src/types.ts#L226)
 
 ***
 
@@ -38,23 +38,23 @@ Defined in: [types.ts:128](https://github.com/neurons-me/.me/blob/c571ec78a420ee
 
 > **path**: `string`
 
-Defined in: [types.ts:129](https://github.com/neurons-me/.me/blob/c571ec78a420eef7f7b8151238de06919c99b3b5/npm/src/types.ts#L129)
+Defined in: [types.ts:227](https://github.com/neurons-me/.me/blob/ec31d2b86e5ca3a8aa2ab013e282fe9e794962ac/npm/src/types.ts#L227)
 
 ***
 
 ### raw?
 
-> `optional` **raw**: `string`
+> `optional` **raw?**: `string`
 
-Defined in: [types.ts:130](https://github.com/neurons-me/.me/blob/c571ec78a420eef7f7b8151238de06919c99b3b5/npm/src/types.ts#L130)
+Defined in: [types.ts:228](https://github.com/neurons-me/.me/blob/ec31d2b86e5ca3a8aa2ab013e282fe9e794962ac/npm/src/types.ts#L228)
 
 ***
 
 ### contextRaw?
 
-> `optional` **contextRaw**: `string` \| `null`
+> `optional` **contextRaw?**: `string` \| `null`
 
-Defined in: [types.ts:135](https://github.com/neurons-me/.me/blob/c571ec78a420eef7f7b8151238de06919c99b3b5/npm/src/types.ts#L135)
+Defined in: [types.ts:233](https://github.com/neurons-me/.me/blob/ec31d2b86e5ca3a8aa2ab013e282fe9e794962ac/npm/src/types.ts#L233)
 
 Optional raw context segment preserved for higher layers such as cleaker
 and monad.ai. The `.me` kernel does not interpret transport context.

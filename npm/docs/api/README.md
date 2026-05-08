@@ -27,3 +27,8 @@
 - [MEProxy](type-aliases/MEProxy.md)
 - [OperatorMatch](type-aliases/OperatorMatch.md)
 - [OperatorResult](type-aliases/OperatorResult.md)
+
+## Functions
+
+- [normalizeProofMessage](functions/normalizeProofMessage.md)
+- [verifyEd25519Signature](functions/verifyEd25519Signature.md)

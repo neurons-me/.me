@@ -6,11 +6,11 @@
 
 # Class: ME
 
-Defined in: [me.ts:90](https://github.com/neurons-me/.me/blob/c571ec78a420eef7f7b8151238de06919c99b3b5/npm/src/me.ts#L90)
+Defined in: [me.ts:192](https://github.com/neurons-me/.me/blob/ec31d2b86e5ca3a8aa2ab013e282fe9e794962ac/npm/src/me.ts#L192)
 
 The `.me` Semantic Kernel.
 
-This is the core class of `.me`. When you do `new ME()`, you get much more than
+This is the core class of `.me`. When you do `new ME(seed?)`, you get much more than
 a normal class instance:
 
 - a stateful semantic kernel that manages memories, indexes, secrets, and derivations
@@ -28,25 +28,45 @@ Important:
 
 ## Indexable
 
-\[`key`: `string`\]: `any`
+> \[`key`: `string`\]: `any`
 
 ## Constructors
 
 ### Constructor
 
-> **new ME**(`expression?`): `ME`
+> **new ME**(`seed?`, `options?`): `ME`
 
-Defined in: [me.ts:153](https://github.com/neurons-me/.me/blob/c571ec78a420eef7f7b8151238de06919c99b3b5/npm/src/me.ts#L153)
+Defined in: [me.ts:272](https://github.com/neurons-me/.me/blob/ec31d2b86e5ca3a8aa2ab013e282fe9e794962ac/npm/src/me.ts#L272)
 
 #### Parameters
 
-##### expression?
+##### seed?
 
-`any`
+`string`
+
+##### options?
+
+`MEOptions` = `{}`
 
 #### Returns
 
 `ME`
+
+## Properties
+
+### \_ownerScope
+
+> **\_ownerScope**: `string` \| `null` = `null`
+
+Defined in: [me.ts:253](https://github.com/neurons-me/.me/blob/ec31d2b86e5ca3a8aa2ab013e282fe9e794962ac/npm/src/me.ts#L253)
+
+***
+
+### \_currentCallerScope
+
+> **\_currentCallerScope**: `string` \| `null` \| `undefined` = `undefined`
+
+Defined in: [me.ts:254](https://github.com/neurons-me/.me/blob/ec31d2b86e5ca3a8aa2ab013e282fe9e794962ac/npm/src/me.ts#L254)
 
 ## Accessors
 
@@ -56,7 +76,7 @@ Defined in: [me.ts:153](https://github.com/neurons-me/.me/blob/c571ec78a420eef7f
 
 > **get** **memories**(): [`Memory`](../interfaces/Memory.md)[]
 
-Defined in: [me.ts:149](https://github.com/neurons-me/.me/blob/c571ec78a420eef7f7b8151238de06919c99b3b5/npm/src/me.ts#L149)
+Defined in: [me.ts:260](https://github.com/neurons-me/.me/blob/ec31d2b86e5ca3a8aa2ab013e282fe9e794962ac/npm/src/me.ts#L260)
 
 Public redacted memory log.
 This never exposes internal forensic fields such as `effectiveSecret`.
@@ -65,13 +85,43 @@ This never exposes internal forensic fields such as `effectiveSecret`.
 
 [`Memory`](../interfaces/Memory.md)[]
 
+***
+
+### encryptedBranches
+
+#### Get Signature
+
+> **get** **encryptedBranches**(): `EncryptedBranchPlane`
+
+Defined in: [me.ts:264](https://github.com/neurons-me/.me/blob/ec31d2b86e5ca3a8aa2ab013e282fe9e794962ac/npm/src/me.ts#L264)
+
+##### Returns
+
+`EncryptedBranchPlane`
+
+#### Set Signature
+
+> **set** **encryptedBranches**(`value`): `void`
+
+Defined in: [me.ts:268](https://github.com/neurons-me/.me/blob/ec31d2b86e5ca3a8aa2ab013e282fe9e794962ac/npm/src/me.ts#L268)
+
+##### Parameters
+
+###### value
+
+`EncryptedBranchPlane`
+
+##### Returns
+
+`void`
+
 ## Methods
 
 ### inspect()
 
 > **inspect**(`opts?`): `MEInspectResult`
 
-Defined in: [me.ts:170](https://github.com/neurons-me/.me/blob/c571ec78a420eef7f7b8151238de06919c99b3b5/npm/src/me.ts#L170)
+Defined in: [me.ts:366](https://github.com/neurons-me/.me/blob/ec31d2b86e5ca3a8aa2ab013e282fe9e794962ac/npm/src/me.ts#L366)
 
 Inspect the current runtime state.
 Returned memories are always public/redacted.
@@ -94,7 +144,7 @@ Returned memories are always public/redacted.
 
 > **explain**(`path`): `MEExplainResult`
 
-Defined in: [me.ts:178](https://github.com/neurons-me/.me/blob/c571ec78a420eef7f7b8151238de06919c99b3b5/npm/src/me.ts#L178)
+Defined in: [me.ts:374](https://github.com/neurons-me/.me/blob/ec31d2b86e5ca3a8aa2ab013e282fe9e794962ac/npm/src/me.ts#L374)
 
 Explain how a semantic path is derived.
 Useful for debugging pointers, operators, and derived values.
@@ -115,7 +165,7 @@ Useful for debugging pointers, operators, and derived values.
 
 > **execute**(`rawTarget`, `body?`): `any`
 
-Defined in: [me.ts:186](https://github.com/neurons-me/.me/blob/c571ec78a420eef7f7b8151238de06919c99b3b5/npm/src/me.ts#L186)
+Defined in: [me.ts:382](https://github.com/neurons-me/.me/blob/ec31d2b86e5ca3a8aa2ab013e282fe9e794962ac/npm/src/me.ts#L382)
 
 Execute a raw target string or parsed target AST without going through proxy property access.
 Useful for tooling, explicit runtime dispatch, and tests.
@@ -124,7 +174,7 @@ Useful for tooling, explicit runtime dispatch, and tests.
 
 ##### rawTarget
 
-`string` | [`MeTargetAst`](../interfaces/MeTargetAst.md)
+`string` \| [`MeTargetAst`](../interfaces/MeTargetAst.md)
 
 ##### body?
 
@@ -136,11 +186,94 @@ Useful for tooling, explicit runtime dispatch, and tests.
 
 ***
 
+### searchExact()
+
+> **searchExact**(`scopePath`, `query`, `options?`): `MESearchExactResult`
+
+Defined in: [me.ts:390](https://github.com/neurons-me/.me/blob/ec31d2b86e5ca3a8aa2ab013e282fe9e794962ac/npm/src/me.ts#L390)
+
+Exact vector search over a collection-scoped secret branch backed by chunked columnar storage.
+This is the correctness baseline used before approximate indexes such as IVF.
+
+#### Parameters
+
+##### scopePath
+
+`string` \| [`SemanticPath`](../type-aliases/SemanticPath.md)
+
+##### query
+
+`ArrayLike`\<`number`\>
+
+##### options?
+
+`MESearchExactOptions` = `{}`
+
+#### Returns
+
+`MESearchExactResult`
+
+***
+
+### buildVectorIndex()
+
+> **buildVectorIndex**(`scopePath`, `options?`): `MEVectorIndexBuildResult`
+
+Defined in: [me.ts:402](https://github.com/neurons-me/.me/blob/ec31d2b86e5ca3a8aa2ab013e282fe9e794962ac/npm/src/me.ts#L402)
+
+Build an approximate IVF sidecar for a collection-scoped secret vector corpus.
+The sidecar lives outside the kernel log and is intended to reduce chunk decrypts during search.
+
+#### Parameters
+
+##### scopePath
+
+`string` \| [`SemanticPath`](../type-aliases/SemanticPath.md)
+
+##### options?
+
+`MEVectorIndexBuildOptions` = `{}`
+
+#### Returns
+
+`MEVectorIndexBuildResult`
+
+***
+
+### searchVector()
+
+> **searchVector**(`scopePath`, `query`, `options?`): `MEVectorSearchResult`
+
+Defined in: [me.ts:413](https://github.com/neurons-me/.me/blob/ec31d2b86e5ca3a8aa2ab013e282fe9e794962ac/npm/src/me.ts#L413)
+
+Approximate vector search backed by the IVF sidecar.
+Uses centroids for coarse routing and exact scan only on the selected candidate chunks.
+
+#### Parameters
+
+##### scopePath
+
+`string` \| [`SemanticPath`](../type-aliases/SemanticPath.md)
+
+##### query
+
+`ArrayLike`\<`number`\>
+
+##### options?
+
+`MEVectorSearchOptions` = `{}`
+
+#### Returns
+
+`MEVectorSearchResult`
+
+***
+
 ### exportSnapshot()
 
 > **exportSnapshot**(): `MESnapshot`
 
-Defined in: [me.ts:284](https://github.com/neurons-me/.me/blob/c571ec78a420eef7f7b8151238de06919c99b3b5/npm/src/me.ts#L284)
+Defined in: [me.ts:515](https://github.com/neurons-me/.me/blob/ec31d2b86e5ca3a8aa2ab013e282fe9e794962ac/npm/src/me.ts#L515)
 
 Export a portable public snapshot.
 Snapshot memories are redacted and omit internal forensic fields.
@@ -151,14 +284,36 @@ Snapshot memories are redacted and omit internal forensic fields.
 
 ***
 
+### hydrate()
+
+> **hydrate**(`snapshot`): `void`
+
+Defined in: [me.ts:523](https://github.com/neurons-me/.me/blob/ec31d2b86e5ca3a8aa2ab013e282fe9e794962ac/npm/src/me.ts#L523)
+
+Hydrate the runtime from a snapshot payload.
+This is the primary restore API for bringing a saved kernel back to life in memory.
+
+#### Parameters
+
+##### snapshot
+
+`MESnapshotInput`
+
+#### Returns
+
+`void`
+
+***
+
 ### importSnapshot()
 
 > **importSnapshot**(`snapshot`): `void`
 
-Defined in: [me.ts:292](https://github.com/neurons-me/.me/blob/c571ec78a420eef7f7b8151238de06919c99b3b5/npm/src/me.ts#L292)
+Defined in: [me.ts:532](https://github.com/neurons-me/.me/blob/ec31d2b86e5ca3a8aa2ab013e282fe9e794962ac/npm/src/me.ts#L532)
 
 Import a snapshot into the current runtime.
 Accepts both redacted public snapshots and legacy/internal payloads.
+Prefer `hydrate()` in user-facing code.
 
 #### Parameters
 
@@ -176,10 +331,10 @@ Accepts both redacted public snapshots and legacy/internal payloads.
 
 > **rehydrate**(`snapshot`): `void`
 
-Defined in: [me.ts:300](https://github.com/neurons-me/.me/blob/c571ec78a420eef7f7b8151238de06919c99b3b5/npm/src/me.ts#L300)
+Defined in: [me.ts:540](https://github.com/neurons-me/.me/blob/ec31d2b86e5ca3a8aa2ab013e282fe9e794962ac/npm/src/me.ts#L540)
 
 Rehydrate the runtime from a snapshot payload.
-This is a hydration-oriented alias over the import flow.
+Backward-compatible alias for `hydrate()`.
 
 #### Parameters
 
@@ -197,7 +352,7 @@ This is a hydration-oriented alias over the import flow.
 
 > **replayMemories**(`memories`): `void`
 
-Defined in: [me.ts:308](https://github.com/neurons-me/.me/blob/c571ec78a420eef7f7b8151238de06919c99b3b5/npm/src/me.ts#L308)
+Defined in: [me.ts:548](https://github.com/neurons-me/.me/blob/ec31d2b86e5ca3a8aa2ab013e282fe9e794962ac/npm/src/me.ts#L548)
 
 Replay a memory log into the current runtime.
 Accepts both public `Memory[]` and legacy/internal memory payloads.
@@ -218,7 +373,7 @@ Accepts both public `Memory[]` and legacy/internal memory payloads.
 
 > **learn**(`memory`): `void`
 
-Defined in: [me.ts:316](https://github.com/neurons-me/.me/blob/c571ec78a420eef7f7b8151238de06919c99b3b5/npm/src/me.ts#L316)
+Defined in: [me.ts:556](https://github.com/neurons-me/.me/blob/ec31d2b86e5ca3a8aa2ab013e282fe9e794962ac/npm/src/me.ts#L556)
 
 Ingest a single memory-like payload into the runtime.
 Useful for tools that already operate at the memory-log layer.
@@ -235,11 +390,33 @@ Useful for tools that already operate at the memory-log layer.
 
 ***
 
+### prove()
+
+> **prove**(`input`): `Promise`\<`MEProofResult`\>
+
+Defined in: [me.ts:565](https://github.com/neurons-me/.me/blob/ec31d2b86e5ca3a8aa2ab013e282fe9e794962ac/npm/src/me.ts#L565)
+
+Derive a branch-scoped proof for the current active expression.
+This signs a canonical payload with an Ed25519 key deterministically derived
+from the root seed and active branch expression.
+
+#### Parameters
+
+##### input
+
+`MEProofInput`
+
+#### Returns
+
+`Promise`\<`MEProofResult`\>
+
+***
+
 ### setRecomputeMode()
 
 > **setRecomputeMode**(`mode`): `this`
 
-Defined in: [me.ts:323](https://github.com/neurons-me/.me/blob/c571ec78a420eef7f7b8151238de06919c99b3b5/npm/src/me.ts#L323)
+Defined in: [me.ts:604](https://github.com/neurons-me/.me/blob/ec31d2b86e5ca3a8aa2ab013e282fe9e794962ac/npm/src/me.ts#L604)
 
 Control whether derivations recompute eagerly or lazily.
 
@@ -247,7 +424,7 @@ Control whether derivations recompute eagerly or lazily.
 
 ##### mode
 
-`"eager"` | `"lazy"`
+`"eager"` \| `"lazy"`
 
 #### Returns
 
@@ -259,10 +436,56 @@ Control whether derivations recompute eagerly or lazily.
 
 > **getRecomputeMode**(): `"eager"` \| `"lazy"`
 
-Defined in: [me.ts:330](https://github.com/neurons-me/.me/blob/c571ec78a420eef7f7b8151238de06919c99b3b5/npm/src/me.ts#L330)
+Defined in: [me.ts:611](https://github.com/neurons-me/.me/blob/ec31d2b86e5ca3a8aa2ab013e282fe9e794962ac/npm/src/me.ts#L611)
 
 Read the current derivation recompute mode.
 
 #### Returns
 
 `"eager"` \| `"lazy"`
+
+***
+
+### as()
+
+> **as**(`scope`): `ME`
+
+Defined in: [me.ts:1314](https://github.com/neurons-me/.me/blob/ec31d2b86e5ca3a8aa2ab013e282fe9e794962ac/npm/src/me.ts#L1314)
+
+#### Parameters
+
+##### scope
+
+`string` \| `null`
+
+#### Returns
+
+`ME`
+
+***
+
+### withScope()
+
+> **withScope**\<`T`\>(`scope`, `fn`): `T`
+
+Defined in: [me.ts:1324](https://github.com/neurons-me/.me/blob/ec31d2b86e5ca3a8aa2ab013e282fe9e794962ac/npm/src/me.ts#L1324)
+
+#### Type Parameters
+
+##### T
+
+`T`
+
+#### Parameters
+
+##### scope
+
+`string` \| `null`
+
+##### fn
+
+() => `T`
+
+#### Returns
+
+`T`

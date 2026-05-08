@@ -3,67 +3,124 @@
   <img src="https://res.cloudinary.com/dkwnxf6gm/image/upload/v1761149332/this.me-removebg-preview_2_j1eoiy.png" alt=".me Logo" width="144" />
 </picture>
 
-# .me
-##### **100k vectors · 3.32s search · recall 1.0 · fully encrypted · runs local**
+# .me `3.9.0`
 
-Your personal semantic kernel — **own your knowledge**, your way: agents, notes, relationships, wallet, groups, secrets — all in one reactive tree.
+**Sovereign computational identity. Works offline. No server. No network.**
 
-**`.me` runs 100% local with end-to-end encryption.** No cloud, no vendor lock.
+`.me` is the kernel — a reactive semantic tree that derives identity from a `(who, secret)` seed using keccak256. If everything else disappears, `.me` still computes.
 
 ---
 
-## Installation
+## Install
 
 ```bash
 npm install this.me
 ```
 
-## Quick start
+---
+
+## Quick Start
 
 ```ts
-import me from "this.me";
+import me from 'this.me'
 
-const identity = me({
-  name: "suign",
-  space: "neurons.me",
-});
+// Compound seed — deterministic, offline, cryptographic
+// compound_seed = keccak256("me.seed/compound:v1::suign::secret")
+me('suign', 'secret')
 
-identity.explain("profile.namespace");
+// Write to the semantic tree
+me.profile.name('Sui Gn')
+me.profile.bio('Building the semantic web.')
+
+// Private branch (encrypted)
+me.wallet['_']('wallet-key-2026')
+me.wallet.balance(12480)
+
+// Read
+console.log(me('profile.name'))    // 'Sui Gn'
+console.log(me('wallet.balance'))  // 12480
 ```
 
-## Core concepts
+---
 
-**Reactive tree** — Change one value, dependents update in O(k).
+## Performance
 
-**Structural privacy** — Mark branches with ["_"] to make them stealth. Roots hide, leaves resolve.
+| | |
+|---|---|
+| `0.001ms p50` | write enqueue |
+| `0.003ms p50` | cascadeLazy 10-dep flush |
+| `0.137ms p99` | cascadeLazy 10-dep flush |
+| `~700 vps` | sustained write with 1536-dim vectors |
+| `23.2×` | IVF speedup over exact scan on 100k corpus |
 
-**Native provenance** — Every value carries inputs, expression, origin. Use 
+---
+
+## Reactivity
 
 ```ts
-me.explain(path)
+me.price(100)
+me.quantity(5)
+me.total['=']('price * quantity')
+
+me.price(200)
+console.log(me('total'))  // 1000 — recomputed automatically
 ```
 
-**Subjective state** — Same graph, different shapes per viewer via me.as(scope).
+True O(K) reactivity — only actual dependents update.
 
-## API surface
+---
 
-| Module     | Description                                            |
-| ---------- | ------------------------------------------------------ |
-| Runtime    | Core class. Get, set, derive, explain.                 |
-| Operators  | `["->"]` refs, `["[i]"]["="]` derive, `["_"]` stealth. |
-| Axioms     | Invariants: reactivity, privacy, provenance.           |
-| Query      | `me("path")`, filters `[age >= 18]`, traversal.        |
-| Benchmarks | 100k corpus: 3.32s p95, recall 1.0, 23.2x speedup.     |
+## Explainability
 
-## Performance snapshot
+```ts
+me.explain('total')
+// → "total = price * quantity = 200 * 5 = 1000"
+```
 
-April 19, 2026 · 100k encrypted vectors
+---
 
-| Profile   | Corpus            | Exact p95 | IVF p95 |
-| --------- | ----------------- | --------- | ------- |
-| Realistic | chunk_coherent    | 77.1s     | 3.32s   |
-| Hostile   | Legacy_fragmented | 166.6s    | 19.35s  |
+## Role in the NRP stack
 
-Chunks decrypted per query out of 100k total
+`.me` is the root primitive. It operates entirely offline. `cleaker` resolves its identity to a network surface. `monad.ai` exposes it over HTTP.
 
-**MIT License** © 2025 neurons.me 
+```
+this.me    → sovereign kernel. (who, secret) → compound seed → identity + tree.
+cleaker    → resolver. projects .me into a namespace surface.
+monad.ai   → daemon. exposes namespace over HTTP. registers on mesh surfaces.
+```
+
+When `cleaker` opens a namespace, memories return to the caller and are replayed into `.me` via `me.learn(memory)`. The kernel learns from the network but never depends on it.
+
+---
+
+## Cryptographic set-chemistry
+
+Multiple parties can derive a shared namespace without a server:
+
+```ts
+audienceSeed = keccak256("me.seed/audience:v1::" + sort([seed1, seed2]).join("::"))
+// frank + ana = ana + frank  (commutative)
+// Exists only where the exact seed set is present — no server, no registry
+```
+
+---
+
+## Architecture notes (2026-05-07)
+
+NRP chemistry frozen at `nrp-chemistry-v0.1`. Implementation status:
+
+| Primitive | Status |
+|---|---|
+| `me(who, secret)` compound seed | ✅ |
+| `cleaker(me)` default to cleaker.me | ✅ |
+| `monad[frank]` scope chain routing | ✅ |
+| `POST /.mesh/announce` incoming | ✅ |
+| `MONAD_SURFACE_URL` outgoing announce | ✅ |
+| `namespace:fallback` / `namespace:failed` events | ✅ |
+| KDF domain separation | planned |
+| `surface[]` mesh resolver in bridge | planned |
+| Audience compound `me.compound(...others)` | planned |
+
+---
+
+[Quick Start →](./QuickStart) · [Syntax →](./Syntax) · [Operators →](./Operators) · [Axioms →](./Axioms) · [API Reference →](./api/)

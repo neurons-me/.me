@@ -6,7 +6,7 @@
 
 # Interface: OperatorCall
 
-Defined in: [types.ts:156](https://github.com/neurons-me/.me/blob/c571ec78a420eef7f7b8151238de06919c99b3b5/npm/src/types.ts#L156)
+Defined in: [types.ts:254](https://github.com/neurons-me/.me/blob/ec31d2b86e5ca3a8aa2ab013e282fe9e794962ac/npm/src/types.ts#L254)
 
 What ME routing produces when a Proxy chain is invoked.
 
@@ -16,7 +16,7 @@ What ME routing produces when a Proxy chain is invoked.
 
 > **path**: [`SemanticPath`](../type-aliases/SemanticPath.md)
 
-Defined in: [types.ts:158](https://github.com/neurons-me/.me/blob/c571ec78a420eef7f7b8151238de06919c99b3b5/npm/src/types.ts#L158)
+Defined in: [types.ts:256](https://github.com/neurons-me/.me/blob/ec31d2b86e5ca3a8aa2ab013e282fe9e794962ac/npm/src/types.ts#L256)
 
 Raw path array for the call site, including operator leaf if present.
 
@@ -26,7 +26,7 @@ Raw path array for the call site, including operator leaf if present.
 
 > **expression**: `any`
 
-Defined in: [types.ts:166](https://github.com/neurons-me/.me/blob/c571ec78a420eef7f7b8151238de06919c99b3b5/npm/src/types.ts#L166)
+Defined in: [types.ts:264](https://github.com/neurons-me/.me/blob/ec31d2b86e5ca3a8aa2ab013e282fe9e794962ac/npm/src/types.ts#L264)
 
 The normalized expression passed into postulate.
 - 0 args -> undefined
@@ -39,7 +39,7 @@ The normalized expression passed into postulate.
 
 > **isRoot**: `boolean`
 
-Defined in: [types.ts:172](https://github.com/neurons-me/.me/blob/c571ec78a420eef7f7b8151238de06919c99b3b5/npm/src/types.ts#L172)
+Defined in: [types.ts:270](https://github.com/neurons-me/.me/blob/ec31d2b86e5ca3a8aa2ab013e282fe9e794962ac/npm/src/types.ts#L270)
 
 When called at root path.length===0 and expression is a string that looks like a path,
 ME biases to GET. Operators should not override that routing.
