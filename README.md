@@ -4,23 +4,11 @@
 </picture>
 
 # .me
-**Go Algorithmic.**
+**Own your knowledge graph.**
 
-**.me** is a **semantic knowledge graph engine** that runs 100% locally with end-to-end encryption.
+Agents, notes, relationships, wallets, groups, and secrets — unified in one reactive tree.
 
-### Core Idea
-The same object can mean completely different things depending on context — and everything updates automatically when something changes. 
-
-### Real Performance
-**.me** uses **true O(K) reactivity** — when a value changes, only its actual dependents update. *Not the whole graph.*
-
-- 1 million nodes in memory
-- 1 sensor changed → exactly **6 dependent nodes** recomputed
-- Time to propagate: **0.256ms**
-- K=6 out of 1,000,000 — the rest of the graph is untouched
-
-Scale the graph to 10 million nodes — if your change has 6 dependents, it still takes the same time.
-**Data that thinks. Logic that explains itself.**
+Define who you are, **what you own**, and how everything connects — once. **Use it everywhere.**
 
 ---
 
@@ -44,16 +32,6 @@ Select your language:
 [View all demos → ](https://github.com/neurons-me/.me/tree/main/npm/tests/Demos) 
 
 ---
-
-## **▵** Why .me?
-1. **Structural Privacy** — Private data is structurally invisible (not just hidden by rules).
-2. **Full Explainability** — Every derived value can explain exactly how it was computed.
-3. **Subjective Reality** — Same graph, different views per agent.
-
-> **Local compute makes memory an OS primitive.**  
-> Cloud makes it a service.
-
-Even with 100,000 nodes needing a simultaneous recompute, you're looking at about **62 microseconds per node** (6252ms / 100k) for the full propagation. That’s incredibly consistent.
 
 ### Syntax
 
@@ -83,6 +61,31 @@ me.robots[r => r.canProceed === true].name
 
 Write anything. Chain anything. The kernel figures out the dependencies.
 **If it changes, everything that depends on it updates — automatically.**
+
+## **▵** Why .me?
+
+1. **Structural Privacy** — Private data is structurally invisible (not just hidden by rules).
+2. **Full Explainability** — Every derived value can explain exactly how it was computed.
+3. **Subjective Reality** — Same graph, different views per agent.
+
+> **Local compute makes memory an OS primitive.**  
+> Cloud makes it a service.
+
+Even with 100,000 nodes needing a simultaneous recompute, you're looking at about **62 microseconds per node** (6252ms / 100k) for the full propagation. That’s incredibly consistent.
+
+The same object can mean completely different things depending on context — and everything updates automatically when something changes. 
+
+### Real Performance
+
+**.me** uses **true O(K) reactivity** — when a value changes, only its actual dependents update. *Not the whole graph.*
+
+- 1 million nodes in memory
+- 1 sensor changed → exactly **6 dependent nodes** recomputed
+- Time to propagate: **0.256ms**
+- K=6 out of 1,000,000 — the rest of the graph is untouched
+
+Scale the graph to 10 million nodes — if your change has 6 dependents, it still takes the same time.
+**Data that thinks. Logic that explains itself.**
 
 ---
 
