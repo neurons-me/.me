@@ -14,6 +14,7 @@
       --subtle: #f6f8fa;
       --accent: #0969da;
       --code-bg: rgba(175, 184, 193, 0.2);
+      --nav-bg: rgba(255, 255, 255, 0.86);
     }
 
     @media (prefers-color-scheme: dark) {
@@ -25,6 +26,7 @@
         --subtle: #161b22;
         --accent: #58a6ff;
         --code-bg: rgba(110, 118, 129, 0.4);
+        --nav-bg: rgba(13, 17, 23, 0.86);
       }
     }
 
@@ -40,6 +42,56 @@
         Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
       font-size: 16px;
       line-height: 1.5;
+    }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: var(--nav-bg);
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+
+    .topbar-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 12px 32px;
+    }
+
+    .brand {
+      color: var(--fg);
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: 0;
+      white-space: nowrap;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .nav-links a {
+      color: var(--muted);
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-size: 14px;
+      line-height: 1;
+    }
+
+    .nav-links a:hover {
+      color: var(--fg);
+      background: var(--subtle);
+      text-decoration: none;
     }
 
     .markdown-body {
@@ -182,6 +234,21 @@
     }
 
     @media (max-width: 767px) {
+      .topbar-inner {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 8px;
+        padding: 12px 16px;
+      }
+
+      .nav-links {
+        justify-content: flex-start;
+      }
+
+      .nav-links a {
+        padding: 6px 8px;
+      }
+
       .markdown-body {
         padding: 24px 16px;
       }
@@ -189,6 +256,17 @@
   </style>
 </head>
 <body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="{{ '/' | relative_url }}">.me</a>
+      <nav class="nav-links" aria-label="Main navigation">
+        <a href="{{ '/' | relative_url }}">Home</a>
+        <a href="https://neurons-me.github.io/all.this/">All.This</a>
+        <a href="https://www.npmjs.com/package/this.me">NPM</a>
+        <a href="{{ '/npm/typedocs/' | relative_url }}">TypeDocs</a>
+      </nav>
+    </div>
+  </header>
   <main class="markdown-body">
     {{ content }}
   </main>
