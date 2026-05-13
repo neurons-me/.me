@@ -17,6 +17,7 @@ Define who you are, **what you own**, and how everything connects — once. **Us
 git clone https://github.com/neurons-me/.me.git
 ```
 Select your language:
+
 | Language    | Source                      | Status            | Documentation                                                |
 | ----------- | --------------------------- | ----------------- | ------------------------------------------------------------ |
 | **Node.js** | `cd .me/npm && npm install` | **Stable 3.6.40** | [node.js Docs ⟡ ](https://neurons-me.github.io/.me/npm/typedocs/) |

@@ -1,3 +1,6 @@
+title: .me
+description: Own your knowledge graph.
+
 markdown: kramdown
 kramdown:
   input: GFM

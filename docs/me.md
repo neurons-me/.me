@@ -20,6 +20,7 @@
     </td>
   </tr>
 </table>
+
 ## A Declarative Language  
 
 Everything emerges from two primitives:
