@@ -35,7 +35,6 @@ Select your language:
 ---
 
 ### Syntax
-
 `.me` uses an infinite proxy — any path you write becomes a node in the graph.
 No schema. No migrations. No declarations upfront.
 
@@ -77,9 +76,7 @@ Even with 100,000 nodes needing a simultaneous recompute, you're looking at abou
 The same object can mean completely different things depending on context — and everything updates automatically when something changes. 
 
 ### Real Performance
-
 **.me** uses **true O(K) reactivity** — when a value changes, only its actual dependents update. *Not the whole graph.*
-
 - 1 million nodes in memory
 - 1 sensor changed → exactly **6 dependent nodes** recomputed
 - Time to propagate: **0.256ms**

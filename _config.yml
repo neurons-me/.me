@@ -1,5 +1,12 @@
 title: .me
 description: Own your knowledge graph.
+url: https://neurons-me.github.io
+baseurl: "/.me"
+
+remote_theme: neurons-me/me-theme
+
+plugins:
+  - jekyll-remote-theme
 
 markdown: kramdown
 kramdown:
