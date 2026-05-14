@@ -3,7 +3,7 @@ description: Own your knowledge graph.
 url: https://neurons-me.github.io
 baseurl: "/.me"
 
-remote_theme: neurons-me/me-theme
+remote_theme: neurons-me/neurons-me
 
 plugins:
   - jekyll-remote-theme
