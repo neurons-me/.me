@@ -87,16 +87,11 @@ export function handleCall(deps: HandleCallDeps, path: SemanticPath, args: any[]
       const isDottedPath = s.includes(".");
       const isSingleLabelPath = /^[a-zA-Z][a-zA-Z0-9_-]*$/.test(s);
 
-      // Dotted paths and operator-prefixed strings remain GET operations.
-      if (isDottedPath || isOperatorPrefixed) {
+      // GET bias: dotted paths, operator-prefixed strings, and single-label paths
+      // all route to readPath. me("wallet"), me("profile.name"), me("@something")
+      // Identity declaration uses me["@"]("ana") — the @ operator (A1).
+      if (isDottedPath || isOperatorPrefixed || isSingleLabelPath) {
         return deps.readPath(splitPathExpr(s));
-      }
-
-      // me("ana") — canonical identity declaration. Sets the expression (who I am)
-      // without reseeding. Use me("ana", "secret") to derive a compound seed.
-      if (isSingleLabelPath) {
-        deps.setActiveExpression?.(s);
-        return deps.createProxy([]);
       }
     }
 
