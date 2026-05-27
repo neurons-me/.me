@@ -227,6 +227,8 @@ export function createRuntimeProxy(
       if (resolved && typeof resolved === "object" && typeof (resolved as any).call === "function") {
         return (resolved as any).call(...args);
       }
+      // me['!']()  — zero-arg call on the root escape = "who am I?"
+      if (path.length === 0 && args.length === 0) return (self as any)[ME_IDENTITY_SYMBOL];
       if (path.length === 0) return describeRuntimeSurface();
       return resolved;
     });

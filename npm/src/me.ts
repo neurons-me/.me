@@ -360,6 +360,25 @@ export class ME {
   }
 
   /**
+   * The deterministic identity hash for this kernel.
+   *
+   * Shorthand for `me['!'].identity().hash`.
+   *
+   * Derived as `keccak256("this.me/identity:v1::" + seed)`.
+   * Stable across restarts, services, and machines — same seed always
+   * produces the same hash.
+   *
+   * @example
+   * ```typescript
+   * const me = new ME(seed)
+   * me.identityHash  // → '3f8a...' (64-char hex)
+   * ```
+   */
+  get identityHash(): string {
+    return this.#identityHash;
+  }
+
+  /**
    * Inspect the current runtime state.
    * Returned memories are always public/redacted.
    */
