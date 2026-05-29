@@ -17,9 +17,9 @@ Select your language:
 
 | Language    | Source                      | Status            | Documentation                                                |
 | ----------- | --------------------------- | ----------------- | ------------------------------------------------------------ |
-| **Typescript** | `cd .me/npm && npm install` | **Stable 3.6.40** | [node.js Docs ⟡ ](https://neurons-me.github.io/.me/npm/typedocs/) |
-| **Python**  | `cd .me/pip/`               | Not Available     | [Pip Docs 𓆚](https://neurons-me.github.io/.me/pip/)          |
-| **Rust**    | `cd .me/crate/`             | Not Available     | [Rust Docs](https://neurons-me.github.io/.me/crate/)         |
+| **Typescript** | `cd .me/Typescript && npm install` | **Stable 3.6.40** | [node.js Docs ⟡ ](https://neurons-me.github.io/.me/Typedocs/) |
+| **Python**  | `cd .me/Python/`               | Not Available     | [Pip Docs 𓆚](https://neurons-me.github.io/.me/Python/)          |
+| **Rust**    | `cd .me/Rust/`             | Not Available     | [Rust Docs](https://neurons-me.github.io/.me/Rust/)         |
 
 ### Demos
 - **Robots that Understand Context 🤖⟐🤖** — Same physical object, radically different meaning and behavior per robot. [Learn how it works →](https://neurons-me.github.io/.me/docs/Robots-That-Understand-Context.html)
