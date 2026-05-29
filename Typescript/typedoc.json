@@ -2,6 +2,7 @@
   "entryPoints": ["./typedoc-entry.ts"],
   "out": "docs/api",
   "cleanOutputDir": true,
+  "hostedBaseUrl": "https://neurons-me.github.io/.me/Typescript/docs/api/",
   "excludePrivate": true,
   "excludeProtected": true,
   "excludeInternal": true,
