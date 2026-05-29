@@ -5,200 +5,149 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>.me — Docs</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/this.gui@1.4.6/dist/styles.css" />
-  <script>
-    (function () {
-      try {
-        var stored = localStorage.getItem("this.gui:themeMode");
-        var prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
-        var isDark = stored ? stored === "dark" : prefersDark;
-        document.documentElement.classList.toggle("theme-dark", isDark);
-        document.documentElement.classList.toggle("theme-light", !isDark);
-      } catch (e) {}
-    })();
-  </script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: "Inter", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      background: #f4f7f8;
+      color: #0f1720;
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .page {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 56px 32px 80px;
+    }
+
+    .kicker {
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: #51606d;
+      margin-bottom: 12px;
+    }
+
+    .page-title {
+      font-size: 2.75rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      line-height: 1.1;
+      margin-bottom: 12px;
+    }
+
+    .page-subtitle {
+      font-size: 1.05rem;
+      color: #51606d;
+      margin-bottom: 48px;
+      max-width: 560px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+    }
+
+    @media (max-width: 720px) { .grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 480px) { .grid { grid-template-columns: 1fr; } }
+
+    .card {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding: 20px;
+      border-radius: 12px;
+      border: 1px solid rgba(15, 23, 32, 0.12);
+      background: #fff;
+      text-decoration: none;
+      color: inherit;
+      transition: box-shadow 140ms ease, border-color 140ms ease, transform 140ms ease;
+    }
+
+    .card:hover {
+      box-shadow: 0 4px 20px rgba(15, 23, 32, 0.10);
+      border-color: #0f6a78;
+      transform: translateY(-1px);
+    }
+
+    .card-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      background: rgba(15, 106, 120, 0.10);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+    }
+
+    .card-title {
+      font-size: 1rem;
+      font-weight: 700;
+      line-height: 1.3;
+    }
+
+    .card-desc {
+      font-size: 0.875rem;
+      color: #51606d;
+      line-height: 1.55;
+    }
+
+    /* dark mode */
+    @media (prefers-color-scheme: dark) {
+      body { background: #0b1114; color: #e8eded; }
+      .kicker { color: #98a7b3; }
+      .page-subtitle { color: #98a7b3; }
+      .card { background: #111a1f; border-color: rgba(232, 237, 237, 0.10); }
+      .card:hover { border-color: #4fd1c5; box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
+      .card-icon { background: rgba(79, 209, 197, 0.12); }
+      .card-desc { color: #98a7b3; }
+    }
+  </style>
 </head>
 <body>
-  <div id="root"></div>
+  <div class="page">
+    <p class="kicker">this.me</p>
+    <h1 class="page-title">.me Docs</h1>
+    <p class="page-subtitle">Human owns meaning. Everything else asks.</p>
 
-  <script src="https://cdn.jsdelivr.net/npm/react@18.3.1/umd/react.production.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/this.me@latest/dist/me.umd.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/this.gui@1.4.6/dist/this.gui.umd.js"></script>
+    <div class="grid">
 
-  <script>
-    (function () {
-      var DOCS = [
-        {
-          title: ".me",
-          description: "The core identity primitive. One object, infinite derivations.",
-          href: "./me.html",
-          icon: "person"
-        },
-        {
-          title: "Architecture",
-          description: "O(k) Semantic Kernel — Infinite Proxy Chaining with inline Path Algebra.",
-          href: "./Architecture.html",
-          icon: "schema"
-        },
-        {
-          title: "Syntax",
-          description: "The me:// URI scheme and grammar specification for semantic paths.",
-          href: "./Syntax.html",
-          icon: "code"
-        },
-        {
-          title: "Robots That Understand Context",
-          description: "The same object means different things depending on who is looking and where.",
-          href: "./Robots-That-Understand-Context.html",
-          icon: "smart_toy"
-        },
-        {
-          title: "Smart Cities",
-          description: "A city that behaves like a living semantic system — one reactive graph.",
-          href: "./Smart-Cities.html",
-          icon: "location_city"
-        }
-      ];
+      <a class="card" href="./me.html">
+        <div class="card-icon">🧬</div>
+        <div class="card-title">.me</div>
+        <div class="card-desc">The core identity primitive. One object, infinite derivations.</div>
+      </a>
 
-      function buildDocCard(doc) {
-        return {
-          type: "Card",
-          props: {
-            variant: "outlined",
-            sx: {
-              cursor: "pointer",
-              transition: "box-shadow 120ms ease, border-color 120ms ease",
-              "&:hover": {
-                boxShadow: 3,
-                borderColor: "primary.main"
-              }
-            },
-            component: "a",
-            href: doc.href
-          },
-          children: [
-            {
-              type: "CardContent",
-              children: [
-                {
-                  type: "Box",
-                  props: { sx: { display: "flex", alignItems: "center", gap: 1.5, mb: 1 } },
-                  children: [
-                    {
-                      type: "Icon",
-                      props: { name: doc.icon, iconColor: "primary", fontSize: "medium" }
-                    },
-                    {
-                      type: "Typography",
-                      props: { variant: "h6", sx: { fontWeight: 700, lineHeight: 1.2 } },
-                      children: [doc.title]
-                    }
-                  ]
-                },
-                {
-                  type: "Typography",
-                  props: { variant: "body2", color: "text.secondary" },
-                  children: [doc.description]
-                }
-              ]
-            }
-          ]
-        };
-      }
+      <a class="card" href="./Architecture.html">
+        <div class="card-icon">🏗️</div>
+        <div class="card-title">Architecture</div>
+        <div class="card-desc">O(k) Semantic Kernel — Infinite Proxy Chaining with inline Path Algebra.</div>
+      </a>
 
-      function buildAppSpec() {
-        return {
-          type: "Layout",
-          props: {
-            topBarConfig: {
-              title: ".me",
-              subtitle: "Documentation"
-            },
-            leftSidebarConfig: {
-              initialView: "rail",
-              elements: [
-                { key: "home", type: "link", props: { label: "Home", icon: "home", href: "https://neurons-me.github.io/" } },
-                { key: "docs", type: "link", props: { label: "Docs", icon: "description", href: "./index.html" } },
-                { key: "npm", type: "link", props: { label: "npm", icon: "code", href: "https://www.npmjs.com/package/this.me" } }
-              ],
-              footerElements: [
-                { key: "theme-toggle", type: "action", props: { label: "Theme", icon: "dark_mode", action: "__meToggleTheme" } }
-              ]
-            },
-            rightSidebarConfig: false,
-            footerConfig: false
-          },
-          children: [
-            {
-              type: "Box",
-              props: { sx: { p: { xs: 2, sm: 4 }, maxWidth: 960, mx: "auto", width: "100%" } },
-              children: [
-                {
-                  type: "Typography",
-                  props: { variant: "h4", sx: { fontWeight: 800, mb: 0.5 } },
-                  children: [".me Docs"]
-                },
-                {
-                  type: "Typography",
-                  props: { variant: "body1", color: "text.secondary", sx: { mb: 4 } },
-                  children: ["A declarative semantic identity system. Human owns meaning. Everything else asks."]
-                },
-                {
-                  type: "Box",
-                  props: {
-                    sx: {
-                      display: "grid",
-                      gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr", md: "1fr 1fr 1fr" },
-                      gap: 2
-                    }
-                  },
-                  children: DOCS.map(buildDocCard)
-                }
-              ]
-            }
-          ]
-        };
-      }
+      <a class="card" href="./Syntax.html">
+        <div class="card-icon">⌨️</div>
+        <div class="card-title">Syntax</div>
+        <div class="card-desc">The <code>me://</code> URI scheme and grammar specification for semantic paths.</div>
+      </a>
 
-      function initGui() {
-        var GUI = window.GUI;
-        if (!GUI || typeof GUI.mount !== "function") {
-          console.warn(".GUI not ready");
-          return;
-        }
+      <a class="card" href="./Robots-That-Understand-Context.html">
+        <div class="card-icon">🤖</div>
+        <div class="card-title">Robots That Understand Context</div>
+        <div class="card-desc">The same object means different things depending on who is looking and where.</div>
+      </a>
 
-        var MeGlobal = window.Me || window.me || window.thisMe;
-        var me = null;
-        if (MeGlobal) {
-          try {
-            var MeCtor = MeGlobal.ME || MeGlobal.Me || MeGlobal.default || MeGlobal;
-            if (typeof MeCtor === "function") me = new MeCtor();
-          } catch (e) {}
-        }
+      <a class="card" href="./Smart-Cities.html">
+        <div class="card-icon">🏙️</div>
+        <div class="card-title">Smart Cities</div>
+        <div class="card-desc">A city that behaves like a living semantic system — one reactive graph.</div>
+      </a>
 
-        var runtime = me && GUI.RunMe ? GUI.RunMe(me) : null;
-
-        window.__meToggleTheme = function () {
-          try {
-            var current = localStorage.getItem("this.gui:themeMode") || "light";
-            var next = current === "dark" ? "light" : "dark";
-            localStorage.setItem("this.gui:themeMode", next);
-            document.documentElement.classList.toggle("theme-dark", next === "dark");
-            document.documentElement.classList.toggle("theme-light", next !== "dark");
-            window.dispatchEvent(new CustomEvent("this.gui:themeMode:changed", { detail: { mode: next } }));
-          } catch (e) {}
-        };
-
-        var root = document.getElementById("root");
-        GUI.mount(buildAppSpec(), root, { runtime: runtime, showUnknown: true });
-      }
-
-      if (document.readyState === "loading") {
-        document.addEventListener("DOMContentLoaded", initGui);
-      } else {
-        initGui();
-      }
-    })();
-  </script>
+    </div>
+  </div>
 </body>
 </html>
