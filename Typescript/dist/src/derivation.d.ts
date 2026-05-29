@@ -1,0 +1,14 @@
+import { MEExplainResult, MEKernelLike, SemanticPath } from './types.js';
+export declare function explain(self: MEKernelLike, path: string): MEExplainResult;
+export declare function extractExpressionRefs(expr: string): string[];
+export declare function resolveRefPath(self: MEKernelLike, label: string, evalScope: SemanticPath): string | null;
+export declare function unregisterDerivation(self: MEKernelLike, targetKey: string): void;
+export declare function getRefVersion(self: MEKernelLike, refPath: string): number;
+export declare function bumpRefVersion(self: MEKernelLike, refPath: string): void;
+export declare function snapshotDerivationRefVersions(self: MEKernelLike, targetKey: string): void;
+export declare function registerDerivation(self: MEKernelLike, targetPath: SemanticPath, evalScope: SemanticPath, expr: string): void;
+export declare function recomputeTarget(self: MEKernelLike, targetKey: string): boolean;
+export declare function isDerivationVersionStale(self: MEKernelLike, targetKey: string): boolean;
+export declare function ensureTargetFresh(self: MEKernelLike, targetKey: string, visiting?: Set<string>): boolean;
+export declare function invalidateFromPath(self: MEKernelLike, path: SemanticPath): void;
+export declare function clearDerivationsByPrefix(self: MEKernelLike, prefixPath: SemanticPath): void;

@@ -20,7 +20,7 @@ Select your language:
 
 | Language    | Source                      | Status            | Documentation                                                |
 | ----------- | --------------------------- | ----------------- | ------------------------------------------------------------ |
-| **Node.js** | `cd .me/npm && npm install` | **Stable 3.6.40** | [node.js Docs ⟡ ](https://neurons-me.github.io/.me/npm/typedocs/) |
+| **Typescript** | `cd .me/npm && npm install` | **Stable 3.6.40** | [node.js Docs ⟡ ](https://neurons-me.github.io/.me/npm/typedocs/) |
 | **Python**  | `cd .me/pip/`               | Not Available     | [Pip Docs 𓆚](https://neurons-me.github.io/.me/pip/)          |
 | **Rust**    | `cd .me/crate/`             | Not Available     | [Rust Docs](https://neurons-me.github.io/.me/crate/)         |
 

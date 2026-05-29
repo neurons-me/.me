@@ -1,0 +1,124 @@
+import { EncryptedBlob, EncryptedBranchPlane, EncryptedScopeEntry } from './types.js';
+type DiskStoreDebugWindow = {
+    appendCalls: number;
+    readCalls: number;
+    flushCalls: number;
+    totalRecordStringifyMs: number;
+    totalAppendMs: number;
+    totalReadMs: number;
+    totalFlushMs: number;
+    maxRecordStringifyMs: number;
+    maxAppendMs: number;
+    maxReadMs: number;
+    maxFlushMs: number;
+    maxBlobBytes: number;
+    maxRecordBytes: number;
+    maxAppendResidentBytes: number;
+    maxReadBufferBytes: number;
+    maxReadResidentBytes: number;
+    maxFlushIndexBytes: number;
+    maxAppendHeapDelta: number;
+    maxAppendExternalDelta: number;
+    maxAppendArrayBuffersDelta: number;
+    maxReadHeapDelta: number;
+    maxReadExternalDelta: number;
+    maxReadArrayBuffersDelta: number;
+    maxFlushHeapDelta: number;
+    maxFlushExternalDelta: number;
+    maxFlushArrayBuffersDelta: number;
+};
+export declare function enableDiskStoreDebug(enabled?: boolean): void;
+export declare function takeDiskStoreDebugWindow(): DiskStoreDebugWindow;
+export interface InstanceStore {
+    readonly kind: "memory" | "disk";
+    getScope(scopeKey: string): EncryptedScopeEntry | undefined;
+    getScopeMode(scopeKey: string): "none" | "legacy" | "chunks";
+    getAuxiliaryPath(name: string): string | null;
+    setScope(scopeKey: string, value: EncryptedScopeEntry): void;
+    deleteScope(scopeKey: string): void;
+    listScopes(): string[];
+    getChunk(scopeKey: string, chunkId: string): EncryptedBlob | undefined;
+    setChunk(scopeKey: string, chunkId: string, blob: EncryptedBlob): void;
+    listChunks(scopeKey: string): string[];
+    deleteChunk(scopeKey: string, chunkId: string): void;
+    clear(): void;
+    exportData(): EncryptedBranchPlane;
+    importData(data: EncryptedBranchPlane): void;
+    view(): EncryptedBranchPlane;
+    close(): void;
+}
+export interface DiskStoreOptions {
+    baseDir: string;
+    maxHotBytes?: number;
+    flushEvery?: number;
+}
+export declare class MemoryStore implements InstanceStore {
+    readonly kind: "memory";
+    private data;
+    getScope(scopeKey: string): EncryptedScopeEntry | undefined;
+    getScopeMode(scopeKey: string): "none" | "legacy" | "chunks";
+    getAuxiliaryPath(_name: string): string | null;
+    setScope(scopeKey: string, value: EncryptedScopeEntry): void;
+    deleteScope(scopeKey: string): void;
+    listScopes(): string[];
+    getChunk(scopeKey: string, chunkId: string): EncryptedBlob | undefined;
+    setChunk(scopeKey: string, chunkId: string, blob: EncryptedBlob): void;
+    listChunks(scopeKey: string): string[];
+    deleteChunk(scopeKey: string, chunkId: string): void;
+    clear(): void;
+    exportData(): EncryptedBranchPlane;
+    importData(data: EncryptedBranchPlane): void;
+    view(): EncryptedBranchPlane;
+    close(): void;
+}
+export declare class DiskStore implements InstanceStore {
+    readonly kind: "disk";
+    private readonly fs;
+    private readonly path;
+    private readonly baseDir;
+    private readonly logPath;
+    private readonly indexPath;
+    private readonly flushEvery;
+    private readonly hot;
+    private index;
+    private logFd;
+    private logSize;
+    private writesSinceFlush;
+    constructor(options: DiskStoreOptions);
+    constructor(baseDir: string, maxHotBytes?: number);
+    getScope(scopeKey: string): EncryptedScopeEntry | undefined;
+    getScopeMode(scopeKey: string): "none" | "legacy" | "chunks";
+    getAuxiliaryPath(name: string): string | null;
+    setScope(scopeKey: string, value: EncryptedScopeEntry): void;
+    deleteScope(scopeKey: string): void;
+    listScopes(): string[];
+    getChunk(scopeKey: string, chunkId: string): EncryptedBlob | undefined;
+    setChunk(scopeKey: string, chunkId: string, blob: EncryptedBlob): void;
+    listChunks(scopeKey: string): string[];
+    deleteChunk(scopeKey: string, chunkId: string): void;
+    clear(): void;
+    exportData(): EncryptedBranchPlane;
+    importData(data: EncryptedBranchPlane): void;
+    view(): EncryptedBranchPlane;
+    close(): void;
+    getHotStats(): {
+        entries: number;
+        usedBytes: number;
+        maxBytes: number;
+    };
+    getIndexStats(): {
+        scopes: number;
+        chunks: number;
+        pointers: number;
+    };
+    private loadIndex;
+    private rebuildIndexFromLog;
+    private appendRecord;
+    private applyRecord;
+    private flushIndex;
+    private maybeFlushIndex;
+    private readBlob;
+    private cacheKey;
+    private cacheKeyPrefix;
+}
+export {};
