@@ -11,7 +11,8 @@ Agents, notes, relationships, wallets, groups, and secrets — unified in one re
 
 ### Getting Started
 **Clone the Github Repository:**
-Run this command on your terminal.
+
+Run the following command in your terminal.
 ```bash
 git clone https://github.com/neurons-me/.me.git
 ```
@@ -26,6 +27,7 @@ Select your language:
 ### Demos
 - **Robots that Understand Context 🤖⟐🤖** — Same physical object, radically different meaning and behavior per robot. [Learn how it works →](https://neurons-me.github.io/.me/docs/Robots-That-Understand-Context.html)
 - **Smart City 🏙️📡⌬◉⌬⟶ ∴** — A full city reacting in real time as interconnected nodes.
+[Learn how it works →](https://neurons-me.github.io/.me/docs/Smart-Cities.html)
 - **Hemisphere Scale** — 1 million nodes with cross-domain reactive updates.
 - **Extreme Fan-Out** — One write instantly updates 100k dependents.
 
