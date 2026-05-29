@@ -9,12 +9,17 @@ plugins:
   - jekyll-remote-theme
 
 exclude:
-  - Typescript
   - Python
   - Rust
   - node_modules
   - "*/node_modules"
   - vendor
+  - Typescript/node_modules
+  - Typescript/dist
+  - Typescript/src
+  - Typescript/x.test
+  - Typescript/bench.ts
+  - Typescript/reports
 
 markdown: kramdown
 kramdown:
