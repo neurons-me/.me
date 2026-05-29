@@ -10,6 +10,7 @@ Agents, notes, relationships, wallets, groups, and secrets — unified in one re
 ---
 
 ### Getting Started
+**Clone the Github Repository:**
 ```bash
 git clone https://github.com/neurons-me/.me.git
 ```
