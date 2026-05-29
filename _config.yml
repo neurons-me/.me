@@ -29,7 +29,7 @@ kramdown:
 
 me_theme:
   brand: .me
-  favicon: "https://res.cloudinary.com/dkwnxf6gm/image/upload/v1760915741/this.me-removebg-preview_1_nrj6pe.png"
+  favicon: "https://res.cloudinary.com/dkwnxf6gm/image/upload/v1769890772/this.me.png"
   nav:
     - label: Home
       url: https://neurons-me.github.io/
