@@ -14,6 +14,7 @@ For humans, this is obvious. A blue canister in a warehouse is cargo. The same b
 `.me` lets you model that kind of meaning directly.
 
 [View the source demo](https://github.com/neurons-me/.me/blob/main/npm/tests/Demos/Robots_Contexts.ts)
+[GitHub .me](https://github.com/neurons-me/.me/)
 
 ---
 

@@ -5,10 +5,7 @@
 
 # .me
 **Own your knowledge graph.**
-
 Agents, notes, relationships, wallets, groups, and secrets — unified in one reactive tree.
-
-Define who you are, **what you own**, and how everything connects — once. **Use it everywhere.**
 
 ---
 
@@ -30,7 +27,7 @@ Select your language:
 - **Hemisphere Scale** — 1 million nodes with cross-domain reactive updates.
 - **Extreme Fan-Out** — One write instantly updates 100k dependents.
 
-[View all demos → ](https://github.com/neurons-me/.me/tree/main/npm/tests/Demos) 
+[View all demos → ](https://github.com/neurons-me/.me/tree/main/Typescript/tests/Demos) 
 
 ---
 
