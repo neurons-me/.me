@@ -1,6 +1,6 @@
 {
   "entryPoints": ["./typedoc-entry.ts"],
-  "out": "docs",
+  "out": "docs/api",
   "cleanOutputDir": true,
   "excludePrivate": true,
   "excludeProtected": true,
