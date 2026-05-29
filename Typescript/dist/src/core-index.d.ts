@@ -1,4 +1,4 @@
-import { KernelMemory, MEKernelLike, SemanticPath } from './types.js';
+import { KernelMemory, MEKernelLike, SemanticPath } from './types.ts';
 export declare function applyMemoryToIndex(self: MEKernelLike, t: KernelMemory): void;
 export declare function removeIndexPrefix(self: MEKernelLike, prefixPath: SemanticPath): void;
 export declare function rebuildIndex(self: MEKernelLike): void;

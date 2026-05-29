@@ -1,5 +1,5 @@
-import { ME } from './me.js';
-import { MEOptions } from './types.js';
+import { ME } from './me.ts';
+import { MEOptions } from './types.ts';
 export interface ThisMeInit {
     name?: string;
     space?: string;

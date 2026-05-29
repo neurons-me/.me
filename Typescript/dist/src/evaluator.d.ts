@@ -1,4 +1,4 @@
-import { MEKernelLike, SemanticPath } from './types.js';
+import { MEKernelLike, SemanticPath } from './types.ts';
 export declare function tryResolveEvalTokenValue(self: MEKernelLike, token: string, evalScopePath: SemanticPath): {
     ok: true;
     value: any;

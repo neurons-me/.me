@@ -1,4 +1,4 @@
-import { EncryptedBlob, EncryptedBranchPlane, EncryptedScopeEntry } from './types.js';
+import { EncryptedBlob, EncryptedBranchPlane, EncryptedScopeEntry } from './types.ts';
 type DiskStoreDebugWindow = {
     appendCalls: number;
     readCalls: number;

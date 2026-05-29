@@ -1,4 +1,4 @@
-import { MEKernelLike, MEWrappedKeyOpenOptions, WrappedSecretV1 } from './types.js';
+import { MEKernelLike, MEWrappedKeyOpenOptions, WrappedSecretV1 } from './types.ts';
 export declare function installRecipientKey(self: MEKernelLike, recipientKeyId: string, privateKey: CryptoKey): MEKernelLike;
 export declare function uninstallRecipientKey(self: MEKernelLike, recipientKeyId: string): MEKernelLike;
 export declare function storeWrappedKey(self: MEKernelLike, keyId: string, envelope: WrappedSecretV1, options?: {

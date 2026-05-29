@@ -1,4 +1,4 @@
-import { MEKernelLike, MEVectorIndex, SemanticPath } from './types.js';
+import { MEKernelLike, MEVectorIndex, SemanticPath } from './types.ts';
 export declare function vectorIndexKey(scope: SemanticPath): string;
 export declare function resolveVectorIndexPath(self: MEKernelLike, scope: SemanticPath): string | null;
 export declare function cacheVectorIndex(self: MEKernelLike, scope: SemanticPath, index: MEVectorIndex): void;

@@ -1,4 +1,4 @@
-import { MEBlobV3KeyCacheEntry, MEKernelLike, SemanticPath } from './types.js';
+import { MEBlobV3KeyCacheEntry, MEKernelLike, SemanticPath } from './types.ts';
 export declare function bumpSecretEpoch(self: MEKernelLike): void;
 export declare function computeEffectiveSecret(self: MEKernelLike, path: SemanticPath): string;
 export declare function resolveBranchScope(self: MEKernelLike, path: SemanticPath): SemanticPath | null;

@@ -1,4 +1,4 @@
-import { MEExplainResult, MEKernelLike, SemanticPath } from './types.js';
+import { MEExplainResult, MEKernelLike, SemanticPath } from './types.ts';
 export declare function explain(self: MEKernelLike, path: string): MEExplainResult;
 export declare function extractExpressionRefs(expr: string): string[];
 export declare function resolveRefPath(self: MEKernelLike, label: string, evalScope: SemanticPath): string | null;

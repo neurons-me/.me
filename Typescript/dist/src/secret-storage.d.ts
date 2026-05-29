@@ -1,5 +1,5 @@
-import { EncryptedBlob, MEKernelLike, SemanticPath } from './types.js';
-import { ColumnarChunkEnvelope } from './secret-storage-columnar.js';
+import { EncryptedBlob, MEKernelLike, SemanticPath } from './types.ts';
+import { ColumnarChunkEnvelope } from './secret-storage-columnar.ts';
 export type DecryptedChunkData = any | ColumnarChunkEnvelope;
 export declare function isColumnarChunkData(data: unknown): data is ColumnarChunkEnvelope;
 export declare function readDecryptedChunkItem(data: DecryptedChunkData, index: number): any;

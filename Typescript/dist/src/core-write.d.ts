@@ -1,4 +1,4 @@
-import { KernelMemory, MappingInstruction, MEKernelLike, ReplayMemoryInput, SemanticPath } from './types.js';
+import { KernelMemory, MappingInstruction, MEKernelLike, ReplayMemoryInput, SemanticPath } from './types.ts';
 export declare function learn(self: MEKernelLike, memory: unknown): void;
 export declare function replayMemories(self: MEKernelLike, memories: ReplayMemoryInput[]): void;
 export declare function commitMemoryOnly(self: MEKernelLike, targetPath: SemanticPath, operator: string | null, expression: any, value: any): KernelMemory;

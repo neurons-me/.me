@@ -1,4 +1,4 @@
-import { MEKernelLike, SemanticPath } from './types.js';
+import { MEKernelLike, SemanticPath } from './types.ts';
 export declare function collectIteratorIndices(self: MEKernelLike, path: SemanticPath): string[];
 export declare function resolveRelativeFirst(self: MEKernelLike, scope: SemanticPath, parts: SemanticPath): any;
 export declare function evaluateFilterClauseForScope(self: MEKernelLike, scope: SemanticPath, clause: {

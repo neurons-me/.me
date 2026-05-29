@@ -1,4 +1,4 @@
-import { KernelMemory, OperatorKind, OperatorRegistry, OperatorToken, SemanticPath, MePointer, MeIdentityRef } from './types.js';
+import { KernelMemory, OperatorKind, OperatorRegistry, OperatorToken, SemanticPath, MePointer, MeIdentityRef } from './types.ts';
 export declare const OP_DEFINE: OperatorToken;
 export declare function makePointer(path: string): MePointer;
 export declare function isPointer(obj: any): obj is MePointer;

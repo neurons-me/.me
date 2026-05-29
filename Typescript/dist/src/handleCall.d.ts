@@ -1,4 +1,4 @@
-import { KernelMemory, SemanticPath } from './types.js';
+import { KernelMemory, SemanticPath } from './types.ts';
 export type MEProxy = any;
 export interface HandleCallDeps {
     /** Create (or reuse) a proxy for a semantic path. */

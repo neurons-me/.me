@@ -1,4 +1,4 @@
-import { InstanceStore } from './instance-store.js';
+import { InstanceStore } from './instance-store.ts';
 export type OperatorToken = "_" | "~" | "__" | "->" | "@" | "=" | "?" | "-" | "+" | string;
 export type OperatorKind = "secret" | "noise" | "pointer" | "identity" | "eval" | "query" | "remove" | "custom";
 export interface OperatorRegistryEntry {

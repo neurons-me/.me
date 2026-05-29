@@ -32,6 +32,12 @@ export default defineConfig({
             );
           }
         }
+        // create dist/index.js so tests can import from ../dist/index.js
+        const indexPath = path.resolve(__dirname, 'dist/index.js');
+        const esPath = path.resolve(__dirname, 'dist/me.es.js');
+        if (fs.existsSync(esPath)) {
+          fs.writeFileSync(indexPath, `export * from './me.es.js';\nexport { default } from './me.es.js';\n`);
+        }
       },
     },
   ],

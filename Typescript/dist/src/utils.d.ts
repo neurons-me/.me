@@ -1,4 +1,4 @@
-import { MEKernelLike, SemanticPath } from './types.js';
+import { MEKernelLike, SemanticPath } from './types.ts';
 export declare function hashFn(input: string): string;
 export declare function cloneValue<T>(value: T): T;
 export declare function findTopLevelIndex(input: string, needle: string): number;

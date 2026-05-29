@@ -1,4 +1,4 @@
-import { EncryptedBlob, P256PublicKeyCoordinates, WrappedSecretClass, WrappedSecretPolicy, WrappedSecretV1 } from './types.js';
+import { EncryptedBlob, P256PublicKeyCoordinates, WrappedSecretClass, WrappedSecretPolicy, WrappedSecretV1 } from './types.ts';
 type V3Purpose = "this.me/blob/v3/branch" | "this.me/blob/v3/value" | "this.me/blob/v3/enc" | "this.me/blob/v3/mac";
 type V3BlobMode = "branch" | "value";
 export type BlobV3DerivedKeys = {

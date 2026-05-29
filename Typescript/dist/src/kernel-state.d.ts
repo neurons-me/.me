@@ -1,4 +1,4 @@
-import { MEBlobV3KeyCacheEntry, KernelMemory, MEBranchScopeCacheEntry, MEDecryptedBranchCacheEntry, MEDecryptedValueCacheEntry, MEDerivationRecord, MEEffectiveSecretCacheEntry, MEOptions, MERecomputeWave, MEVectorIndex, StoredWrappedKey } from './types.js';
+import { MEBlobV3KeyCacheEntry, KernelMemory, MEBranchScopeCacheEntry, MEDecryptedBranchCacheEntry, MEDecryptedValueCacheEntry, MEDerivationRecord, MEEffectiveSecretCacheEntry, MEOptions, MERecomputeWave, MEVectorIndex, StoredWrappedKey } from './types.ts';
 export type MemoryState = {
     index: Record<string, any>;
     _memories: KernelMemory[];

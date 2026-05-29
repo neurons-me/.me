@@ -1,4 +1,4 @@
-import { KernelMemory, Memory, ReplayMemoryInput } from './types.js';
+import { KernelMemory, Memory, ReplayMemoryInput } from './types.ts';
 export declare function toPublicMemory(memory: ReplayMemoryInput): Memory;
 export declare function toPublicMemories(memories: ReplayMemoryInput[]): Memory[];
 export declare function toKernelMemory(memory: ReplayMemoryInput): KernelMemory;

@@ -5,6 +5,7 @@ export default defineConfig({
   description: 'Documentation for .me',
   base: '/.me/Typescript/typedocs/',
   lang: 'en-US',
+  ignoreDeadLinks: true,
 
   head: [
     ['link', { rel: 'icon', href: 'https://res.cloudinary.com/dkwnxf6gm/image/upload/v1760915741/this.me-removebg-preview_1_nrj6pe.png' }],

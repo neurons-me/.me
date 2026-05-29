@@ -1,4 +1,4 @@
-import { MEKernelLike, MERuntimeMethodDescriptor, MEProxy } from './types.js';
+import { MEKernelLike, MERuntimeMethodDescriptor, MEProxy } from './types.ts';
 export declare const RUNTIME_ESCAPE_TOKEN = "!";
 export declare function normalizeArgs(args: any[]): any;
 export declare function describeRuntimeMethod(_self: MEKernelLike, path: string, call: (...args: any[]) => unknown, docs: string, signature: string): MERuntimeMethodDescriptor;

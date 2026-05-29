@@ -1,6 +1,6 @@
-import { exportP256PublicKey, generateP256KeyPair, importP256PublicKey } from './crypto.js';
-import { EncryptedBranchPlane, MEOptions, MEVectorIndexBuildOptions, MEVectorIndexBuildResult, MEVectorSearchOptions, MEVectorSearchResult, MESearchExactOptions, MESearchExactResult, MEProofInput, MEProofResult, MESnapshot, MESnapshotInput, MeTargetAst, Memory, ReplayMemoryInput, P256PublicKeyCoordinates, SemanticPath, WrappedSecretClass, WrappedSecretPolicy, WrappedSecretV1 } from './types.js';
-export type { MEProxy } from './types.js';
+import { exportP256PublicKey, generateP256KeyPair, importP256PublicKey } from './crypto.ts';
+import { EncryptedBranchPlane, MEOptions, MEVectorIndexBuildOptions, MEVectorIndexBuildResult, MEVectorSearchOptions, MEVectorSearchResult, MESearchExactOptions, MESearchExactResult, MEProofInput, MEProofResult, MESnapshot, MESnapshotInput, MeTargetAst, Memory, ReplayMemoryInput, P256PublicKeyCoordinates, SemanticPath, WrappedSecretClass, WrappedSecretPolicy, WrappedSecretV1 } from './types.ts';
+export type { MEProxy } from './types.ts';
 /**
  * The `.me` Semantic Kernel.
  *
@@ -85,12 +85,12 @@ export declare class ME {
      */
     inspect(opts?: {
         last?: number;
-    }): import('./types.js').MEInspectResult;
+    }): import('./types.ts').MEInspectResult;
     /**
      * Explain how a semantic path is derived.
      * Useful for debugging pointers, operators, and derived values.
      */
-    explain(path: string): import('./types.js').MEExplainResult;
+    explain(path: string): import('./types.ts').MEExplainResult;
     /**
      * Execute a raw target string or parsed target AST without going through proxy property access.
      * Useful for tooling, explicit runtime dispatch, and tests.

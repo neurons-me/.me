@@ -1,4 +1,4 @@
-import { MappingIntent, NormalizedCall, OperatorRegistry } from './types.js';
+import { MappingIntent, NormalizedCall, OperatorRegistry } from './types.ts';
 export interface NormalizeCallDeps {
     /**
      * Optional evaluator for legacy JS closures in "=" thunk mode.

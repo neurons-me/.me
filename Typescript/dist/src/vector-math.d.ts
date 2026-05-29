@@ -1,4 +1,4 @@
-import { MESearchHit } from './types.js';
+import { MESearchHit } from './types.ts';
 export declare function dotProduct(a: Float32Array, b: Float32Array): number;
 export declare function l2Norm(a: Float32Array): number;
 export declare function cosineSimilarity(a: Float32Array, b: Float32Array): number;

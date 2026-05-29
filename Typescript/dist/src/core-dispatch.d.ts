@@ -1,4 +1,4 @@
-import { MeTargetAst, MEKernelLike } from './types.js';
+import { MeTargetAst, MEKernelLike } from './types.ts';
 export declare function setRecomputeMode(self: MEKernelLike, mode: "eager" | "lazy"): MEKernelLike;
 export declare function getRecomputeMode(self: MEKernelLike): "eager" | "lazy";
 export declare function handleKernelTarget(self: MEKernelLike, operation: string, rawPath: string, body?: any): any;
