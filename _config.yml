@@ -8,6 +8,14 @@ remote_theme: neurons-me/neurons-me
 plugins:
   - jekyll-remote-theme
 
+exclude:
+  - Typescript
+  - Python
+  - Rust
+  - node_modules
+  - "*/node_modules"
+  - vendor
+
 markdown: kramdown
 kramdown:
   input: GFM
