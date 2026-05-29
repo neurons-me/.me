@@ -1,3 +1,8 @@
+---
+layout: readme
+title: me:// URI Scheme — Grammar Specification
+---
+
 # `me://` URI Scheme — Grammar Specification
 
 **neurons.me / suiGn** **Status:** Draft v0.1 **License:** CC0 1.0 Universal — Public Domain

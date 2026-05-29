@@ -1,3 +1,8 @@
+---
+layout: readme
+title: O(k) Semantic Kernel Architecture
+---
+
 # O(k) Semantic Kernel Optimization
 
 ### Architecture:
