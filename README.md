@@ -18,7 +18,7 @@ git clone https://github.com/neurons-me/.me.git
 ```
 Select your language:
 
-| Language    | Run Command                     | Status            | Documentation                                                |
+|     | Run Command                     | Status            | Documentation                                                |
 | ----------- | --------------------------- | ----------------- | ------------------------------------------------------------ |
 | **Typescript** | `cd .me/Typescript && npm install` | **Stable 3.6.40** | [node.js Docs ⟡ ](https://neurons-me.github.io/.me/Typedocs/) |
 | **Python**  | `cd .me/Python/`               | Not Available     | [Pip Docs 𓆚](https://neurons-me.github.io/.me/Python/)          |
