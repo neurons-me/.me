@@ -26,3 +26,13 @@ kramdown:
   input: GFM
   parse_block_html: true
   hard_wrap: false
+
+me_theme:
+  brand: .me
+  nav:
+    - label: Home
+      url: https://neurons-me.github.io/
+    - label: Github
+      url: https://github.com/neurons-me
+    - label: All.This
+      url: https://neurons-me.github.io/all.this/
