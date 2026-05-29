@@ -32,7 +32,9 @@ me_theme:
   nav:
     - label: Home
       url: https://neurons-me.github.io/
+    - label: Docs
+      relative_url: /docs/
     - label: Github
-      url: https://github.com/neurons-me
+      url: https://github.com/neurons-me/.me
     - label: All.This
       url: https://neurons-me.github.io/all.this/
