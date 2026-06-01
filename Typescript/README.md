@@ -5,6 +5,8 @@
 
 # .me `3.9.0`
 
+[![npm](https://img.shields.io/npm/v/this.me)](https://www.npmjs.com/package/this.me) [![docs](https://img.shields.io/badge/docs-neurons--me.github.io-blue)](https://neurons-me.github.io/.me/docs/)
+
 **Sovereign computational identity. Works offline. No server. No network.**
 
 ```ts
