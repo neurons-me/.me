@@ -9,27 +9,27 @@
 .vscode/
 .idea/
 
-# ─── Node (JavaScript / npm) ──────────────────
-npm/node_modules/
-npm/dist/
-npm/build/
-npm/coverage/
-npm/package-lock.json
-npm/yarn.lock
+# ─── Node (JavaScript / TypeScript) ──────────
+Typescript/node_modules/
+Typescript/dist/
+Typescript/build/
+Typescript/coverage/
+Typescript/package-lock.json
+Typescript/yarn.lock
 
-# ─── Python (py) ─────────────────────────────
-pip/__pycache__/
-pip/**/*.pyc
-pip/**/*.pyo
-pip/**/*.egg-info/
-pip/dist/
-pip/build/
-pip/*.egg
-pip/venv/
-pip/.venv/
-pip/Pipfile.lock
-pip/poetry.lock
+# ─── Python ───────────────────────────────────
+Python/__pycache__/
+Python/**/*.pyc
+Python/**/*.pyo
+Python/**/*.egg-info/
+Python/dist/
+Python/build/
+Python/*.egg
+Python/venv/
+Python/.venv/
+Python/Pipfile.lock
+Python/poetry.lock
 
-# ─── Rust (crate) ─────────────────────────────
-crate/target/
-crate/Cargo.lock
+# ─── Rust ─────────────────────────────────────
+Rust/target/
+Rust/Cargo.lock
