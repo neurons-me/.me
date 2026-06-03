@@ -118,7 +118,7 @@ me.price(200)
 console.log(me('total'))   // 1000 — recomputed automatically
 ```
 
-True O(K) reactivity: only actual dependents update when a value changes. Propagation is lazy and batched.
+True **O(K) reactivity**: only actual dependents update when a value changes. Propagation is lazy and batched.
 
 ---
 

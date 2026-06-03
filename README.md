@@ -5,18 +5,17 @@
 
 # .me
 **Own your knowledge graph.**
+
 Agents, notes, relationships, wallets, groups, and secrets — unified in one reactive tree.
 
 ---
 
 ### Getting Started
-**Clone the Github Repository:**
+**Clone the Github Repository:** run the following command in your terminal.
 
-Run the following command in your terminal.
 ```bash
 git clone https://github.com/neurons-me/.me.git
 ```
-Choose Your Language
 
 Once cloned, select your preferred language and run the corresponding setup command:
 
@@ -27,12 +26,9 @@ Once cloned, select your preferred language and run the corresponding setup comm
 | **Rust**    | `cd .me/Rust/`             | Not Available     | [Rust Docs](https://neurons-me.github.io/.me/Rust/)         |
 
 ### Demos 𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃
-- [ Robots that Understand Context 🤖⟐🤖 — Same object, different meaning. → ](https://neurons-me.github.io/.me/docs/Robots-That-Understand-Context.html)
-- [ Smart City 🏙️📡⌬◉⌬⟶ ∴ — A full city reacting in real time as interconnected nodes.→](https://neurons-me.github.io/.me/docs/Smart-Cities.html)
-- **Hemisphere Scale** — 1 million nodes with cross-domain reactive updates.
-- **Extreme Fan-Out** — One write instantly updates 100k dependents.
+**[⟶ ⇄ ⇆ ↔⟶ ⇄ 🤖🤖🤖 Robots that Understand Context 🤖⟐🤖 ⟶ ⇄ ⇆ ↔⟶ ⇄ ⇆ ↔ Same object, different meaning. → ](https://neurons-me.github.io/.me/docs/Robots-That-Understand-Context.html)** **[⌬◉⌬◉⌬ 🏙️🏙️🏙️ Smart City 🏙️🏙️🏙️📡⌬◉⌬⟶ ∴ — A full city reacting in real time as interconnected nodes. →](https://neurons-me.github.io/.me/docs/Smart-Cities.html)** **[🌐🌐🌐 Hemisphere Scale 🌐🌐🌐 — 1 million nodes with cross-domain reactive updates. 𓂀 𓁹 𓇌 𓆚 𓋹 𓏺𓂀 𓁹 𓇌 𓆚 𓋹 𓏺𓂀 𓁹 𓇌 𓆚 𓋹 𓏺 →](https://github.com/neurons-me/.me/blob/main/Typescript/tests/Demos/Hemisphere_1M.ts)** **[⚡⚡⚡Extreme Fan-Out ⚡⚡⚡ — One write instantly updates 100k dependents. ⌬◉⌬ ⟡⟐⟡⌬◉⌬ ⟡⟐⟡⌬◉⌬ ⟡⟐⟡](https://github.com/neurons-me/.me/blob/main/Typescript/tests/Demos/Root_Fanout_100k.ts) **
 
-[View all demos → ](https://github.com/neurons-me/.me/tree/main/Typescript/tests/Demos) 
+**[⌬ ⊚ View all demos → ](https://github.com/neurons-me/.me/tree/main/Typescript/tests/Demos)** 
 
 ---
 
