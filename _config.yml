@@ -9,8 +9,10 @@ plugins:
   - jekyll-remote-theme
 
 exclude:
-  - Python
-  - Rust
+  - Python/src
+  - Python/__pycache__
+  - Rust/src
+  - Rust/target
   - node_modules
   - "*/node_modules"
   - vendor
