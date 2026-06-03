@@ -22,12 +22,12 @@ Once cloned, select your preferred language and run the corresponding setup comm
 
 |     |  Command                     | Status            | Documentation                                                |
 | ----------- | --------------------------- | ----------------- | ------------------------------------------------------------ |
-| **Typescript** | `cd .me/Typescript && npm install` | **Stable 3.6.40** | [node.js Docs ⟡ ](https://neurons-me.github.io/.me/Typedocs/) |
+| **Typescript** | `cd .me/Typescript && npm install` | [![npm](https://img.shields.io/npm/v/this.me/latest?label=latest)](https://www.npmjs.com/package/this.me) | [node.js Docs ⟡ ](https://neurons-me.github.io/.me/Typescript/typedocs/) |
 | **Python**  | `cd .me/Python/`               | Not Available     | [Pip Docs 𓆚](https://neurons-me.github.io/.me/Python/)          |
 | **Rust**    | `cd .me/Rust/`             | Not Available     | [Rust Docs](https://neurons-me.github.io/.me/Rust/)         |
 
-### Demos
-- **Robots that Understand Context 🤖⟐🤖** — Same physical object, radically different meaning and behavior per robot. [Learn how it works →](https://neurons-me.github.io/.me/docs/Robots-That-Understand-Context.html)
+### Demos 𓂃𓂃𓂃𓂃𓂃𓂃𓂃
+- **Robots that Understand Context 🤖⟐🤖** — Same object, different meaning. [Learn how it works →](https://neurons-me.github.io/.me/docs/Robots-That-Understand-Context.html)
 - **Smart City 🏙️📡⌬◉⌬⟶ ∴** — A full city reacting in real time as interconnected nodes.
 [Learn how it works →](https://neurons-me.github.io/.me/docs/Smart-Cities.html)
 - **Hemisphere Scale** — 1 million nodes with cross-domain reactive updates.
