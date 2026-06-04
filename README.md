@@ -26,9 +26,9 @@ Once cloned, select your preferred language and run the corresponding setup comm
 | **Rust**    | `cd .me/Rust/`             | Not Available     | [Rust Docs](https://neurons-me.github.io/.me/Rust/)         |
 
 ### Demos 𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃
-**[  🤖⟐🤖 Robots that Understand Context 🤖⟐🤖 ⇄ ⇆ ↔ Same object, different meaning. → ](https://neurons-me.github.io/.me/docs/Robots-That-Understand-Context.html)** 
+**[  🤖⟐🤖 Robots that Understand Context 🤖⟐🤖 ⇄ ⇆ Same object, different meaning. → ](https://neurons-me.github.io/.me/docs/Robots-That-Understand-Context.html)** 
 
-**[ 🏙️📡 ⌬◉⌬ Smart City 🏙️📡 ⌬◉⌬ ⟶ ∴ — A full city reacting in real time as interconnected nodes. →](https://neurons-me.github.io/.me/docs/Smart-Cities.html)** 
+**[ 🏙️📡 Smart City 🏙️📡 ⌬◉⌬ ⟶ ∴ — A full city reacting in real time as interconnected nodes. →](https://neurons-me.github.io/.me/docs/Smart-Cities.html)** 
 
 **[ 🌐🌐🌐 Hemisphere Scale 🌐🌐🌐 — 1 million nodes with cross-domain reactive updates. →](https://github.com/neurons-me/.me/blob/main/Typescript/tests/Demos/Hemisphere_1M.ts)** 
 
