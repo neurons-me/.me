@@ -1,7 +1,7 @@
 import { spawnSync } from "node:child_process";
 
 const steps = [
-  { name: "Build dist", cmd: "npm", args: ["run", "build"] },
+  { name: "Build dist", cmd: "npx", args: ["vite", "build", "--config", "vite.config.ts"] },
   { name: "Canonical me URI test", cmd: "npm", args: ["run", "test:me-uri"] },
   { name: "Axioms fire test", cmd: "node", args: ["tests/axioms.test.ts"] },
   { name: "Phases 0-8 fire test", cmd: "node", args: ["tests/phases.test.js"] },
