@@ -15,9 +15,9 @@ Agents, notes, relationships, wallets, groups, and secrets — unified in one re
 
 **→ Explore the source**
 
-| [Clone the repo](#getting-started) | [Typescript](https://neurons-me.github.io/.me/Typescript/typedocs/) | [Python](https://neurons-me.github.io/.me/Python/) | [Axioms](https://neurons-me.github.io/.me/docs/Axioms.html) |
+| [Clone the repo](#getting-started) | [Docs](./docs) | [Tests](https://github.com/neurons-me/.me/tree/main/Typescript/tests) | [Axioms](https://neurons-me.github.io/.me/docs/Axioms.html) |
 |---|---|---|---|
-| `git clone` the monorepo to get started. | `cd .me/Typescript && npm install` | `cd .me/Python/` — not yet available. | Invariants the kernel guarantees and tests against. |
+| `git clone` the monorepo to get started. | Guides, concepts, and architecture notes. | The full suite — axioms, contracts, demos, benchmarks. | Invariants the kernel guarantees and tests against. |
 
 ---
 
