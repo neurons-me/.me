@@ -11,13 +11,13 @@ Agents, notes, relationships, wallets, groups, and secrets — unified in one re
 
 | [Getting Started](https://neurons-me.github.io/.me/Typescript/typedocs/) | [Demos](https://github.com/neurons-me/.me/tree/main/Typescript/tests/Demos) | [Benchmarks](https://github.com/neurons-me/.me/tree/main/Typescript/tests/Benchmarks) | [Syntax](#syntax) |
 |---|---|---|---|
-| Install, create a kernel, write your first reactive value. | <img src="https://raw.githubusercontent.com/neurons-me/neurons-me/main/media/robots.png" width="64" align="left" style="margin-right:8px;border-radius:6px;"> Robots, smart cities, hemisphere-scale graphs. | <img src="https://cdn.simpleicons.org/speedtest" width="64" align="left" style="margin-right:8px;border-radius:6px;"> Real numbers on O(K) propagation at scale. | The infinite proxy — write `me.anything`, no schema. |
+| Install, create a kernel, write your first reactive value. | <table border="0"><tr><td width="64" valign="top"><img src="https://raw.githubusercontent.com/neurons-me/neurons-me/main/media/robots.png" width="56" style="border-radius:6px;"></td><td valign="top">Robots, smart cities, hemisphere-scale graphs.</td></tr></table> | <table border="0"><tr><td width="64" valign="top"><img src="https://cdn.simpleicons.org/speedtest/94a3b8" width="40" style="border-radius:6px;"></td><td valign="top">Real numbers on O(K) propagation at scale.</td></tr></table> | The infinite proxy — write `me.anything`, no schema. |
 
 **→ Explore the source**
 
 | [Clone the repo](#getting-started) | [Docs](./docs) | [Tests](https://github.com/neurons-me/.me/tree/main/Typescript/tests) | [Axioms](https://neurons-me.github.io/.me/docs/Axioms.html) |
 |---|---|---|---|
-| `git clone` the monorepo to get started. | <img src="https://cdn.simpleicons.org/readthedocs" width="64" align="left" style="margin-right:8px;border-radius:6px;"> Guides, concepts, and architecture notes. | The full suite — axioms, contracts, demos, benchmarks. | Invariants the kernel guarantees and tests against. |
+| `git clone` the monorepo to get started. | <table border="0"><tr><td width="64" valign="top"><img src="https://cdn.simpleicons.org/readthedocs/94a3b8" width="40" style="border-radius:6px;"></td><td valign="top">Guides, concepts, and architecture notes.</td></tr></table> | The full suite — axioms, contracts, demos, benchmarks. | Invariants the kernel guarantees and tests against. |
 
 ---
 
