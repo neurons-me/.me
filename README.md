@@ -4,9 +4,9 @@
 </picture>
 
 # .me
-**Own your knowledge graph.**
+**Own your knowledge.**
 
-Agents, notes, relationships, wallets, groups, and secrets — unified in one reactive tree.
+Agents, notes, relationships, wallets, groups, and secrets — unified in one reactive graph.
 
 ---
 
