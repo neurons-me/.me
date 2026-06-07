@@ -10,76 +10,17 @@ Agents, notes, relationships, wallets, groups, and secrets — unified in one re
 
 ---
 
-<table>
-<tr>
-<td width="25%" valign="top" align="center">
-
 **→ Use `.me`**
-<br>
-[Getting Started](https://neurons-me.github.io/.me/Typescript/typedocs/)
-<br><sub>Install, create a kernel, write your first reactive value.</sub>
 
-</td>
-<td width="25%" valign="top" align="center">
-
-**→ Use `.me`**
-<br>
-[Demos](#demos-)
-<br><sub>Robots, smart cities, hemisphere-scale graphs.</sub>
-
-</td>
-<td width="25%" valign="top" align="center">
-
-**→ Use `.me`**
-<br>
-[Benchmarks (See Reactivity)](https://github.com/neurons-me/.me/tree/main/Typescript/tests/Benchmarks)
-<br><sub>Real numbers on O(K) propagation at scale.</sub>
-
-</td>
-<td width="25%" valign="top" align="center">
-
-**→ Use `.me`**
-<br>
-[Syntax](#syntax)
-<br><sub>The infinite proxy — write `me.anything`, no schema.</sub>
-
-</td>
-</tr>
-<tr>
-<td width="25%" valign="top" align="center">
+| [Getting Started](https://neurons-me.github.io/.me/Typescript/typedocs/) | [Demos](#demos-) | [Benchmarks](https://github.com/neurons-me/.me/tree/main/Typescript/tests/Benchmarks) | [Syntax](#syntax) |
+|---|---|---|---|
+| Install, create a kernel, write your first reactive value. | Robots, smart cities, hemisphere-scale graphs. | Real numbers on O(K) propagation at scale. | The infinite proxy — write `me.anything`, no schema. |
 
 **→ Explore the source**
-<br>
-[Clone the repo](#getting-started)
-<br><sub>git clone the monorepo to get started.</sub>
 
-</td>
-<td width="25%" valign="top" align="center">
-
-**→ Explore the source**
-<br>
-[Typescript](https://neurons-me.github.io/.me/Typescript/typedocs/)
-<br><sub>`cd .me/Typescript && npm install`</sub>
-
-</td>
-<td width="25%" valign="top" align="center">
-
-**→ Explore the source**
-<br>
-[Python](https://neurons-me.github.io/.me/Python/)
-<br><sub>`cd .me/Python/` — not yet available.</sub>
-
-</td>
-<td width="25%" valign="top" align="center">
-
-**→ Explore the source**
-<br>
-[Axioms](https://neurons-me.github.io/.me/docs/Axioms.html)
-<br><sub>Invariants the kernel guarantees and tests against.</sub>
-
-</td>
-</tr>
-</table>
+| [Clone the repo](#getting-started) | [Typescript](https://neurons-me.github.io/.me/Typescript/typedocs/) | [Python](https://neurons-me.github.io/.me/Python/) | [Axioms](https://neurons-me.github.io/.me/docs/Axioms.html) |
+|---|---|---|---|
+| `git clone` the monorepo to get started. | `cd .me/Typescript && npm install` | `cd .me/Python/` — not yet available. | Invariants the kernel guarantees and tests against. |
 
 ---
 
