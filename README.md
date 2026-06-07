@@ -11,7 +11,7 @@ Agents, notes, relationships, wallets, groups, and secrets — unified in one re
 
 | [Getting Started](https://neurons-me.github.io/.me/Typescript/typedocs/) | [Demos](https://github.com/neurons-me/.me/tree/main/Typescript/tests/Demos) | [Benchmarks](https://github.com/neurons-me/.me/tree/main/Typescript/tests/Benchmarks) | [Syntax](#syntax) |
 |---|---|---|---|
-| <picture><source media="(prefers-color-scheme: dark)" srcset="./media/this.me_dark.png"><img src="./media/this.me_light.png" width="64" align="left" style="margin-right:8px;border-radius:6px;"></picture> Install, create a kernel, write your first reactive value. | <img src="https://raw.githubusercontent.com/neurons-me/neurons-me/main/media/robots.png" width="64" align="left" style="margin-right:8px;border-radius:6px;"> Robots, smart cities, hemisphere-scale graphs. | Real numbers on O(K) propagation at scale. | The infinite proxy — write `me.anything`, no schema. |
+| <picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/neurons-me/neurons-me/main/media/this.me_dark.png"><img src="https://raw.githubusercontent.com/neurons-me/neurons-me/main/media/this.me_light.png" width="64" align="left" style="margin-right:8px;border-radius:6px;"></picture> Install, create a kernel, write your first reactive value. | <img src="https://raw.githubusercontent.com/neurons-me/neurons-me/main/media/robots.png" width="64" align="left" style="margin-right:8px;border-radius:6px;"> Robots, smart cities, hemisphere-scale graphs. | Real numbers on O(K) propagation at scale. | The infinite proxy — write `me.anything`, no schema. |
 
 **→ Explore the source**
 
