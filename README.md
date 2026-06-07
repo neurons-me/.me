@@ -11,7 +11,11 @@ Agents, notes, relationships, wallets, groups, and secrets — unified in one re
 
 | [Get Started!](https://neurons-me.github.io/.me/Typescript/typedocs/) | [Explore .me](https://github.com/neurons-me/.me/tree/main/Typescript/tests/Demos) | [Benchmarks](https://github.com/neurons-me/.me/tree/main/Typescript/tests/Benchmarks) | [Syntax](#syntax) |
 |---|---|---|---|
-| Install `.me`. | <img src="https://raw.githubusercontent.com/neurons-me/neurons-me/main/media/robots.png" width="64" align="left" style="margin-right:8px;border-radius:6px;"> 🤖 Robots · 🏙️ Smart Cities · 🌐 Hemisphere Graphs | Real numbers on O(K) propagation at scale. | The infinite proxy — write `me.anything`, no schema. |
+| Install `.me`. | <img src="https://raw.githubusercontent.com/neurons-me/neurons-me/main/media/robots.png" width="64" align="left" style="margin-right:8px;border-radius:6px;"> 
+· 🤖 Robots 
+· 🏙️ Smart Cities 
+· 🌐 Hemisphere Graphs 
+| Real numbers on O(K) propagation at scale. | The infinite proxy — write `me.anything`, no schema. |
 
 **→ Explore the source**
 
