@@ -5,12 +5,9 @@
 
 # .me
 **Own your knowledge.**
-
 Agents, notes, relationships, wallets, groups, and secrets — unified in one reactive graph.
 
----
-
-**→ Use `.me`**
+# **→ Use `.me`**
 
 | [Getting Started](https://neurons-me.github.io/.me/Typescript/typedocs/) | [Demos](#demos-) | [Benchmarks](https://github.com/neurons-me/.me/tree/main/Typescript/tests/Benchmarks) | [Syntax](#syntax) |
 |---|---|---|---|
