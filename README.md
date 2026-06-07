@@ -9,9 +9,9 @@ Agents, notes, relationships, wallets, groups, and secrets — unified in one re
 
 # **Use `.me`**
 
-| [Get .me started!](https://neurons-me.github.io/.me/Typescript/typedocs/) | [Demos](https://github.com/neurons-me/.me/tree/main/Typescript/tests/Demos) | [Benchmarks](https://github.com/neurons-me/.me/tree/main/Typescript/tests/Benchmarks) | [Syntax](#syntax) |
+| [Get .me started!](https://neurons-me.github.io/.me/Typescript/typedocs/) | [Explore .me](https://github.com/neurons-me/.me/tree/main/Typescript/tests/Demos) | [Benchmarks](https://github.com/neurons-me/.me/tree/main/Typescript/tests/Benchmarks) | [Syntax](#syntax) |
 |---|---|---|---|
-| <picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/neurons-me/neurons-me/main/media/this.me_dark.png"><img src="https://raw.githubusercontent.com/neurons-me/neurons-me/main/media/this.me_light.png" width="80" align="left" style="margin-right:8px;border-radius:6px;"></picture> Install `.me`. | <img src="https://raw.githubusercontent.com/neurons-me/neurons-me/main/media/robots.png" width="64" align="left" style="margin-right:8px;border-radius:6px;"> Robots, smart cities, hemisphere-scale graphs. | Real numbers on O(K) propagation at scale. | The infinite proxy — write `me.anything`, no schema. |
+| Install `.me`. | 🤖 Robots · 🏙️ Smart Cities · 🌐 World Wide Web — hemisphere-scale graphs. | Real numbers on O(K) propagation at scale. | The infinite proxy — write `me.anything`, no schema. |
 
 **→ Explore the source**
 
