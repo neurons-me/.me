@@ -10,6 +10,33 @@ Agents, notes, relationships, wallets, groups, and secrets — unified in one re
 
 ---
 
+<table>
+<tr>
+<td width="50%" valign="top">
+
+### → Use `.me`
+For building with `.me` in your own project.
+
+- **[Getting Started](https://neurons-me.github.io/.me/Typescript/typedocs/)** — install the package, create your first kernel, write your first reactive value.
+- **[Demos](#demos-)** — see `.me` in action: robots, smart cities, hemisphere-scale graphs.
+- **[Benchmarks (See Reactivity)](https://github.com/neurons-me/.me/tree/main/Typescript/tests/Benchmarks)** — real numbers on O(K) propagation at scale.
+
+</td>
+<td width="50%" valign="top">
+
+### → Explore the source / Contribute
+For navigating the monorepo and working with the kernel internals.
+
+- **Clone the repo** and pick your language (Typescript, Python, Rust).
+- **Run the setup command** for that language (table below).
+- **Read the [Axioms](https://neurons-me.github.io/.me/docs/Axioms.html)** — the invariants the kernel guarantees and tests against.
+
+</td>
+</tr>
+</table>
+
+---
+
 ### Getting Started
 **Clone the Github Repository:** run the following command in your terminal.
 
