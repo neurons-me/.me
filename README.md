@@ -50,7 +50,6 @@ Write anything. Chain anything. The kernel figures out the dependencies.
 **If it changes, everything that depends on it updates — automatically.**
 
 ## **▵** Why .me?
-
 1. **Structural Privacy** — Private data is structurally invisible (not just hidden by rules).
 2. **Full Explainability** — Every derived value can explain exactly how it was computed.
 3. **Subjective Reality** — Same graph, different views per agent.

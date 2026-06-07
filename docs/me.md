@@ -16,8 +16,8 @@ title: .me
   <tr>
     <td width="260" align="center" valign="middle">
       <picture>
-        <source media="(prefers-color-scheme: dark)" srcset="https://res.cloudinary.com/dkwnxf6gm/image/upload/v1760915741/this.me-removebg-preview_1_nrj6pe.png" />
-        <img src="https://suign.github.io/assets/imgs/monads.png" alt=".me as a coordinate" width="200" />
+        <source media="(prefers-color-scheme: dark)" srcset="https://suign.github.io/assets/imgs/monads.png" />
+        <img src="https://res.cloudinary.com/dkwnxf6gm/image/upload/v1760629124/this.me_vvz6pt.png" alt=".me as a coordinate" width="200" />
       </picture>
     </td>
     <td valign="middle">
