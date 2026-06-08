@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>.me — Demos</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/this.gui@1.4.6/dist/styles.css" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: "Inter", "Helvetica Neue", Helvetica, Arial, sans-serif; background: #f4f7f8; color: #0f1720; min-height: 100vh; -webkit-font-smoothing: antialiased; }
+    .page { max-width: 960px; margin: 0 auto; padding: 56px 32px 80px; }
+    .breadcrumb { font-size: 0.8rem; color: #51606d; margin-bottom: 24px; }
+    .breadcrumb a { color: #0f6a78; text-decoration: none; }
+    .breadcrumb a:hover { text-decoration: underline; }
+    .kicker { font-size: 0.75rem; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; color: #51606d; margin-bottom: 12px; }
+    .page-title { font-size: 2.75rem; font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; margin-bottom: 12px; }
+    .page-subtitle { font-size: 1.05rem; color: #51606d; margin-bottom: 48px; max-width: 560px; }
+    .empty { padding: 48px 32px; border: 2px dashed rgba(15,23,32,0.12); border-radius: 16px; text-align: center; color: #51606d; font-size: 0.95rem; line-height: 1.8; }
+    .empty code { font-family: monospace; background: rgba(15,106,120,0.08); padding: 2px 6px; border-radius: 4px; font-size: 0.85rem; }
+    @media (prefers-color-scheme: dark) {
+      body { background: #0b1114; color: #e8eded; }
+      .kicker, .page-subtitle, .breadcrumb { color: #98a7b3; }
+      .breadcrumb a { color: #4fd1c5; }
+      .empty { border-color: rgba(232,237,237,0.12); color: #98a7b3; }
+      .empty code { background: rgba(79,209,197,0.10); }
+    }
+  </style>
+  <link rel="icon" type="image/png" href="https://res.cloudinary.com/dkwnxf6gm/image/upload/v1769890772/this.me.png">
+</head>
+<body>
+  <div class="page">
+    <p class="breadcrumb"><a href="../">← .me Docs</a></p>
+    <p class="kicker">this.me / Demos</p>
+    <h1 class="page-title">Demos</h1>
+    <p class="page-subtitle">Runnable examples that show the kernel in action — beyond unit tests.</p>
+
+    <div class="empty">
+      Coming soon.<br><br>
+      Planned: <code>identity</code> · <code>reactive-graph</code> · <code>secret-tree</code> · <code>snapshot-round-trip</code> · <code>social-graph</code> · <code>vector-search</code>
+    </div>
+  </div>
+  <footer style="margin-top:64px;padding:32px 0;text-align:center;border-top:1px solid rgba(15,23,32,0.08);">
+    <a href="https://neurons-me.github.io/" style="display:inline-flex;align-items:center;gap:10px;text-decoration:none;opacity:0.6;transition:opacity 140ms ease;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.6">
+      <img src="https://res.cloudinary.com/dkwnxf6gm/image/upload/v1760629056/neurons-grey_hxjcom.png" alt="neurons.me" style="width:28px;height:28px;object-fit:contain;" />
+      <span style="font-size:0.875rem;font-weight:600;color:inherit;">neurons.me</span>
+    </a>
+  </footer>
+</body>
+</html>

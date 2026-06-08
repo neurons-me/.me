@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>.me — Fire Test</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/this.gui@1.4.6/dist/styles.css" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: "Inter", "Helvetica Neue", Helvetica, Arial, sans-serif; background: #f4f7f8; color: #0f1720; min-height: 100vh; -webkit-font-smoothing: antialiased; }
+    .page { max-width: 800px; margin: 0 auto; padding: 56px 32px 80px; }
+    .breadcrumb { font-size: 0.8rem; color: #51606d; margin-bottom: 24px; display: flex; gap: 8px; }
+    .breadcrumb a { color: #0f6a78; text-decoration: none; }
+    .breadcrumb a:hover { text-decoration: underline; }
+    .breadcrumb span { color: #51606d; }
+    .kicker { font-size: 0.75rem; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; color: #51606d; margin-bottom: 12px; }
+    h1 { font-size: 2.25rem; font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; margin-bottom: 12px; }
+    .subtitle { font-size: 1rem; color: #51606d; margin-bottom: 48px; }
+    h2 { font-size: 1.15rem; font-weight: 700; margin: 40px 0 16px; padding-bottom: 8px; border-bottom: 1px solid rgba(15,23,32,0.10); }
+    .suite { background: #fff; border: 1px solid rgba(15,23,32,0.10); border-radius: 12px; padding: 20px 24px; margin-bottom: 16px; }
+    .suite-header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+    .suite-name { font-weight: 700; font-size: 0.95rem; }
+    .suite-time { font-size: 0.8rem; color: #51606d; margin-left: auto; }
+    .pass-badge { background: rgba(16,185,129,0.12); color: #047857; font-size: 0.75rem; font-weight: 700; padding: 2px 8px; border-radius: 20px; }
+    .test-list { list-style: none; display: flex; flex-direction: column; gap: 6px; }
+    .test-list li { font-size: 0.875rem; color: #374151; display: flex; gap: 8px; }
+    .test-list li::before { content: "✅"; flex-shrink: 0; }
+    .phase-list { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+    .phase { background: rgba(16,185,129,0.06); border: 1px solid rgba(16,185,129,0.2); border-radius: 8px; padding: 12px 16px; font-size: 0.875rem; }
+    .phase strong { display: block; font-weight: 700; margin-bottom: 4px; }
+    .phase ul { list-style: none; padding-left: 8px; color: #51606d; }
+    .phase ul li::before { content: "• "; }
+    .summary-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; margin-top: 8px; }
+    .summary-table th { text-align: left; padding: 8px 12px; background: rgba(15,23,32,0.04); border-bottom: 2px solid rgba(15,23,32,0.10); font-weight: 600; }
+    .summary-table td { padding: 8px 12px; border-bottom: 1px solid rgba(15,23,32,0.06); }
+    .summary-table tr:last-child td { border-bottom: none; }
+    .all-passed { background: rgba(16,185,129,0.08); border: 1px solid rgba(16,185,129,0.25); border-radius: 12px; padding: 20px 24px; text-align: center; font-weight: 700; color: #047857; font-size: 1rem; margin-top: 32px; }
+    @media (prefers-color-scheme: dark) {
+      body { background: #0b1114; color: #e8eded; }
+      .kicker, .subtitle, .breadcrumb { color: #98a7b3; }
+      .breadcrumb a { color: #4fd1c5; }
+      h2 { border-color: rgba(232,237,237,0.08); }
+      .suite { background: #111a1f; border-color: rgba(232,237,237,0.08); }
+      .suite-time { color: #98a7b3; }
+      .test-list li { color: #cbd5e1; }
+      .phase { background: rgba(16,185,129,0.05); border-color: rgba(16,185,129,0.15); }
+      .phase ul { color: #98a7b3; }
+      .summary-table th { background: rgba(255,255,255,0.03); border-color: rgba(232,237,237,0.08); }
+      .summary-table td { border-color: rgba(232,237,237,0.05); }
+      .all-passed { background: rgba(16,185,129,0.06); border-color: rgba(16,185,129,0.2); }
+    }
+  </style>
+  <link rel="icon" type="image/png" href="https://res.cloudinary.com/dkwnxf6gm/image/upload/v1769890772/this.me.png">
+</head>
+<body>
+  <div class="page">
+    <div class="breadcrumb">
+      <a href="../">← .me Docs</a>
+      <span>/</span>
+      <a href="./">Tests</a>
+    </div>
+    <p class="kicker">this.me / Tests</p>
+    <h1>Fire Test</h1>
+    <p class="subtitle">Full kernel validation — phases 0–8, reconstruction proof, secret contracts, and contract suite.<br>Run: <code>node tests/fire.test.ts</code></p>
+
+    <h2>Phases 0–8</h2>
+    <div class="phase-list">
+      <div class="phase"><strong>Phase 0 — Identity + Secret Scope</strong><ul><li>Root identity claim (@) is accepted</li><li>Secret scope root stays stealth (undefined)</li><li>Secret leaf data remains readable by path</li></ul></div>
+      <div class="phase"><strong>Phase 1 — Structural [] Selectors</strong><ul><li>Bracket selector writes create indexed nodes</li><li>Bracket selector reads resolve exact indexed leaves</li></ul></div>
+      <div class="phase"><strong>Phase 2 — [i] Broadcast with '='</strong><ul><li>One rule is broadcast to all collection members</li><li>Each member gets an evaluated contextual result</li></ul></div>
+      <div class="phase"><strong>Phase 3 — Logical Filters</strong><ul><li>Single and compound filters return only matching nodes</li><li>Filter evaluation works on derived fields</li></ul></div>
+      <div class="phase"><strong>Phase 3.1 — Filtered Broadcast</strong><ul><li>Broadcast assignment runs only on nodes matching filter</li><li>Non-matching nodes remain unchanged</li></ul></div>
+      <div class="phase"><strong>Phase 4 — Range + Multi-Select</strong><ul><li>Range selectors [a..b] slice contiguous subsets</li><li>Multi-select selectors [[a,b,c]] slice sparse subsets</li></ul></div>
+      <div class="phase"><strong>Phase 5 — Transform Projection</strong><ul><li>Read-only projection computes transformed values</li><li>Projection output is numeric per selected member</li></ul></div>
+      <div class="phase"><strong>Phase 6 — Contract Integrity</strong><ul><li>Cross-scope formula (public + secret leaf) computes deterministically</li><li>Final invariant equals expected numeric result</li></ul></div>
+      <div class="phase"><strong>Phase 7A — Temporal Rehydration (Replay)</strong><ul><li>Memory log can be exported from the current runtime</li><li>A new empty instance can replay that memory</li><li>Replay reconstructs equivalent semantic results</li></ul></div>
+      <div class="phase"><strong>Phase 7B — Atomic Snapshot Rehydration</strong><ul><li>Snapshot exports full kernel state</li><li>A fresh runtime can import snapshot atomically</li><li>Imported runtime preserves exact encrypted structures</li></ul></div>
+      <div class="phase"><strong>Phase 8 — Incremental Recompute + Explain</strong><ul><li>Derivation dependencies tracked from '=' expressions</li><li>Changing a referenced leaf triggers targeted recompute</li><li>explain(path) exposes expression inputs with public/stealth origin</li><li>Stealth inputs masked in explain() while still auditable</li><li>Invalid code tokens rejected and remain declarative strings</li></ul></div>
+    </div>
+
+    <h2>Reconstruction (32/32)</h2>
+    <div class="suite">
+      <div class="suite-header">
+        <span class="pass-badge">32/32</span>
+        <span class="suite-name">Reconstruction Proof</span>
+        <span class="suite-time">125.39ms</span>
+      </div>
+      <ul class="test-list">
+        <li>simple string seed produces stable identity</li>
+        <li>12-word phrase seed produces stable identity</li>
+        <li>hex string seed produces stable identity</li>
+        <li>sentence as seed produces stable identity</li>
+        <li>unicode seed produces stable identity</li>
+        <li>single character seed produces stable identity</li>
+        <li>very long seed produces stable identity</li>
+        <li>256-bit random seed produces stable identity</li>
+        <li>'luna' and 'luna2' produce different identities</li>
+        <li>'jose' and 'JOSE' produce different identities</li>
+        <li>'abc' and 'abc ' (trailing space) produce different identities</li>
+        <li>ten different seeds all produce distinct identities</li>
+        <li>anagram seeds produce different identities</li>
+        <li>reconstruction from seed produces identical identity hash</li>
+        <li>reconstruction produces same namespace key material</li>
+        <li>reconstruction works after writing secret scope data</li>
+        <li>three independent reconstructions all produce same hash</li>
+        <li>seed does not appear in memory log</li>
+        <li>seed does not appear in snapshot export</li>
+        <li>seed not readable through proxy path</li>
+        <li>seed not enumerable on proxy surface</li>
+        <li>me[Symbol.for('me.seed')] returns the seed</li>
+        <li>me[Symbol.for('me.identity')] returns hash and expression</li>
+        <li>identity hash is a valid hex string</li>
+        <li>identity hash has fixed 64-hex length</li>
+        <li>me[Symbol.for('me.expression')] returns null before @ is called</li>
+        <li>root @ sets active expression and escape plane mirrors it</li>
+        <li>scoped @ keeps claim behavior without replacing kernel active expression</li>
+        <li>identity hash is independent of write history</li>
+        <li>identity hash is independent of creation time</li>
+        <li>identity hash is independent of process state</li>
+        <li>web3 analogy — same mnemonic always derives same address</li>
+      </ul>
+    </div>
+
+    <h2>Secret Suites</h2>
+    <div class="suite">
+      <div class="suite-header"><span class="pass-badge">7/7</span><span class="suite-name">Secret Material V3</span><span class="suite-time">86.58ms</span></div>
+      <ul class="test-list">
+        <li>same input yields the same chain and the same 32-byte material</li>
+        <li>branch and value diverge for the same secret path</li>
+        <li>sibling leaves share branch material but diverge at value level</li>
+        <li>changing the active noise boundary changes derived material</li>
+        <li>changing a relevant nested secret changes derived material</li>
+        <li>branch mode rejects the root secret scope</li>
+        <li>legacy effective secret behavior remains unchanged</li>
+      </ul>
+    </div>
+    <div class="suite">
+      <div class="suite-header"><span class="pass-badge">13/13</span><span class="suite-name">Secret Blob V3 — Read</span><span class="suite-time">92.76ms</span></div>
+      <ul class="test-list">
+        <li>v3 branch blob reads through normal secret path</li>
+        <li>v3 value-level blob reads through normal path</li>
+        <li>value-level cache does not leak mutable object references</li>
+        <li>value-level cache invalidates when secret epoch changes</li>
+        <li>branch write preloads v3 keys cache for immediate cold read</li>
+        <li>branch cache priming is scoped to the written chunk</li>
+        <li>branch cache priming invalidates when secret epoch changes</li>
+        <li>tampered branch blob bypasses primed cache and fails closed</li>
+        <li>v2 and legacy blobs remain readable</li>
+        <li>tampered v3 branch blob fails closed</li>
+        <li>wrong secret for v3 branch blob fails closed</li>
+        <li>wrong path for v3 value-level blob fails closed</li>
+        <li>wrong noise for v3 branch blob fails closed</li>
+      </ul>
+    </div>
+    <div class="suite">
+      <div class="suite-header"><span class="pass-badge">7/7</span><span class="suite-name">Secret Blob V3 — Write</span><span class="suite-time">77.86ms</span></div>
+      <ul class="test-list">
+        <li>default write now emits v3 branch blobs</li>
+        <li>default write now emits v3 value-level blobs</li>
+        <li>forcing v2 still emits v2 branch blobs and remains readable</li>
+        <li>forcing v2 still emits v2 value-level blobs and remains readable</li>
+        <li>migrateEncryptedBranchesToV3 migrates v2 chunks and preserves history</li>
+        <li>migrateEncryptedBranchesToV3 skips already-v3 chunks</li>
+        <li>tampering after migration still fails closed</li>
+      </ul>
+    </div>
+
+    <h2>Contracts</h2>
+    <div class="suite">
+      <div class="suite-header"><span class="pass-badge">20/20</span><span class="suite-name">DSL Contract Tests (Phase 6)</span><span class="suite-time">262.07ms</span></div>
+      <ul class="test-list">
+        <li>boot + basic set/get</li>
+        <li>constructor bootstrap preserves callable proxy after hydrate</li>
+        <li>execute dispatch keeps kernel and keyspace routes stable</li>
+        <li>mutation helpers preserve learn + replay semantics</li>
+        <li>public memory surfaces redact effectiveSecret and stay replayable</li>
+        <li>snapshot import accepts both public and legacy memory payloads</li>
+        <li>phase1 selector [] fixed id</li>
+        <li>phase2 iterator broadcast [i] with '='</li>
+        <li>phase3 filter read + phase3.1 logical filters</li>
+        <li>phase3.1 filtered broadcast for '='</li>
+        <li>phase4 multi-select and range</li>
+        <li>phase5 transform projection</li>
+        <li>runtime escape plane exposes reflective kernel helpers</li>
+        <li>explicit guest scope does not collapse back to owner scope</li>
+        <li>explain() masks stealth inputs while keeping public inputs visible</li>
+        <li>explain() exposes expr plus recompute wave metadata for the selected target</li>
+        <li>secret branch blobs are non-deterministic across identical writes</li>
+        <li>tampered v2 secret blobs fail closed</li>
+        <li>legacy xor secret snapshots still decrypt after v2 hardening</li>
+        <li>secret caches stay bounded under broad secret traversal</li>
+      </ul>
+    </div>
+    <div class="suite">
+      <div class="suite-header"><span class="pass-badge">11/11</span><span class="suite-name">Secret Blob Hardening (4B.0)</span></div>
+      <ul class="test-list">
+        <li>legacy secret snapshot still decrypts correctly</li>
+        <li>v2 secret branch snapshot still decrypts correctly</li>
+        <li>mixed public+secret snapshot rehydrates without leaking</li>
+        <li>secret root stays stealth after rehydrate</li>
+        <li>pointer into secret branch still resolves correctly</li>
+        <li>tampered branch blob fails closed</li>
+        <li>tampered value-level encrypted leaf fails closed</li>
+        <li>wrong secret key fails closed</li>
+        <li>wrong noise boundary fails closed</li>
+        <li>blob copied to sibling scope path does not decrypt</li>
+        <li>replay from public memories preserves secret semantics</li>
+      </ul>
+    </div>
+
+    <h2>Full Summary</h2>
+    <table class="summary-table">
+      <thead><tr><th>Suite</th><th>Status</th><th>Time</th></tr></thead>
+      <tbody>
+        <tr><td>phases</td><td>✅ 11/11</td><td>184.98ms</td></tr>
+        <tr><td>reconstruction</td><td>✅ 32/32</td><td>125.39ms</td></tr>
+        <tr><td>secret-material-v3</td><td>✅ 7/7</td><td>86.58ms</td></tr>
+        <tr><td>secret-blob-v3.read</td><td>✅ 13/13</td><td>92.76ms</td></tr>
+        <tr><td>secret-blob-v3.write</td><td>✅ 7/7</td><td>77.86ms</td></tr>
+        <tr><td>contracts-summary</td><td>✅ 31/31</td><td>262.07ms</td></tr>
+      </tbody>
+    </table>
+
+    <div class="all-passed">✅ ALL FIRETEST TASKS PASSED</div>
+  </div>
+  <footer style="margin-top:64px;padding:32px 0;text-align:center;border-top:1px solid rgba(15,23,32,0.08);">
+    <a href="https://neurons-me.github.io/" style="display:inline-flex;align-items:center;gap:10px;text-decoration:none;opacity:0.6;transition:opacity 140ms ease;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.6">
+      <img src="https://res.cloudinary.com/dkwnxf6gm/image/upload/v1760629056/neurons-grey_hxjcom.png" alt="neurons.me" style="width:28px;height:28px;object-fit:contain;" />
+      <span style="font-size:0.875rem;font-weight:600;color:inherit;">neurons.me</span>
+    </a>
+  </footer>
+</body>
+</html>

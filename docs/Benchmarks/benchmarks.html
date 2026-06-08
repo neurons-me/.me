@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>.me — Benchmarks 1–11</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/this.gui@1.4.6/dist/styles.css" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: "Inter", "Helvetica Neue", Helvetica, Arial, sans-serif; background: #f4f7f8; color: #0f1720; min-height: 100vh; -webkit-font-smoothing: antialiased; }
+    .page { max-width: 900px; margin: 0 auto; padding: 56px 32px 80px; }
+    .breadcrumb { font-size: 0.8rem; color: #51606d; margin-bottom: 24px; display: flex; gap: 8px; }
+    .breadcrumb a { color: #0f6a78; text-decoration: none; }
+    .breadcrumb a:hover { text-decoration: underline; }
+    .breadcrumb span { color: #51606d; }
+    .kicker { font-size: 0.75rem; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; color: #51606d; margin-bottom: 12px; }
+    h1 { font-size: 2.25rem; font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; margin-bottom: 12px; }
+    .subtitle { font-size: 1rem; color: #51606d; margin-bottom: 48px; }
+    h2 { font-size: 1.05rem; font-weight: 700; margin: 36px 0 14px; padding-bottom: 8px; border-bottom: 1px solid rgba(15,23,32,0.10); display: flex; justify-content: space-between; align-items: baseline; }
+    h2 span { font-size: 0.78rem; font-weight: 500; color: #51606d; }
+    .insight { background: rgba(15,106,120,0.06); border-left: 3px solid #0f6a78; border-radius: 0 8px 8px 0; padding: 10px 16px; font-size: 0.85rem; color: #374151; margin-bottom: 12px; line-height: 1.55; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.8rem; margin-bottom: 8px; background: #fff; border-radius: 10px; overflow: hidden; border: 1px solid rgba(15,23,32,0.10); }
+    th { text-align: left; padding: 9px 12px; background: rgba(15,23,32,0.04); font-weight: 600; border-bottom: 1px solid rgba(15,23,32,0.10); white-space: nowrap; }
+    td { padding: 8px 12px; border-bottom: 1px solid rgba(15,23,32,0.05); font-family: "SF Mono", "Fira Code", monospace; font-size: 0.78rem; }
+    tr:last-child td { border-bottom: none; }
+    .summary-table { margin-top: 32px; }
+    .summary-table td:first-child { font-family: inherit; font-weight: 600; }
+    pre { background: #111a1f; color: #e8eded; border-radius: 10px; padding: 16px 20px; font-family: "SF Mono", "Fira Code", monospace; font-size: 0.78rem; line-height: 1.6; overflow-x: auto; margin-bottom: 8px; }
+    @media (prefers-color-scheme: dark) {
+      body { background: #0b1114; color: #e8eded; }
+      .kicker, .subtitle, .breadcrumb { color: #98a7b3; }
+      .breadcrumb a { color: #4fd1c5; }
+      h2 { border-color: rgba(232,237,237,0.08); }
+      h2 span { color: #98a7b3; }
+      .insight { background: rgba(79,209,197,0.06); border-color: #4fd1c5; color: #cbd5e1; }
+      table { background: #111a1f; border-color: rgba(232,237,237,0.08); }
+      th { background: rgba(255,255,255,0.03); border-color: rgba(232,237,237,0.08); }
+      td { border-color: rgba(232,237,237,0.04); }
+      pre { background: #0d1318; }
+    }
+  </style>
+  <link rel="icon" type="image/png" href="https://res.cloudinary.com/dkwnxf6gm/image/upload/v1769890772/this.me.png">
+</head>
+<body>
+  <div class="page">
+    <div class="breadcrumb">
+      <a href="../">← .me Docs</a>
+      <span>/</span>
+      <a href="./">Benchmarks</a>
+    </div>
+    <p class="kicker">this.me / Benchmarks</p>
+    <h1>Benchmarks 1–11</h1>
+    <p class="subtitle">Hardware-agnostic. Times vary per machine — what matters is the <strong>shape</strong>: flatness, ratios, no drift.</p>
+
+    <h2>1 — Algorithmic Scaling <span>341.71ms</span></h2>
+    <p class="insight">Wave k stays at 2 regardless of N. The engine touches only actual dependents — not the full dataset.</p>
+    <table>
+      <thead><tr><th>N (nodes)</th><th>time_ms</th><th>wave k</th><th>result</th></tr></thead>
+      <tbody>
+        <tr><td>10</td><td>0.1094</td><td>2</td><td>100</td></tr>
+        <tr><td>100</td><td>0.0746</td><td>2</td><td>100</td></tr>
+        <tr><td>1,000</td><td>0.0841</td><td>2</td><td>100</td></tr>
+        <tr><td>5,000</td><td>0.0542</td><td>2</td><td>100</td></tr>
+      </tbody>
+    </table>
+
+    <h2>2 — Extended Scaling <span>1193.38ms</span></h2>
+    <p class="insight">Flat to 10,000 nodes. k=2 throughout.</p>
+    <table>
+      <thead><tr><th>N</th><th>time_ms</th><th>wave k</th></tr></thead>
+      <tbody>
+        <tr><td>10</td><td>0.1080</td><td>2</td></tr>
+        <tr><td>100</td><td>0.0534</td><td>2</td></tr>
+        <tr><td>500</td><td>0.0534</td><td>2</td></tr>
+        <tr><td>1,000</td><td>0.1051</td><td>2</td></tr>
+        <tr><td>2,500</td><td>0.0686</td><td>2</td></tr>
+        <tr><td>5,000</td><td>0.0532</td><td>2</td></tr>
+        <tr><td>7,500</td><td>0.0518</td><td>2</td></tr>
+        <tr><td>10,000</td><td>0.0521</td><td>2</td></tr>
+      </tbody>
+    </table>
+
+    <h2>3 — Incremental Processing <span>754.39ms</span></h2>
+    <table>
+      <thead><tr><th>N</th><th>time_ms</th><th>wave k</th><th>status</th></tr></thead>
+      <tbody>
+        <tr><td>10</td><td>0.1055</td><td>2</td><td>OK</td></tr>
+        <tr><td>100</td><td>0.0533</td><td>2</td><td>OK</td></tr>
+        <tr><td>1,000</td><td>0.0728</td><td>2</td><td>OK</td></tr>
+        <tr><td>5,000</td><td>0.0559</td><td>2</td><td>OK</td></tr>
+        <tr><td>10,000</td><td>0.0789</td><td>2</td><td>OK</td></tr>
+      </tbody>
+    </table>
+
+    <h2>4 — Multi-Dataset Stress Lab <span>386.57ms</span></h2>
+    <p class="insight">Deep nesting (500 levels), wide broadcast (1,000 nodes), financial dataset (5,000 tx) — all k=2.</p>
+    <table>
+      <thead><tr><th>Dataset</th><th>Latency</th><th>wave k</th><th>Status</th></tr></thead>
+      <tbody>
+        <tr><td>DEEP_NESTING (500 levels)</td><td>13.2138ms</td><td>2</td><td>✅ Reactive</td></tr>
+        <tr><td>WIDE_BROADCAST (1,000 nodes)</td><td>0.0864ms</td><td>2</td><td>✅ Reactive</td></tr>
+        <tr><td>FINANCIAL_DATASET (5,000 tx)</td><td>0.0789ms</td><td>2</td><td>✅ Reactive</td></tr>
+      </tbody>
+    </table>
+
+    <h2>5 — Throughput Under Sustained Mutation <span>191.92ms</span></h2>
+    <p class="insight">2,000 consecutive mutations. p95 drift: −30.16% — gets faster, not slower.</p>
+    <table>
+      <thead><tr><th>p50</th><th>p95</th><th>p99</th><th>max</th></tr></thead>
+      <tbody><tr><td>0.007ms</td><td>0.011ms</td><td>0.018ms</td><td>0.331ms</td></tr></tbody>
+    </table>
+
+    <h2>6 — Fan-Out Sensitivity <span>277.66ms</span></h2>
+    <p class="insight">Latency decreases as fanout grows — larger datasets amortize index lookup. k stays 2.</p>
+    <table>
+      <thead><tr><th>fanout</th><th>k</th><th>p50_ms</th><th>p95_ms</th><th>p99_ms</th><th>max_ms</th></tr></thead>
+      <tbody>
+        <tr><td>10</td><td>2</td><td>0.0124</td><td>0.0189</td><td>0.0253</td><td>0.0934</td></tr>
+        <tr><td>100</td><td>2</td><td>0.0082</td><td>0.0160</td><td>0.0201</td><td>0.0230</td></tr>
+        <tr><td>500</td><td>2</td><td>0.0074</td><td>0.0105</td><td>0.0161</td><td>0.0184</td></tr>
+        <tr><td>1,000</td><td>2</td><td>0.0062</td><td>0.0078</td><td>0.0102</td><td>0.0193</td></tr>
+        <tr><td>2,500</td><td>2</td><td>0.0061</td><td>0.0083</td><td>0.0120</td><td>0.0134</td></tr>
+        <tr><td>5,000</td><td>2</td><td>0.0057</td><td>0.0067</td><td>0.0089</td><td>0.0105</td></tr>
+      </tbody>
+    </table>
+
+    <h2>7 — Cold vs Warm Runtime <span>239.26ms</span></h2>
+    <p class="insight">Cold start is sub-millisecond and absorbed after the first mutation.</p>
+    <table>
+      <thead><tr><th>nodes</th><th>cold_ms</th><th>warm_ms</th><th>steady_avg_ms</th></tr></thead>
+      <tbody>
+        <tr><td>100</td><td>0.1735</td><td>0.0865</td><td>0.0142</td></tr>
+        <tr><td>1,000</td><td>0.0097</td><td>0.0113</td><td>0.0081</td></tr>
+        <tr><td>5,000</td><td>0.0149</td><td>0.0113</td><td>0.0067</td></tr>
+      </tbody>
+    </table>
+
+    <h2>8 — Explain Overhead <span>223.64ms</span></h2>
+    <p class="insight"><code>explain()</code> adds ~0.007ms at p95. Full derivation traces at negligible cost.</p>
+    <table>
+      <thead><tr><th>mode</th><th>p50_ms</th><th>p95_ms</th><th>p99_ms</th></tr></thead>
+      <tbody>
+        <tr><td>baseline</td><td>0.0077</td><td>0.0122</td><td>0.0199</td></tr>
+        <tr><td>with_explain</td><td>0.0129</td><td>0.0189</td><td>0.0250</td></tr>
+      </tbody>
+    </table>
+
+    <h2>9 — Secret-Scope Performance Impact <span>631.34ms</span></h2>
+    <p class="insight">~27× overhead at p95 — expected AES-GCM cost. Keep hot-path reads on public branches.</p>
+    <table>
+      <thead><tr><th>scope</th><th>p50_ms</th><th>p95_ms</th><th>p99_ms</th></tr></thead>
+      <tbody>
+        <tr><td>public</td><td>0.0109</td><td>0.0206</td><td>0.0594</td></tr>
+        <tr><td>secret</td><td>0.4951</td><td>0.5592</td><td>0.7615</td></tr>
+      </tbody>
+    </table>
+
+    <h2>10 — Push vs Pull (Eager/Lazy) <span>474.46ms</span></h2>
+    <p class="insight">Both modes converge at scale. Lazy: lower mutation cost. Eager: lower first-read cost.</p>
+    <table>
+      <thead><tr><th>mode</th><th>fanout</th><th>k</th><th>mut_p95</th><th>read_p95</th></tr></thead>
+      <tbody>
+        <tr><td>eager</td><td>10</td><td>2</td><td>0.0132</td><td>0.0114</td></tr>
+        <tr><td>eager</td><td>5,000</td><td>2</td><td>0.0036</td><td>0.0030</td></tr>
+        <tr><td>lazy</td><td>10</td><td>2</td><td>0.0027</td><td>0.0047</td></tr>
+        <tr><td>lazy</td><td>5,000</td><td>2</td><td>0.0037</td><td>0.0039</td></tr>
+      </tbody>
+    </table>
+
+    <h2>11 — Secret Push vs Pull <span>982.44ms</span></h2>
+    <p class="insight">Secret read cost grows with node count — each cold read re-derives key material. Writes are cheaper than reads in encrypted branches.</p>
+    <table>
+      <thead><tr><th>plane</th><th>nodes</th><th>mut_p95</th><th>read_p95</th><th>read slowdown</th></tr></thead>
+      <tbody>
+        <tr><td>public</td><td>100</td><td>0.0136</td><td>0.0183</td><td>—</td></tr>
+        <tr><td>secret</td><td>100</td><td>0.0409</td><td>0.3675</td><td>20×</td></tr>
+        <tr><td>public</td><td>300</td><td>0.0108</td><td>0.0123</td><td>—</td></tr>
+        <tr><td>secret</td><td>300</td><td>0.0313</td><td>0.2864</td><td>23×</td></tr>
+        <tr><td>public</td><td>600</td><td>0.0045</td><td>0.0041</td><td>—</td></tr>
+        <tr><td>secret</td><td>600</td><td>0.0344</td><td>0.5805</td><td>142×</td></tr>
+      </tbody>
+    </table>
+
+    <h2 class="summary-table">Summary <span>all passed</span></h2>
+    <table>
+      <thead><tr><th>Benchmark</th><th>What it proves</th><th>Time</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td>O(k) flat recompute (10 → 5,000 nodes)</td><td>341.71ms</td></tr>
+        <tr><td>2</td><td>Flat scaling to 10,000 nodes</td><td>1193.38ms</td></tr>
+        <tr><td>3</td><td>Incremental processing stability</td><td>754.39ms</td></tr>
+        <tr><td>4</td><td>Multi-shape stress (deep / wide / financial)</td><td>386.57ms</td></tr>
+        <tr><td>5</td><td>Sustained throughput, no p95 drift</td><td>191.92ms</td></tr>
+        <tr><td>6</td><td>Fan-out sensitivity (latency improves at scale)</td><td>277.66ms</td></tr>
+        <tr><td>7</td><td>Cold vs warm startup cost</td><td>239.26ms</td></tr>
+        <tr><td>8</td><td>explain() overhead (~0.007ms at p95)</td><td>223.64ms</td></tr>
+        <tr><td>9</td><td>Secret scope cost (~27× vs public at p95)</td><td>631.34ms</td></tr>
+        <tr><td>10</td><td>Eager vs lazy push/pull tradeoff</td><td>474.46ms</td></tr>
+        <tr><td>11</td><td>Secret push vs pull at scale</td><td>982.44ms</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <footer style="margin-top:64px;padding:32px 0;text-align:center;border-top:1px solid rgba(15,23,32,0.08);">
+    <a href="https://neurons-me.github.io/" style="display:inline-flex;align-items:center;gap:10px;text-decoration:none;opacity:0.6;transition:opacity 140ms ease;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.6">
+      <img src="https://res.cloudinary.com/dkwnxf6gm/image/upload/v1760629056/neurons-grey_hxjcom.png" alt="neurons.me" style="width:28px;height:28px;object-fit:contain;" />
+      <span style="font-size:0.875rem;font-weight:600;color:inherit;">neurons.me</span>
+    </a>
+  </footer>
+</body>
+</html>

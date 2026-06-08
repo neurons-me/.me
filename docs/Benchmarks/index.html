@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>.me — Benchmarks</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/this.gui@1.4.6/dist/styles.css" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: "Inter", "Helvetica Neue", Helvetica, Arial, sans-serif; background: #f4f7f8; color: #0f1720; min-height: 100vh; -webkit-font-smoothing: antialiased; }
+    .page { max-width: 960px; margin: 0 auto; padding: 56px 32px 80px; }
+    .breadcrumb { font-size: 0.8rem; color: #51606d; margin-bottom: 24px; }
+    .breadcrumb a { color: #0f6a78; text-decoration: none; }
+    .breadcrumb a:hover { text-decoration: underline; }
+    .kicker { font-size: 0.75rem; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; color: #51606d; margin-bottom: 12px; }
+    .page-title { font-size: 2.75rem; font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; margin-bottom: 12px; }
+    .page-subtitle { font-size: 1.05rem; color: #51606d; margin-bottom: 48px; max-width: 560px; }
+    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+    @media (max-width: 720px) { .grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 480px) { .grid { grid-template-columns: 1fr; } }
+    .card { display: flex; flex-direction: column; gap: 10px; padding: 20px; border-radius: 12px; border: 1px solid rgba(15,23,32,0.12); background: #fff; text-decoration: none; color: inherit; transition: box-shadow 140ms ease, border-color 140ms ease, transform 140ms ease; }
+    .card:hover { box-shadow: 0 4px 20px rgba(15,23,32,0.10); border-color: #0f6a78; transform: translateY(-1px); }
+    .card-icon { width: 36px; height: 36px; border-radius: 8px; background: rgba(15,106,120,0.10); display: flex; align-items: center; justify-content: center; font-size: 1.1rem; }
+    .card-title { font-size: 1rem; font-weight: 700; line-height: 1.3; }
+    .card-desc { font-size: 0.875rem; color: #51606d; line-height: 1.55; }
+    @media (prefers-color-scheme: dark) {
+      body { background: #0b1114; color: #e8eded; }
+      .kicker, .page-subtitle, .breadcrumb { color: #98a7b3; }
+      .breadcrumb a { color: #4fd1c5; }
+      .card { background: #111a1f; border-color: rgba(232,237,237,0.10); }
+      .card:hover { border-color: #4fd1c5; box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
+      .card-icon { background: rgba(79,209,197,0.12); }
+      .card-desc { color: #98a7b3; }
+    }
+  </style>
+  <link rel="icon" type="image/png" href="https://res.cloudinary.com/dkwnxf6gm/image/upload/v1769890772/this.me.png">
+</head>
+<body>
+  <div class="page">
+    <p class="breadcrumb"><a href="../">← .me Docs</a></p>
+    <p class="kicker">this.me / Benchmarks</p>
+    <h1 class="page-title">Benchmarks</h1>
+    <p class="page-subtitle">Hardware-agnostic performance results. What matters is the shape — flatness, ratios, no drift.</p>
+
+    <div class="grid">
+      <a class="card" href="benchmarks.html">
+        <div class="card-icon">⚡</div>
+        <div class="card-title">Benchmarks 1–11</div>
+        <div class="card-desc">Scaling, throughput, fan-out, cold/warm, explain overhead, secret-scope cost, push vs pull.</div>
+      </a>
+    </div>
+  </div>
+  <footer style="margin-top:64px;padding:32px 0;text-align:center;border-top:1px solid rgba(15,23,32,0.08);">
+    <a href="https://neurons-me.github.io/" style="display:inline-flex;align-items:center;gap:10px;text-decoration:none;opacity:0.6;transition:opacity 140ms ease;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.6">
+      <img src="https://res.cloudinary.com/dkwnxf6gm/image/upload/v1760629056/neurons-grey_hxjcom.png" alt="neurons.me" style="width:28px;height:28px;object-fit:contain;" />
+      <span style="font-size:0.875rem;font-weight:600;color:inherit;">neurons.me</span>
+    </a>
+  </footer>
+</body>
+</html>
