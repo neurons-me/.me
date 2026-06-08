@@ -6,21 +6,20 @@ title: Robots That Understand Context
 # Robots That Understand Context
 
 This demo teaches one simple idea:
-
 > The same thing can mean different things depending on who is looking at it and where they are.
 
-For humans, this is obvious. A blue canister in a warehouse is cargo. The same blue canister inside a hospital corridor may be a sterile risk. On a street crossing, it may be a traffic problem. In an operating room, it may require precision handling.
+For humans, this is obvious. A **blue canister** in a warehouse is cargo. 
+The same **blue canister** inside a hospital corridor may be a sterile risk. 
+On a street crossing, it may be a traffic problem. 
+In an operating room, it may require precision handling.
 
-`.me` lets you model that kind of meaning directly.
-
-[View the source demo](https://github.com/neurons-me/.me/blob/main/Typescript/tests/Demos/Robots_Contexts.ts)
-[GitHub .me](https://github.com/neurons-me/.me/)
+[`.me Docs`](https://neurons-me.github.io/.me) lets you model that kind of meaning directly.
+[.me Repository](https://github.com/neurons-me/.me/) / [Robots Demo Source Code](https://github.com/neurons-me/.me/blob/main/Typescript/tests/Demos/Robots_Contexts.ts)
 
 ---
 
 ## The Tiny Mental Model
-
-Think of `.me` as a living notebook made of paths.
+Think of [`.me`](https://neurons-me.github.io/.me) as a living notebook made of paths.
 
 ```ts
 me.objects.canister7.massKg(6)
@@ -48,7 +47,6 @@ That rule is not just a value. It is a live derivation. When the canister change
 ---
 
 ## What The Demo Builds
-
 The demo has three kinds of things:
 
 | Thing | Example | What it means |
