@@ -28,20 +28,6 @@ Once cloned, select your preferred language and run the corresponding setup comm
 
 ---
 
-Demos 𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃
-
-🤖⟐🤖 Robots that Understand Context 🤖⟐🤖 ⇄ ⇆ Same object, different meaning. →
-
-🏙️📡 Smart City 🏙️📡 ⌬◉⌬ ⟶ ∴ — A full city reacting in real time as interconnected nodes. →
-
-🌐🌐🌐 Hemisphere Scale 🌐🌐🌐 — 1 million nodes with cross-domain reactive updates. →
-
-⚡⚡⚡ Extreme Fan-Out ⚡⚡⚡ — One write instantly updates 100k dependents. ⌬◉⌬ →
-
-⌬ ⊚ View all demos →
-
----
-
 ### Syntax
 `.me` uses an infinite proxy — any path you write becomes a node in the graph.
 No schema. No migrations. No declarations upfront.
