@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>.me — Benchmarks 1–11</title>
+  <title>.me — Benchmarks · Run #001 · v3.9.2</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/this.gui@1.4.6/dist/styles.css" />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -26,6 +26,17 @@
     .summary-table { margin-top: 32px; }
     .summary-table td:first-child { font-family: inherit; font-weight: 600; }
     pre { background: #111a1f; color: #e8eded; border-radius: 10px; padding: 16px 20px; font-family: "SF Mono", "Fira Code", monospace; font-size: 0.78rem; line-height: 1.6; overflow-x: auto; margin-bottom: 8px; }
+    .related { margin-top: 56px; padding-top: 32px; border-top: 1px solid rgba(15,23,32,0.08); }
+    .related-label { font-size: 0.75rem; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: #51606d; margin-bottom: 16px; }
+    .related-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    .related-card { display: flex; flex-direction: column; gap: 6px; padding: 16px; border-radius: 10px; border: 1px solid rgba(15,23,32,0.10); background: #fff; text-decoration: none; color: inherit; transition: border-color 140ms ease, transform 140ms ease; }
+    .related-card:hover { border-color: #0f6a78; transform: translateY(-1px); }
+    .related-card-icon { font-size: 1rem; }
+    .related-card-title { font-size: 0.875rem; font-weight: 700; }
+    .related-card-desc { font-size: 0.8rem; color: #51606d; }
+    .run-meta { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 40px; }
+    .run-badge { font-size: 0.78rem; font-weight: 700; padding: 3px 10px; border-radius: 20px; background: rgba(15,106,120,0.10); color: #0f6a78; }
+    .run-info { font-size: 0.82rem; color: #51606d; }
     @media (prefers-color-scheme: dark) {
       body { background: #0b1114; color: #e8eded; }
       .kicker, .subtitle, .breadcrumb { color: #98a7b3; }
@@ -37,6 +48,13 @@
       th { background: rgba(255,255,255,0.03); border-color: rgba(232,237,237,0.08); }
       td { border-color: rgba(232,237,237,0.04); }
       pre { background: #0d1318; }
+      .related { border-color: rgba(232,237,237,0.08); }
+      .related-label { color: #98a7b3; }
+      .related-card { background: #111a1f; border-color: rgba(232,237,237,0.08); }
+      .related-card:hover { border-color: #4fd1c5; }
+      .related-card-desc { color: #98a7b3; }
+      .run-badge { background: rgba(79,209,197,0.12); color: #4fd1c5; }
+      .run-info { color: #98a7b3; }
     }
   </style>
   <link rel="icon" type="image/png" href="https://res.cloudinary.com/dkwnxf6gm/image/upload/v1769890772/this.me.png">
@@ -49,8 +67,11 @@
       <a href="./">Benchmarks</a>
     </div>
     <p class="kicker">this.me / Benchmarks</p>
-    <h1>Benchmarks 1–11</h1>
-    <p class="subtitle">Hardware-agnostic. Times vary per machine — what matters is the <strong>shape</strong>: flatness, ratios, no drift.</p>
+    <h1>Benchmarks 1–11 · Run #001</h1>
+    <div class="run-meta">
+      <span class="run-badge">v3.9.2</span>
+      <span class="run-info">Jun 8, 2026 · 2:59 PM · MacBook Air</span>
+    </div>
 
     <h2>1 — Algorithmic Scaling <span>341.71ms</span></h2>
     <p class="insight">Wave k stays at 2 regardless of N. The engine touches only actual dependents — not the full dataset.</p>
@@ -185,37 +206,37 @@
     <table>
       <thead><tr><th>Benchmark</th><th>What it proves</th><th>Time</th></tr></thead>
       <tbody>
-        <tr><td>1</td><td>O(k) flat recompute (10 → 5,000 nodes)</td><td>341.71ms</td></tr>
-        <tr><td>2</td><td>Flat scaling to 10,000 nodes</td><td>1193.38ms</td></tr>
-        <tr><td>3</td><td>Incremental processing stability</td><td>754.39ms</td></tr>
-        <tr><td>4</td><td>Multi-shape stress (deep / wide / financial)</td><td>386.57ms</td></tr>
-        <tr><td>5</td><td>Sustained throughput, no p95 drift</td><td>191.92ms</td></tr>
-        <tr><td>6</td><td>Fan-out sensitivity (latency improves at scale)</td><td>277.66ms</td></tr>
-        <tr><td>7</td><td>Cold vs warm startup cost</td><td>239.26ms</td></tr>
-        <tr><td>8</td><td>explain() overhead (~0.007ms at p95)</td><td>223.64ms</td></tr>
-        <tr><td>9</td><td>Secret scope cost (~27× vs public at p95)</td><td>631.34ms</td></tr>
-        <tr><td>10</td><td>Eager vs lazy push/pull tradeoff</td><td>474.46ms</td></tr>
-        <tr><td>11</td><td>Secret push vs pull at scale</td><td>982.44ms</td></tr>
+        <tr><td>1</td><td>O(k) flat recompute (10 → 5,000 nodes)</td><td>345.98ms</td></tr>
+        <tr><td>2</td><td>Flat scaling to 10,000 nodes</td><td>1179.37ms</td></tr>
+        <tr><td>3</td><td>Incremental processing stability</td><td>753.01ms</td></tr>
+        <tr><td>4</td><td>Multi-shape stress (deep / wide / financial)</td><td>383.35ms</td></tr>
+        <tr><td>5</td><td>Sustained throughput, no p95 drift</td><td>188.64ms</td></tr>
+        <tr><td>6</td><td>Fan-out sensitivity (latency improves at scale)</td><td>275.75ms</td></tr>
+        <tr><td>7</td><td>Cold vs warm startup cost</td><td>234.70ms</td></tr>
+        <tr><td>8</td><td>explain() overhead (~0.007ms at p95)</td><td>222.43ms</td></tr>
+        <tr><td>9</td><td>Secret scope cost (~27× vs public at p95)</td><td>632.75ms</td></tr>
+        <tr><td>10</td><td>Eager vs lazy push/pull tradeoff</td><td>469.08ms</td></tr>
+        <tr><td>11</td><td>Secret push vs pull at scale</td><td>934.32ms</td></tr>
       </tbody>
     </table>
 
-    <div style="margin-top:56px;padding-top:32px;border-top:1px solid rgba(15,23,32,0.08);">
-      <p style="font-size:0.75rem;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:#51606d;margin-bottom:16px;">Continue reading</p>
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;">
-        <a href="../Tests/fire.test.html" style="display:flex;flex-direction:column;gap:6px;padding:16px;border-radius:10px;border:1px solid rgba(15,23,32,0.10);background:#fff;text-decoration:none;color:inherit;transition:border-color 140ms,transform 140ms;" onmouseover="this.style.borderColor='#0f6a78';this.style.transform='translateY(-1px)'" onmouseout="this.style.borderColor='rgba(15,23,32,0.10)';this.style.transform='none'">
-          <span style="font-size:1rem;">🔥</span>
-          <span style="font-size:0.875rem;font-weight:700;">Fire Test</span>
-          <span style="font-size:0.8rem;color:#51606d;">Phases, contracts, secrets</span>
+    <div class="related">
+      <p class="related-label">Continue reading</p>
+      <div class="related-grid">
+        <a href="../Tests/fire.test.html" class="related-card">
+          <span class="related-card-icon">🔥</span>
+          <span class="related-card-title">Fire Test</span>
+          <span class="related-card-desc">Phases, contracts, secrets</span>
         </a>
-        <a href="../Tests/fire.test.results.html" style="display:flex;flex-direction:column;gap:6px;padding:16px;border-radius:10px;border:1px solid rgba(15,23,32,0.10);background:#fff;text-decoration:none;color:inherit;transition:border-color 140ms,transform 140ms;" onmouseover="this.style.borderColor='#0f6a78';this.style.transform='translateY(-1px)'" onmouseout="this.style.borderColor='rgba(15,23,32,0.10)';this.style.transform='none'">
-          <span style="font-size:1rem;">📋</span>
-          <span style="font-size:0.875rem;font-weight:700;">Raw Results</span>
-          <span style="font-size:0.8rem;color:#51606d;">Full terminal output</span>
+        <a href="../Tests/fire.test.results.html" class="related-card">
+          <span class="related-card-icon">📋</span>
+          <span class="related-card-title">Raw Results</span>
+          <span class="related-card-desc">Full terminal output</span>
         </a>
-        <a href="../" style="display:flex;flex-direction:column;gap:6px;padding:16px;border-radius:10px;border:1px solid rgba(15,23,32,0.10);background:#fff;text-decoration:none;color:inherit;transition:border-color 140ms,transform 140ms;" onmouseover="this.style.borderColor='#0f6a78';this.style.transform='translateY(-1px)'" onmouseout="this.style.borderColor='rgba(15,23,32,0.10)';this.style.transform='none'">
-          <span style="font-size:1rem;">🏠</span>
-          <span style="font-size:0.875rem;font-weight:700;">.me Docs</span>
-          <span style="font-size:0.8rem;color:#51606d;">Back to home</span>
+        <a href="../" class="related-card">
+          <span class="related-card-icon">🏠</span>
+          <span class="related-card-title">.me Docs</span>
+          <span class="related-card-desc">Back to home</span>
         </a>
       </div>
     </div>

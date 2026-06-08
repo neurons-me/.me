@@ -35,6 +35,14 @@
     .summary-table td { padding: 8px 12px; border-bottom: 1px solid rgba(15,23,32,0.06); }
     .summary-table tr:last-child td { border-bottom: none; }
     .all-passed { background: rgba(16,185,129,0.08); border: 1px solid rgba(16,185,129,0.25); border-radius: 12px; padding: 20px 24px; text-align: center; font-weight: 700; color: #047857; font-size: 1rem; margin-top: 32px; }
+    .related { margin-top: 56px; padding-top: 32px; border-top: 1px solid rgba(15,23,32,0.08); }
+    .related-label { font-size: 0.75rem; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: #51606d; margin-bottom: 16px; }
+    .related-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    .related-card { display: flex; flex-direction: column; gap: 6px; padding: 16px; border-radius: 10px; border: 1px solid rgba(15,23,32,0.10); background: #fff; text-decoration: none; color: inherit; transition: border-color 140ms ease, transform 140ms ease; }
+    .related-card:hover { border-color: #0f6a78; transform: translateY(-1px); }
+    .related-card-icon { font-size: 1rem; }
+    .related-card-title { font-size: 0.875rem; font-weight: 700; }
+    .related-card-desc { font-size: 0.8rem; color: #51606d; }
     @media (prefers-color-scheme: dark) {
       body { background: #0b1114; color: #e8eded; }
       .kicker, .subtitle, .breadcrumb { color: #98a7b3; }
@@ -48,6 +56,11 @@
       .summary-table th { background: rgba(255,255,255,0.03); border-color: rgba(232,237,237,0.08); }
       .summary-table td { border-color: rgba(232,237,237,0.05); }
       .all-passed { background: rgba(16,185,129,0.06); border-color: rgba(16,185,129,0.2); }
+      .related { border-color: rgba(232,237,237,0.08); }
+      .related-label { color: #98a7b3; }
+      .related-card { background: #111a1f; border-color: rgba(232,237,237,0.08); }
+      .related-card:hover { border-color: #4fd1c5; }
+      .related-card-desc { color: #98a7b3; }
     }
   </style>
   <link rel="icon" type="image/png" href="https://res.cloudinary.com/dkwnxf6gm/image/upload/v1769890772/this.me.png">
@@ -83,7 +96,7 @@
       <div class="suite-header">
         <span class="pass-badge">32/32</span>
         <span class="suite-name">Reconstruction Proof</span>
-        <span class="suite-time">125.39ms</span>
+        <span class="suite-time">126.27ms</span>
       </div>
       <ul class="test-list">
         <li>simple string seed produces stable identity</li>
@@ -123,7 +136,7 @@
 
     <h2>Secret Suites</h2>
     <div class="suite">
-      <div class="suite-header"><span class="pass-badge">7/7</span><span class="suite-name">Secret Material V3</span><span class="suite-time">86.58ms</span></div>
+      <div class="suite-header"><span class="pass-badge">7/7</span><span class="suite-name">Secret Material V3</span><span class="suite-time">83.38ms</span></div>
       <ul class="test-list">
         <li>same input yields the same chain and the same 32-byte material</li>
         <li>branch and value diverge for the same secret path</li>
@@ -167,7 +180,7 @@
 
     <h2>Contracts</h2>
     <div class="suite">
-      <div class="suite-header"><span class="pass-badge">20/20</span><span class="suite-name">DSL Contract Tests (Phase 6)</span><span class="suite-time">262.07ms</span></div>
+      <div class="suite-header"><span class="pass-badge">20/20</span><span class="suite-name">DSL Contract Tests (Phase 6)</span><span class="suite-time">181.51ms</span></div>
       <ul class="test-list">
         <li>boot + basic set/get</li>
         <li>constructor bootstrap preserves callable proxy after hydrate</li>
@@ -212,34 +225,34 @@
     <table class="summary-table">
       <thead><tr><th>Suite</th><th>Status</th><th>Time</th></tr></thead>
       <tbody>
-        <tr><td>phases</td><td>✅ 11/11</td><td>184.98ms</td></tr>
-        <tr><td>reconstruction</td><td>✅ 32/32</td><td>125.39ms</td></tr>
-        <tr><td>secret-material-v3</td><td>✅ 7/7</td><td>86.58ms</td></tr>
+        <tr><td>phases</td><td>✅ 11/11</td><td>152.91ms</td></tr>
+        <tr><td>reconstruction</td><td>✅ 32/32</td><td>126.27ms</td></tr>
+        <tr><td>secret-material-v3</td><td>✅ 7/7</td><td>83.38ms</td></tr>
         <tr><td>secret-blob-v3.read</td><td>✅ 13/13</td><td>92.76ms</td></tr>
         <tr><td>secret-blob-v3.write</td><td>✅ 7/7</td><td>77.86ms</td></tr>
-        <tr><td>contracts-summary</td><td>✅ 31/31</td><td>262.07ms</td></tr>
+        <tr><td>contracts-summary</td><td>✅ 31/31</td><td>181.51ms</td></tr>
       </tbody>
     </table>
 
     <div class="all-passed">✅ ALL FIRETEST TASKS PASSED</div>
 
-    <div style="margin-top:56px;padding-top:32px;border-top:1px solid rgba(15,23,32,0.08);">
-      <p style="font-size:0.75rem;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:#51606d;margin-bottom:16px;">Continue reading</p>
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;">
-        <a href="fire.test.results.html" style="display:flex;flex-direction:column;gap:6px;padding:16px;border-radius:10px;border:1px solid rgba(15,23,32,0.10);background:#fff;text-decoration:none;color:inherit;transition:border-color 140ms,transform 140ms;" onmouseover="this.style.borderColor='#0f6a78';this.style.transform='translateY(-1px)'" onmouseout="this.style.borderColor='rgba(15,23,32,0.10)';this.style.transform='none'">
-          <span style="font-size:1rem;">📋</span>
-          <span style="font-size:0.875rem;font-weight:700;">Raw Results</span>
-          <span style="font-size:0.8rem;color:#51606d;">Verbatim terminal output</span>
+    <div class="related">
+      <p class="related-label">Continue reading</p>
+      <div class="related-grid">
+        <a href="fire.test.results.html" class="related-card">
+          <span class="related-card-icon">📋</span>
+          <span class="related-card-title">Raw Results</span>
+          <span class="related-card-desc">Verbatim terminal output</span>
         </a>
-        <a href="../Benchmarks/benchmarks.html" style="display:flex;flex-direction:column;gap:6px;padding:16px;border-radius:10px;border:1px solid rgba(15,23,32,0.10);background:#fff;text-decoration:none;color:inherit;transition:border-color 140ms,transform 140ms;" onmouseover="this.style.borderColor='#0f6a78';this.style.transform='translateY(-1px)'" onmouseout="this.style.borderColor='rgba(15,23,32,0.10)';this.style.transform='none'">
-          <span style="font-size:1rem;">⚡</span>
-          <span style="font-size:0.875rem;font-weight:700;">Benchmarks 1–11</span>
-          <span style="font-size:0.8rem;color:#51606d;">Performance results</span>
+        <a href="../Benchmarks/benchmarks.html" class="related-card">
+          <span class="related-card-icon">⚡</span>
+          <span class="related-card-title">Benchmarks 1–11</span>
+          <span class="related-card-desc">Performance results</span>
         </a>
-        <a href="../" style="display:flex;flex-direction:column;gap:6px;padding:16px;border-radius:10px;border:1px solid rgba(15,23,32,0.10);background:#fff;text-decoration:none;color:inherit;transition:border-color 140ms,transform 140ms;" onmouseover="this.style.borderColor='#0f6a78';this.style.transform='translateY(-1px)'" onmouseout="this.style.borderColor='rgba(15,23,32,0.10)';this.style.transform='none'">
-          <span style="font-size:1rem;">🏠</span>
-          <span style="font-size:0.875rem;font-weight:700;">.me Docs</span>
-          <span style="font-size:0.8rem;color:#51606d;">Back to home</span>
+        <a href="../" class="related-card">
+          <span class="related-card-icon">🏠</span>
+          <span class="related-card-title">.me Docs</span>
+          <span class="related-card-desc">Back to home</span>
         </a>
       </div>
     </div>

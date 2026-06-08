@@ -7,6 +7,7 @@
 **Own your knowledge.**
 Agents, notes, relationships, wallets, groups, and secrets — unified in one reactive graph.
 
+## Get Started:
 Once cloned, select your preferred language and run the corresponding setup command:
 
 |     |  Command                     | Status            | Documentation                                                |

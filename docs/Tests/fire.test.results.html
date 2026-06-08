@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>.me — Fire Test Raw Results</title>
+  <title>.me — Fire Test Results · Run #001 · v3.9.2</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/this.gui@1.4.6/dist/styles.css" />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -28,11 +28,29 @@
       white-space: pre;
       border: 1px solid rgba(255,255,255,0.06);
     }
+    .related { margin-top: 48px; padding-top: 32px; border-top: 1px solid rgba(15,23,32,0.08); }
+    .related-label { font-size: 0.75rem; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: #51606d; margin-bottom: 16px; }
+    .related-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    .related-card { display: flex; flex-direction: column; gap: 6px; padding: 16px; border-radius: 10px; border: 1px solid rgba(15,23,32,0.10); background: #fff; text-decoration: none; color: inherit; transition: border-color 140ms ease, transform 140ms ease; }
+    .related-card:hover { border-color: #0f6a78; transform: translateY(-1px); }
+    .related-card-icon { font-size: 1rem; }
+    .related-card-title { font-size: 0.875rem; font-weight: 700; }
+    .related-card-desc { font-size: 0.8rem; color: #51606d; }
+    .run-meta { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 40px; }
+    .run-badge { font-size: 0.78rem; font-weight: 700; padding: 3px 10px; border-radius: 20px; background: rgba(15,106,120,0.10); color: #0f6a78; }
+    .run-info { font-size: 0.82rem; color: #51606d; }
     @media (prefers-color-scheme: dark) {
       body { background: #0b1114; color: #e8eded; }
       .kicker, .subtitle, .breadcrumb { color: #98a7b3; }
       .breadcrumb a { color: #4fd1c5; }
       pre { background: #0d1318; border-color: rgba(255,255,255,0.04); }
+      .related { border-color: rgba(232,237,237,0.08); }
+      .related-label { color: #98a7b3; }
+      .related-card { background: #111a1f; border-color: rgba(232,237,237,0.08); }
+      .related-card:hover { border-color: #4fd1c5; }
+      .related-card-desc { color: #98a7b3; }
+      .run-badge { background: rgba(79,209,197,0.12); color: #4fd1c5; }
+      .run-info { color: #98a7b3; }
     }
   </style>
   <link rel="icon" type="image/png" href="https://res.cloudinary.com/dkwnxf6gm/image/upload/v1769890772/this.me.png">
@@ -45,8 +63,11 @@
       <a href="./">Tests</a>
     </div>
     <p class="kicker">this.me / Tests</p>
-    <h1>Raw Results</h1>
-    <p class="subtitle">Verbatim terminal output from <code>node tests/fire.test.ts</code></p>
+    <h1>Fire Test Results · Run #001</h1>
+    <div class="run-meta">
+      <span class="run-badge">v3.9.2</span>
+      <span class="run-info">Jun 8, 2026 · 2:59 PM · MacBook Air</span>
+    </div>
 
 <pre>suign@Suis-MacBook-Air Typescript % node tests/fire.test.ts
 
@@ -132,7 +153,7 @@ FIRE TEST SUMMARY: 11/11 phases passed
 STATUS: ALL PHASES PASSED
 ========================================================
 
-✅ FIRETEST :: phases completed in 184.98ms
+✅ FIRETEST :: phases completed in 152.91ms
 
 ========================================================
 FIRETEST :: reconstruction
@@ -177,7 +198,7 @@ FIRETEST :: reconstruction
    always. deterministically. on any device.
    the seed is the self.
 
-✅ FIRETEST :: reconstruction completed in 125.39ms
+✅ FIRETEST :: reconstruction completed in 126.27ms
 
 ========================================================
 FIRETEST :: secret-material-v3
@@ -192,7 +213,7 @@ FIRETEST :: secret-material-v3
 ✅ legacy effective secret behavior remains unchanged
 ✅ Secret material v3 suite passed
 
-✅ FIRETEST :: secret-material-v3 completed in 86.58ms
+✅ FIRETEST :: secret-material-v3 completed in 83.38ms
 
 ========================================================
 FIRETEST :: secret-blob-v3.read
@@ -213,7 +234,7 @@ FIRETEST :: secret-blob-v3.read
 ✅ wrong noise for v3 branch blob fails closed
 ✅ Secret blob v3 read suite passed
 
-✅ FIRETEST :: secret-blob-v3.read completed in 92.76ms
+✅ FIRETEST :: secret-blob-v3.read completed in 90.71ms
 
 ========================================================
 FIRETEST :: secret-blob-v3.write
@@ -228,7 +249,7 @@ FIRETEST :: secret-blob-v3.write
 ✅ tampering after migration still fails closed
 ✅ Secret blob v3 write suite passed
 
-✅ FIRETEST :: secret-blob-v3.write completed in 77.86ms
+✅ FIRETEST :: secret-blob-v3.write completed in 76.23ms
 
 ========================================================
 FIRETEST :: benchmark.1 — benchmark.11
@@ -236,17 +257,17 @@ FIRETEST :: benchmark.1 — benchmark.11
 
   See: Benchmarks → Benchmarks 1–11
 
-✅ benchmark.1   341.71ms
-✅ benchmark.2  1193.38ms
-✅ benchmark.3   754.39ms
-✅ benchmark.4   386.57ms
-✅ benchmark.5   191.92ms
-✅ benchmark.6   277.66ms
-✅ benchmark.7   239.26ms
-✅ benchmark.8   223.64ms
-✅ benchmark.9   631.34ms
-✅ benchmark.10  474.46ms
-✅ benchmark.11  982.44ms
+✅ benchmark.1   345.98ms
+✅ benchmark.2  1179.37ms
+✅ benchmark.3   753.01ms
+✅ benchmark.4   383.35ms
+✅ benchmark.5   188.64ms
+✅ benchmark.6   275.75ms
+✅ benchmark.7   234.70ms
+✅ benchmark.8   222.43ms
+✅ benchmark.9   632.75ms
+✅ benchmark.10  469.08ms
+✅ benchmark.11  934.32ms
 
 ========================================================
 FIRETEST :: contracts-summary
@@ -287,49 +308,98 @@ FIRETEST :: contracts-summary
 ✅ replay from public memories preserves secret semantics
 ✅ Secret blob hardening contract suite passed
 
-✅ FIRETEST :: contracts-summary completed in 262.07ms
+✅ FIRETEST :: contracts-summary completed in 181.51ms
 
 ========================================================
 .me FIRETEST SUMMARY
 ========================================================
 
-✅ phases                 184.98ms
-✅ reconstruction         125.39ms
-✅ secret-material-v3      86.58ms
-✅ secret-blob-v3.read     92.76ms
-✅ secret-blob-v3.write    77.86ms
-✅ benchmark.1            341.71ms
-✅ benchmark.2           1193.38ms
-✅ benchmark.3            754.39ms
-✅ benchmark.4            386.57ms
-✅ benchmark.5            191.92ms
-✅ benchmark.6            277.66ms
-✅ benchmark.7            239.26ms
-✅ benchmark.8            223.64ms
-✅ benchmark.9            631.34ms
-✅ benchmark.10           474.46ms
-✅ benchmark.11           982.44ms
-✅ contracts-summary      262.07ms
+✅ phases                 152.91ms
+✅ reconstruction         126.27ms
+✅ secret-material-v3      83.38ms
+✅ secret-blob-v3.read     90.71ms
+✅ secret-blob-v3.write    76.23ms
+✅ benchmark.1            345.98ms
+✅ benchmark.2           1179.37ms
+✅ benchmark.3            753.01ms
+✅ benchmark.4            383.35ms
+✅ benchmark.5            188.64ms
+✅ benchmark.6            275.75ms
+✅ benchmark.7            234.70ms
+✅ benchmark.8            222.43ms
+✅ benchmark.9            632.75ms
+✅ benchmark.10           469.08ms
+✅ benchmark.11           934.32ms
+✅ contracts-summary      181.51ms
 
-STATUS: ALL FIRETEST TASKS PASSED</pre>
+STATUS: ALL FIRETEST TASKS PASSED
+========================================================
+ADDITIONAL TEST RUNS
+========================================================
 
-    <div style="margin-top:48px;padding-top:32px;border-top:1px solid rgba(15,23,32,0.08);">
-      <p style="font-size:0.75rem;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:#51606d;margin-bottom:16px;">Continue reading</p>
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;">
-        <a href="fire.test.html" style="display:flex;flex-direction:column;gap:6px;padding:16px;border-radius:10px;border:1px solid rgba(15,23,32,0.10);background:#fff;text-decoration:none;color:inherit;transition:border-color 140ms,transform 140ms;" onmouseover="this.style.borderColor='#0f6a78';this.style.transform='translateY(-1px)'" onmouseout="this.style.borderColor='rgba(15,23,32,0.10)';this.style.transform='none'">
-          <span style="font-size:1rem;">🔥</span>
-          <span style="font-size:0.875rem;font-weight:700;">Fire Test</span>
-          <span style="font-size:0.8rem;color:#51606d;">Structured results by suite</span>
+suign@Suis-MacBook-Air Typescript % npm run test:readme
+
+> this.me@3.9.2 test:readme
+> node tests/readme.examples.test.mjs
+
+PASS identity derives the documented compound seed
+PASS semantic tree reads, private branch reads, and links work
+PASS privacy example keeps encrypted root hidden
+PASS reactivity and explainability example recomputes total
+PASS search examples return the nearest encrypted vector
+PASS snapshot and replay example restores state
+PASS audience seed example is order independent
+
+7/7 PASS
+
+suign@Suis-MacBook-Air Typescript % npm run test:phase3
+
+> this.me@3.9.2 test:phase3
+> npm run test:phase3:search:exact && npm run test:phase3:search:ivf
+
+============================================================
+.me FASE 3.0 — SEARCH EXACT
+============================================================
+Vectors: 4,112 | Batch: 256 | Dims: 256
+Columnar writes: 16
+scannedChunks: 17
+scannedVectors: 4112
+coldMs: 506.37ms
+warmSingleQueryMs: 1.67ms
+warm p50: 1.69ms
+warm p95: 1.79ms
+PASS: searchExact recall is 1.0 against brute force.
+
+============================================================
+.me FASE 3.1 — IVF SIDECAR
+============================================================
+Vectors: 4,096 | Batch: 256 | Dims: 256
+Build: 503.91ms | k=16 | nprobe=2
+Index path: /tmp/me-phase3-ivf/vector-indexes/memory.episodic.cb67716a.json
+p50: 0.30ms
+p95: 0.76ms
+avg recall@10: 1.000
+avg candidateChunks: 2.00
+avg decryptedChunks: 2.00
+PASS: IVF sidecar persists and reduces chunk visits while preserving recall.</pre>
+
+    <div class="related">
+      <p class="related-label">Continue reading</p>
+      <div class="related-grid">
+        <a href="fire.test.html" class="related-card">
+          <span class="related-card-icon">🔥</span>
+          <span class="related-card-title">Fire Test</span>
+          <span class="related-card-desc">Structured results by suite</span>
         </a>
-        <a href="../Benchmarks/benchmarks.html" style="display:flex;flex-direction:column;gap:6px;padding:16px;border-radius:10px;border:1px solid rgba(15,23,32,0.10);background:#fff;text-decoration:none;color:inherit;transition:border-color 140ms,transform 140ms;" onmouseover="this.style.borderColor='#0f6a78';this.style.transform='translateY(-1px)'" onmouseout="this.style.borderColor='rgba(15,23,32,0.10)';this.style.transform='none'">
-          <span style="font-size:1rem;">⚡</span>
-          <span style="font-size:0.875rem;font-weight:700;">Benchmarks 1–11</span>
-          <span style="font-size:0.8rem;color:#51606d;">Performance deep dive</span>
+        <a href="../Benchmarks/benchmarks.html" class="related-card">
+          <span class="related-card-icon">⚡</span>
+          <span class="related-card-title">Benchmarks 1–11</span>
+          <span class="related-card-desc">Performance deep dive</span>
         </a>
-        <a href="../" style="display:flex;flex-direction:column;gap:6px;padding:16px;border-radius:10px;border:1px solid rgba(15,23,32,0.10);background:#fff;text-decoration:none;color:inherit;transition:border-color 140ms,transform 140ms;" onmouseover="this.style.borderColor='#0f6a78';this.style.transform='translateY(-1px)'" onmouseout="this.style.borderColor='rgba(15,23,32,0.10)';this.style.transform='none'">
-          <span style="font-size:1rem;">🏠</span>
-          <span style="font-size:0.875rem;font-weight:700;">.me Docs</span>
-          <span style="font-size:0.8rem;color:#51606d;">Back to home</span>
+        <a href="../" class="related-card">
+          <span class="related-card-icon">🏠</span>
+          <span class="related-card-title">.me Docs</span>
+          <span class="related-card-desc">Back to home</span>
         </a>
       </div>
     </div>
