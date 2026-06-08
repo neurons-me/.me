@@ -11,7 +11,7 @@ Agents, notes, relationships, wallets, groups, and secrets — unified in one re
 
 | [Get Started!](https://neurons-me.github.io/.me/Typescript/typedocs/) | [Explore .me](https://github.com/neurons-me/.me/tree/main/Typescript/tests/Demos) | [Benchmarks](https://github.com/neurons-me/.me/tree/main/Typescript/tests/Benchmarks) | [Syntax](#syntax) |
 |---|---|---|---|
-| <picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/neurons-me/neurons-me/main/media/this.me_dark.png"><img src="https://raw.githubusercontent.com/neurons-me/neurons-me/main/media/this.me_light.png" width="48" style="vertical-align:middle;border-radius:6px;"></picture><br>Install `.me`. | <img src="https://raw.githubusercontent.com/neurons-me/neurons-me/main/media/robots.png" width="48" style="vertical-align:middle;border-radius:6px;"><br>· 🤖 Robots<br>· 🏙️ Smart Cities<br>· 🌐 Hemisphere Graphs | Real numbers on O(K) propagation at scale. | The infinite proxy — write `me.anything`, no schema. |
+| <table><tr><td width="56"><picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/neurons-me/neurons-me/main/media/this.me_dark.png"><img src="https://raw.githubusercontent.com/neurons-me/neurons-me/main/media/this.me_light.png" width="48" style="border-radius:6px;"></picture></td><td>Install `.me`.</td></tr></table> | <table><tr><td width="56"><img src="https://raw.githubusercontent.com/neurons-me/neurons-me/main/media/robots.png" width="48" style="border-radius:6px;"></td><td>· 🤖 Robots<br>· 🏙️ Smart Cities<br>· 🌐 Hemisphere Graphs</td></tr></table> | Real numbers on O(K) propagation at scale. | The infinite proxy — write `me.anything`, no schema. |
 
 **→ Explore the source**
 
