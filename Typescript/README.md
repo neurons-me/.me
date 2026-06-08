@@ -3,35 +3,24 @@
   <img src="https://res.cloudinary.com/dkwnxf6gm/image/upload/v1761149332/this.me-removebg-preview_2_j1eoiy.png" alt=".me Logo" width="144" />
 </picture>
 
-# .me `3.9.0`
+# .me
 
-[![npm](https://img.shields.io/npm/v/this.me)](https://www.npmjs.com/package/this.me) [![docs](https://img.shields.io/badge/docs-neurons--me.github.io-blue)](https://neurons-me.github.io/.me/docs/)
+[![npm](https://img.shields.io/npm/v/this.me)](https://www.npmjs.com/package/this.me) [![docs](https://img.shields.io/badge/docs-neurons--me.github.io-blue)](https://neurons-me.github.io/.me/)
 
-**Sovereign computational identity. Works offline. No server. No network.**
+**Own your knowledge.**
 
 ```ts
-import me from 'this.me'
+import ThisMe from "this.me";
 
-me('ana', 'secret')    // compound seed — deterministic, offline, cryptographic
-                       // compound_seed = keccak256("me.seed/compound:v1::ana::secret")
+const me = ThisMe();      // create a callable semantic kernel
+me("ana", "secret");     // seed = keccak256("me.seed/compound:v1::ana::secret")
 ```
 
-`.me` is not a server. It is not a tenant. It is the kernel — a sovereign computation that derives identity from a seed and maintains a reactive semantic tree. If everything else disappears, `.me` still computes.
+`.me` is a local semantic kernel: deterministic identity, a callable semantic tree,
+encrypted private branches, reactive derivations, snapshots, and vector search in
+one offline runtime.
 
----
-
-## Performance
-
-| | |
-|---|---|
-| `0.001ms p50` | write enqueue |
-| `0.003ms p50` | cascadeLazy 10-dep flush |
-| `0.137ms p99` | cascadeLazy 10-dep flush |
-| `~700 vps` | sustained write with 1536-dim vectors |
-| `1M nodes` | in-memory with sub-ms propagation |
-| `23.2×` | IVF search speedup over exact scan on 100k corpus |
-
----
+If everything else disappears, `.me` still computes.
 
 ## Install
 
@@ -39,143 +28,289 @@ me('ana', 'secret')    // compound seed — deterministic, offline, cryptographi
 npm install this.me
 ```
 
----
+## Mental Model
 
-## Core: `me(who, secret)`
+The default export is a factory. The value returned by the factory is the kernel
+you read, write, encrypt, derive, explain, snapshot, and search.
 
 ```ts
-import me from 'this.me'
+import ThisMe from "this.me";
 
-me('suign', 'secret')
-// compound_seed = keccak256("me.seed/compound:v1::suign::secret")
-// identityHash  = deterministic, reproducible from same (who, secret)
-// Same inputs → same kernel everywhere, every time.
+const me = ThisMe();
 
-me('suign')
-// setActiveExpression only — no reseed
-// Use when identity is already established and you just want to re-express
+me.name("Sui Gn");              // write
+me("name");                     // read
+me.wallet["_"]("wallet-key");   // encrypted branch
+me.wallet.balance(12480);       // encrypted leaf inside wallet
+me.order.price(100);
+me.order.quantity(5);
+me.order["="]("total", "price * quantity"); // derived leaf
 ```
 
-The compound seed is the whole truth. Derived deterministically. Never transmitted. The seed never leaves the client.
+Core operators:
 
----
+- `me.path(value)` writes semantic state.
+- `me("path.to.value")` reads semantic state.
+- `["_"](secret)` declares an encrypted branch.
+- `["->"]("target.path")` links one branch to another without copying.
+- `["[i]"]["="](name, expr)` broadcasts a derivation over a concrete collection.
+- `["="](name, expr)` registers a derivation under the current branch.
+- `me["!"]` opens the reflective plane for identity, snapshots, runtime controls,
+  and method descriptors.
 
-## Semantic tree
+## Identity
 
 ```ts
-import me from 'this.me'
+import ThisMe from "this.me";
+
+const me = ThisMe();
+
+me("suign", "secret");
+
+console.log(me["!"].identity());
+```
+
+`me(who, secret)` on a kernel derives:
+
+```txt
+seed = keccak256("me.seed/compound:v1::" + who + "::" + secret)
+identityHash = keccak256("this.me/identity:v1::" + seed)
+```
+
+Same `(who, secret)` means same identity hash everywhere. The seed is derived
+locally and is never transmitted by the kernel.
+
+You can also create a kernel from an explicit seed:
+
+```ts
+const me = ThisMe("already-derived-seed");
+```
+
+## Semantic Tree
+
+```ts
+import ThisMe from "this.me";
+
+const me = ThisMe();
 
 // Identity
-me('suign', 'secret')
+me("suign", "secret");
 
-// Public profile
-me.profile.name('Sui Gn')
-me.profile.bio('Building the semantic web.')
+// Public identity (just paths — no namespace is required)
+me.name("Sui Gn");
+me.bio("Building the semantic web.");
 
-// Private data (encrypted namespace)
-me.wallet['_']('wallet-key-2026')
-me.wallet.balance(12480)
+// Private data: encrypted branch
+me.wallet["_"]("wallet-key-2026");
+me.wallet.balance(12480);
 
-// Relationships
-me.users.ana.name('Ana')
-me.users.pablo.name('Pablo')
+// Concrete collection with derived logic
+me.people.ana.name("Ana");
+me.people.ana.age(24);
+me.people.pablo.name("Pablo");
+me.people.pablo.age(17);
+me.people["[i]"]["="]("isAdult", "age >= 18");
 
 // Reference linking
-me.friends.ana['->']('users.ana')
-me.friends.pablo['->']('users.pablo')
+me.users.ana.name("Ana");
+me.friends.ana["->"]("users.ana");
 
-// Derived logic — runs automatically when dependencies change
-me.friends['[i]']['=']('isAdult', 'age >= 18')
-
-// Read
-console.log(me('profile.name'))   // 'Sui Gn'
-console.log(me('wallet.balance')) // 12480 (decrypted for this session)
+console.log(me("name"));                // "Sui Gn"
+console.log(me("wallet"));              // undefined
+console.log(me("wallet.balance"));      // 12480
+console.log(me("people.ana.isAdult"));  // true
+console.log(me("friends.ana.name"));    // "Ana"
 ```
 
----
+Broadcast derivations materialize on the concrete collection they are attached
+to. Links are for structural reads and single-source-of-truth relationships.
 
-## Privacy model
+## Privacy Model
 
 ```ts
-me.secrets['_']('private-key-2026')   // hidden universe — encrypted branch
-me.secrets.notes('Only I can see this.')
+import ThisMe from "this.me";
 
-me.profile.name('Public Name')         // public branch — readable by anyone
+const me = ThisMe();
+
+me.secrets["_"]("private-key-2026");
+me.secrets.notes("Only I can see this.");
+
+me.name("Public Name");
+
+console.log(me("secrets"));        // undefined
+console.log(me("secrets.notes"));  // "Only I can see this."
+console.log(me("name"));           // "Public Name"
 ```
 
-Hidden universes (`['_']`) are structurally encrypted. Even the shape of the data is hidden from observers without the key.
-
----
+Encrypted branches keep descendants out of the public semantic index. Observers
+can see that a secret scope exists, but leaf names and values under that scope
+are stored as encrypted branch chunks.
 
 ## Reactivity
 
 ```ts
-me.price(100)
-me.quantity(5)
-me.total['=']('price * quantity')
+import ThisMe from "this.me";
 
-me.price(200)
-console.log(me('total'))   // 1000 — recomputed automatically
+const me = ThisMe();
+
+me.order.price(100);
+me.order.quantity(5);
+me.order["="]("total", "price * quantity");
+
+me.order.price(200);
+
+console.log(me("order.total")); // 1000
 ```
 
-True **O(K) reactivity**: only actual dependents update when a value changes. Propagation is lazy and batched.
-
----
+Reactivity is dependency-indexed: when a value changes, only derivations that
+actually depend on that value are marked and recomputed. The runtime supports
+eager and lazy recomputation through `me.setRecomputeMode("eager" | "lazy")`.
 
 ## Search
 
-```ts
-// Exact scan
-const results = me.search({ query: 'semantic web', top: 5 })
+Vector search runs over a collection-scoped encrypted branch. The current public
+API names are `searchExact`, `buildVectorIndex`, and `searchVector`.
 
-// IVF approximate nearest-neighbor (23.2× faster on 100k corpus)
-me.enableIVF({ nlist: 100 })
-const results = me.search({ vector: embedding, top: 5 })
+```ts
+import ThisMe from "this.me";
+
+const me = ThisMe();
+
+me.memory.episodic["_"]("search-key");
+me.memory.episodic[0]({
+  id: 0,
+  embedding: [1, 0],
+  text: "semantic web",
+});
+me.memory.episodic[1]({
+  id: 1,
+  embedding: [0, 1],
+  text: "robotics",
+});
+
+const exact = me.searchExact("memory.episodic", [1, 0], { k: 1 });
+console.log(exact.hits[0].path); // "memory.episodic.0"
+
+me.buildVectorIndex("memory.episodic", { k: 2, nprobe: 1 });
+const approx = me.searchVector("memory.episodic", [1, 0], { k: 1, nprobe: 1 });
+console.log(approx.hits[0].path); // "memory.episodic.0"
 ```
 
----
+For large corpora, the benchmark suite writes chunked columnar encrypted vector
+data and compares exact scan against IVF sidecar search.
 
 ## Explainability
 
 ```ts
-me.total['=']('price * quantity')
-me.price(200)
-me.quantity(5)
+import ThisMe from "this.me";
 
-me.explain('total')
-// → "total = price * quantity = 200 * 5 = 1000"
-// Shows full derivation chain, not just the value.
+const me = ThisMe();
+
+me.order.price(200);
+me.order.quantity(5);
+me.order["="]("total", "price * quantity");
+
+const trace = me.explain("order.total");
+
+console.log(trace.value);              // 1000
+console.log(trace.expr);               // "price * quantity"
+console.log(trace.meta.dependsOn);     // ["order.price", "order.quantity"]
 ```
 
----
+`explain(path)` returns a structured trace: the expression, resolved inputs,
+origin metadata, recompute wave data, and masked values for secret inputs.
 
-## Role in the NRP stack
+## Snapshots And Replay
 
-`.me` is the root of the stack. It operates entirely offline. No network, no server, no external service is needed to derive identity or store knowledge:
+```ts
+import ThisMe from "this.me";
 
+const me = ThisMe();
+me.name("Sui Gn");
+
+const snapshot = me.exportSnapshot();
+
+const restored = ThisMe();
+restored.hydrate(snapshot);
+
+console.log(restored("name")); // "Sui Gn"
 ```
-this.me    → sovereign kernel. (who, secret) → compound seed → identity + tree.
-cleaker    → resolver. projects .me into a namespace surface (cleaker.me, LAN, etc).
-monad.ai   → daemon. exposes the namespace over HTTP. registers on mesh surfaces.
+
+Network tools can feed memories back into the kernel through `me.learn(memory)`
+or replay a whole log with `me.replayMemories(memories)`. The kernel can learn
+from the network, but identity and local computation do not depend on it.
+
+## Role In The NRP Stack
+
+`.me` is the root of the stack. It operates offline: no network, no server, no
+external service is needed to derive identity or store local knowledge.
+
+```txt
+this.me    -> sovereign kernel. (who, secret) -> compound seed -> identity + tree.
+cleaker    -> resolver. Projects .me into a namespace surface.
+monad.ai   -> daemon. Exposes the namespace over HTTP and mesh surfaces.
 ```
 
-When `cleaker` opens a namespace, it returns memories to the caller. Those memories are replayed into `.me` via `me.learn(memory)`. The kernel learns from the network but never depends on it.
+When `cleaker` opens a namespace, it returns memories to the caller. Those
+memories can be replayed into `.me` via `me.learn(memory)`.
 
-### Cryptographic set-chemistry
+## Cryptographic Set-Chemistry
 
 Multiple parties can derive a shared namespace without a server:
 
 ```ts
-audienceSeed = keccak256("me.seed/audience:v1::" + sort([seed1, seed2]).join("::"))
+import sha3 from "js-sha3";
+
+const { keccak256 } = sha3;
+
+function audienceSeed(seeds: string[]): string {
+  return keccak256("me.seed/audience:v1::" + [...seeds].sort().join("::"));
+}
+
+console.log(audienceSeed(["frank-seed", "ana-seed"]));
 ```
 
 Properties:
-- `frank + ana` = `ana + frank` (commutative — sorted before hashing)
-- `frank + ana + luna` → different compound than `frank + ana`
-- Remove any party → namespace no longer derivable
-- No server. No registry. Exists only where the exact seed set is present.
 
----
+- `frank + ana` = `ana + frank` because seeds are sorted before hashing.
+- `frank + ana + luna` derives a different compound than `frank + ana`.
+- Remove any party and the namespace is no longer derivable.
+- No server. No registry. The namespace exists only where the exact seed set is present.
+
+## Verified Locally
+
+README examples are covered by:
+
+```bash
+npm run build
+npm run test:readme
+npm run test:contracts 
+npm run test:phase3 
+```
+
+From [.me/Typescript/](https://github.com/neurons-me/.me/tree/main/Typescript)
+
+```bash
+ node tests/fire.test.ts 
+ node tests/pre-build.test.mjs
+```
+
+## Performance
+
+|               |                                                   |
+| ------------- | ------------------------------------------------- |
+| `0.001ms p50` | write enqueue                                     |
+| `0.003ms p50` | cascadeLazy 10-dep flush                          |
+| `0.137ms p99` | cascadeLazy 10-dep flush                          |
+| `~700 vps`    | sustained write with 1536-dim vectors             |
+| `1M nodes`    | in-memory with sub-ms propagation                 |
+| `23.2x`       | IVF search speedup over exact scan on 100k corpus |
+
+Run benchmark details with:
+
+```bash
+npm run bench
+```
 
 ## License
 

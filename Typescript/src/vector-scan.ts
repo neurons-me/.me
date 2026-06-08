@@ -168,6 +168,7 @@ export function searchExact(
       const embedding = (item as Record<string, unknown>).embedding;
       const candidate = coerceCandidateVector(embedding, queryVector.length);
       if (!candidate) continue;
+      if (dims === 0) dims = candidate.length;
       const score = cosineSimilarity(queryVector, candidate);
       scannedVectors++;
       if (score < minScore) continue;

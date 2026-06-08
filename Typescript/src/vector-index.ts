@@ -31,21 +31,29 @@ function toFloat32Query(query: ArrayLike<number>): Float32Array {
   return out;
 }
 
+function expectedDims(dims: number): number | null {
+  if (!Number.isFinite(dims) || dims <= 0 || dims === Number.MAX_SAFE_INTEGER) return null;
+  return Math.floor(dims);
+}
+
 function coerceCandidateVector(embedding: unknown, dims: number): Float32Array | null {
+  const expected = expectedDims(dims);
+
   if (embedding instanceof Float32Array) {
-    return embedding.length === dims ? embedding : null;
+    return expected === null || embedding.length === expected ? embedding : null;
   }
 
   if (Array.isArray(embedding)) {
-    if (embedding.length !== dims) return null;
+    if (expected !== null && embedding.length !== expected) return null;
     return Float32Array.from(embedding.map((value) => Number(value) || 0));
   }
 
   if (embedding && typeof embedding === "object") {
-    const out = new Float32Array(dims);
+    if (expected === null) return null;
+    const out = new Float32Array(expected);
     let seen = false;
     const record = embedding as Record<string, unknown>;
-    for (let i = 0; i < dims; i++) {
+    for (let i = 0; i < expected; i++) {
       const value = record[String(i)];
       if (value !== undefined) seen = true;
       out[i] = Number(value) || 0;
