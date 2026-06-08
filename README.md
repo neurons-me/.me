@@ -7,17 +7,26 @@
 **Own your knowledge.**
 Agents, notes, relationships, wallets, groups, and secrets — unified in one reactive graph.
 
-# **Use `.me`**
+Getting Started
+Clone the Github Repository: run the following command in your terminal.
 
-| [Get Started!](https://neurons-me.github.io/.me/Typescript/typedocs/) | [Explore .me](https://github.com/neurons-me/.me/tree/main/Typescript/tests/Demos) | [Benchmarks](https://github.com/neurons-me/.me/tree/main/Typescript/tests/Benchmarks) | [Syntax](#syntax) |
-|---|---|---|---|
-| <table><tr><td width="56"><picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/neurons-me/neurons-me/main/media/this.me_dark.png"><img src="https://raw.githubusercontent.com/neurons-me/neurons-me/main/media/this.me_light.png" width="48" style="border-radius:6px;"></picture></td><td>Install `.me`.</td></tr></table> | <table><tr><td width="56"><img src="https://raw.githubusercontent.com/neurons-me/neurons-me/main/media/robots.png" width="48" style="border-radius:6px;"></td><td>· 🤖 Robots<br>· 🏙️ Smart Cities<br>· 🌐 Hemisphere Graphs</td></tr></table> | Real numbers on O(K) propagation at scale. | The infinite proxy — write `me.anything`, no schema. |
+git clone https://github.com/neurons-me/.me.git
+Once cloned, select your preferred language and run the corresponding setup command:
 
-**→ Explore the source**
+Command	Status	Documentation
+Typescript	cd .me/Typescript && npm install	npm	node.js Docs ⟡
+Python	cd .me/Python/	Not Available	Pip Docs 𓆚
+Rust	cd .me/Rust/	Not Available	Rust Docs
+Demos 𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃
+🤖⟐🤖 Robots that Understand Context 🤖⟐🤖 ⇄ ⇆ Same object, different meaning. →
 
-| [Clone the repo](#getting-started) | [Docs](./docs) | [Tests](https://github.com/neurons-me/.me/tree/main/Typescript/tests) | [Axioms](https://neurons-me.github.io/.me/docs/Axioms.html) |
-|---|---|---|---|
-| `git clone` the monorepo to get started. | Guides, concepts, and architecture notes. | The full suite — axioms, contracts, demos, benchmarks. | Invariants the kernel guarantees and tests against. |
+🏙️📡 Smart City 🏙️📡 ⌬◉⌬ ⟶ ∴ — A full city reacting in real time as interconnected nodes. →
+
+🌐🌐🌐 Hemisphere Scale 🌐🌐🌐 — 1 million nodes with cross-domain reactive updates. →
+
+⚡⚡⚡ Extreme Fan-Out ⚡⚡⚡ — One write instantly updates 100k dependents. ⌬◉⌬ →
+
+⌬ ⊚ View all demos →
 
 ---
 
