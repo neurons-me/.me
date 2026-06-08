@@ -5,6 +5,7 @@
 
 # .me
 **Own your knowledge.**
+
 Agents, notes, relationships, wallets, groups, and secrets — unified in one reactive graph.
 
 ## Get Started:
