@@ -17,7 +17,9 @@ Command	Status	Documentation
 Typescript	cd .me/Typescript && npm install	npm	node.js Docs ⟡
 Python	cd .me/Python/	Not Available	Pip Docs 𓆚
 Rust	cd .me/Rust/	Not Available	Rust Docs
+
 Demos 𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃
+
 🤖⟐🤖 Robots that Understand Context 🤖⟐🤖 ⇄ ⇆ Same object, different meaning. →
 
 🏙️📡 Smart City 🏙️📡 ⌬◉⌬ ⟶ ∴ — A full city reacting in real time as interconnected nodes. →
