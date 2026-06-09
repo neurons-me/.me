@@ -31,17 +31,18 @@ import {
   tryParseMeUri,
 } from "./src/me-uri.ts";
 import type { MEOptions } from "./src/types.ts";
-import type { ThisMeInput } from "./src/factory.ts";
+import type { ThisMeInput, ThisMeKernel } from "./src/factory.ts";
 
-function ThisMe(input?: Parameters<typeof createThisMe>[0], options?: Parameters<typeof createThisMe>[1]) {
-  return createThisMe(input, options);
+function ThisMe(input?: ThisMeInput, secretOrOptions?: string | MEOptions, options?: MEOptions) {
+  return createThisMe(input as any, secretOrOptions as any, options);
 }
 
 Object.setPrototypeOf(ThisMe, ME);
 ThisMe.prototype = ME.prototype;
 
 export type ThisMeFactory = typeof ME & {
-  (input?: ThisMeInput, options?: MEOptions): ME;
+  (input?: ThisMeInput, options?: MEOptions): ThisMeKernel;
+  (who: string, secret: string, options?: MEOptions): ThisMeKernel;
   ME: typeof ME;
   createThisMe: typeof createThisMe;
   parseMeUri: typeof parseMeUri;
@@ -132,7 +133,7 @@ export type {
   OperatorResult,
   OperatorHandler,
 } from "./src/types.ts";
-export type { ThisMeInit, ThisMeInput } from "./src/factory.ts";
+export type { ThisMeInit, ThisMeInput, ThisMeKernel } from "./src/factory.ts";
 export type { MeDB } from "./src/kernel/cascade.ts";
 export type {
   CanonicalizeLegacyAtOperatorOptions,

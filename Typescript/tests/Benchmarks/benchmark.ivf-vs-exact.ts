@@ -272,6 +272,8 @@ async function main() {
   console.log(`Chunk reps: ${CHUNK_REPRESENTATIVES}`);
   console.log(`Dataset mode: ${DATASET_MODE} | chunk sigma: ${CHUNK_SIGMA}`);
   console.log("Secret scope: memory.episodic");
+  const estimatedMinutes = Math.ceil(SIZES.reduce((sum, n) => sum + n / 1200, 0) / 60);
+  console.log(`⏱  This benchmark runs ${SIZES.length} scale point(s) — estimated ${estimatedMinutes}–${estimatedMinutes * 2} min. Please wait.`);
 
   const rows = [];
   for (const total of SIZES) {

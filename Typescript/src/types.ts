@@ -245,7 +245,9 @@ export type MEInstance = Record<string, any>;
 // so this types-only module can be imported without circular deps.
 export type MEProxy = {
   [key: string]: any;
-  (...args: any[]): MEProxy;
+  name: any;
+  length: any;
+  (...args: any[]): any;
 };
 
 /**

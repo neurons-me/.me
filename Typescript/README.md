@@ -10,10 +10,10 @@
 **Own your knowledge.**
 
 ```ts
-import ThisMe from "this.me";
+import Me from "this.me";
 
-const me = ThisMe();      // create a callable semantic kernel
-me("ana", "secret");     // seed = keccak256("me.seed/compound:v1::ana::secret")
+const me = Me("ana", "secret");
+// seed = keccak256("me.seed/compound:v1::ana::secret")
 ```
 
 `.me` is a local semantic kernel: deterministic identity, a callable semantic tree,
@@ -30,13 +30,37 @@ npm install this.me
 
 ## Mental Model
 
-The default export is a factory. The value returned by the factory is the kernel
-you read, write, encrypt, derive, explain, snapshot, and search.
+**.me** is the **sovereign claim engine**.
+
+You can ***say/postulate/testify*** basically anything:
+
+```typescript
+me.name("Ana") 
+me.saw.event42("I was there")
+me.price(100)
+me.users.bob.trust(0.7) 
+me.secret["_"]("key") 
+me.secret.note("Only this audience can read it")
+```
+
+That is unlimited in form because **.me** is semantic algebra. It does not begin by asking permission. It lets an identity produce structured claims, private branches, derivations, links, proofs, memories.
+
+But **.me** alone **is local.** It says:
+
+> “This identity, from this seed, computes this universe.”
+
+The namespace (ledger) is different. That layer says:
+
+> “This identity testified this claim into this namespace, and now there is a public or shared witness record.”
+
+So the ledger does **not** make the claim true.
+
+ It makes the claim **attested**.
 
 ```ts
-import ThisMe from "this.me";
+import Me from "this.me";
 
-const me = ThisMe();
+const me = Me("ana", "secret");
 
 me.name("Sui Gn");              // write
 me("name");                     // read
@@ -47,30 +71,15 @@ me.order.quantity(5);
 me.order["="]("total", "price * quantity"); // derived leaf
 ```
 
-Core operators:
-
-- `me.path(value)` writes semantic state.
-- `me("path.to.value")` reads semantic state.
-- `["_"](secret)` declares an encrypted branch.
-- `["->"]("target.path")` links one branch to another without copying.
-- `["[i]"]["="](name, expr)` broadcasts a derivation over a concrete collection.
-- `["="](name, expr)` registers a derivation under the current branch.
-- `me["!"]` opens the reflective plane for identity, snapshots, runtime controls,
-  and method descriptors.
-
 ## Identity
 
 ```ts
-import ThisMe from "this.me";
-
-const me = ThisMe();
-
-me("suign", "secret");
-
+import Me from "this.me";
+const me = Me("suign", "secret");
 console.log(me["!"].identity());
 ```
 
-`me(who, secret)` on a kernel derives:
+`Me(who, secret)` creates a kernel from:
 
 ```txt
 seed = keccak256("me.seed/compound:v1::" + who + "::" + secret)
@@ -83,18 +92,22 @@ locally and is never transmitted by the kernel.
 You can also create a kernel from an explicit seed:
 
 ```ts
-const me = ThisMe("already-derived-seed");
+const me = Me("already-derived-seed");
+```
+
+The callable kernel can still be reseeded later with the same math:
+
+```ts
+const me = Me();
+me("suign", "secret");
 ```
 
 ## Semantic Tree
 
 ```ts
-import ThisMe from "this.me";
+import Me from "this.me";
 
-const me = ThisMe();
-
-// Identity
-me("suign", "secret");
+const me = Me("suign", "secret");
 
 // Public identity (just paths — no namespace is required)
 me.name("Sui Gn");
@@ -128,9 +141,9 @@ to. Links are for structural reads and single-source-of-truth relationships.
 ## Privacy Model
 
 ```ts
-import ThisMe from "this.me";
+import Me from "this.me";
 
-const me = ThisMe();
+const me = Me();
 
 me.secrets["_"]("private-key-2026");
 me.secrets.notes("Only I can see this.");
@@ -149,9 +162,9 @@ are stored as encrypted branch chunks.
 ## Reactivity
 
 ```ts
-import ThisMe from "this.me";
+import Me from "this.me";
 
-const me = ThisMe();
+const me = Me();
 
 me.order.price(100);
 me.order.quantity(5);
@@ -162,7 +175,7 @@ me.order.price(200);
 console.log(me("order.total")); // 1000
 ```
 
-Reactivity is dependency-indexed: when a value changes, only derivations that
+**Reactivity is dependency-indexed:** when a value changes, only derivations that
 actually depend on that value are marked and recomputed. The runtime supports
 eager and lazy recomputation through `me.setRecomputeMode("eager" | "lazy")`.
 
@@ -172,9 +185,9 @@ Vector search runs over a collection-scoped encrypted branch. The current public
 API names are `searchExact`, `buildVectorIndex`, and `searchVector`.
 
 ```ts
-import ThisMe from "this.me";
+import Me from "this.me";
 
-const me = ThisMe();
+const me = Me();
 
 me.memory.episodic["_"]("search-key");
 me.memory.episodic[0]({
@@ -202,9 +215,9 @@ data and compares exact scan against IVF sidecar search.
 ## Explainability
 
 ```ts
-import ThisMe from "this.me";
+import Me from "this.me";
 
-const me = ThisMe();
+const me = Me();
 
 me.order.price(200);
 me.order.quantity(5);
@@ -217,20 +230,19 @@ console.log(trace.expr);               // "price * quantity"
 console.log(trace.meta.dependsOn);     // ["order.price", "order.quantity"]
 ```
 
-`explain(path)` returns a structured trace: the expression, resolved inputs,
-origin metadata, recompute wave data, and masked values for secret inputs.
+`explain(path)` returns a structured trace: the expression, resolved inputs, origin metadata, recompute wave data, and masked values for secret inputs.
 
 ## Snapshots And Replay
 
 ```ts
-import ThisMe from "this.me";
+import Me from "this.me";
 
-const me = ThisMe();
+const me = Me();
 me.name("Sui Gn");
 
 const snapshot = me.exportSnapshot();
 
-const restored = ThisMe();
+const restored = Me();
 restored.hydrate(snapshot);
 
 console.log(restored("name")); // "Sui Gn"

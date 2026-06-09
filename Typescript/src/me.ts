@@ -101,6 +101,7 @@ export type { MEProxy } from "./types.ts";
 
 const DEFAULT_SEED_STORAGE_KEY = "this.me.seed:v1";
 const IDENTITY_HASH_DOMAIN = "this.me/identity:v1::";
+const COMPOUND_SEED_DOMAIN = "me.seed/compound:v1::";
 
 const { keccak256 } = sha3;
 
@@ -129,6 +130,10 @@ function normalizeSeedInput(seed: unknown): string | undefined {
 
 function deriveIdentityHash(seed: string): string {
   return keccak256(IDENTITY_HASH_DOMAIN + seed);
+}
+
+function deriveCompoundSeed(who: string, secret: string): string {
+  return keccak256(COMPOUND_SEED_DOMAIN + who + "::" + secret);
 }
 
 function normalizeRootNamespace(rootNamespace: string): string {
@@ -173,7 +178,8 @@ function resolveSeed(seed: unknown): string {
 /**
  * The `.me` Semantic Kernel.
  *
- * This is the core class of `.me`. When you do `new ME(seed?)`, you get much more than
+ * This is the core class of `.me`. When you do `new ME(seed?)` or
+ * `new ME(who, secret)`, you get much more than
  * a normal class instance:
  *
  * - a stateful semantic kernel that manages memories, indexes, secrets, and derivations
@@ -269,11 +275,20 @@ export class ME {
     this.branchStore.importData(value && typeof value === "object" ? value : {});
   }
 
-  constructor(seed?: string, options: MEOptions = {}) {
-    Object.assign(this, createInitialKernelFields(options));
-    this.#seed = resolveSeed(seed);
+  constructor(seed?: string, options?: MEOptions);
+  constructor(who: string, secret: string, options?: MEOptions);
+  constructor(seed?: string, secretOrOptions: string | MEOptions = {}, options: MEOptions = {}) {
+    const hasCompoundSecret = typeof secretOrOptions === "string";
+    if (hasCompoundSecret && typeof seed !== "string") {
+      throw new Error("COMPOUND_SEED_WHO_REQUIRED");
+    }
+    const compoundWho = hasCompoundSecret ? seed as string : null;
+    const compoundSecret = hasCompoundSecret ? secretOrOptions as string : null;
+    const runtimeOptions: MEOptions = hasCompoundSecret ? options : secretOrOptions;
+    Object.assign(this, createInitialKernelFields(runtimeOptions));
+    this.#seed = hasCompoundSecret ? resolveSeed(deriveCompoundSeed(compoundWho!, compoundSecret!)) : resolveSeed(seed);
     this.#identityHash = deriveIdentityHash(this.#seed);
-    this.#activeExpression = null;
+    this.#activeExpression = compoundWho;
     this.bumpSecretEpoch();
     this.rebuildIndex();
     Object.defineProperty(this as object, ME_SEED_SYMBOL, {
@@ -307,8 +322,7 @@ export class ME {
       configurable: true,
       enumerable: false,
       value: (who: string, secret: string) => {
-        const COMPOUND_SEED_DOMAIN = "me.seed/compound:v1::";
-        this.#seed = keccak256(COMPOUND_SEED_DOMAIN + who + "::" + secret);
+        this.#seed = deriveCompoundSeed(who, secret);
         this.#identityHash = deriveIdentityHash(this.#seed);
         this.#activeExpression = who;
         this.bumpSecretEpoch();
@@ -348,8 +362,7 @@ export class ME {
       configurable: true,
       enumerable: false,
       value: (who: string, secret: string) => {
-        const COMPOUND_SEED_DOMAIN = "me.seed/compound:v1::";
-        this.#seed = keccak256(COMPOUND_SEED_DOMAIN + who + "::" + secret);
+        this.#seed = deriveCompoundSeed(who, secret);
         this.#identityHash = deriveIdentityHash(this.#seed);
         this.#activeExpression = who;
         this.bumpSecretEpoch();

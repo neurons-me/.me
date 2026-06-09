@@ -15,8 +15,7 @@ function test(name, fn) {
 }
 
 test("identity derives the documented compound seed", () => {
-  const me = ThisMe();
-  me("ana", "secret");
+  const me = ThisMe("ana", "secret");
 
   const seed = keccak256("me.seed/compound:v1::ana::secret");
   const identityHash = keccak256("this.me/identity:v1::" + seed);
@@ -27,10 +26,19 @@ test("identity derives the documented compound seed", () => {
   });
 });
 
-test("semantic tree reads, private branch reads, and links work", () => {
+test("kernel callable reseed uses the same compound seed", () => {
   const me = ThisMe();
+  me("ana", "secret");
 
-  me("suign", "secret");
+  const same = ThisMe("ana", "secret");
+  const constructed = new ThisMe.ME("ana", "secret");
+
+  assert.deepEqual(me["!"].identity(), same["!"].identity());
+  assert.deepEqual(constructed["!"].identity(), same["!"].identity());
+});
+
+test("semantic tree reads, private branch reads, and links work", () => {
+  const me = ThisMe("suign", "secret");
   me.name("Sui Gn");
   me.bio("Building the semantic web.");
   me.wallet["_"]("wallet-key-2026");

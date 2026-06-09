@@ -349,6 +349,8 @@ function runCombination(
 async function main() {
   console.log("N,nlist,nprobe,maxCandidateChunks,buildMs,exactP95,ivfP95,recall,avgChunks,speedup");
   console.log(`# dataset_mode=${DATASET_MODE} chunk_sigma=${CHUNK_SIGMA} chunk_size=${BATCH}`);
+  const estimatedMinutes = Math.ceil(SIZES.reduce((sum: number, n: number) => sum + n / 1200, 0) / 60);
+  console.log(`# ⏱  This benchmark runs ${SIZES.length} size(s) × multiple nlist/nprobe combos — estimated ${estimatedMinutes * 3}–${estimatedMinutes * 6} min. Please wait.`);
 
   const rows: Array<Record<string, string | number>> = [];
 

@@ -109,6 +109,8 @@ async function main() {
   console.log(`hot cache budget: ${formatMb(MAX_HOT_BYTES)}`);
   console.log(`benchmark explain path: ${EXPLAIN_PATH}`);
   console.log('note: explain(path, { id }) no existe hoy; este benchmark mide el lookup equivalente sobre la API real path-only.');
+  const estimatedSec = Math.round((TARGET_DISK_BYTES / (1024 * 1024)) * 0.1);
+  console.log(`⏱  Writing ${formatMb(TARGET_DISK_BYTES)} of columnar data — estimated ~${estimatedSec}s. Please wait.`);
 
   const tmp = "/tmp/me-fase2-explain-bench";
   fs.rmSync(tmp, { recursive: true, force: true });

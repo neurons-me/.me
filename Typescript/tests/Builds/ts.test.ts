@@ -19,6 +19,10 @@ const human = canonicalizeHumanIdentity("suign@neurons.me", {
   knownSpaces: ["neurons.me"],
 });
 const projection: MeDnsProjectionResult = projectDnsHostToNamespace("https://suign.neurons.me", ["neurons.me"]);
+const compoundFactory = ME("ana", "secret");
+compoundFactory.name("Ana");
+const compoundName: string = compoundFactory("name");
+const compoundClass: any = new ME("ana", "secret");
 const me: any = new ME();
 // semantic writes
 me.profile.name("Abella");
@@ -27,4 +31,4 @@ me.profile.age(30);
 const name: string = me("profile.name");
 const age: number = me("profile.age");
 // type check only
-console.log(namespace, username, uri.href, human.uri, projection.ok, name, age);
+console.log(namespace, username, uri.href, human.uri, projection.ok, compoundFactory["!"].identity(), compoundClass["!"].identity(), compoundName, name, age);
