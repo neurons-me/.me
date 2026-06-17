@@ -4,6 +4,7 @@ export default defineConfig({
   title: '.me',
   description: 'Documentation for .me',
   base: '/.me/Typescript/typedocs/',
+  outDir: '..',
   lang: 'en-US',
   ignoreDeadLinks: true,
 
