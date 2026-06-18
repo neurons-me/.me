@@ -25,7 +25,7 @@ A full city reacting in real time as interconnected nodes.
 
 Relationships, trust, identity, and network effects.
 
-𓉝 **[Running your Shops](https://github.com/neurons-me/.me/blob/main/Typescript/tests/Demos/ShopsExample.ts)** 🏪 ⇄ 📈
+𓉝 **[Running your CoffeeShops](https://neurons-me.github.io/.me/docs/Running-your-CoffeeShops.html)** 🏪 ⇄ 📈
 
 Inventory, operations, and business state as a graph.
 
