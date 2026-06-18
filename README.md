@@ -3,40 +3,41 @@
   <img src="./docs/assets/this.me.png" alt=".me Logo" width="144" />
 </picture>
 
-
 # .me
+
 **Own your knowledge.**
 
 Your *digital identity* unified in **one reactive graph.**
 
-## Get Started:
-Once cloned, select your preferred language and run the corresponding setup command:
-
-|     |  Command                     | Status            | Documentation                                                |
-| ----------- | --------------------------- | ----------------- | ------------------------------------------------------------ |
-| **Typescript** | `cd .me/Typescript && npm install` | [![npm](https://img.shields.io/npm/v/this.me/latest?label=latest)](https://www.npmjs.com/package/this.me) | [node.js Docs ⟡ ](https://neurons-me.github.io/.me/Typescript/typedocs/) |
+<h4 align="center"><a href="https://neurons-me.github.io/.me/docs">⌬ Docs</a>  <a href="https://neurons-me.github.io/.me/docs/">⬡ Getting Started</a></h4>
 
 ### Demos 𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃
 
-𓅓 **[Robots That Understand Context](https://neurons-me.github.io/.me/docs/Robots-That-Understand-Context.html)**  
+𓅓 **[Robots That Understand Context](https://neurons-me.github.io/.me/docs/Robots-That-Understand-Context.html)**  ⟐🤖 ⇄ ⇆ 🤖⟐
+
 Same object, different meaning.
 
-𓊖 **[Smart City](https://neurons-me.github.io/.me/docs/Smart-Cities.html)**  
+𓊖 **[Smart City](https://neurons-me.github.io/.me/docs/Smart-Cities.html)** ∴ 🏙️ ◉ 📡  ⌬
 A full city reacting in real time as interconnected nodes.
 
-𓀠 **[Social Graph](https://github.com/neurons-me/.me/blob/main/Typescript/tests/Demos/Social_Graph.ts)**  
+𓀠 **[Social Graph](https://github.com/neurons-me/.me/blob/main/Typescript/tests/Demos/Social_Graph.ts)** ⟐👤 ⇄ 👥⌬ ∴
+
 Relationships, trust, identity, and network effects.
 
-𓉝 **[Running your Shops](https://github.com/neurons-me/.me/blob/main/Typescript/tests/Demos/ShopsExample.ts)**  
+𓉝 **[Running your Shops](https://github.com/neurons-me/.me/blob/main/Typescript/tests/Demos/ShopsExample.ts)** 🏪 ⇄ 📈
+
 Inventory, operations, and business state as a graph.
 
-𓋹 **Splitting your Bill**  
+𓋹 **Splitting your Bill** 💳 ⇄ 👥 ⌬ ⚖️ ∴ 
+
 Shared expenses and automatic settlement logic.
 
-𓇳 **[Hemisphere Scale](https://github.com/neurons-me/.me/blob/main/Typescript/tests/Demos/Hemisphere_1M.ts)**  
+𓇳 **[Hemisphere Scale](https://github.com/neurons-me/.me/blob/main/Typescript/tests/Demos/Hemisphere_1M.ts)** 🌐 ⇄ ⌬ 𓇳 ⌬ ⇄ 🌐 
+
 1 million nodes with cross-domain reactive updates.
 
-𓂀 **[Extreme Fan-Out](https://github.com/neurons-me/.me/blob/main/Typescript/tests/Demos/Root_Fanout_100k.ts)**  
+𓂀 **[Extreme Fan-Out](https://github.com/neurons-me/.me/blob/main/Typescript/tests/Demos/Root_Fanout_100k.ts)** ⚡⚡⚡ ⟶ ⌬⌬⌬⌬
+
 One write instantly updates 100k dependents.
 
 **[ ⌬ ⊚ View all demos → ](https://github.com/neurons-me/.me/tree/main/Typescript/tests/Demos)**
@@ -44,6 +45,7 @@ One write instantly updates 100k dependents.
 ---
 
 ### Syntax
+
 `.me` uses an infinite proxy — any path you write becomes a node in the graph.
 No schema. No migrations. No declarations upfront.
 
@@ -72,6 +74,7 @@ Write anything. Chain anything. The kernel figures out the dependencies.
 **If it changes, everything that depends on it updates — automatically.**
 
 ## **▵** Why .me?
+
 1. **Structural Privacy** — Private data is structurally invisible (not just hidden by rules).
 2. **Full Explainability** — Every derived value can explain exactly how it was computed.
 3. **Subjective Reality** — Same graph, different views per agent.
@@ -84,7 +87,9 @@ Even with 100,000 nodes needing a simultaneous recompute, you're looking at abou
 The same object can mean completely different things depending on context — and everything updates automatically when something changes. 
 
 ### Real Performance
+
 **.me** uses **true O(K) reactivity** — when a value changes, only its actual dependents update. *Not the whole graph.*
+
 - 1 million nodes in memory
 - 1 sensor changed → exactly **6 dependent nodes** recomputed
 - Time to propagate: **0.256ms**
