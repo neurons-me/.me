@@ -1,12 +1,13 @@
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://res.cloudinary.com/dkwnxf6gm/image/upload/v1769890772/this.me.png" />
-  <img src="https://res.cloudinary.com/dkwnxf6gm/image/upload/v1761149332/this.me-removebg-preview_2_j1eoiy.png" alt=".me Logo" width="144" />
+  <source media="(prefers-color-scheme: dark)" srcset="./docs/assets/me.png" />
+  <img src="./docs/assets/this.me.png" alt=".me Logo" width="144" />
 </picture>
+
 
 # .me
 **Own your knowledge.**
 
-Agents, notes, relationships, wallets, groups, and secrets — unified in one reactive graph.
+Your *digital identity* unified in **one reactive graph.**
 
 ## Get Started:
 Once cloned, select your preferred language and run the corresponding setup command:
@@ -14,8 +15,6 @@ Once cloned, select your preferred language and run the corresponding setup comm
 |     |  Command                     | Status            | Documentation                                                |
 | ----------- | --------------------------- | ----------------- | ------------------------------------------------------------ |
 | **Typescript** | `cd .me/Typescript && npm install` | [![npm](https://img.shields.io/npm/v/this.me/latest?label=latest)](https://www.npmjs.com/package/this.me) | [node.js Docs ⟡ ](https://neurons-me.github.io/.me/Typescript/typedocs/) |
-| **Python**  | `cd .me/Python/`               | Not Available     | [Pip Docs 𓆚](https://neurons-me.github.io/.me/Python/)          |
-| **Rust**    | `cd .me/Rust/`             | Not Available     | [Rust Docs](https://neurons-me.github.io/.me/Rust/)         |
 
 ### Demos 𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃
 **[  🤖⟐🤖 Robots that Understand Context 🤖⟐🤖 ⇄ ⇆ Same object, different meaning. → ](https://neurons-me.github.io/.me/docs/Robots-That-Understand-Context.html)** 
