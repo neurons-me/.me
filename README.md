@@ -33,11 +33,11 @@ Inventory, operations, and business state as a graph.
 
 Shared expenses and automatic settlement logic.
 
-𓇳 **[Hemisphere Scale](https://github.com/neurons-me/.me/blob/main/Typescript/tests/Demos/Hemisphere_1M.ts)** 🌐 ⇄ ⌬ 𓇳 ⌬ ⇄ 🌐 
+𓇳 **[Hemisphere Scale](https://neurons-me.github.io/.me/docs/Hemisphere-Scale.html)** 🌐 ⇄ ⌬ 𓇳 ⌬ ⇄ 🌐 
 
 1 million nodes with cross-domain reactive updates.
 
-𓂀 **[Extreme Fan-Out](https://github.com/neurons-me/.me/blob/main/Typescript/tests/Demos/Root_Fanout_100k.ts)** ⚡⚡⚡ ⟶ ⌬⌬⌬⌬
+𓂀 **[Extreme Fan-Out](https://neurons-me.github.io/.me/docs/Extreme-Fan-Out.html)** ⚡⚡⚡ ⟶ ⌬⌬⌬⌬
 
 One write instantly updates 100k dependents.
 
