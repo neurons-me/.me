@@ -21,7 +21,7 @@ Same object, different meaning.
 
 A full city reacting in real time as interconnected nodes.
 
-𓀠 **[Social Graph](https://github.com/neurons-me/.me/blob/main/Typescript/tests/Demos/Social_Graph.ts)** ⟐👤 ⇄ 👥⌬ ∴
+𓀠 **[Social Graph](https://neurons-me.github.io/.me/docs/Social-Graph.html)** ⟐👤 ⇄ 👥⌬ ∴
 
 Relationships, trust, identity, and network effects.
 
