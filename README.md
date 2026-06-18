@@ -7,7 +7,7 @@
 
 **Own your knowledge.**
 
-Your *digital identity* unified in **one reactive graph.**
+Your *identity* unified in **one reactive graph.**
 
 <h4 align="center"><a href="https://neurons-me.github.io/.me/docs">⌬ Docs</a>  <a href="https://neurons-me.github.io/.me/docs/">⬡ Getting Started</a></h4>
 
