@@ -18,6 +18,7 @@ Your *digital identity* unified in **one reactive graph.**
 Same object, different meaning.
 
 𓊖 **[Smart City](https://neurons-me.github.io/.me/docs/Smart-Cities.html)** ∴ 🏙️ ◉ 📡  ⌬
+
 A full city reacting in real time as interconnected nodes.
 
 𓀠 **[Social Graph](https://github.com/neurons-me/.me/blob/main/Typescript/tests/Demos/Social_Graph.ts)** ⟐👤 ⇄ 👥⌬ ∴
