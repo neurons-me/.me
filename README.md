@@ -17,15 +17,29 @@ Once cloned, select your preferred language and run the corresponding setup comm
 | **Typescript** | `cd .me/Typescript && npm install` | [![npm](https://img.shields.io/npm/v/this.me/latest?label=latest)](https://www.npmjs.com/package/this.me) | [node.js Docs ⟡ ](https://neurons-me.github.io/.me/Typescript/typedocs/) |
 
 ### Demos 𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃
-**[  🤖⟐🤖 Robots that Understand Context 🤖⟐🤖 ⇄ ⇆ Same object, different meaning. → ](https://neurons-me.github.io/.me/docs/Robots-That-Understand-Context.html)** 
 
-**[ 🏙️📡 Smart City 🏙️📡 ⌬◉⌬ ⟶ ∴ — A full city reacting in real time as interconnected nodes. →](https://neurons-me.github.io/.me/docs/Smart-Cities.html)** 
+𓅓 **[Robots That Understand Context](https://neurons-me.github.io/.me/docs/Robots-That-Understand-Context.html)**  
+Same object, different meaning.
 
-**[ 🌐🌐🌐 Hemisphere Scale 🌐🌐🌐 — 1 million nodes with cross-domain reactive updates. →](https://github.com/neurons-me/.me/blob/main/Typescript/tests/Demos/Hemisphere_1M.ts)** 
+𓊖 **[Smart City](https://neurons-me.github.io/.me/docs/Smart-Cities.html)**  
+A full city reacting in real time as interconnected nodes.
 
-**[ ⚡⚡⚡ Extreme Fan-Out ⚡⚡⚡ — One write instantly updates 100k dependents. ⌬◉⌬  →](https://github.com/neurons-me/.me/blob/main/Typescript/tests/Demos/Root_Fanout_100k.ts)**
+𓀠 **[Social Graph](https://github.com/neurons-me/.me/blob/main/Typescript/tests/Demos/Social_Graph.ts)**  
+Relationships, trust, identity, and network effects.
 
-**[ ⌬ ⊚ View all demos → ](https://github.com/neurons-me/.me/tree/main/Typescript/tests/Demos)** 
+𓉝 **[Running your Shops](https://github.com/neurons-me/.me/blob/main/Typescript/tests/Demos/ShopsExample.ts)**  
+Inventory, operations, and business state as a graph.
+
+𓋹 **Splitting your Bill**  
+Shared expenses and automatic settlement logic.
+
+𓇳 **[Hemisphere Scale](https://github.com/neurons-me/.me/blob/main/Typescript/tests/Demos/Hemisphere_1M.ts)**  
+1 million nodes with cross-domain reactive updates.
+
+𓂀 **[Extreme Fan-Out](https://github.com/neurons-me/.me/blob/main/Typescript/tests/Demos/Root_Fanout_100k.ts)**  
+One write instantly updates 100k dependents.
+
+**[ ⌬ ⊚ View all demos → ](https://github.com/neurons-me/.me/tree/main/Typescript/tests/Demos)**
 
 ---
 
