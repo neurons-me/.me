@@ -9,7 +9,7 @@
 
 Your *identity* unified in **one reactive graph.**
 
-<h4 align="center"><a href="https://neurons-me.github.io/.me/docs">⌬ Docs</a>  <a href="https://neurons-me.github.io/.me/docs/">⬡ Getting Started</a></h4>
+<h4 align="center"><a href="https://neurons-me.github.io/.me/docs">⌬ Docs</a> - <a href="https://neurons-me.github.io/.me/docs/"> ⬡ Getting Started</a></h4>
 
 ### Demos 𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃
 
@@ -28,8 +28,7 @@ Your *identity* unified in **one reactive graph.**
 𓂀 **[Extreme Fan-Out](https://neurons-me.github.io/.me/docs/Extreme-Fan-Out.html)** ⚡⚡⚡ ⟶ ⌬⌬⌬⌬ One write instantly updates 100k dependents.
 
 **[ ⌬ ⊚ View all demos → ](https://github.com/neurons-me/.me/tree/main/Typescript/tests/Demos)**
-
----
+𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃
 
 ### Syntax
 
