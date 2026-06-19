@@ -7,9 +7,7 @@ title: Robots That Understand Context
 
 ---
 
-<img src="./assets/robots.png" alt="Robots" width="72" align="right" style="margin-left:16px;margin-bottom:8px;" />
-
-# Robots That Understand Context
+# <img src="./assets/robots.png" alt="" width="48" style="vertical-align:middle;margin-right:10px;" />Robots That Understand Context
 
 This demo teaches one simple idea:
 > The same thing can mean different things depending on who is looking at it and where they are.

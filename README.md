@@ -25,23 +25,23 @@
 
 𓅓 **[Robots That Understand Context](https://neurons-me.github.io/.me/docs/Robots-That-Understand-Context.html)**  ⟐🤖 ⇄ ⇆ 🤖⟐ Same object, different meaning.
 
-𓊖 **[Smart City](https://neurons-me.github.io/.me/docs/Smart-Cities.html)** ∴ 🏙️ ◉ 📡  ⌬ A full city reacting in real time as interconnected nodes.
+**[Smart City](https://neurons-me.github.io/.me/docs/Smart-Cities.html)** ∴ 🏙️ ◉ 📡  ⌬ A full city reacting in real time as interconnected nodes.
 
-𓀠 **[Social Graph](https://neurons-me.github.io/.me/docs/Social-Graph.html)** ⟐👤 ⇄ 👥⌬ ∴ Relationships, trust, identity, and network effects.
+**[Social Graph](https://neurons-me.github.io/.me/docs/Social-Graph.html)** 𓀠𓀠 ⟐👤 ⇄ 👥 ⌬ ∴ 𓀠 Relationships, trust, identity, and network effects.
 
-𓉝 **[Running your CoffeeShops](https://neurons-me.github.io/.me/docs/Running-your-CoffeeShops.html)** 🏪 ⇄ 📈 Inventory, operations, and business state as a graph.
+**[Running your CoffeeShops](https://neurons-me.github.io/.me/docs/Running-your-CoffeeShops.html)** 🏪 ⇄ 📈 Inventory, operations, and business state as a graph.
 
-𓋹 **[Splitting your Bill](https://neurons-me.github.io/.me/docs/Splitting-your-Bill.html)** 💳 ⇄ 👥 ⌬ ⚖️ ∴ Shared expenses and automatic settlement logic.
+**[Splitting your Bill](https://neurons-me.github.io/.me/docs/Splitting-your-Bill.html)** 💳 ⇄ 👥 ⌬ ⚖️ ∴ Shared expenses and automatic settlement logic.
 
-𓇳 **[Hemisphere Scale](https://neurons-me.github.io/.me/docs/Hemisphere-Scale.html)** 🌐 ⇄ ⌬ 𓇳 ⌬ ⇄ 🌐  1 million nodes with cross-domain reactive updates.
+**[Hemisphere Scale](https://neurons-me.github.io/.me/docs/Hemisphere-Scale.html)** 🌐 ⇄ ⌬ 𓇳 ⌬ ⇄ 🌐  1 million nodes with cross-domain reactive updates.
 
-𓂀 **[Extreme Fan-Out](https://neurons-me.github.io/.me/docs/Extreme-Fan-Out.html)** ⚡⚡⚡ ⟶ ⌬⌬⌬⌬ One write instantly updates 100k dependents.
+**[Extreme Fan-Out](https://neurons-me.github.io/.me/docs/Extreme-Fan-Out.html)** ⚡⚡⚡ ⟶ ⌬⌬⌬⌬ One write instantly updates 100k dependents.
 
 **[ ⌬ ⊚ View all demos → ](https://github.com/neurons-me/.me/tree/main/Typescript/tests/Demos)**
 
 ---
 
-### Syntax
+### 𓂀 Syntax
 
 `.me` uses an infinite proxy — any path you write becomes a node in the graph.
 No schema. No migrations. No declarations upfront.
