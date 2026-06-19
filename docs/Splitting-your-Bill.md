@@ -148,3 +148,7 @@ payment recorded → total updates → per_person updates → all balances updat
 ```
 
 No settlement engine. No reconciliation job. The reactive graph settles automatically — because that's what derived values do.
+
+---
+
+[← Back to .me Docs](https://neurons-me.github.io/.me/docs/)

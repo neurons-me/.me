@@ -575,3 +575,6 @@ city facts + reactive derivations + explainable policies + structural privacy
 = semantic infrastructure
 
 That is what “Smart Cities As Reactive Semantic Trees” means.
+---
+
+[← Back to .me Docs](https://neurons-me.github.io/.me/docs/)

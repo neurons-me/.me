@@ -63,3 +63,7 @@ What **.me** unlocks is:
 Not through passwords, dashboards, cookie banners, or corporate **“trust us”** slogans — but **through architecture**. 
 Your identity is **derived**, meaning it only exists when **you** decide to bring it into existence. 
 [suiGn](https://suign.github.io/)
+
+---
+
+[← Back to .me Docs](https://neurons-me.github.io/.me/docs/)

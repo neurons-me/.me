@@ -128,3 +128,7 @@ Fan-out is not a pathological case. It is the natural shape of broadcast: one co
 ```text
 1 root mutation → k=100,000 → mutation time measured in milliseconds
 ```
+
+---
+
+[← Back to .me Docs](https://neurons-me.github.io/.me/docs/)

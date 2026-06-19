@@ -203,3 +203,7 @@ A social graph is not a table of people. It is a living system of meaning — wh
 ```text
 identity + relationships + policies + privacy = one graph
 ```
+
+---
+
+[← Back to .me Docs](https://neurons-me.github.io/.me/docs/)
