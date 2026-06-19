@@ -3,6 +3,10 @@ layout: readme
 title: Splitting your Bill
 ---
 
+[← Back to .me Docs](https://neurons-me.github.io/.me/docs/)
+
+---
+
 # Splitting your Bill
 
 This demo teaches one simple idea:

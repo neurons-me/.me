@@ -3,6 +3,10 @@ layout: readme
 title: .me
 ---
 
+[← Back to .me Docs](https://neurons-me.github.io/.me/docs/)
+
+---
+
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="https://res.cloudinary.com/dkwnxf6gm/image/upload/v1769890772/this.me.png" />
   <img src="https://res.cloudinary.com/dkwnxf6gm/image/upload/v1761149332/this.me-removebg-preview_2_j1eoiy.png" alt=".me Logo" width="144" />

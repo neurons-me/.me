@@ -3,6 +3,10 @@ layout: readme
 title: Social Graph
 ---
 
+[← Back to .me Docs](https://neurons-me.github.io/.me/docs/)
+
+---
+
 # Social Graph
 
 This demo teaches one simple idea:

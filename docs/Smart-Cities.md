@@ -3,6 +3,10 @@ layout: readme
 title: Smart Cities As Reactive Semantic Trees
 ---
 
+[← Back to .me Docs](https://neurons-me.github.io/.me/docs/)
+
+---
+
 # Smart Cities As Reactive Semantic Trees
 
 This demo shows a simple but powerful idea:
@@ -575,6 +579,7 @@ city facts + reactive derivations + explainable policies + structural privacy
 = semantic infrastructure
 
 That is what “Smart Cities As Reactive Semantic Trees” means.
+
 ---
 
 [← Back to .me Docs](https://neurons-me.github.io/.me/docs/)

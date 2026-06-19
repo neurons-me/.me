@@ -3,6 +3,10 @@ layout: readme
 title: Robots That Understand Context
 ---
 
+[← Back to .me Docs](https://neurons-me.github.io/.me/docs/)
+
+---
+
 # Robots That Understand Context
 
 This demo teaches one simple idea:

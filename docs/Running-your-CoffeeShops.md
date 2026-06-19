@@ -3,6 +3,10 @@ layout: readme
 title: Running your CoffeeShops
 ---
 
+[← Back to .me Docs](https://neurons-me.github.io/.me/docs/)
+
+---
+
 # Running your CoffeeShops
 
 This demo teaches one simple idea:

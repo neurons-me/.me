@@ -3,6 +3,10 @@ layout: readme
 title: Hemisphere Scale
 ---
 
+[← Back to .me Docs](https://neurons-me.github.io/.me/docs/)
+
+---
+
 # Hemisphere Scale
 
 This demo teaches one simple idea:

@@ -3,6 +3,10 @@ layout: readme
 title: O(k) Semantic Kernel Architecture
 ---
 
+[← Back to .me Docs](https://neurons-me.github.io/.me/docs/)
+
+---
+
 # O(k) Semantic Kernel Optimization
 
 ### Architecture:
@@ -26,6 +30,7 @@ title: O(k) Semantic Kernel Architecture
 This optimization allows a single change to propagate with a true *O(K)* workload. Since only the subset of affected nodes is involved, the system maintains minimal latency in typical use cases, while the `explain()` function ensures that even the most complex cascades remain safe and auditable at scale.
 
  The engine is no longer just logically correct, but also computationally efficient.
+
 ---
 
 [← Back to .me Docs](https://neurons-me.github.io/.me/docs/)
