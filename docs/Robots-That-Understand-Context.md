@@ -7,7 +7,7 @@ title: Robots That Understand Context
 
 ---
 
-![Robots That Understand Context](./assets/robots.png)
+<img src="./assets/robots.png" alt="Robots" width="72" align="right" style="margin-left:16px;margin-bottom:8px;" />
 
 # Robots That Understand Context
 
