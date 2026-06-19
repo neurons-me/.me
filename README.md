@@ -23,7 +23,7 @@
 
 ---
 
-𓅓 **[Robots That Understand Context](https://neurons-me.github.io/.me/docs/Robots-That-Understand-Context.html)**  ⟐🤖 ⇄ ⇆ 🤖⟐ Same object, different meaning.
+**[Robots That Understand Context](https://neurons-me.github.io/.me/docs/Robots-That-Understand-Context.html)**  ⟐🤖 ⇄ ⇆ 🤖⟐ Same object, different meaning.
 
 **[Smart City](https://neurons-me.github.io/.me/docs/Smart-Cities.html)** ∴ 🏙️ ◉ 📡  ⌬ A full city reacting in real time as interconnected nodes.
 
