@@ -29,7 +29,7 @@ Relationships, trust, identity, and network effects.
 
 Inventory, operations, and business state as a graph.
 
-𓋹 **Splitting your Bill** 💳 ⇄ 👥 ⌬ ⚖️ ∴ 
+𓋹 **[Splitting your Bill](https://neurons-me.github.io/.me/docs/Splitting-your-Bill.html)** 💳 ⇄ 👥 ⌬ ⚖️ ∴
 
 Shared expenses and automatic settlement logic.
 
