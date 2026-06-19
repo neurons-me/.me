@@ -1,4 +1,4 @@
-import ME from "../../src/me.js";
+import ME from "../../dist/index.js";
 
 const me = new ME();
 
