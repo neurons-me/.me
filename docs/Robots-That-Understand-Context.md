@@ -7,6 +7,8 @@ title: Robots That Understand Context
 
 ---
 
+![Robots That Understand Context](./assets/robots.png)
+
 # Robots That Understand Context
 
 This demo teaches one simple idea:
