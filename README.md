@@ -13,33 +13,19 @@ Your *identity* unified in **one reactive graph.**
 
 ### Demos 𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃
 
-𓅓 **[Robots That Understand Context](https://neurons-me.github.io/.me/docs/Robots-That-Understand-Context.html)**  ⟐🤖 ⇄ ⇆ 🤖⟐
+𓅓 **[Robots That Understand Context](https://neurons-me.github.io/.me/docs/Robots-That-Understand-Context.html)**  ⟐🤖 ⇄ ⇆ 🤖⟐ Same object, different meaning.
 
-Same object, different meaning.
+𓊖 **[Smart City](https://neurons-me.github.io/.me/docs/Smart-Cities.html)** ∴ 🏙️ ◉ 📡  ⌬ A full city reacting in real time as interconnected nodes.
 
-𓊖 **[Smart City](https://neurons-me.github.io/.me/docs/Smart-Cities.html)** ∴ 🏙️ ◉ 📡  ⌬
+𓀠 **[Social Graph](https://neurons-me.github.io/.me/docs/Social-Graph.html)** ⟐👤 ⇄ 👥⌬ ∴ Relationships, trust, identity, and network effects.
 
-A full city reacting in real time as interconnected nodes.
+𓉝 **[Running your CoffeeShops](https://neurons-me.github.io/.me/docs/Running-your-CoffeeShops.html)** 🏪 ⇄ 📈 Inventory, operations, and business state as a graph.
 
-𓀠 **[Social Graph](https://neurons-me.github.io/.me/docs/Social-Graph.html)** ⟐👤 ⇄ 👥⌬ ∴
+𓋹 **[Splitting your Bill](https://neurons-me.github.io/.me/docs/Splitting-your-Bill.html)** 💳 ⇄ 👥 ⌬ ⚖️ ∴ Shared expenses and automatic settlement logic.
 
-Relationships, trust, identity, and network effects.
+𓇳 **[Hemisphere Scale](https://neurons-me.github.io/.me/docs/Hemisphere-Scale.html)** 🌐 ⇄ ⌬ 𓇳 ⌬ ⇄ 🌐  1 million nodes with cross-domain reactive updates.
 
-𓉝 **[Running your CoffeeShops](https://neurons-me.github.io/.me/docs/Running-your-CoffeeShops.html)** 🏪 ⇄ 📈
-
-Inventory, operations, and business state as a graph.
-
-𓋹 **[Splitting your Bill](https://neurons-me.github.io/.me/docs/Splitting-your-Bill.html)** 💳 ⇄ 👥 ⌬ ⚖️ ∴
-
-Shared expenses and automatic settlement logic.
-
-𓇳 **[Hemisphere Scale](https://neurons-me.github.io/.me/docs/Hemisphere-Scale.html)** 🌐 ⇄ ⌬ 𓇳 ⌬ ⇄ 🌐 
-
-1 million nodes with cross-domain reactive updates.
-
-𓂀 **[Extreme Fan-Out](https://neurons-me.github.io/.me/docs/Extreme-Fan-Out.html)** ⚡⚡⚡ ⟶ ⌬⌬⌬⌬
-
-One write instantly updates 100k dependents.
+𓂀 **[Extreme Fan-Out](https://neurons-me.github.io/.me/docs/Extreme-Fan-Out.html)** ⚡⚡⚡ ⟶ ⌬⌬⌬⌬ One write instantly updates 100k dependents.
 
 **[ ⌬ ⊚ View all demos → ](https://github.com/neurons-me/.me/tree/main/Typescript/tests/Demos)**
 
