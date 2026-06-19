@@ -1,17 +1,27 @@
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="./docs/assets/me.png" />
-  <img src="./docs/assets/this.me.png" alt=".me Logo" width="144" />
-</picture>
 
 # .me
 
 **Own your knowledge.**
 
-Your *identity* unified in **one reactive graph.**
+<table border="0" cellspacing="0" cellpadding="0" style="border:none;">
+  <tr>
+    <td width="260" align="center" valign="middle">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="https://res.cloudinary.com/dkwnxf6gm/image/upload/v1760915741/this.me-removebg-preview_1_nrj6pe.png" />
+        <img src="./docs/assets/this.me.png" alt=".me as a coordinate" width="200" />
+      </picture>
+    </td>
+    <td valign="middle">
+      <h2>Hello, I am <code>.me</code></h2>
+      Your <b>identity</b> unified in <b>one reactive graph.</b><br>
+      <h5><a href="https://neurons-me.github.io/.me/docs" target="blank">⌬ Docs</a> -  <a href="https://neurons-me.github.io/.me/docs" target="blank">⬡ Getting Started</a></h5>
+    </td>
+  </tr>
+</table>
 
-<h4 align="center"><a href="https://neurons-me.github.io/.me/docs">⌬ Docs</a> - <a href="https://neurons-me.github.io/.me/docs/"> ⬡ Getting Started</a></h4>
+### Demos
 
-### Demos 𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃
+𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃
 
 𓅓 **[Robots That Understand Context](https://neurons-me.github.io/.me/docs/Robots-That-Understand-Context.html)**  ⟐🤖 ⇄ ⇆ 🤖⟐ Same object, different meaning.
 
@@ -28,7 +38,7 @@ Your *identity* unified in **one reactive graph.**
 𓂀 **[Extreme Fan-Out](https://neurons-me.github.io/.me/docs/Extreme-Fan-Out.html)** ⚡⚡⚡ ⟶ ⌬⌬⌬⌬ One write instantly updates 100k dependents.
 
 **[ ⌬ ⊚ View all demos → ](https://github.com/neurons-me/.me/tree/main/Typescript/tests/Demos)**
-𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃
+𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃𓂃
 
 ### Syntax
 
