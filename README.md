@@ -23,19 +23,19 @@
 
 ---
 
-**[Robots That Understand Context](https://neurons-me.github.io/.me/docs/Robots-That-Understand-Context.html)**  ⟐🤖 ⇄ ⇆ 🤖⟐ Same object, different meaning.
+**[⟐🤖 ⇄ ⇆ 🤖⟐ Robots That Understand Context](https://neurons-me.github.io/.me/docs/Robots-That-Understand-Context.html)**
 
-**[Smart City](https://neurons-me.github.io/.me/docs/Smart-Cities.html)** ∴ 🏙️ ◉ 📡  ⌬ A full city reacting in real time as interconnected nodes.
+**[∴ 🏙️ ◉ 📡 ⌬ Smart City](https://neurons-me.github.io/.me/docs/Smart-Cities.html)**
 
-**[Social Graph](https://neurons-me.github.io/.me/docs/Social-Graph.html)** 𓀠𓀠 ⟐👤 ⇄ 👥 ⌬ ∴ 𓀠 Relationships, trust, identity, and network effects.
+**[𓀠𓀠 ⟐👤 ⇄ 👥 ⌬ ∴ 𓀠 Social Graph](https://neurons-me.github.io/.me/docs/Social-Graph.html)**
 
-**[Running your CoffeeShops](https://neurons-me.github.io/.me/docs/Running-your-CoffeeShops.html)** 🏪 ⇄ 📈 Inventory, operations, and business state as a graph.
+**[🏪 ⇄ 📦 ⇄ 📈 CoffeeShops](https://neurons-me.github.io/.me/docs/Running-your-CoffeeShops.html)**
 
-**[Splitting your Bill](https://neurons-me.github.io/.me/docs/Splitting-your-Bill.html)** 💳 ⇄ 👥 ⌬ ⚖️ ∴ Shared expenses and automatic settlement logic.
+**[💳 ⇄ 👥 ⌬ ⚖️ ∴ Splitting your Bill](https://neurons-me.github.io/.me/docs/Splitting-your-Bill.html)**
 
-**[Hemisphere Scale](https://neurons-me.github.io/.me/docs/Hemisphere-Scale.html)** 🌐 ⇄ ⌬ 𓇳 ⌬ ⇄ 🌐  1 million nodes with cross-domain reactive updates.
+**[🌐 ⇄ ⌬ 𓇳 ⌬ ⇄ 🌐 Hemisphere Scale](https://neurons-me.github.io/.me/docs/Hemisphere-Scale.html)**
 
-**[Extreme Fan-Out](https://neurons-me.github.io/.me/docs/Extreme-Fan-Out.html)** ⚡⚡⚡ ⟶ ⌬⌬⌬⌬ One write instantly updates 100k dependents.
+**[⚡⚡⚡ ⟶ ⌬⌬⌬⌬ Extreme Fan-Out](https://neurons-me.github.io/.me/docs/Extreme-Fan-Out.html)**
 
 **[ ⌬ ⊚ View all demos → ](https://github.com/neurons-me/.me/tree/main/Typescript/tests/Demos)**
 
