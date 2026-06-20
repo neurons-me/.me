@@ -3,9 +3,6 @@ layout: readme
 title: Running your CoffeeShops
 ---
 
-[← Back to .me Docs](https://neurons-me.github.io/.me/docs/)
-
----
 
 # Running your CoffeeShops
 
@@ -175,5 +172,3 @@ public facts + private facts + derived policies = one reactive structure
 No separate systems for menus, pricing engines, and ops dashboards. One graph, different scopes, everything live.
 
 ---
-
-[← Back to .me Docs](https://neurons-me.github.io/.me/docs/)

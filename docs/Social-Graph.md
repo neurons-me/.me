@@ -3,9 +3,6 @@ layout: readme
 title: Social Graph
 ---
 
-[← Back to .me Docs](https://neurons-me.github.io/.me/docs/)
-
----
 
 # Social Graph
 
@@ -209,5 +206,3 @@ identity + relationships + policies + privacy = one graph
 ```
 
 ---
-
-[← Back to .me Docs](https://neurons-me.github.io/.me/docs/)

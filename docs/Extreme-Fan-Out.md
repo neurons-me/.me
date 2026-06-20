@@ -3,9 +3,6 @@ layout: readme
 title: Extreme Fan-Out
 ---
 
-[← Back to .me Docs](https://neurons-me.github.io/.me/docs/)
-
----
 
 # Extreme Fan-Out
 
@@ -134,5 +131,3 @@ Fan-out is not a pathological case. It is the natural shape of broadcast: one co
 ```
 
 ---
-
-[← Back to .me Docs](https://neurons-me.github.io/.me/docs/)

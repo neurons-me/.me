@@ -3,9 +3,6 @@ layout: readme
 title: .me
 ---
 
-[← Back to .me Docs](https://neurons-me.github.io/.me/docs/)
-
----
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="https://res.cloudinary.com/dkwnxf6gm/image/upload/v1769890772/this.me.png" />
@@ -69,5 +66,3 @@ Your identity is **derived**, meaning it only exists when **you** decide to brin
 [suiGn](https://suign.github.io/)
 
 ---
-
-[← Back to .me Docs](https://neurons-me.github.io/.me/docs/)

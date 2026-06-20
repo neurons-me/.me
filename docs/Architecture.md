@@ -3,9 +3,6 @@ layout: readme
 title: O(k) Semantic Kernel Architecture
 ---
 
-[← Back to .me Docs](https://neurons-me.github.io/.me/docs/)
-
----
 
 # O(k) Semantic Kernel Optimization
 
@@ -32,5 +29,3 @@ This optimization allows a single change to propagate with a true *O(K)* workloa
  The engine is no longer just logically correct, but also computationally efficient.
 
 ---
-
-[← Back to .me Docs](https://neurons-me.github.io/.me/docs/)

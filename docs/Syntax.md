@@ -3,9 +3,6 @@ layout: readme
 title: me:// URI Scheme — Grammar Specification
 ---
 
-[← Back to .me Docs](https://neurons-me.github.io/.me/docs/)
-
----
 
 # `me://` URI Scheme — Grammar Specification
 
@@ -181,5 +178,3 @@ This is not enforced by validation logic. It is enforced by the grammar itself. 
 **∴ suiGn / neurons.me — Draft v0.1**
 
 ---
-
-[← Back to .me Docs](https://neurons-me.github.io/.me/docs/)

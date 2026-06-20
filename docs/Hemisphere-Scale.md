@@ -3,9 +3,6 @@ layout: readme
 title: Hemisphere Scale
 ---
 
-[← Back to .me Docs](https://neurons-me.github.io/.me/docs/)
-
----
 
 # Hemisphere Scale
 
@@ -159,5 +156,3 @@ Scale is not the enemy. Unnecessary recomputation is.
 That is what O(k) means in practice.
 
 ---
-
-[← Back to .me Docs](https://neurons-me.github.io/.me/docs/)

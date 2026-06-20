@@ -3,9 +3,6 @@ layout: readme
 title: Robots That Understand Context
 ---
 
-[← Back to .me Docs](https://neurons-me.github.io/.me/docs/)
-
----
 
 # Robots That Understand Context
 
@@ -304,5 +301,3 @@ same object + different context + explainable policy = different behavior
 That is what "Robots That Understand Context" means.
 
 ---
-
-[← Back to .me Docs](https://neurons-me.github.io/.me/docs/)
