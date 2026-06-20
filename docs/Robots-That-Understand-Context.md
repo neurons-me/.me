@@ -35,6 +35,8 @@ me.contexts.hospital.sterileZone(true)
 
 Each path stores one small fact.
 
+<br clear="left" />
+
 ### Then you can connect facts:
 
 ```ts
