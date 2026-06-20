@@ -81,6 +81,9 @@ There are not four canisters. There is one canister with four interpretations.
 
 ## Step 1: Describe The Object
 
+<div style="display:flex;align-items:flex-start;gap:28px;margin-bottom:24px;">
+<div markdown="1">
+
 Start with the shared physical thing:
 
 ```ts
@@ -95,6 +98,10 @@ For dummies version:
 The canister is blue, light enough for many robots, fragile, and not sterile yet.
 
 Nothing smart has happened yet. We only gave the graph facts.
+
+</div>
+<img src="./assets/robots-describing-context.png" alt="Robot describing context" style="flex-shrink:0;height:180px;width:auto;" />
+</div>
 
 ---
 
