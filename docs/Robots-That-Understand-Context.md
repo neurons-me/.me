@@ -24,7 +24,7 @@ In an operating room, it may require precision handling.
 ## The Tiny Mental Model
 
 <div style="display:flex;align-items:flex-start;gap:28px;margin-bottom:24px;">
-<img src="./assets/robots-context.png" alt="Robot Context" width="300" style="flex-shrink:0;" />
+<img src="./assets/robots-context.png" alt="Robot Context" style="flex-shrink:0;height:180px;width:auto;" />
 <div markdown="1">
 
 Think of [`.me`](https://neurons-me.github.io/.me) as a living notebook made of paths.
