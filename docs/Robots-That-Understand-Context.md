@@ -35,7 +35,7 @@ me.contexts.hospital.sterileZone(true)
 
 Each path stores one small fact.
 
-Then you can connect facts:
+### Then you can connect facts:
 
 ```ts
 me.robots.nurse.target["->"]("objects.canister7")
