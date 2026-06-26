@@ -1,6 +1,6 @@
 ---
 layout: readme
-title: .me
+title: What is .me?
 ---
 
 
@@ -11,7 +11,7 @@ title: .me
 
 # .me  
 
-###### Minimal and Expressive.
+#### Minimal and Expressive.
 
 <table border="0" cellspacing="0" cellpadding="0" style="border:none;">
   <tr>
@@ -41,8 +41,8 @@ Resolve meaning
 The runtime of `.me` is written **in the same semantic model that it interprets**, making it a *self-describing* and *self-sustaining* identity system.  
 This property is known as **Self‑Semantic Runtime Invariance**.
 
-#### Why this matters
-- The language can describe itself using its own primitives.  
+#### **What this means**
+- The language can describe itself using its own [primitives](./Primitives.html).  
 - The runtime’s behavior is encoded in the same declarative structures users write.  
 - Every semantic operation becomes both:
   - a computation, and  
