@@ -51,17 +51,15 @@ This property is known as **Self‑Semantic Runtime Invariance**.
 
 ## **▵ The Philosophy**
 
-**\> Human owns meaning. Everything else asks.**
+**\> Humans owns meaning.**
 A semantic language for identity, built from recursive declarations and symbolic paths.
 **▵ meaning** / **⊙ identities** / **● universes.**
 With one primitive:
 
 > me
 
-What **.me** unlocks is: 
->**Ownership through derivation.** 
-
-Not through passwords, dashboards, cookie banners, or corporate **“trust us”** slogans — but **through architecture**. 
+What **.me** unlocks is:  **Ownership through derivation.** 
+Not through coorporate **“trust us”** slogans — but **through architecture**. 
 Your identity is **derived**, meaning it only exists when **you** decide to bring it into existence. 
 [suiGn](https://suign.github.io/)
 

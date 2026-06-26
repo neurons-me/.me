@@ -14,10 +14,11 @@
     <td valign="middle">
       <h2>Hello, I am <code>.me</code></h2>
       Your <b>identity</b> unified in <b>one reactive graph.</b><br>
-      <h5><a href="https://neurons-me.github.io/.me/docs" target="blank">⌬ Docs</a> -  <a href="https://neurons-me.github.io/.me/docs" target="blank">⬡ Getting Started</a></h5>
+      <h5><a href="https://neurons-me.github.io/.me/docs" target="blank">⌬ Docs</a>   <a href="https://neurons-me.github.io/.me/docs" target="blank">⬡ Getting Started</a></h5>
     </td>
   </tr>
 </table>
+
 
 ### Demos
 
@@ -33,7 +34,7 @@
 
 **[💳 ⇄ 👥 ⌬ ⚖️ ∴ Splitting your Bill](https://neurons-me.github.io/.me/docs/Splitting-your-Bill.html)** — Shared expenses with automatic settlement.
 
-**[🌐 ⇄ ⌬ 𓇳 ⌬ ⇄ 🌐 Hemisphere Scale](https://neurons-me.github.io/.me/docs/Hemisphere-Scale.html)** — 1 million sensors. One flips. Only 6 recompute. The other 999,994 untouched. That's O(k).
+**[🌐 ⇄ ⌬ 𓇳 ⌬ ⇄ 🌐 Hemisphere Scale](https://neurons-me.github.io/.me/docs/Hemisphere-Scale.html)** — 1 million sensors. One flips. Only 6 recompute. The other 999,994 untouched. That's [O(k)](https://neurons-me.github.io/.me/docs/Architecture.html).
 
 **[⚡⚡⚡ ⟶ ⌬⌬⌬⌬ Extreme Fan-Out](https://neurons-me.github.io/.me/docs/Extreme-Fan-Out.html)** — One write updates 100k dependents.
 
@@ -43,7 +44,7 @@
 
 ### 𓂀 Syntax
 
-`.me` uses an infinite proxy — any path you write becomes a node in the graph.
+`.me` uses an infinite proxy — any path you write becomes **a node in the graph.**
 No schema. No migrations. No declarations upfront.
 
 ```ts
