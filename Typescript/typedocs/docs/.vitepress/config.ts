@@ -39,7 +39,6 @@ export default defineConfig({
           { text: 'Algebra of Contexts', link: '/Algebra-of-Contexts' },
           { text: 'Operators & Logic', link: '/Operators' },
           { text: 'Syntax', link: '/Syntax' },
-          { text: 'Namespace Resolution Protocol', link: '/Namespace-Resolution-Protocol' },
           { text: 'Proxy Calls', link: '/Proxy-Calls' },
           { text: 'Runtime Surface', link: '/Runtime-Surface' },
           { text: 'Memory', link: '/Memory' },

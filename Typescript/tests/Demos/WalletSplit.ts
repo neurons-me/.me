@@ -1,6 +1,6 @@
 import ME from "../../dist/index.js";
 
-const me = new ME();
+const me = new ME() as any;
 
 // --- Identities ---
 me.users.jabellae.name("Jabellae");

@@ -6,7 +6,7 @@ title: The Primitives of .me
 
 # 𓂀 The Primitives of .me
 
-**.me** is a declarative language. Everything you can write in it is built from a small, irreducible set of symbols — its primitives. Where [Axioms](./Axioms.html) describe the invariants the kernel *guarantees*, primitives are the vocabulary itself: the atoms you actually type.
+**.me** is a declarative language. Everything you can write in it is built from a small, irreducible set of symbols — its primitives. Where [Axioms](./Axioms.html) describe the invariants the kernel guarantees, Primitives describe the vocabulary the kernel is built from: the symbols you actually write, what they do, and what they execute — the same inherent logic as `true`/`false`, `and`/`or`. Operators whose meaning is computable simply because of what they natively are.
 
 ## The Root Primitive
 
