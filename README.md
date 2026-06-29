@@ -8,12 +8,8 @@
     <td width="260" align="center" valign="middle">
       <picture>
         <source media="(prefers-color-scheme: dark)" srcset="https://res.cloudinary.com/dkwnxf6gm/image/upload/v1760915741/this.me-removebg-preview_1_nrj6pe.png" />
-        <img src="./docs/assets/this.me.png" alt=".me as a coordinate" width="200" />
+        <img id="me-identity-hash" src="./docs/assets/this.me.png" alt=".me as a coordinate" width="200" title="ID Hash" />
       </picture>
-      <div style="margin-top:8px; font-family:monospace; font-size:0.7rem; color:#888; word-break:break-all; line-height:1.5;">
-        identityHash<br>
-        <span id="me-identity-hash">…</span>
-      </div>
     </td>
     <td valign="middle">
       <h2>Hello, I am <input
@@ -44,7 +40,7 @@
     var out = document.getElementById('me-identity-hash');
     if (!input || !out || typeof keccak256 !== 'function') return;
     var seed = input.value || input.placeholder || '.me';
-    out.textContent = keccak256('this.me/identity:v1::' + seed);
+    out.title = 'ID Hash: ' + keccak256('this.me/identity:v1::' + seed);
   }
   updateMeIdentityHash();
 </script>
