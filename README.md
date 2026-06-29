@@ -11,6 +11,7 @@
         <img id="me-identity-img" src="./docs/assets/this.me.png" alt=".me as a coordinate" width="200" title="ID Hash" />
       </picture>
       <div id="me-identity-hash" title="ID Hash" style="margin-top:6px; font-family:monospace; font-size:0.65rem; color:#6b7280; opacity:0.75; letter-spacing:0.02em; cursor:default;">…</div>
+      <div id="me-identity-algo" title="this.me/identity:v1::&lt;seed&gt;" style="margin-top:2px; font-family:monospace; font-size:0.6rem; color:#4b5563; opacity:0.65; letter-spacing:0.03em; cursor:default;">keccak-256</div>
     </td>
     <td valign="middle">
       <h2>Hello, I am <input
