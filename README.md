@@ -11,7 +11,7 @@
         <img id="me-identity-img" src="./docs/assets/this.me.png" alt=".me as a coordinate" width="200" title="ID Hash" />
       </picture>
       <div id="me-identity-hash" title="ID Hash" style="margin-top:6px; font-family:monospace; font-size:0.65rem; color:#6b7280; opacity:0.75; letter-spacing:0.02em; cursor:default;">…</div>
-      <a href="https://github.com/neurons-me/.me/blob/8b78f2bc365425a7433724ac236c38d64c760cba/Typescript/src/me.ts#L131-L137" target="blank" title="identityHash = keccak256(&quot;this.me/identity:v1::&quot; + seed) — see the exact derivation" style="display:block; margin-top:2px; font-family:monospace; font-size:0.6rem; color:#58a6ff; letter-spacing:0.03em; text-decoration:underline;">keccak-256</a>
+      <a href="https://neurons-me.github.io/.me/docs/Seed.html" target="blank" title="identityHash = keccak256(&quot;this.me/identity:v1::&quot; + seed) — read the SEED doc" style="display:block; margin-top:2px; font-family:monospace; font-size:0.6rem; color:#58a6ff; letter-spacing:0.03em; text-decoration:underline;">keccak-256</a>
     </td>
     <td valign="middle">
       <h2>Hello, I am <input
