@@ -3,7 +3,7 @@ layout: readme
 title: SEED — .me
 ---
 
-# 𓆼 SEED
+# 𓇗 SEED
 
 The **seed** is the single root from which an entire `.me` identity grows. Everything cryptographic in the kernel — your public fingerprint, your secret branches, your compound identities — derives from this one value.
 
