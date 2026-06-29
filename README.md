@@ -14,12 +14,14 @@
     <td valign="middle">
       <h2>Hello, I am <input
         type="text"
-        value=".me"
+        placeholder=".me"
         aria-label="Type your own name"
         spellcheck="false"
         autocomplete="off"
-        oninput="this.style.width = (this.value.length || 1) + 'ch'"
-        style="font: inherit; font-weight: 700; font-family: monospace; color: inherit; background: transparent; border: none; border-bottom: 2px solid currentColor; outline: none; width: 3ch; padding: 0 2px;"
+        oninput="this.style.width = ((this.value.length || this.placeholder.length) + 1) + 'ch'"
+        onfocus="this.dataset.ph = this.dataset.ph || this.placeholder; this.placeholder = '';"
+        onblur="if (!this.value) this.placeholder = this.dataset.ph;"
+        style="font: inherit; font-weight: 700; font-family: monospace; color: inherit; background: transparent; border: none; border-bottom: 2px solid currentColor; outline: none; width: 4ch; padding: 0 2px;"
       ></h2>
       Your <b>identity</b> unified in <b>one reactive graph.</b><br>
       <h5><a href="https://neurons-me.github.io/.me/docs" target="blank">⌬ Docs</a>   <a href="https://neurons-me.github.io/.me/docs" target="blank">⬡ Getting Started</a></h5>
