@@ -10,17 +10,22 @@
         <source media="(prefers-color-scheme: dark)" srcset="https://res.cloudinary.com/dkwnxf6gm/image/upload/v1760915741/this.me-removebg-preview_1_nrj6pe.png" />
         <img src="./docs/assets/this.me.png" alt=".me as a coordinate" width="200" />
       </picture>
+      <div style="margin-top:8px; font-family:monospace; font-size:0.7rem; color:#888; word-break:break-all; line-height:1.5;">
+        identityHash<br>
+        <span id="me-identity-hash">…</span>
+      </div>
     </td>
     <td valign="middle">
       <h2>Hello, I am <input
+        id="me-seed-input"
         type="text"
         placeholder=".me"
         aria-label="Type your own name"
         spellcheck="false"
         autocomplete="off"
-        oninput="this.style.width = ((this.value.length || this.placeholder.length) + 1) + 'ch'"
-        onfocus="this.dataset.ph = this.dataset.ph || this.placeholder; this.placeholder = '';"
-        onblur="if (!this.value) this.placeholder = this.dataset.ph;"
+        oninput="this.style.width = ((this.value.length || this.placeholder.length) + 1) + 'ch'; updateMeIdentityHash();"
+        onfocus="this.dataset.ph = this.dataset.ph || this.placeholder; this.placeholder = ''; updateMeIdentityHash();"
+        onblur="if (!this.value) this.placeholder = this.dataset.ph; updateMeIdentityHash();"
         style="font: inherit; font-weight: 700; font-family: monospace; color: inherit; background: transparent; border: none; border-bottom: 2px solid currentColor; outline: none; width: 4ch; padding: 0 2px;"
       ></h2>
       Your <b>identity</b> unified in <b>one reactive graph.</b><br>
@@ -29,6 +34,20 @@
   </tr>
 </table>
 
+<script src="https://cdn.jsdelivr.net/npm/js-sha3@0.9.3/build/sha3.min.js"></script>
+<script>
+  // Mirrors me.ts: identityHash = keccak256("this.me/identity:v1::" + seed)
+  // seed here is the literal text typed (or ".me" by default) — public,
+  // deterministic, no secret involved. See me/Typescript/src/me.ts.
+  function updateMeIdentityHash() {
+    var input = document.getElementById('me-seed-input');
+    var out = document.getElementById('me-identity-hash');
+    if (!input || !out || typeof keccak256 !== 'function') return;
+    var seed = input.value || input.placeholder || '.me';
+    out.textContent = keccak256('this.me/identity:v1::' + seed);
+  }
+  updateMeIdentityHash();
+</script>
 
 ### Demos
 
