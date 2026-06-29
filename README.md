@@ -8,8 +8,9 @@
     <td width="260" align="center" valign="middle">
       <picture>
         <source media="(prefers-color-scheme: dark)" srcset="https://res.cloudinary.com/dkwnxf6gm/image/upload/v1760915741/this.me-removebg-preview_1_nrj6pe.png" />
-        <img id="me-identity-hash" src="./docs/assets/this.me.png" alt=".me as a coordinate" width="200" title="ID Hash" />
+        <img id="me-identity-img" src="./docs/assets/this.me.png" alt=".me as a coordinate" width="200" title="ID Hash" />
       </picture>
+      <div id="me-identity-hash" title="ID Hash" style="margin-top:6px; font-family:monospace; font-size:0.65rem; color:#6b7280; opacity:0.75; letter-spacing:0.02em; cursor:default;">…</div>
     </td>
     <td valign="middle">
       <h2>Hello, I am <input
@@ -37,10 +38,15 @@
   // deterministic, no secret involved. See me/Typescript/src/me.ts.
   function updateMeIdentityHash() {
     var input = document.getElementById('me-seed-input');
-    var out = document.getElementById('me-identity-hash');
-    if (!input || !out || typeof keccak256 !== 'function') return;
+    var img = document.getElementById('me-identity-img');
+    var label = document.getElementById('me-identity-hash');
+    if (!input || !img || !label || typeof keccak256 !== 'function') return;
     var seed = input.value || input.placeholder || '.me';
-    out.title = 'ID Hash: ' + keccak256('this.me/identity:v1::' + seed);
+    var hash = keccak256('this.me/identity:v1::' + seed);
+    var tooltip = 'ID Hash: ' + hash;
+    img.title = tooltip;
+    label.title = tooltip;
+    label.textContent = hash.slice(0, 8) + '…' + hash.slice(-6);
   }
   updateMeIdentityHash();
 </script>
