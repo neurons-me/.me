@@ -4,9 +4,12 @@ export default defineConfig({
   title: '.me',
   description: 'Documentation for .me',
   base: '/.me/Typescript/typedocs/',
-  outDir: '..',
+  outDir: '.',
   lang: 'en-US',
   ignoreDeadLinks: true,
+  // Source .md files and built .html output live side by side in this folder.
+  // Never let VitePress empty outDir — that would delete the .md source on every build.
+  vite: { build: { emptyOutDir: false } },
 
   head: [
     ['link', { rel: 'icon', href: 'https://res.cloudinary.com/dkwnxf6gm/image/upload/v1760915741/this.me-removebg-preview_1_nrj6pe.png' }],

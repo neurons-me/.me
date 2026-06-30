@@ -6,3 +6,5 @@ dist-types/
 .env*
 .DS_Store
 *.log
+typedocs/.vitepress/cache
+typedocs/.vitepress/dist
