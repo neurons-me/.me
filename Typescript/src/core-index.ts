@@ -71,9 +71,19 @@ export function resolveIndexPointerPath(
   maxHops = 8,
 ): { path: SemanticPath; raw: any } {
   let curPath = path;
+  // Tracks the path of every pointer edge already followed in this call, not
+  // every curPath value visited. A cycle is "the same edge asked to redirect
+  // twice" — detecting it here means a cycle fails closed inside a single
+  // bounded loop, regardless of cycle length or maxHops parity, instead of
+  // relying on curPath ever landing back on its exact starting value.
+  const visited = new Set<string>();
+
   for (let i = 0; i < maxHops; i++) {
     const exactRaw = getIndex(self, curPath);
     if (isPointer(exactRaw)) {
+      const pointerKey = curPath.join(".");
+      if (visited.has(pointerKey)) return { path: curPath, raw: undefined };
+      visited.add(pointerKey);
       curPath = exactRaw.__ptr.split(".").filter(Boolean);
       continue;
     }
@@ -83,6 +93,9 @@ export function resolveIndexPointerPath(
       const prefix = curPath.slice(0, prefixLen);
       const prefixRaw = getIndex(self, prefix);
       if (!isPointer(prefixRaw)) continue;
+      const prefixKey = prefix.join(".");
+      if (visited.has(prefixKey)) return { path: curPath, raw: undefined };
+      visited.add(prefixKey);
       const target = prefixRaw.__ptr.split(".").filter(Boolean);
       const suffix = curPath.slice(prefixLen);
       curPath = [...target, ...suffix];

@@ -61,30 +61,53 @@ test("a chain longer than the internal 8-hop budget still resolves — fuel is a
   assert.equal(me("long0.value"), 999);
 });
 
-test("known defect: 3-node pointer cycle overflows the call stack", () => {
+test("fixed: a 3-node cycle fails closed instead of overflowing the call stack", () => {
   const me = new ME();
   me.cyc3.a["->"]("cyc3.b");
   me.cyc3.b["->"]("cyc3.c");
   me.cyc3.c["->"]("cyc3.a");
 
-  // This is NOT desired behavior. It documents the current resolver gap
-  // until cycle detection is fixed — it is not a specification of how
-  // .me should behave.
-  //
-  // Why it happens: with maxHops=8 (even) and a 2-cycle, curPath lands
-  // back on the exact original path inside a single resolveIndexPointerPath
-  // call, so core.ts's readPath sees samePath===true and returns undefined
-  // without recursing (see "a 2-node cycle fails closed" above — that is a
-  // benign accident of parity, not a designed guarantee). With a 3-cycle,
-  // 8 hops never land back on the original path (8 mod 3 !== 0), so
-  // `if (!samePath) return self.readPath(resolved.path)` fires — and each
-  // recursive call rearms its own fresh 8-hop budget, with no cycle
-  // detection carried across recursive calls. The recursion does not
-  // terminate; the JS call stack does.
-  //
-  // TODO(pointer-resolver): once the resolver carries cycle detection
-  // across recursive self.readPath calls, replace this assertion with:
-  //   assert.doesNotThrow(() => me("cyc3.a.value"));
-  //   assert.equal(me("cyc3.a.value"), undefined);
-  assert.throws(() => me("cyc3.a.value"), RangeError);
+  // resolveIndexPointerPath (core-index.ts) now tracks a per-call `visited`
+  // set of the pointer edges it has already followed, keyed by the path
+  // that OWNS the pointer (not by curPath). Redirecting through the same
+  // edge a second time — which is exactly what a cycle does — is detected
+  // and stopped inside a single bounded loop, regardless of cycle length or
+  // maxHops parity. The old behavior only failed closed for even-length
+  // cycles by accident, because curPath happened to land back on the exact
+  // starting path within the 8-hop budget; odd-length cycles (e.g. 3) never
+  // landed back on the original path, so the outer recursion in core.ts's
+  // readPath kept re-arming a fresh budget with no shared cycle memory,
+  // and the JS call stack overflowed instead of the read failing closed.
+  assert.doesNotThrow(() => me("cyc3.a.value"));
+  assert.equal(me("cyc3.a.value"), undefined);
+});
+
+test("a 5-node and a 7-node cycle both fail closed (odd lengths were the failure case pre-fix)", () => {
+  const me5 = new ME();
+  me5.a["->"]("b");
+  me5.b["->"]("c");
+  me5.c["->"]("d");
+  me5.d["->"]("e");
+  me5.e["->"]("a");
+  assert.doesNotThrow(() => me5("a.value"));
+  assert.equal(me5("a.value"), undefined);
+
+  const me7 = new ME();
+  const nodes = ["a", "b", "c", "d", "e", "f", "g"];
+  for (let i = 0; i < nodes.length; i++) {
+    me7[nodes[i]]["->"](nodes[(i + 1) % nodes.length]);
+  }
+  assert.doesNotThrow(() => me7("a.value"));
+  assert.equal(me7("a.value"), undefined);
+});
+
+test("a tail leading into a cycle (x -> a -> b -> c -> a) fails closed without throwing", () => {
+  const me = new ME();
+  me.x["->"]("a");
+  me.a["->"]("b");
+  me.b["->"]("c");
+  me.c["->"]("a");
+
+  assert.doesNotThrow(() => me("x.value"));
+  assert.equal(me("x.value"), undefined);
 });

@@ -36,7 +36,7 @@ A pointer chain composes without you writing the composition yourself. `a -> b -
 | Self-pointer | `a -> a` is not identity — it fails closed |
 | 2-node cycle | `a -> b`, `b -> a` fails closed without throwing |
 | Fuel is local | Chains well over 8 hops still resolve |
-| **Known defect** | A 3-node cycle overflows the call stack |
+| Cycle detection | Cycles of any length fail closed — no stack overflow |
 
 ---
 
@@ -95,22 +95,26 @@ The resolver's internal hop budget (`maxHops` in `resolveIndexPointerPath`) is c
 
 ---
 
-## Known Defect: A 3-Node Cycle Overflows the Stack
+## Step 6: Cycles of any length fail closed
 
 ```ts
 me.cyc3.a["->"]("cyc3.b");
 me.cyc3.b["->"]("cyc3.c");
 me.cyc3.c["->"]("cyc3.a");
 
-me("cyc3.a.value")
-// RangeError: Maximum call stack size exceeded
+me("cyc3.a.value")   // undefined
 ```
 
-This is **not** desired behavior, and it is not implied by anything above it.
+Earlier, only even-length cycles reliably failed closed: with an 8-hop internal budget, the resolver happened to land back on the exact original path for a 2-node cycle — an accident of parity, not a designed guarantee. A 3-node cycle never landed back on the original path within one internal pass (8 mod 3 ≠ 0), so the resolver recursed externally instead, re-arming a fresh 8-hop budget on every recursive call with no memory of edges already followed — and the recursion didn't terminate on its own; the JavaScript call stack did.
 
-The 2-node cycle in Step 4 fails closed because, with an 8-hop internal budget (an even number), the resolver happens to land back on the exact original path — an accident of parity, not a designed guarantee. A 3-node cycle never lands back on the original path within one internal pass (8 mod 3 ≠ 0), so the resolver recurses externally instead, re-arming a fresh 8-hop budget on every recursive call, with no cycle detection carried across those calls. The recursion doesn't terminate on its own; the JavaScript call stack does.
+The resolver now tracks, within a single bounded pass, which pointer edges it has already followed. Redirecting through the same edge twice — which is exactly what any cycle does, regardless of its length — is detected and stopped immediately:
 
-This is tracked in the test suite as a known resolver gap, not a specification — see the `TODO(pointer-resolver)` comment in the contract test linked below for the exact assertion this page's example should make once cycle detection lands.
+```ts
+// 5-node and 7-node cycles fail closed the same way
+me("a.value")   // undefined, no throw, any cycle length
+```
+
+This holds for cycles reached directly and for a tail that leads into one (`x -> a -> b -> c -> a` reading `x.value`).
 
 ---
 
@@ -134,6 +138,6 @@ Source: [`tests/contracts/pointer-category.contract.test.mjs`](https://github.co
 
 ## The Big Idea
 
-A pointer chain isn't a special code path bolted onto single-hop pointers — the same suffix-preserving substitution just gets applied again for each edge. That's why composition, self-pointers, and short cycles all fall out of one mechanism instead of needing separate handling. It's also why the one case that mechanism doesn't yet handle safely — a cycle whose length doesn't happen to realign with the internal hop budget — is worth documenting precisely instead of leaving it to be rediscovered by accident.
+A pointer chain isn't a special code path bolted onto single-hop pointers — the same suffix-preserving substitution just gets applied again for each edge. That's why composition, self-pointers, and cycles of any length all fall out of one mechanism instead of needing separate handling: the resolver only needs to remember which edges it has already followed in the current pass, and a cycle is nothing more than an edge asked to redirect twice.
 
 ---
