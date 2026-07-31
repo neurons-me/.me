@@ -18,7 +18,7 @@ const me = Me("ana", "secret");
 
 `.me` is a local semantic kernel: deterministic identity, a callable semantic tree,
 encrypted private branches, reactive derivations, snapshots, and vector search in
-one offline runtime.
+one offline runtime. Your identity unified in one reactive graph.
 
 If everything else disappears, `.me` still computes.
 
