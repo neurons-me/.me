@@ -5,16 +5,12 @@ title: .me — Rust
 
 # .me · Rust 🦀
 
-> **Status: In development**
+> **Not ready yet.** The working implementation is in
+> [.me · Typescript](../Typescript/) — start there.
 
-The Rust implementation of `.me` is currently in development.
-
-## Install
-
-```bash
-cargo add this-me
-```
+Status: in development. `cargo add this-me` is the reserved package name for
+when this lands; there is no functional code here yet.
 
 ---
 
-→ Back to [.me](../)
+→ [.me · Typescript (working implementation)](../Typescript/) · [back to .me](../)

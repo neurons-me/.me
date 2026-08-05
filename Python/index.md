@@ -5,16 +5,12 @@ title: .me — Python
 
 # .me · Python 🐍
 
-> **Status: In development**
+> **Not ready yet.** The working implementation is in
+> [.me · Typescript](../Typescript/) — start there.
 
-The Python implementation of `.me` is currently in development.
-
-## Install
-
-```bash
-pip install this.me
-```
+Status: in development. `pip install this.me` is the reserved package name for
+when this lands; there is no functional code here yet.
 
 ---
 
-→ Back to [.me](../)
+→ [.me · Typescript (working implementation)](../Typescript/) · [back to .me](../)
