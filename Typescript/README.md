@@ -5,22 +5,7 @@
 
 # .me
 
-[![npm](https://img.shields.io/npm/v/this.me)](https://www.npmjs.com/package/this.me) [![docs](https://img.shields.io/badge/docs-neurons--me.github.io-blue)](https://neurons-me.github.io/.me/)
-
 **Own your knowledge.**
-
-```ts
-import Me from "this.me";
-
-const me = Me("ana", "secret");
-// seed = keccak256("me.seed/compound:v1::ana::secret")
-```
-
-`.me` is a local semantic kernel: deterministic identity, a callable semantic tree,
-encrypted private branches, reactive derivations, snapshots, and vector search in
-one offline runtime. Your identity unified in one reactive graph.
-
-If everything else disappears, `.me` still computes.
 
 ## Install
 
@@ -28,9 +13,94 @@ If everything else disappears, `.me` still computes.
 npm install this.me
 ```
 
-## Mental Model
+##### **Import**
 
-**.me** is the **sovereign claim engine**.
+```ts
+import Me from "this.me";
+let me = Me("ana", "secret"); //SEED derivation (keccak256)
+```
+
+**Free-form declaration:** `me.whatever.you.want("x")`.
+
+- **Containment order:** `q ≤ p ⟺ q is descendant of p` — meaning is by *position in your graph* (SpaceStructure).
+
+```
+me 
+├─ family.photos 
+├─ family.messages 
+├─ work.neurons_me 
+├─ work.github 
+├─ music.playlists 
+└─ ai.claude
+```
+
+## me.whatever(x) — The syntax
+
+#### **Pattern:** Subject-Verb-Object:
+
+`me` **(subject/agent)** -  `.whatever` **(verb/capability)** - `(what)` **(object/input).** 
+
+Dots build hierarchy, brackets select operator, parens execute.
+
+```js
+me.path.to.node(value) // writeme("path.to.node") // read
+me.profile.name("Abella")
+me.users.ana.age(22)
+me.friends.ana["->"] // pointer
+me.friends["[i]"]["="]("is_adult","age > 18") // broadcast derivation across all friends
+me("friends[age > 18].name") // filtered read — same syntax
+```
+
+**One line replaces five:** That `is_adult = age > 18` is migration + derivation + query + trigger + validation — in SQL stack you'd write 5 places and desync.
+
+**Language-agnostic:** `me.shop.items[1].price(100)` = `me.tienda.articulos[1].precio(100)` = `me.店舗.商品[1].価格(100)` — meaning from structure, not English words.
+
+Operators:
+
+- `@` identity, `_` secret scope (audience), `~` noise reset, `->` pointer, `=` derivation, `?` collect, `-` remove
+
+**Selectors:** `[2]`, `[i]` broadcast, `[fuel >=200]`, `[1..2]`, `[[1][3]]`, `[x=>x.fuel*0.5]` — formalized as `R*(p[φ],o)` in SpaceStructure. Same operator works for 4 robots or 100k dependents (`k=100000` in benchmarks).
+
+### [me.explain()](https://suign.github.io/Explain.html) — Why Did You Say That?
+
+**Problem:** Ask AI **"why did you say that?"** — it generates plausible narrative, not causal trace. No privileged access to its own computation. Same shape as invisible message + AI assuring "just anchor".
+
+What `explain()` actually is: Not generation. Lookup.
+
+```js
+explain("robots.surgeon.canProceed")→{  
+  path: "robots.surgeon.canProceed",  
+  value: true,  
+  expr: "canLift && softGripReady &&!needsHumanReview...", 
+    derivation: {    
+      inputs: [ {
+        label:"canLift", 
+        path:"robots.surgeon.canLift", 
+        value:true, 
+        origin:"public"},... ] },  
+         meta: { 
+               dependsOn:[...], 
+        				lastComputedAt, 
+        				recomputed:[...], 
+                sourcePath }}
+```
+
+Built on **Inverted Dependency Indexing** — reverse index source**→**dependents, so no scan.
+
+If not derived → `expr:null, derivation:null` — honestly reports absence, doesn't invent.
+
+If secret-scoped `_` → masked `"●●●●", origin:"stealth"` — same as in Smart Cities demo: `explain("security.alertLevel")` shows derivation without leaking `incidentsToday`.
+
+Structural difference:
+
+- **Self-report:** text after fact, sampled from distribution, unverifiable.
+- **`explain()`:** returns literal expression evaluated + literal inputs read. Recompute `expr(inputs)` → matches or not. Checkable.
+
+**Proof not docs:** `tests/Demos/Robots_Contexts.ts` asserts `dependsOn` contains real paths, checked in CI. Overhead measured: `benchmark.8.explain-overhead` — p95 0.0122ms → 0.0189ms with explain, +0.007ms.
+
+**And `prove()` next to it:** Ed25519 signed proof of expression vs root namespace — verifiable without trusting kernel.
+
+---
 
 You can ***say/postulate/testify*** basically anything:
 
@@ -51,7 +121,7 @@ But **.me** alone **is local.** It says:
 
 The namespace (ledger) is different. That layer says:
 
-> “This identity testified this claim into this namespace, and now there is a public or shared witness record.”
+> “This **identity** testified this claim, and now there is **a public or shared witness record**.”
 
 So the ledger does **not** make the claim true.
 
@@ -326,4 +396,11 @@ npm run bench
 
 ## License
 
-MIT — [github.com/neurons-me/.me](https://github.com/neurons-me/.me)
+**MIT** — [github.com/neurons-me/.me](https://github.com/neurons-me/.me)
+
+https://suign.github.io/
+https://suign.github.io/MeWhateverWhat.html
+https://suign.github.io/Explain.html
+https://suign.github.io/DigitalSpaceAlgebra.html
+
+
