@@ -51,73 +51,160 @@ npm run build
 
 ---
 
-### Demos
+## Demos
 
 ---
 
-**[⟐🤖 ⇄ ⇆ 🤖⟐ Robots That Understand Context](https://neurons-me.github.io/.me/docs/Robots-That-Understand-Context.html)** — Same object, different meaning.
+##### **[⟐🤖 ⇄ ⇆ 🤖⟐ Robots That Understand Context](https://neurons-me.github.io/.me/docs/Robots-That-Understand-Context.html)** — Same object, different meaning.
 
-**[∴ 🏙️ ◉ 📡 ⌬ Smart City](https://neurons-me.github.io/.me/docs/Smart-Cities.html)** — A city reacting as one connected graph.
+```bash
+node tests/Demos/Robots_Contexts.ts
+```
 
-**[𓀠𓀠 ⟐👤 ⇄ 👥 ⌬ ∴ 𓀠 Social Graph](https://neurons-me.github.io/.me/docs/Social-Graph.html)** — Identity, trust, and relationships.
+##### **[∴ 🏙️ ◉ 📡 ⌬ Smart City](https://neurons-me.github.io/.me/docs/Smart-Cities.html)** — A city reacting as one connected graph.
 
-**[🏪 ⇄ 📦 ⇄ 📈 CoffeeShops](https://neurons-me.github.io/.me/docs/Running-your-CoffeeShops.html)** — Inventory and operations as a graph.
+```bash
+node tests/Demos/Smart_City.ts
+```
 
-**[💳 ⇄ 👥 ⌬ ⚖️ ∴ Splitting your Bill](https://neurons-me.github.io/.me/docs/Splitting-your-Bill.html)** — Shared expenses with automatic settlement.
+##### **[𓀠 ⟐👤 ⇄ 👥 ⌬ ∴ 𓀠 Social Graph](https://neurons-me.github.io/.me/docs/Social-Graph.html)** — Identity, trust, and relationships.
 
-**[🌐 ⇄ ⌬ 𓇳 ⌬ ⇄ 🌐 Hemisphere Scale](https://neurons-me.github.io/.me/docs/Hemisphere-Scale.html)** — 1 million sensors. One flips. Only 6 recompute. The other 999,994 untouched. That's **[O(k)](https://neurons-me.github.io/.me/docs/Architecture.html).**
+```bash
+node tests/Demos/Social_Graph.ts
+```
 
-**[⚡⚡⚡ ⟶ ⌬⌬⌬⌬ Extreme Fan-Out](https://neurons-me.github.io/.me/docs/Extreme-Fan-Out.html)** — One write updates 100k dependents.
+##### **[🏪 ⇄ 📦 ⇄ 📈 CoffeeShops](https://neurons-me.github.io/.me/docs/Running-your-CoffeeShops.html)** — Inventory and operations as a graph.
 
-**[ ⌬ ⊚ View all demos → ](https://github.com/neurons-me/.me/tree/main/Typescript/tests/Demos)**
+```bash
+node tests/Demos/ShopsExample.ts
+```
+
+##### **[💳 ⇄ 👥 ⌬ ⚖️ ∴ Splitting your Bill](https://neurons-me.github.io/.me/docs/Splitting-your-Bill.html)** — Shared expenses with automatic settlement.
+
+```bash
+node tests/Demos/WalletSplit.ts
+```
+
+##### **[🌐 ⇄ ⌬ 𓇳 ⌬ ⇄ 🌐 Hemisphere Scale](https://neurons-me.github.io/.me/docs/Hemisphere-Scale.html)** — 1 million sensors. One flips. Only 6 recompute. The other 999,994 untouched. That's **[O(k)](https://neurons-me.github.io/.me/docs/Architecture.html).**
+
+```bash
+node tests/Demos/Hemisphere_1M.ts
+```
+
+##### **[⚡⚡⚡ ⟶ ⌬⌬⌬⌬ Extreme Fan-Out](https://neurons-me.github.io/.me/docs/Extreme-Fan-Out.html)** — One write updates 100k dependents.
+
+```bash
+node tests/Demos/Root_Fanout_100k.ts
+```
+
+##### **[ ⌬ ⊚ View all demos → ](https://github.com/neurons-me/.me/tree/main/Typescript/tests/Demos)**
 
 ---
 
-### 𓂀 Syntax
+# 𓂀 Syntax - me.whatever(what)
 
-`.me` uses an infinite proxy — any path you write becomes **a node in the graph.**
-No schema. No migrations. No declarations upfront.
+**Subject. Verb. Object**. It reads as a sentence because it is one.
+
+```ts
+import Me from "this.me"
+const me = new Me()
+
+me["@"]("abella") // you are Abella
+
+me.users.ana.name("Ana")
+me.users.ana.age(22)
+
+me.friends.ana["->"]("users.ana") // pointer
+
+// one graph declaration can replace:
+// migration, derivation, query, trigger, validation plumbing
+me.friends["[i]"]["="]("is_adult", "age >= 18")
+
+me("friends.ana.is_adult")  // -> true
+me("friends[age > 18].name") // ->  { ana: "Ana" }
+```
+
+`me` is the subject, `.whatever` is the verb (capability), `(what)` is the object.
+
+Any path you write becomes a node. **No schema. No migrations.** If it changes, everything that depends on it updates automatically.
+
+```ts
+me.users.ana.age(22)
+me.friends.ana["->"]("users.ana")
+me.friends["[i]"]["="]("is_adult", "age >= 18")
+me("friends.ana.is_adult")
+me("friends[age > 18].name")
+```
+
+You can actually see the graph language emerging.
+
+| Op         | What it does                    | Example                                      |
+| :--------- | :------------------------------ | :------------------------------------------- |
+| `->`       | Points to another path          | `me.card["->"]("inventory")`                 |
+| `=`        | Derived value                   | `me["="]("total", "price * 1.16")`           |
+| `_`        | Secret — structurally invisible | `me.wallet["_"]("vault")`                    |
+| `[i]`      | Broadcast to a family           | `me.robots["[i]"]["="]("canProceed", "...")` |
+| `[filter]` | Query                           | `me("trucks[fuel > 200].fuel")`              |
+
+Developers may *recognize the idea* more quickly written like this:
 
 ```ts
 me.city.population = 700_000
-me.city.name = "Veracruz"
-
-// derived — recomputes automatically
+me.city.area = 200
 me.city.density = () => me.city.population / me.city.area
-
-// context-aware
-me.robot.canProceed = () => me.robot.canLift && !me.robot.needsHumanReview
-
-// stealth — structurally invisible to outside observers  
-me.wallet["_"].balance = 1000
-
-// explain any value
-me.explain("city.density")
-// → { value: 3500, expression: "population / area", dependsOn: [...] }
-
-// query across the graph
-me.robots[r => r.canProceed === true].name
 ```
 
-Write anything. Chain anything. The kernel figures out the dependencies.
-**If it changes, everything that depends on it updates — automatically.**
+Same grammar, 4 robots or 100k nodes. `me.robots["[i]"]` in [Robots](https://neurons-me.github.io/Robots-Versi%C3%B3n-Humana.html) and `me.dep[100000]` in Fan-Out operate on the same [graph model.](https://neurons-me.github.io/Inverted-Dependency-Indexing-Beautiful-Viz.html)
 
-## **▵** Why .me?
+##### Language-agnostic: 
+
+> `me.shop.items[1].price(100)` = `me.tienda.articulos[1].precio(100)` = `me.店舗.商品[1].価格(100)` — **meaning is structure.**
+
+**Full spec**: `me --describe syntax` and [Syntax reference](https://l.meta.ai/?u=https%3A%2F%2Fneurons-me.github.io%2F.me%2Fdocs%2FSyntax.html&h=AUCes9hm8Hy9ASrh-f703eKCYi5KKvQq_geKj8ujXGr6G2xTwB5tgU8SxhI6Se4RkvfnfF9sRLT3KitIydF1u56GssbQ-Gr1x0T4wB2ObUkaVVyR5eBd0IqRtOOKQdNzwYDLVyFrD4sqWeMuPnuxsfnNb5C3bh4VLpgGpQ)
+
+## **▵** Why.me?
 
 1. **Structural Privacy** — Private data is structurally invisible (not just hidden by rules).
-2. **Full Explainability** — Every derived value can explain exactly how it was computed.
-3. **Subjective Reality** — Same graph, different views per agent.
+
+2. **Subjective Reality** — Same graph, different views per agent.
+
+3. **Full Explainability** — Every derived value can explain exactly how it was computed.
+
+   ## me.explain(Why Did You Say That?)
+
+   ***Ai*** can describe its reasoning, but that description is still generated by the same system being questioned.
+
+   `.me` returns the computation itself.
+
+   ```ts
+   me.explain("robots.surgeon.canProceed")
+   {
+     value: true,
+     expr: "canLift && softGripReady && !needsHumanReview",
+     dependsOn: [...]
+   }
+   ```
+
+   `explain()` returns the expression actually evaluated and the inputs that produced it.
+
+   If no derivation exists, it returns none. If an input is secret, the value stays masked.
+
+   **Self-report describes the computation.** **`me.explain()`** **exposes its record.**
+
+   And `me["!"].prove()` can cryptographically sign that state.
+
+   **Explainability without asking the system to explain itself.**
 
 > **Local compute makes memory an OS primitive.**  
 > Cloud makes it a service.
 
-Even with 100,000 nodes needing a simultaneous recompute, you're looking at about **62 microseconds per node** (6252ms / 100k) for the full propagation. That’s incredibly consistent.
-
-The same object can mean completely different things depending on context — and everything updates automatically when something changes. 
+In the [Extreme Fan-Out](https://neurons-me.github.io/.me/docs/Extreme-Fan-Out.html) benchmark, one write propagates to 100,000 dependents in 6252ms — about 62μs per dependent.
 
 ### Real Performance
 
 **.me** uses **true O(K) reactivity** — when a value changes, only its actual dependents update. *Not the whole graph.*
+
+More importantly, propagation cost follows K, not total graph size. In the [Hemisphere](https://neurons-me.github.io/.me/docs/Hemisphere-Scale.html) benchmark, a graph with 1,000,000 nodes changes one sensor and recomputes exactly 6 dependents in 0.256ms.
 
 - 1 million nodes in memory
 - 1 sensor changed → exactly **6 dependent nodes** recomputed
