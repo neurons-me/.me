@@ -156,7 +156,7 @@ Same grammar, 4 robots or 100k nodes. `me.robots["[i]"]` in [Robots](https://neu
 
 > `me.shop.items[1].price(100)` = `me.tienda.articulos[1].precio(100)` = `me.店舗.商品[1].価格(100)` — **meaning is structure.**
 
-**Full spec**: `me --describe syntax` and [Syntax reference](https://l.meta.ai/?u=https%3A%2F%2Fneurons-me.github.io%2F.me%2Fdocs%2FSyntax.html&h=AUCes9hm8Hy9ASrh-f703eKCYi5KKvQq_geKj8ujXGr6G2xTwB5tgU8SxhI6Se4RkvfnfF9sRLT3KitIydF1u56GssbQ-Gr1x0T4wB2ObUkaVVyR5eBd0IqRtOOKQdNzwYDLVyFrD4sqWeMuPnuxsfnNb5C3bh4VLpgGpQ)
+**Full spec**: `me --describe syntax` and [Syntax reference](https://neurons-me.github.io/.me/docs/Syntax.html)
 
 ## **▵** Why.me?
 

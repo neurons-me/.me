@@ -4,8 +4,7 @@
 </picture>
 
 # .me
-
-**Own your knowledge.**
+##### Minimal and Expressive.
 
 ## Install
 
@@ -22,7 +21,7 @@ let me = Me("ana", "secret"); //SEED derivation (keccak256)
 
 **Free-form declaration:** `me.whatever.you.want("x")`.
 
-- **Containment order:** `q ≤ p ⟺ q is descendant of p` — meaning is by *position in your graph* (SpaceStructure).
+- **Containment order:** `q ≤ p ⟺ q is descendant of p` — meaning is by *position in your graph* ([SpaceStructure](https://suign.github.io/SpaceStructure.html#base-structure), [formula](https://suign.github.io/Equations.html#space-structure)).
 
 ```
 me 
@@ -33,72 +32,6 @@ me
 ├─ music.playlists 
 └─ ai.claude
 ```
-
-## me.whatever(x) — The syntax
-
-#### **Pattern:** Subject-Verb-Object:
-
-`me` **(subject/agent)** -  `.whatever` **(verb/capability)** - `(what)` **(object/input).** 
-
-Dots build hierarchy, brackets select operator, parens execute.
-
-```js
-me.path.to.node(value) // writeme("path.to.node") // read
-me.profile.name("Abella")
-me.users.ana.age(22)
-me.friends.ana["->"] // pointer
-me.friends["[i]"]["="]("is_adult","age > 18") // broadcast derivation across all friends
-me("friends[age > 18].name") // filtered read — same syntax
-```
-
-**One line replaces five:** That `is_adult = age > 18` is migration + derivation + query + trigger + validation — in SQL stack you'd write 5 places and desync.
-
-**Language-agnostic:** `me.shop.items[1].price(100)` = `me.tienda.articulos[1].precio(100)` = `me.店舗.商品[1].価格(100)` — meaning from structure, not English words.
-
-Operators:
-
-- `@` identity, `_` secret scope (audience), `~` noise reset, `->` pointer, `=` derivation, `?` collect, `-` remove
-
-**Selectors:** `[2]`, `[i]` broadcast, `[fuel >=200]`, `[1..2]`, `[[1][3]]`, `[x=>x.fuel*0.5]` — formalized as `R*(p[φ],o)` in SpaceStructure. Same operator works for 4 robots or 100k dependents (`k=100000` in benchmarks).
-
-### [me.explain()](https://suign.github.io/Explain.html) — Why Did You Say That?
-
-**Problem:** Ask AI **"why did you say that?"** — it generates plausible narrative, not causal trace. No privileged access to its own computation. Same shape as invisible message + AI assuring "just anchor".
-
-What `explain()` actually is: Not generation. Lookup.
-
-```js
-explain("robots.surgeon.canProceed")→{  
-  path: "robots.surgeon.canProceed",  
-  value: true,  
-  expr: "canLift && softGripReady &&!needsHumanReview...", 
-    derivation: {    
-      inputs: [ {
-        label:"canLift", 
-        path:"robots.surgeon.canLift", 
-        value:true, 
-        origin:"public"},... ] },  
-         meta: { 
-               dependsOn:[...], 
-        				lastComputedAt, 
-        				recomputed:[...], 
-                sourcePath }}
-```
-
-Built on **Inverted Dependency Indexing** — reverse index source**→**dependents, so no scan.
-
-If not derived → `expr:null, derivation:null` — honestly reports absence, doesn't invent.
-
-If secret-scoped `_` → masked `"●●●●", origin:"stealth"` — same as in Smart Cities demo: `explain("security.alertLevel")` shows derivation without leaking `incidentsToday`.
-
-Structural difference:
-
-- **Self-report:** text after fact, sampled from distribution, unverifiable.
-- **`explain()`:** returns literal expression evaluated + literal inputs read. Recompute `expr(inputs)` → matches or not. Checkable.
-
-**Proof not docs:** `tests/Demos/Robots_Contexts.ts` asserts `dependsOn` contains real paths, checked in CI. Overhead measured: `benchmark.8.explain-overhead` — p95 0.0122ms → 0.0189ms with explain, +0.007ms.
-
-**And `prove()` next to it:** Ed25519 signed proof of expression vs root namespace — verifiable without trusting kernel.
 
 ---
 
@@ -113,19 +46,19 @@ me.secret["_"]("key")
 me.secret.note("Only this audience can read it")
 ```
 
-That is unlimited in form because **.me** is semantic algebra. It does not begin by asking permission. It lets an identity produce structured claims, private branches, derivations, links, proofs, memories.
+That is unlimited in form because **.me** is [semantic algebra](https://suign.github.io/DigitalSpaceAlgebra.html). It does not begin by asking permission. It lets an identity produce structured claims, private branches, derivations, links, proofs, memories.
 
 But **.me** alone **is local.** It says:
 
 > “This identity, from this seed, computes this universe.”
 
-The namespace (ledger) is different. That layer says:
+The [namespace (ledger)](https://neurons-me.github.io/NRP/) is different. That layer says:
 
 > “This **identity** testified this claim, and now there is **a public or shared witness record**.”
 
 So the ledger does **not** make the claim true.
 
- It makes the claim **attested**.
+ It makes the claim **[attested](https://suign.github.io/trust.me.html)**.
 
 ```ts
 import Me from "this.me";
@@ -158,6 +91,8 @@ identityHash = keccak256("this.me/identity:v1::" + seed)
 
 Same `(who, secret)` means same identity hash everywhere. The seed is derived
 locally and is never transmitted by the kernel.
+
+→ [Seed, formalized](https://neurons-me.github.io/.me/docs/Seed.html) · [SEED → Monad](https://neurons-me.github.io/SEED-Monad-Minimal.html) · [The Ontology of Identity](https://suign.github.io/OntologyOfIdentity.html) — self-validation, cryptography as gravity · [whois.me](https://suign.github.io/sui-Gn.html)
 
 You can also create a kernel from an explicit seed:
 
@@ -208,6 +143,8 @@ console.log(me("friends.ana.name"));    // "Ana"
 Broadcast derivations materialize on the concrete collection they are attached
 to. Links are for structural reads and single-source-of-truth relationships.
 
+→ [The Semantic Graph Engine](https://suign.github.io/SemanticGraphEngine.html) — schema as a node, not a table · [me.whatever(what)](https://suign.github.io/MeWhateverWhat.html) — the syntax, formalized
+
 ## Privacy Model
 
 ```ts
@@ -229,6 +166,8 @@ Encrypted branches keep descendants out of the public semantic index. Observers
 can see that a secret scope exists, but leaf names and values under that scope
 are stored as encrypted branch chunks.
 
+→ [The Algebra of Encrypted Audiences](https://suign.github.io/EncryptedAudiences.html) — the `_` operator, formalized · [The Encrypted Island](https://suign.github.io/EncryptedIsland.html) · [T ⊥ A — infographic](https://suign.github.io/Perp-Infographic.html) · [Robots × Encrypted Audiences — infographic](https://neurons-me.github.io/Robots-%C3%97-Encrypted-Audiences-Infographic.html)
+
 ## Reactivity
 
 ```ts
@@ -248,6 +187,8 @@ console.log(me("order.total")); // 1000
 **Reactivity is dependency-indexed:** when a value changes, only derivations that
 actually depend on that value are marked and recomputed. The runtime supports
 eager and lazy recomputation through `me.setRecomputeMode("eager" | "lazy")`.
+
+→ [Inverted Dependency Indexing](https://suign.github.io/InvertedIndex.html) · [What is O(k)?](https://suign.github.io/WhatIsOK.html) — real benchmark numbers · [cost(mutation) = O(k) — infographic](https://suign.github.io/Inverted-Dependency-Indexing-Infographic.html) · [neurons-me's own viz](https://neurons-me.github.io/Inverted-Dependency-Indexing-Beautiful-Viz.html)
 
 ## Search
 
@@ -302,6 +243,8 @@ console.log(trace.meta.dependsOn);     // ["order.price", "order.quantity"]
 
 `explain(path)` returns a structured trace: the expression, resolved inputs, origin metadata, recompute wave data, and masked values for secret inputs.
 
+→ [me.explain() — Why Did You Say That?](https://suign.github.io/Explain.html) · [visual landing](https://suign.github.io/me-Explain-Minimal-Landing.html) · [neurons-me's own copy](https://neurons-me.github.io/me.explain.why.did.you.say.that.html)
+
 ## Snapshots And Replay
 
 ```ts
@@ -336,6 +279,8 @@ monad.ai   -> daemon. Exposes the namespace over HTTP and mesh surfaces.
 When `cleaker` opens a namespace, it returns memories to the caller. Those
 memories can be replayed into `.me` via `me.learn(memory)`.
 
+→ [NRP — Namespace Resolution Protocol](https://neurons-me.github.io/NRP/) · [status](https://neurons-me.github.io/NRP/status.html) · [Decentralized Identity](https://suign.github.io/DecentralizedIdentity.html) — issuer vs. reader as two different questions · [Centralize the Self, Distribute the Data](https://suign.github.io/CentralizeTheSelf.html)
+
 ## Cryptographic Set-Chemistry
 
 Multiple parties can derive a shared namespace without a server:
@@ -358,6 +303,8 @@ Properties:
 - `frank + ana + luna` derives a different compound than `frank + ana`.
 - Remove any party and the namespace is no longer derivable.
 - No server. No registry. The namespace exists only where the exact seed set is present.
+
+→ [Cryptographic Set-Chemistry on Audiences](https://suign.github.io/SetChemistry.html) — the formal version of this exact construction · [The Algebra of Encrypted Audiences](https://suign.github.io/EncryptedAudiences.html)
 
 ## Verified Locally
 
@@ -394,13 +341,29 @@ Run benchmark details with:
 npm run bench
 ```
 
+→ [What is O(k)?](https://suign.github.io/WhatIsOK.html) — the same kind of numbers, sourced and verified · [cost(mutation) = O(k) — infographic](https://suign.github.io/Inverted-Dependency-Indexing-Infographic.html)
+
 ## License
 
 **MIT** — [github.com/neurons-me/.me](https://github.com/neurons-me/.me)
 
-https://suign.github.io/
-https://suign.github.io/MeWhateverWhat.html
-https://suign.github.io/Explain.html
-https://suign.github.io/DigitalSpaceAlgebra.html
+---
 
+### Knowledge Graph
+
+**Concepts** — [suign.github.io](https://suign.github.io/)
+
+[whois.me](https://suign.github.io/sui-Gn.html) · [The Equations](https://suign.github.io/Equations.html) — every formula on this site, glossaried · [Digital Space Algebra](https://suign.github.io/DigitalSpaceAlgebra.html) — index · [SpaceStructure](https://suign.github.io/SpaceStructure.html) · [Encrypted Audiences](https://suign.github.io/EncryptedAudiences.html) · [Cryptographic Set-Chemistry](https://suign.github.io/SetChemistry.html) · [Encrypted Island](https://suign.github.io/EncryptedIsland.html) · [Inverted Dependency Indexing](https://suign.github.io/InvertedIndex.html) · [What is O(k)?](https://suign.github.io/WhatIsOK.html) · [The Semantic Graph Engine](https://suign.github.io/SemanticGraphEngine.html) · [The Ontology of Identity](https://suign.github.io/OntologyOfIdentity.html) · [Decentralized Identity](https://suign.github.io/DecentralizedIdentity.html) · [Centralize the Self, Distribute the Data](https://suign.github.io/CentralizeTheSelf.html) · [me.whatever(what)](https://suign.github.io/MeWhateverWhat.html)
+
+**Infographics**
+
+[The Equations — visual edition](https://suign.github.io/Equations-Visual-Infographics-Edition.html) · [T ⊥ A](https://suign.github.io/Perp-Infographic.html) · [cost(mutation) = O(k)](https://suign.github.io/Inverted-Dependency-Indexing-Infographic.html) · [n=1 ⟹ f≤0](https://suign.github.io/Zero-Byzantine-Faults-Infographic.html) · [me.explain() — minimal landing](https://suign.github.io/me-Explain-Minimal-Landing.html) · [Inverted Dependency Indexing, neurons-me's own viz](https://neurons-me.github.io/Inverted-Dependency-Indexing-Beautiful-Viz.html) · [Robots × Encrypted Audiences](https://neurons-me.github.io/Robots-%C3%97-Encrypted-Audiences-Infographic.html)
+
+**Docs & protocol** — [neurons-me.github.io](https://neurons-me.github.io/)
+
+[NRP — Namespace Resolution Protocol](https://neurons-me.github.io/NRP/) · [Glossary](https://neurons-me.github.io/Glossary.html) · [SEED → Monad](https://neurons-me.github.io/SEED-Monad-Minimal.html) · [Seed](https://neurons-me.github.io/.me/docs/Seed.html) · [Syntax](https://neurons-me.github.io/.me/docs/Syntax.html) · [Architecture](https://neurons-me.github.io/.me/docs/Architecture.html) · [One Line That Replaces Five](https://neurons-me.github.io/.me/docs/One-Line-That-Replaces-Five.html) · [Full TypeDocs](https://neurons-me.github.io/.me/Typescript/typedocs/)
+
+**Notes**
+
+[me.explain() — Why Did You Say That?](https://suign.github.io/Explain.html) · [trust.me](https://suign.github.io/trust.me.html) · [byzantine-prompt](https://suign.github.io/byzantine-prompt.html)
 
