@@ -26,11 +26,14 @@
         onblur="if (!this.value) this.placeholder = this.dataset.ph; updateMeIdentityHash();"
         style="font: inherit; font-weight: 700; font-family: monospace; color: inherit; background: transparent; border: none; border-bottom: 2px solid currentColor; outline: none; width: 4ch; padding: 0 2px;"
       ></h2>
-      Your <b>identity</b> unified in <b>one reactive graph.</b><br>
+      <p>
+        A Cryptographic Identity.
+      </p>
       <h5><a href="https://neurons-me.github.io/.me/docs" target="blank">⌬ Docs</a>   <a href="https://neurons-me.github.io/.me/docs" target="blank">⬡ Getting Started</a></h5>
     </td>
   </tr>
 </table>
+
 
 <script src="https://cdn.jsdelivr.net/npm/js-sha3@0.9.3/build/sha3.min.js"></script>
 <script>
@@ -51,6 +54,28 @@
   }
   updateMeIdentityHash();
 </script>
+
+## Getting Started
+`.me` runs entirely local and turns every path you write into a node in an encrypted, reactive graph.
+
+```bash
+git clone https://github.com/neurons-me/.me.git
+cd .me
+```
+
+##### Choose
+
+🔷 [Typescript](https://neurons-me.github.io/.me/Typescript/)
+
+```bash
+cd Typescript
+npm install
+npm run build
+```
+
+🦀 [Rust](https://neurons-me.github.io/.me/Rust/) — 🐍 [Python](https://neurons-me.github.io/.me/Python/) — Not Available Yet.
+
+---
 
 ### Demos
 
