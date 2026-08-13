@@ -3,6 +3,7 @@
 
 **Own your knowledge.**
 
+<div class="static-hero">
 <table border="0" cellspacing="0" cellpadding="0" style="border:none;">
   <tr>
     <td width="260" align="center" valign="middle">
@@ -21,13 +22,15 @@
       </h6>
       </p>
       <h3><a href="https://neurons-me.github.io/.me/docs" target="blank">⌬ Docs</a>   </h3>
-      <p style="font-family:monospace; font-size:0.7rem; color:#8b949e;">→ type your own name and watch the hash update live at <a href="https://neurons-me.github.io/.me/">neurons-me.github.io/.me</a></p>
+      <p style="font-family:monospace; font-size:0.7rem; color:#8b949e;">→ Watch the hash: <a href="https://neurons-me.github.io/.me/">neurons-me.github.io/.me</a></p>
     </td>
   </tr>
 </table>
+</div>
+
 
 ## Getting Started
-`.me` runs entirely local and turns every path you write into a node in an encrypted, reactive graph.
+`.me` runs entirely local.
 
 ```bash
 git clone https://github.com/neurons-me/.me.git
@@ -36,7 +39,7 @@ cd .me
 
 ##### Choose
 
-🔷 [Typescript](https://neurons-me.github.io/.me/Typescript/)
+**🔷 [Typescript](https://neurons-me.github.io/.me/Typescript/)**
 
 ```bash
 cd Typescript
@@ -62,7 +65,7 @@ npm run build
 
 **[💳 ⇄ 👥 ⌬ ⚖️ ∴ Splitting your Bill](https://neurons-me.github.io/.me/docs/Splitting-your-Bill.html)** — Shared expenses with automatic settlement.
 
-**[🌐 ⇄ ⌬ 𓇳 ⌬ ⇄ 🌐 Hemisphere Scale](https://neurons-me.github.io/.me/docs/Hemisphere-Scale.html)** — 1 million sensors. One flips. Only 6 recompute. The other 999,994 untouched. That's [O(k)](https://neurons-me.github.io/.me/docs/Architecture.html).
+**[🌐 ⇄ ⌬ 𓇳 ⌬ ⇄ 🌐 Hemisphere Scale](https://neurons-me.github.io/.me/docs/Hemisphere-Scale.html)** — 1 million sensors. One flips. Only 6 recompute. The other 999,994 untouched. That's **[O(k)](https://neurons-me.github.io/.me/docs/Architecture.html).**
 
 **[⚡⚡⚡ ⟶ ⌬⌬⌬⌬ Extreme Fan-Out](https://neurons-me.github.io/.me/docs/Extreme-Fan-Out.html)** — One write updates 100k dependents.
 

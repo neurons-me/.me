@@ -4,7 +4,13 @@
   Deliberately NOT part of README.md — GitHub and npm sanitize <script> tags
   and inline on* handlers out of rendered markdown, so this would be dead
   weight (or visibly ugly raw HTML) anywhere README.md is shown directly.
+
+  README.md (included right below by index.md) carries its own static
+  version of this same hero, wrapped in <div class="static-hero"> — that
+  copy is what GitHub/npm show. This page already has the live one above,
+  so hide the static duplicate here without touching README.md itself.
 -->
+<style>.static-hero { display: none; }</style>
 <table border="0" cellspacing="0" cellpadding="0" style="border:none;">
   <tr>
     <td width="260" align="center" valign="middle">
