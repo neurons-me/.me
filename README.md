@@ -27,33 +27,15 @@
         style="font: inherit; font-weight: 700; font-family: monospace; color: inherit; background: transparent; border: none; border-bottom: 2px solid currentColor; outline: none; width: 4ch; padding: 0 2px;"
       ></h2>
       <p>
-        A Cryptographic Identity.
+        <h6>
+          A Cryptographic Identity.
+      </h6>
       </p>
-      <h5><a href="https://neurons-me.github.io/.me/docs" target="blank">⌬ Docs</a>   <a href="https://neurons-me.github.io/.me/docs" target="blank">⬡ Getting Started</a></h5>
+      <h3><a href="https://neurons-me.github.io/.me/docs" target="blank">⌬ Docs</a>   </h3>
     </td>
   </tr>
 </table>
 
-
-<script src="https://cdn.jsdelivr.net/npm/js-sha3@0.9.3/build/sha3.min.js"></script>
-<script>
-  // Mirrors me.ts: identityHash = keccak256("this.me/identity:v1::" + seed)
-  // seed here is the literal text typed (or ".me" by default) — public,
-  // deterministic, no secret involved. See me/Typescript/src/me.ts.
-  function updateMeIdentityHash() {
-    var input = document.getElementById('me-seed-input');
-    var img = document.getElementById('me-identity-img');
-    var label = document.getElementById('me-identity-hash');
-    if (!input || !img || !label || typeof keccak256 !== 'function') return;
-    var seed = input.value || input.placeholder || '.me';
-    var hash = keccak256('this.me/identity:v1::' + seed);
-    var tooltip = 'ID Hash: ' + hash;
-    img.title = tooltip;
-    label.title = tooltip;
-    label.textContent = hash.slice(0, 8) + '…' + hash.slice(-6);
-  }
-  updateMeIdentityHash();
-</script>
 
 ## Getting Started
 `.me` runs entirely local and turns every path you write into a node in an encrypted, reactive graph.
