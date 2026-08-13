@@ -1,0 +1,59 @@
+<!--
+  Interactive hero: live keccak-256 identity hash demo.
+  Included ONLY by index.md for the Jekyll-built neurons-me.github.io/.me/ site.
+  Deliberately NOT part of README.md — GitHub and npm sanitize <script> tags
+  and inline on* handlers out of rendered markdown, so this would be dead
+  weight (or visibly ugly raw HTML) anywhere README.md is shown directly.
+-->
+<table border="0" cellspacing="0" cellpadding="0" style="border:none;">
+  <tr>
+    <td width="260" align="center" valign="middle">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="https://res.cloudinary.com/dkwnxf6gm/image/upload/v1760915741/this.me-removebg-preview_1_nrj6pe.png" />
+        <img id="me-identity-img" src="./docs/assets/this.me.png" alt=".me as a coordinate" width="200" title="ID Hash" />
+      </picture>
+      <div id="me-identity-hash" title="ID Hash" style="margin-top:6px; font-family:monospace; font-size:0.65rem; color:#6b7280; opacity:0.75; letter-spacing:0.02em; cursor:default;">…</div>
+      <a href="https://neurons-me.github.io/.me/docs/Seed.html" target="blank" title="identityHash = keccak256(&quot;this.me/identity:v1::&quot; + seed) — read the SEED doc" style="display:block; margin-top:2px; font-family:monospace; font-size:0.6rem; color:#58a6ff; letter-spacing:0.03em; text-decoration:underline;">keccak-256</a>
+    </td>
+    <td valign="middle">
+      <h2>Hello, I am <input
+        id="me-seed-input"
+        type="text"
+        placeholder=".me"
+        aria-label="Type your own name"
+        spellcheck="false"
+        autocomplete="off"
+        oninput="this.style.width = ((this.value.length || this.placeholder.length) + 1) + 'ch'; updateMeIdentityHash();"
+        onfocus="this.dataset.ph = this.dataset.ph || this.placeholder; this.placeholder = ''; updateMeIdentityHash();"
+        onblur="if (!this.value) this.placeholder = this.dataset.ph; updateMeIdentityHash();"
+        style="font: inherit; font-weight: 700; font-family: monospace; color: inherit; background: transparent; border: none; border-bottom: 2px solid currentColor; outline: none; width: 4ch; padding: 0 2px;"
+      ></h2>
+      <p>
+        <h6>
+          A Cryptographic Identity.
+      </h6>
+      </p>
+      <h3><a href="https://neurons-me.github.io/.me/docs" target="blank">⌬ Docs</a>   </h3>
+    </td>
+  </tr>
+</table>
+
+<script src="https://cdn.jsdelivr.net/npm/js-sha3@0.9.3/build/sha3.min.js"></script>
+<script>
+  // Mirrors me.ts: identityHash = keccak256("this.me/identity:v1::" + seed)
+  // seed here is the literal text typed (or ".me" by default) — public,
+  // deterministic, no secret involved. See me/Typescript/src/me.ts.
+  function updateMeIdentityHash() {
+    var input = document.getElementById('me-seed-input');
+    var img = document.getElementById('me-identity-img');
+    var label = document.getElementById('me-identity-hash');
+    if (!input || !img || !label || typeof keccak256 !== 'function') return;
+    var seed = input.value || input.placeholder || '.me';
+    var hash = keccak256('this.me/identity:v1::' + seed);
+    var tooltip = 'ID Hash: ' + hash;
+    img.title = tooltip;
+    label.title = tooltip;
+    label.textContent = hash.slice(0, 8) + '…' + hash.slice(-6);
+  }
+  updateMeIdentityHash();
+</script>

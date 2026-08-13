@@ -3,39 +3,9 @@
 
 **Own your knowledge.**
 
-<table border="0" cellspacing="0" cellpadding="0" style="border:none;">
-  <tr>
-    <td width="260" align="center" valign="middle">
-      <picture>
-        <source media="(prefers-color-scheme: dark)" srcset="https://res.cloudinary.com/dkwnxf6gm/image/upload/v1760915741/this.me-removebg-preview_1_nrj6pe.png" />
-        <img id="me-identity-img" src="./docs/assets/this.me.png" alt=".me as a coordinate" width="200" title="ID Hash" />
-      </picture>
-      <div id="me-identity-hash" title="ID Hash" style="margin-top:6px; font-family:monospace; font-size:0.65rem; color:#6b7280; opacity:0.75; letter-spacing:0.02em; cursor:default;">…</div>
-      <a href="https://neurons-me.github.io/.me/docs/Seed.html" target="blank" title="identityHash = keccak256(&quot;this.me/identity:v1::&quot; + seed) — read the SEED doc" style="display:block; margin-top:2px; font-family:monospace; font-size:0.6rem; color:#58a6ff; letter-spacing:0.03em; text-decoration:underline;">keccak-256</a>
-    </td>
-    <td valign="middle">
-      <h2>Hello, I am <input
-        id="me-seed-input"
-        type="text"
-        placeholder=".me"
-        aria-label="Type your own name"
-        spellcheck="false"
-        autocomplete="off"
-        oninput="this.style.width = ((this.value.length || this.placeholder.length) + 1) + 'ch'; updateMeIdentityHash();"
-        onfocus="this.dataset.ph = this.dataset.ph || this.placeholder; this.placeholder = ''; updateMeIdentityHash();"
-        onblur="if (!this.value) this.placeholder = this.dataset.ph; updateMeIdentityHash();"
-        style="font: inherit; font-weight: 700; font-family: monospace; color: inherit; background: transparent; border: none; border-bottom: 2px solid currentColor; outline: none; width: 4ch; padding: 0 2px;"
-      ></h2>
-      <p>
-        <h6>
-          A Cryptographic Identity.
-      </h6>
-      </p>
-      <h3><a href="https://neurons-me.github.io/.me/docs" target="blank">⌬ Docs</a>   </h3>
-    </td>
-  </tr>
-</table>
+<img src="https://res.cloudinary.com/dkwnxf6gm/image/upload/v1761149332/this.me-removebg-preview_2_j1eoiy.png" alt=".me Logo" width="160" />
 
+A Cryptographic Identity. [⌬ Docs](https://neurons-me.github.io/.me/docs) · [𓇗 SEED](https://neurons-me.github.io/.me/docs/Seed.html) — try the live `keccak-256` identity hash demo at [neurons-me.github.io/.me](https://neurons-me.github.io/.me/).
 
 ## Getting Started
 `.me` runs entirely local and turns every path you write into a node in an encrypted, reactive graph.
