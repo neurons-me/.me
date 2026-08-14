@@ -3,17 +3,64 @@
 # .me 
 **Minimal and Expressive.**
 
-#### Install
+### Install
+
+Install via your package manager of choice:
 
 ```bash
+# npm
 npm install this.me
 ```
 
-#### **Import**
+```bash
+# pnpm
+pnpm add this.me
+```
+
+```bash
+# yarn / bun
+bun add this.me
+```
+
+### **Import**
 
 ```ts
 import Me from "this.me";
 let me = Me("ana", "secret"); //SEED derivation (keccak256)
+```
+
+### Usage Context
+
+`.me` is exported as an **ES Module (ESM)** and works out of the box in **Node.js (18+)**, **TypeScript**, **Bundlers (Vite/Webpack)**, and **Modern Browsers**.
+
+#### Option A: TypeScript / Modern Node (ESM)
+
+Add to your `.ts` or `.js` file (with `"type": "module"` in `package.json`):
+
+```TypeScript
+import Me from "this.me";
+// Initialize local sovereign kernel from (who, secret)
+const me = Me("ana", "secret"); // Derives keccak256 seed locally
+```
+
+#### Option B: Browser (No Build Step)
+
+If you are running directly in HTML or a frontend script using ES modules:
+
+```HTML
+<script type="module">
+  import Me from "https://esm.sh/this.me";
+  const me = Me("ana", "secret");
+</script>
+```
+
+#### Option C: Node.js (CommonJS / `require`)
+
+If you are running a legacy Node environment:
+
+```JavaScript
+const Me = require("this.me").default;
+const me = Me("ana", "secret");
 ```
 
 <h3><a href="https://neurons-me.github.io/.me/docs" target="blank">⌬ Docs</a>   </h3>
