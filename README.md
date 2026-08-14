@@ -30,7 +30,7 @@
 
 
 ## Getting Started
-`.me` runs entirely local.
+Install .me. Open your terminal and run:
 
 ```bash
 git clone https://github.com/neurons-me/.me.git

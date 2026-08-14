@@ -1,23 +1,22 @@
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://res.cloudinary.com/dkwnxf6gm/image/upload/v1769890772/this.me.png" />
-  <img src="https://res.cloudinary.com/dkwnxf6gm/image/upload/v1761149332/this.me-removebg-preview_2_j1eoiy.png" alt=".me Logo" width="144" />
-</picture>
+<img src="https://raw.githubusercontent.com/neurons-me/.me/main/docs/assets/this.me.universal.svg" alt=".me Logo" width="89" />
 
-# .me
-##### Minimal and Expressive.
+# .me 
+**Minimal and Expressive.**
 
-## Install
+#### Install
 
 ```bash
 npm install this.me
 ```
 
-##### **Import**
+#### **Import**
 
 ```ts
 import Me from "this.me";
 let me = Me("ana", "secret"); //SEED derivation (keccak256)
 ```
+
+<h3><a href="https://neurons-me.github.io/.me/docs" target="blank">⌬ Docs</a>   </h3>
 
 **Free-form declaration:** `me.whatever.you.want("x")`.
 
@@ -143,7 +142,7 @@ console.log(me("friends.ana.name"));    // "Ana"
 Broadcast derivations materialize on the concrete collection they are attached
 to. Links are for structural reads and single-source-of-truth relationships.
 
-→ [The Semantic Graph Engine](https://suign.github.io/SemanticGraphEngine.html) — schema as a node, not a table · [me.whatever(what)](https://suign.github.io/MeWhateverWhat.html) — the syntax, formalized
+→ [The Semantic Graph Engine](https://suign.github.io/SemanticGraphEngine.html) — schema as a node, not a table · [me.whatever(what)](https://suign.github.io/MeWhateverWhat.html) — the syntax, formalized · [Robots That Understand Context](https://neurons-me.github.io/.me/docs/Robots-That-Understand-Context.html) — this exact `[i]` broadcast, applied to a fleet
 
 ## Privacy Model
 
@@ -188,7 +187,7 @@ console.log(me("order.total")); // 1000
 actually depend on that value are marked and recomputed. The runtime supports
 eager and lazy recomputation through `me.setRecomputeMode("eager" | "lazy")`.
 
-→ [Inverted Dependency Indexing](https://suign.github.io/InvertedIndex.html) · [What is O(k)?](https://suign.github.io/WhatIsOK.html) — real benchmark numbers · [cost(mutation) = O(k) — infographic](https://suign.github.io/Inverted-Dependency-Indexing-Infographic.html) · [neurons-me's own viz](https://neurons-me.github.io/Inverted-Dependency-Indexing-Beautiful-Viz.html)
+→ [Inverted Dependency Indexing](https://suign.github.io/InvertedIndex.html) · [What is O(k)?](https://suign.github.io/WhatIsOK.html) — real benchmark numbers · [cost(mutation) = O(k) — infographic](https://suign.github.io/Inverted-Dependency-Indexing-Infographic.html) · [neurons-me's own viz](https://neurons-me.github.io/Inverted-Dependency-Indexing-Beautiful-Viz.html) · [Smart Cities](https://neurons-me.github.io/.me/docs/Smart-Cities.html) — this same cascade, at city scale
 
 ## Search
 
@@ -341,7 +340,7 @@ Run benchmark details with:
 npm run bench
 ```
 
-→ [What is O(k)?](https://suign.github.io/WhatIsOK.html) — the same kind of numbers, sourced and verified · [cost(mutation) = O(k) — infographic](https://suign.github.io/Inverted-Dependency-Indexing-Infographic.html)
+→ [What is O(k)?](https://suign.github.io/WhatIsOK.html) — the same kind of numbers, sourced and verified · [cost(mutation) = O(k) — infographic](https://suign.github.io/Inverted-Dependency-Indexing-Infographic.html) · [Full Benchmarks](https://neurons-me.github.io/.me/docs/Benchmarks/) — O(k) scaling, throughput, fan-out, cold/warm, explain overhead, secret-scope cost
 
 ## License
 
@@ -361,7 +360,11 @@ npm run bench
 
 **Docs & protocol** — [neurons-me.github.io](https://neurons-me.github.io/)
 
-[NRP — Namespace Resolution Protocol](https://neurons-me.github.io/NRP/) · [Glossary](https://neurons-me.github.io/Glossary.html) · [SEED → Monad](https://neurons-me.github.io/SEED-Monad-Minimal.html) · [Seed](https://neurons-me.github.io/.me/docs/Seed.html) · [Syntax](https://neurons-me.github.io/.me/docs/Syntax.html) · [Architecture](https://neurons-me.github.io/.me/docs/Architecture.html) · [One Line That Replaces Five](https://neurons-me.github.io/.me/docs/One-Line-That-Replaces-Five.html) · [Full TypeDocs](https://neurons-me.github.io/.me/Typescript/typedocs/)
+[.me Docs — full index](https://neurons-me.github.io/.me/docs/) · [NRP — Namespace Resolution Protocol](https://neurons-me.github.io/NRP/) · [Glossary](https://neurons-me.github.io/Glossary.html) · [SEED → Monad](https://neurons-me.github.io/SEED-Monad-Minimal.html) · [Seed](https://neurons-me.github.io/.me/docs/Seed.html) · [Syntax](https://neurons-me.github.io/.me/docs/Syntax.html) · [Architecture](https://neurons-me.github.io/.me/docs/Architecture.html) · [One Line That Replaces Five](https://neurons-me.github.io/.me/docs/One-Line-That-Replaces-Five.html) · [Benchmarks](https://neurons-me.github.io/.me/docs/Benchmarks/) · [Full TypeDocs](https://neurons-me.github.io/.me/Typescript/typedocs/)
+
+**Demos** — plain-language, story-based
+
+[Robots That Understand Context](https://neurons-me.github.io/.me/docs/Robots-That-Understand-Context.html) · [Smart Cities](https://neurons-me.github.io/.me/docs/Smart-Cities.html) · [Social Graph](https://neurons-me.github.io/.me/docs/Social-Graph.html) · [Running your CoffeeShops](https://neurons-me.github.io/.me/docs/Running-your-CoffeeShops.html) · [Splitting your Bill](https://neurons-me.github.io/.me/docs/Splitting-your-Bill.html)
 
 **Notes**
 
