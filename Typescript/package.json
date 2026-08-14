@@ -1,6 +1,6 @@
 {
   "name": "this.me",
-  "version": "3.9.8",
+  "version": "4.0.1",
   "description": "Centralize the Self, Distribute the Data.",
   "type": "module",
   "main": "./dist/me.cjs",
@@ -72,12 +72,13 @@
     "vitepress": "^1.6.4"
   },
   "keywords": [
-    "semantic kernel",
+    "encrypted-state",
     "knowledge graph",
-    "decentralized authentication",
+    "local-first",
     "Namespace Resolution Protocol",
     "NRP",
-    "self-sovereign identity"
+    "ai-memory",
+    "graph-database"
   ],
   "license": "MIT",
   "author": "suiGn",
