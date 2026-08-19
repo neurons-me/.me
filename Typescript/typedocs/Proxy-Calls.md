@@ -123,3 +123,4 @@ So the runtime is really:
 - [Runtime Surface](/.me/Typescript/typedocs/Runtime-Surface.html)
 - [Operators](/.me/Typescript/typedocs/Operators.html)
 - [Syntax](/.me/Typescript/typedocs/Syntax.html)
+- [Plurality Is Grammar](/.me/Typescript/typedocs/Plurality-Is-Grammar.html)

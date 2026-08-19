@@ -40,6 +40,7 @@ export default defineConfig({
         items: [
           { text: '𓋹 The Axioms of .me', link: '/Axioms' },
           { text: 'Algebra of Contexts', link: '/Algebra-of-Contexts' },
+          { text: 'Plurality Is Grammar', link: '/Plurality-Is-Grammar' },
           { text: 'Operators & Logic', link: '/Operators' },
           { text: 'Syntax', link: '/Syntax' },
           { text: 'Proxy Calls', link: '/Proxy-Calls' },

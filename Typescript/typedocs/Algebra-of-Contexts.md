@@ -96,6 +96,21 @@ This same law appears across the system:
 - tighter context -> smaller resolution set
 - tighter capability -> smaller action set
 
+## Plurality As Grammar ​
+
+`[]` extends this same refinement law to members of a space, not just nested subspaces:
+
+```txt
+Whatever[1] ⊆ Whatever[] ⊆ Whatever
+```
+
+`Whatever[]` says a space has members — grammar, not a data type. What kind of plural it is
+(bounded, ordered, evicting) is described as algebraic constraints over that plural
+(`|Whatever[]| <= 128`, `Whatever[n].slot = n mod 128`), never as a named category like
+`kind: "buffer"` — the same discipline `A`/`T`/`C` already follow: `.me` describes the shape,
+something else (a GUI, a daemon) interprets it. Full treatment in
+[Plurality Is Grammar](./Plurality-Is-Grammar.md).
+
 ## Encryption As Membership ​
 
 Encryption does not create a different universe. It creates a stricter readable membership over a space.
@@ -125,3 +140,19 @@ space inside space inside space
 ```
 
 And all of it follows set law.
+
+## Where This Runs Outside the Kernel ​
+
+`A` (audience) is enforced cryptographically here, inside `.me` itself, via scope-secret
+key-wrapping. The first place that same `A`/`C` separation was extended to a real piece of
+infrastructure *outside* the kernel is netget's gateway — see
+[Gateway Capability Model](https://neurons-me.github.io/netget/Typescript/typedocs/GatewayCapabilityModel.html),
+which proves, with a live executable test suite, that a signed capability (`C`) is never inferred
+from audience or role membership (`A`), even for an authenticated admin identity. It does not yet
+use this kernel's real key-wrapped `A` — that adoption is still future work, tracked in that doc's
+own scope notes — but the capability-separation half of the model is already running against a
+live gateway, not just declared here.
+
+For the theory this and the gateway work both trace back to, see
+[The Algebra of Encrypted Audiences](https://suign.github.io/EncryptedAudiences.html) and
+[Digital Space Algebra](https://suign.github.io/DigitalSpaceAlgebra.html).

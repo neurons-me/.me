@@ -107,6 +107,10 @@ Expected output:
 
 ## 4. [] Selector Syntax ​
 
+`[]` addresses members that already exist below. What kind of plural a space *is* — bounded,
+ordered, evicting — is a separate concern from addressing it; see
+[Plurality Is Grammar](./Plurality-Is-Grammar.md).
+
 ## Fixed index ​
 
 ```ts
@@ -364,3 +368,10 @@ Expected output:
 - `.me` syntax is path algebra.
 - Human words are labels only; structure and operators define behavior.
 - The same logic works across English, Spanish, Japanese, or domain-specific symbols.
+
+## Related Pages ​
+
+- [Plurality Is Grammar](./Plurality-Is-Grammar.md)
+- [Algebra of Contexts](./Algebra-of-Contexts.md)
+- [Operators](./Operators.md)
+- [Proxy Calls](./Proxy-Calls.md)
