@@ -85,6 +85,7 @@ export default defineConfig({
           { text: 'La Lógica de Derivación', link: '/es/La Logica de Derivacion' },
           { text: 'Fractalismo de Privacidad', link: '/es/Fractalismo' },
           { text: 'Espacios Semánticos', link: '/es/Espacios Semanticos' },
+          { text: 'La Forma Escrita En Memoria', link: '/es/La Forma Escrita En Memoria' },
         ]
       },
       {

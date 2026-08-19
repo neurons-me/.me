@@ -177,3 +177,4 @@ netget's sake.
 - [Algebra of Contexts](./Algebra-of-Contexts.md) — the set-law foundation this extends.
 - [Proxy Calls](./Proxy-Calls.md) — how `[]` and operators reach the runtime through the proxy surface.
 - [Operators](./Operators.md) — the existing operator DSL this follows the same shape-not-category discipline as.
+- [La Forma Escrita En Memoria](./es/La%20Forma%20Escrita%20En%20Memoria.md) (Spanish) — what §5's split means for persistence: today a plural's shape is *descriptive* memory (rehydrated, not obeyed); kernel-governed plurality would make it *active* memory, the same way a `=` derivation is already active today.
