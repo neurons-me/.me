@@ -2,6 +2,8 @@ title: .me
 description: Own your knowledge graph.
 url: https://neurons-me.github.io
 baseurl: "/.me"
+image: "https://neurons-me.github.io/docs/assets/img/me.png"
+logo: "https://neurons-me.github.io/docs/assets/img/me.png"
 
 remote_theme: neurons-me/neurons-me
 
@@ -32,6 +34,7 @@ kramdown:
 me_theme:
   brand: .me
   favicon: "https://res.cloudinary.com/dkwnxf6gm/image/upload/v1769890772/this.me.png"
+  social_image: "https://neurons-me.github.io/docs/assets/img/me.png"
   nav:
     - label: Home
       url: https://neurons-me.github.io/

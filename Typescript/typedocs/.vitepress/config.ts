@@ -1,5 +1,7 @@
 import { defineConfig } from 'vitepress'
 
+const socialImage = 'https://neurons-me.github.io/docs/assets/img/me.png'
+
 export default defineConfig({
   title: '.me',
   description: 'Documentation for .me',
@@ -17,7 +19,17 @@ export default defineConfig({
     ['meta', { name: 'keywords', content: '.me, this.me, semantic identity, identity runtime, semantic paths' }],
     ['meta', { property: 'og:type', content: 'website' }],
     ['meta', { property: 'og:title', content: '.me — Documentation' }],
+    ['meta', { property: 'og:description', content: 'Documentation for .me' }],
     ['meta', { property: 'og:url', content: 'https://neurons-me.github.io/.me/Typescript/typedocs/' }],
+    ['meta', { property: 'og:image', content: socialImage }],
+    ['meta', { property: 'og:image:secure_url', content: socialImage }],
+    ['meta', { property: 'og:image:type', content: 'image/png' }],
+    ['meta', { property: 'og:image:alt', content: '.me social graph' }],
+    ['meta', { name: 'twitter:card', content: 'summary_large_image' }],
+    ['meta', { name: 'twitter:title', content: '.me — Documentation' }],
+    ['meta', { name: 'twitter:description', content: 'Documentation for .me' }],
+    ['meta', { name: 'twitter:image', content: socialImage }],
+    ['meta', { name: 'twitter:image:alt', content: '.me social graph' }],
   ],
 
   themeConfig: {
