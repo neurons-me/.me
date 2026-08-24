@@ -3,7 +3,9 @@ use std::collections::BTreeMap;
 use std::fmt;
 use std::hash::{Hash, Hasher};
 
-pub type Path = Vec<String>;
+mod path;
+
+pub use path::{IntoPath, ParsedPath, Path, PathParseError, PathPart, Selector};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Value {
@@ -68,6 +70,7 @@ pub struct Snapshot {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum KernelError {
     EmptyPath,
+    InvalidPath(PathParseError),
     NonFiniteNumber,
     HydrationHashMismatch {
         path: Path,
@@ -85,6 +88,7 @@ impl fmt::Display for KernelError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::EmptyPath => write!(f, "path cannot be empty"),
+            Self::InvalidPath(error) => write!(f, "invalid path: {error}"),
             Self::NonFiniteNumber => write!(f, "numbers must be finite"),
             Self::HydrationHashMismatch {
                 path,
@@ -141,7 +145,7 @@ impl Kernel {
         operator: Option<String>,
         value: impl Into<Value>,
     ) -> Result<&Memory, KernelError> {
-        let path = path.into_path();
+        let path = path.into_path().map_err(KernelError::InvalidPath)?;
         if path.is_empty() {
             return Err(KernelError::EmptyPath);
         }
@@ -168,7 +172,10 @@ impl Kernel {
     }
 
     pub fn read(&self, path: impl IntoPath) -> Option<&Value> {
-        self.index.get(&path.into_path())
+        let Ok(path) = path.into_path() else {
+            return None;
+        };
+        self.index.get(&path)
     }
 
     pub fn export_snapshot(&self) -> Snapshot {
@@ -212,43 +219,6 @@ impl Kernel {
         }
 
         Ok(kernel)
-    }
-}
-
-pub trait IntoPath {
-    fn into_path(self) -> Path;
-}
-
-impl IntoPath for Path {
-    fn into_path(self) -> Path {
-        self
-    }
-}
-
-impl IntoPath for &[&str] {
-    fn into_path(self) -> Path {
-        self.iter().map(|segment| (*segment).to_string()).collect()
-    }
-}
-
-impl<const N: usize> IntoPath for [&str; N] {
-    fn into_path(self) -> Path {
-        self.into_iter().map(str::to_string).collect()
-    }
-}
-
-impl IntoPath for &str {
-    fn into_path(self) -> Path {
-        self.split('.')
-            .filter(|segment| !segment.is_empty())
-            .map(str::to_string)
-            .collect()
-    }
-}
-
-impl IntoPath for String {
-    fn into_path(self) -> Path {
-        self.as_str().into_path()
     }
 }
 
