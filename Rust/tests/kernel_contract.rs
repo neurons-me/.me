@@ -1,4 +1,13 @@
-use this_me::kernel::{ExplainOrigin, Kernel, KernelError, Value};
+use this_me::kernel::{
+    ExplainOrigin, Kernel, KernelError, SecretMaterialMode, SecretMaterialPurpose, Value,
+};
+
+fn hex(bytes: [u8; 32]) -> String {
+    bytes
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect::<String>()
+}
 
 #[test]
 fn public_write_read_round_trips() {
@@ -567,6 +576,32 @@ fn noise_boundary_restarts_seed_then_applies_allowed_secrets() {
 }
 
 #[test]
+fn secret_material_v3_includes_active_noise_boundary() {
+    let mut kernel = Kernel::new();
+
+    kernel.secret("wallet", "alpha").unwrap();
+    kernel
+        .postulate("wallet.hidden.notes", "alpha-note")
+        .unwrap();
+    kernel.noise("wallet", "noise-A").unwrap();
+    kernel.secret("wallet.hidden", "beta").unwrap();
+    kernel.postulate("wallet.hidden.seed", "beta-seed").unwrap();
+
+    let material = kernel
+        .secret_material_v3(
+            "wallet.hidden.seed",
+            SecretMaterialMode::Value,
+            SecretMaterialPurpose::Value,
+        )
+        .unwrap();
+
+    assert_eq!(
+        hex(material),
+        "6d1fee023186ae05ce3797b69ae0a65f0ba933ed9c52755312306539768cb684"
+    );
+}
+
+#[test]
 fn remove_noise_scope_clears_boundary() {
     let mut kernel = Kernel::new();
 
@@ -918,6 +953,51 @@ fn effective_secret_follows_secret_lineage() {
     );
     assert_eq!(kernel.memories()[0].hash, "4393708b");
     assert_eq!(kernel.memories()[1].hash, "65ecdd30");
+}
+
+#[test]
+fn secret_material_v3_matches_typescript_branch_and_value_fixtures() {
+    let mut kernel = Kernel::new();
+
+    kernel.secret("wallet", "steel-door").unwrap();
+    kernel.postulate("wallet.balance", 100_u64).unwrap();
+    kernel.postulate("wallet.note", "private").unwrap();
+
+    let branch = kernel
+        .secret_material_v3(
+            "wallet.balance",
+            SecretMaterialMode::Branch,
+            SecretMaterialPurpose::Branch,
+        )
+        .unwrap();
+    let value_balance = kernel
+        .secret_material_v3(
+            "wallet.balance",
+            SecretMaterialMode::Value,
+            SecretMaterialPurpose::Value,
+        )
+        .unwrap();
+    let value_note = kernel
+        .secret_material_v3(
+            "wallet.note",
+            SecretMaterialMode::Value,
+            SecretMaterialPurpose::Value,
+        )
+        .unwrap();
+
+    assert_eq!(
+        hex(branch),
+        "61a15d8d2c2b154bb965c9691876896b87a4e371b7fbdfb33be87a58bc56a25f"
+    );
+    assert_eq!(
+        hex(value_balance),
+        "c46935fc5b433940203756a537b56e88dc51bb711fceb21b3490343f95cdd2cb"
+    );
+    assert_eq!(
+        hex(value_note),
+        "0ba0895e0c51bd759ebc78552855137ebf7c0e608e5494942793f2dc445756a9"
+    );
+    assert_ne!(value_balance, value_note);
 }
 
 #[test]

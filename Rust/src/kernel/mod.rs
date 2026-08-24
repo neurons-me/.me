@@ -3,9 +3,15 @@ use std::fmt;
 
 mod evaluator;
 mod path;
+mod secret_material;
 
 use evaluator::{evaluate_expression, extract_expression_refs, resolve_ref_path};
 pub use path::{IntoPath, ParsedPath, Path, PathParseError, PathPart, Selector};
+pub use secret_material::SecretMaterialPurpose;
+use secret_material::{derive_secret_material_v3, lineage_segment};
+
+const V3_DOMAIN: &str = "this.me/blob/v3";
+const V3_NO_NOISE_SENTINEL: &str = "this.me/blob/v3/no-noise";
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Value {
@@ -121,6 +127,12 @@ pub enum ExplainOrigin {
     Secret,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SecretMaterialMode {
+    Branch,
+    Value,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ExplainMeta {
     pub depends_on: Vec<Path>,
@@ -139,6 +151,8 @@ pub enum KernelError {
     InvalidPath(PathParseError),
     InvalidIdentity(String),
     NonFiniteNumber,
+    NoSecretContext(Path),
+    RootSecretBranchUnsupported,
     HydrationHashMismatch {
         path: Path,
         expected: String,
@@ -162,6 +176,18 @@ impl fmt::Display for KernelError {
             Self::InvalidPath(error) => write!(f, "invalid path: {error}"),
             Self::InvalidIdentity(value) => write!(f, "invalid identity: {value}"),
             Self::NonFiniteNumber => write!(f, "numbers must be finite"),
+            Self::NoSecretContext(path) => write!(
+                f,
+                "no secret context active for {}",
+                if path.is_empty() {
+                    "<root>".to_string()
+                } else {
+                    path.join(".")
+                }
+            ),
+            Self::RootSecretBranchUnsupported => {
+                write!(f, "branch v3 derivation does not support root secret scope")
+            }
             Self::HydrationHashMismatch {
                 path,
                 expected,
@@ -262,6 +288,17 @@ impl Kernel {
     pub fn effective_secret(&self, path: impl IntoPath) -> Result<String, KernelError> {
         let path = path.into_path().map_err(KernelError::InvalidPath)?;
         Ok(self.compute_effective_secret(&path))
+    }
+
+    pub fn secret_material_v3(
+        &self,
+        path: impl IntoPath,
+        mode: SecretMaterialMode,
+        purpose: SecretMaterialPurpose,
+    ) -> Result<[u8; 32], KernelError> {
+        let path = path.into_path().map_err(KernelError::InvalidPath)?;
+        let chain = self.collect_secret_chain_v3(&path, mode)?;
+        derive_secret_material_v3(&chain, purpose).ok_or(KernelError::NoSecretContext(path))
     }
 
     pub fn postulate(
@@ -760,6 +797,80 @@ impl Kernel {
             }
         }
         active
+    }
+
+    fn collect_secret_chain_v3(
+        &self,
+        target_path: &[String],
+        mode: SecretMaterialMode,
+    ) -> Result<Vec<Vec<u8>>, KernelError> {
+        let scope_path = self
+            .resolve_branch_scope(target_path)
+            .ok_or_else(|| KernelError::NoSecretContext(target_path.to_vec()))?;
+        if mode == SecretMaterialMode::Branch && scope_path.is_empty() {
+            return Err(KernelError::RootSecretBranchUnsupported);
+        }
+
+        let anchor_path = match mode {
+            SecretMaterialMode::Branch => scope_path.clone(),
+            SecretMaterialMode::Value => target_path.to_vec(),
+        };
+        let active_noise = self.find_active_noise(&anchor_path);
+        let noise_boundary = active_noise
+            .as_ref()
+            .map(|(path, _)| path.join("."))
+            .unwrap_or_else(|| V3_NO_NOISE_SENTINEL.to_string());
+
+        let mut chain = vec![
+            V3_DOMAIN.as_bytes().to_vec(),
+            match mode {
+                SecretMaterialMode::Branch => b"branch".to_vec(),
+                SecretMaterialMode::Value => b"value".to_vec(),
+            },
+            scope_path.join(".").into_bytes(),
+            anchor_path.join(".").into_bytes(),
+            noise_boundary.into_bytes(),
+        ];
+        chain.extend(self.collect_lineage_segments(&anchor_path, active_noise.as_ref()));
+        Ok(chain)
+    }
+
+    fn resolve_branch_scope(&self, path: &[String]) -> Option<Path> {
+        let mut best = self.local_secrets.get(&Vec::new()).map(|_| Vec::new());
+        for index in 1..=path.len() {
+            let scope_path = path[..index].to_vec();
+            if self.local_secrets.contains_key(&scope_path) {
+                best = Some(scope_path);
+            }
+        }
+        best
+    }
+
+    fn collect_lineage_segments(
+        &self,
+        anchor_path: &[String],
+        active_noise: Option<&(Path, String)>,
+    ) -> Vec<Vec<u8>> {
+        let mut out = Vec::new();
+
+        if let Some((path, noise)) = active_noise {
+            out.push(lineage_segment("noise", &path.join("."), noise));
+        } else if let Some(root_secret) = self.local_secrets.get(&Vec::new()) {
+            out.push(lineage_segment("secret", "", root_secret));
+        }
+
+        for index in 1..=anchor_path.len() {
+            let secret_path = anchor_path[..index].to_vec();
+            let Some(secret) = self.local_secrets.get(&secret_path) else {
+                continue;
+            };
+            if !secret_allowed_under_noise(active_noise.map(|(path, _)| path), &secret_path) {
+                continue;
+            }
+            out.push(lineage_segment("secret", &secret_path.join("."), secret));
+        }
+
+        out
     }
 
     fn register_derivation(&mut self, target_path: Path, eval_scope: Path, expression: String) {
