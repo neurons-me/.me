@@ -74,11 +74,17 @@ pub struct Memory {
     pub hash: String,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct OperatorDefinition {
+    pub kind: String,
+}
+
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct Snapshot {
     pub memories: Vec<Memory>,
     pub local_secrets: BTreeMap<Path, String>,
     pub local_noises: BTreeMap<Path, String>,
+    pub operators: BTreeMap<String, OperatorDefinition>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -149,6 +155,8 @@ pub enum KernelError {
     EmptyPath,
     EmptyExpression,
     EmptyNoise,
+    EmptyOperator,
+    EmptyOperatorKind,
     EmptyQuery,
     EmptySecret,
     InvalidPath(PathParseError),
@@ -156,6 +164,7 @@ pub enum KernelError {
     NonFiniteNumber,
     NoSecretContext(Path),
     RandomUnavailable,
+    ReservedOperator(String),
     SecretBlobDecryptFailed(Path),
     RootSecretBranchUnsupported,
     HydrationHashMismatch {
@@ -176,6 +185,8 @@ impl fmt::Display for KernelError {
             Self::EmptyPath => write!(f, "path cannot be empty"),
             Self::EmptyExpression => write!(f, "expression cannot be empty"),
             Self::EmptyNoise => write!(f, "noise cannot be empty"),
+            Self::EmptyOperator => write!(f, "operator cannot be empty"),
+            Self::EmptyOperatorKind => write!(f, "operator kind cannot be empty"),
             Self::EmptyQuery => write!(f, "query must contain at least one path"),
             Self::EmptySecret => write!(f, "secret cannot be empty"),
             Self::InvalidPath(error) => write!(f, "invalid path: {error}"),
@@ -191,6 +202,9 @@ impl fmt::Display for KernelError {
                 }
             ),
             Self::RandomUnavailable => write!(f, "secure random bytes are unavailable"),
+            Self::ReservedOperator(operator) => {
+                write!(f, "operator {operator} is reserved")
+            }
             Self::SecretBlobDecryptFailed(path) => write!(
                 f,
                 "secret blob decrypt failed for {}",
@@ -229,7 +243,7 @@ impl fmt::Display for KernelError {
 
 impl std::error::Error for KernelError {}
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct Kernel {
     memories: Vec<Memory>,
     index: BTreeMap<Path, Value>,
@@ -241,6 +255,7 @@ pub struct Kernel {
     derivations: BTreeMap<Path, DerivationRecord>,
     ref_subscribers: BTreeMap<Path, BTreeSet<Path>>,
     active_identity: Option<String>,
+    operators: BTreeMap<String, OperatorDefinition>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -260,6 +275,24 @@ struct DerivationRef {
 struct PointerResolution {
     resolved_path: Path,
     pointer_chain: Vec<Path>,
+}
+
+impl Default for Kernel {
+    fn default() -> Self {
+        Self {
+            memories: Vec::new(),
+            index: BTreeMap::new(),
+            private_index: BTreeMap::new(),
+            secret_scopes: BTreeSet::new(),
+            noise_scopes: BTreeSet::new(),
+            local_secrets: BTreeMap::new(),
+            local_noises: BTreeMap::new(),
+            derivations: BTreeMap::new(),
+            ref_subscribers: BTreeMap::new(),
+            active_identity: None,
+            operators: default_operators(),
+        }
+    }
 }
 
 impl Kernel {
@@ -284,6 +317,39 @@ impl Kernel {
 
     pub fn active_identity(&self) -> Option<&str> {
         self.active_identity.as_deref()
+    }
+
+    pub fn operators(&self) -> &BTreeMap<String, OperatorDefinition> {
+        &self.operators
+    }
+
+    pub fn operator_kind(&self, operator: &str) -> Option<&str> {
+        self.operators
+            .get(operator)
+            .map(|definition| definition.kind.as_str())
+    }
+
+    pub fn define_operator(&mut self, operator: &str, kind: &str) -> Result<(), KernelError> {
+        let operator = operator.trim();
+        let kind = kind.trim();
+
+        if operator.is_empty() {
+            return Err(KernelError::EmptyOperator);
+        }
+        if operator == "+" {
+            return Err(KernelError::ReservedOperator(operator.to_string()));
+        }
+        if kind.is_empty() {
+            return Err(KernelError::EmptyOperatorKind);
+        }
+
+        self.operators.insert(
+            operator.to_string(),
+            OperatorDefinition {
+                kind: kind.to_string(),
+            },
+        );
+        Ok(())
     }
 
     pub fn is_secret_scope(&self, path: impl IntoPath) -> bool {
@@ -600,11 +666,13 @@ impl Kernel {
             memories: self.memories.clone(),
             local_secrets: self.local_secrets.clone(),
             local_noises: self.local_noises.clone(),
+            operators: self.operators.clone(),
         }
     }
 
     pub fn hydrate(snapshot: Snapshot) -> Result<Self, KernelError> {
         let mut kernel = Self::new();
+        kernel.operators.extend(snapshot.operators.clone());
         let mut expected_prev_hash = None;
 
         for (index, memory) in snapshot.memories.into_iter().enumerate() {
@@ -632,7 +700,11 @@ impl Kernel {
                 });
             }
 
-            if memory.operator.as_deref() == Some("=") {
+            let operator_kind = memory
+                .operator
+                .as_deref()
+                .and_then(|operator| kernel.operator_kind(operator));
+            if operator_kind == Some("eval") {
                 if let Some(expression) = memory.expression.clone() {
                     let eval_scope = parent_path(&memory.path);
                     kernel.register_derivation(memory.path.clone(), eval_scope, expression);
@@ -657,7 +729,11 @@ impl Kernel {
                 _ => {}
             }
             expected_prev_hash = Some(memory.hash.clone());
-            if memory.operator.as_deref() == Some("@") && memory.path.is_empty() {
+            let operator_kind = memory
+                .operator
+                .as_deref()
+                .and_then(|operator| kernel.operator_kind(operator));
+            if operator_kind == Some("identity") && memory.path.is_empty() {
                 if let Value::Identity(id) = &memory.value {
                     kernel.active_identity = Some(id.clone());
                 }
@@ -778,8 +854,14 @@ impl Kernel {
     }
 
     fn apply_memory(&mut self, memory: &Memory) -> Result<(), KernelError> {
-        match memory.operator.as_deref() {
-            Some("_") => {
+        let operator_kind = memory
+            .operator
+            .as_deref()
+            .and_then(|operator| self.operator_kind(operator))
+            .map(ToOwned::to_owned);
+
+        match operator_kind.as_deref() {
+            Some("secret") => {
                 self.secret_scopes.insert(memory.path.clone());
                 move_index_prefix_to_private(
                     &mut self.index,
@@ -787,10 +869,10 @@ impl Kernel {
                     &memory.path,
                 );
             }
-            Some("~") => {
+            Some("noise") => {
                 self.noise_scopes.insert(memory.path.clone());
             }
-            Some("-") => {
+            Some("remove") => {
                 remove_index_prefix(&mut self.index, &memory.path);
                 remove_index_prefix(&mut self.private_index, &memory.path);
                 self.secret_scopes
@@ -802,6 +884,12 @@ impl Kernel {
                 self.local_noises
                     .retain(|scope, _| !path_starts_with(scope, &memory.path));
                 self.clear_derivations_by_prefix(&memory.path);
+            }
+            Some("identity") if memory.path.is_empty() => {
+                if let Value::Identity(id) = &memory.value {
+                    self.active_identity = Some(id.clone());
+                }
+                self.index.insert(memory.path.clone(), memory.value.clone());
             }
             _ if self.is_under_secret_scope(&memory.path) => {
                 self.index.remove(&memory.path);
@@ -1131,6 +1219,29 @@ impl Kernel {
 
 fn remove_index_prefix(index: &mut BTreeMap<Path, Value>, prefix: &[String]) {
     index.retain(|path, _| !path_starts_with(path, prefix));
+}
+
+fn default_operators() -> BTreeMap<String, OperatorDefinition> {
+    [
+        ("_", "secret"),
+        ("~", "noise"),
+        ("__", "pointer"),
+        ("->", "pointer"),
+        ("@", "identity"),
+        ("=", "eval"),
+        ("?", "query"),
+        ("-", "remove"),
+    ]
+    .into_iter()
+    .map(|(operator, kind)| {
+        (
+            operator.to_string(),
+            OperatorDefinition {
+                kind: kind.to_string(),
+            },
+        )
+    })
+    .collect()
 }
 
 fn move_index_prefix_to_private(

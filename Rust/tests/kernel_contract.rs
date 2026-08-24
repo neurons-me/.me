@@ -121,6 +121,69 @@ fn empty_paths_are_rejected() {
 }
 
 #[test]
+fn default_operator_registry_matches_typescript_kernel() {
+    let kernel = Kernel::new();
+
+    assert_eq!(kernel.operator_kind("_"), Some("secret"));
+    assert_eq!(kernel.operator_kind("~"), Some("noise"));
+    assert_eq!(kernel.operator_kind("__"), Some("pointer"));
+    assert_eq!(kernel.operator_kind("->"), Some("pointer"));
+    assert_eq!(kernel.operator_kind("@"), Some("identity"));
+    assert_eq!(kernel.operator_kind("="), Some("eval"));
+    assert_eq!(kernel.operator_kind("?"), Some("query"));
+    assert_eq!(kernel.operator_kind("-"), Some("remove"));
+}
+
+#[test]
+fn define_operator_updates_registry_and_snapshot_hydration() {
+    let mut kernel = Kernel::new();
+
+    kernel.define_operator("drop", "remove").unwrap();
+
+    assert_eq!(kernel.operator_kind("drop"), Some("remove"));
+
+    let restored = Kernel::hydrate(kernel.export_snapshot()).unwrap();
+
+    assert_eq!(restored.operator_kind("drop"), Some("remove"));
+}
+
+#[test]
+fn define_operator_rejects_empty_kind_and_reserved_define_token() {
+    let mut kernel = Kernel::new();
+
+    assert_eq!(
+        kernel.define_operator("   ", "remove"),
+        Err(KernelError::EmptyOperator)
+    );
+    assert_eq!(
+        kernel.define_operator("drop", "   "),
+        Err(KernelError::EmptyOperatorKind)
+    );
+    assert_eq!(
+        kernel.define_operator("+", "remove"),
+        Err(KernelError::ReservedOperator("+".to_string()))
+    );
+}
+
+#[test]
+fn custom_operator_kind_applies_to_memory_replay() {
+    let mut kernel = Kernel::new();
+
+    kernel.define_operator("drop", "remove").unwrap();
+    kernel.postulate("apps.demo.title", "Demo").unwrap();
+    kernel
+        .postulate_with_operator("apps.demo", Some("drop".to_string()), Value::Null)
+        .unwrap();
+
+    assert_eq!(kernel.read("apps.demo.title"), None);
+
+    let restored = Kernel::hydrate(kernel.export_snapshot()).unwrap();
+
+    assert_eq!(restored.operator_kind("drop"), Some("remove"));
+    assert_eq!(restored.read("apps.demo.title"), None);
+}
+
+#[test]
 fn remove_deletes_exact_path_and_descendants_from_index() {
     let mut kernel = Kernel::new();
 
