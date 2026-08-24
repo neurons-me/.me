@@ -76,6 +76,7 @@ pub struct Snapshot {
 pub enum KernelError {
     EmptyPath,
     EmptyExpression,
+    EmptyNoise,
     EmptyQuery,
     EmptySecret,
     InvalidPath(PathParseError),
@@ -98,6 +99,7 @@ impl fmt::Display for KernelError {
         match self {
             Self::EmptyPath => write!(f, "path cannot be empty"),
             Self::EmptyExpression => write!(f, "expression cannot be empty"),
+            Self::EmptyNoise => write!(f, "noise cannot be empty"),
             Self::EmptyQuery => write!(f, "query must contain at least one path"),
             Self::EmptySecret => write!(f, "secret cannot be empty"),
             Self::InvalidPath(error) => write!(f, "invalid path: {error}"),
@@ -135,6 +137,7 @@ pub struct Kernel {
     index: BTreeMap<Path, Value>,
     private_index: BTreeMap<Path, Value>,
     secret_scopes: BTreeSet<Path>,
+    noise_scopes: BTreeSet<Path>,
     derivations: BTreeMap<Path, DerivationRecord>,
     ref_subscribers: BTreeMap<Path, BTreeSet<Path>>,
     active_identity: Option<String>,
@@ -165,6 +168,13 @@ impl Kernel {
             return false;
         };
         self.secret_scopes.contains(&path)
+    }
+
+    pub fn is_noise_scope(&self, path: impl IntoPath) -> bool {
+        let Ok(path) = path.into_path() else {
+            return false;
+        };
+        self.noise_scopes.contains(&path)
     }
 
     pub fn postulate(
@@ -255,6 +265,23 @@ impl Kernel {
 
         let value = self.collect_from_scope(&target_path, paths)?;
         self.commit_memory(target_path, Some("?".to_string()), value)
+    }
+
+    pub fn noise(&mut self, path: impl IntoPath, noise: &str) -> Result<&Memory, KernelError> {
+        if noise.trim().is_empty() {
+            return Err(KernelError::EmptyNoise);
+        }
+
+        let path = path.into_path().map_err(KernelError::InvalidPath)?;
+        if path.is_empty() {
+            return Err(KernelError::EmptyPath);
+        }
+
+        self.commit_memory(
+            path,
+            Some("~".to_string()),
+            Value::String("***".to_string()),
+        )
     }
 
     pub fn secret(&mut self, path: impl IntoPath, secret: &str) -> Result<&Memory, KernelError> {
@@ -467,10 +494,15 @@ impl Kernel {
                     &memory.path,
                 );
             }
+            Some("~") => {
+                self.noise_scopes.insert(memory.path.clone());
+            }
             Some("-") => {
                 remove_index_prefix(&mut self.index, &memory.path);
                 remove_index_prefix(&mut self.private_index, &memory.path);
                 self.secret_scopes
+                    .retain(|scope| !path_starts_with(scope, &memory.path));
+                self.noise_scopes
                     .retain(|scope| !path_starts_with(scope, &memory.path));
                 self.clear_derivations_by_prefix(&memory.path);
             }

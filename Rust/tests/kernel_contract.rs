@@ -293,6 +293,95 @@ fn root_identity_replays_through_snapshot_hydration() {
 }
 
 #[test]
+fn noise_scope_records_redacted_boundary_memory() {
+    let mut kernel = Kernel::new();
+
+    let memory = kernel.noise("wallet", "noise-A").unwrap().clone();
+
+    assert_eq!(memory.operator.as_deref(), Some("~"));
+    assert_eq!(memory.path, vec!["wallet".to_string()]);
+    assert_eq!(memory.value, Value::from("***"));
+    assert!(kernel.is_noise_scope("wallet"));
+    assert_eq!(kernel.read("wallet"), None);
+    assert_eq!(kernel.read_public("wallet"), None);
+}
+
+#[test]
+fn noise_scope_does_not_hide_public_descendants_by_itself() {
+    let mut kernel = Kernel::new();
+
+    kernel.postulate("profile.name", "Abella").unwrap();
+    kernel.noise("profile", "noise-A").unwrap();
+    kernel.postulate("profile.city", "Veracruz").unwrap();
+
+    assert!(kernel.is_noise_scope("profile"));
+    assert_eq!(kernel.read("profile.name"), Some(&Value::from("Abella")));
+    assert_eq!(
+        kernel.read_public("profile.city"),
+        Some(&Value::from("Veracruz"))
+    );
+}
+
+#[test]
+fn noise_under_secret_scope_keeps_public_view_closed() {
+    let mut kernel = Kernel::new();
+
+    kernel.secret("profile", "alpha").unwrap();
+    kernel.noise("profile", "noise-A").unwrap();
+    kernel.postulate("profile.name", "Abella").unwrap();
+
+    assert!(kernel.is_secret_scope("profile"));
+    assert!(kernel.is_noise_scope("profile"));
+    assert_eq!(kernel.read("profile.name"), Some(&Value::from("Abella")));
+    assert_eq!(kernel.read_public("profile.name"), None);
+}
+
+#[test]
+fn remove_noise_scope_clears_boundary() {
+    let mut kernel = Kernel::new();
+
+    kernel.noise("profile", "noise-A").unwrap();
+    kernel.remove("profile").unwrap();
+
+    assert!(!kernel.is_noise_scope("profile"));
+    kernel.postulate("profile.name", "Abella").unwrap();
+    assert_eq!(
+        kernel.read_public("profile.name"),
+        Some(&Value::from("Abella"))
+    );
+}
+
+#[test]
+fn noise_scope_replays_through_snapshot_hydration() {
+    let mut kernel = Kernel::new();
+
+    kernel.noise("wallet", "noise-A").unwrap();
+    kernel.postulate("wallet.balance", 100_u64).unwrap();
+
+    let restored = Kernel::hydrate(kernel.export_snapshot()).unwrap();
+
+    assert_eq!(restored.memories(), kernel.memories());
+    assert!(restored.is_noise_scope("wallet"));
+    assert_eq!(
+        restored.read_public("wallet.balance"),
+        Some(&Value::from(100_u64))
+    );
+}
+
+#[test]
+fn empty_noise_is_rejected() {
+    let mut kernel = Kernel::new();
+
+    let error = kernel
+        .noise("wallet", "   ")
+        .expect_err("empty noise should be rejected");
+
+    assert_eq!(error, KernelError::EmptyNoise);
+    assert!(!kernel.is_noise_scope("wallet"));
+    assert_eq!(kernel.memories().len(), 0);
+}
+
+#[test]
 fn collect_returns_values_without_committing_memory() {
     let mut kernel = Kernel::new();
 
