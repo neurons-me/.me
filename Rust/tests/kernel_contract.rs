@@ -293,6 +293,149 @@ fn root_identity_replays_through_snapshot_hydration() {
 }
 
 #[test]
+fn derivation_computes_from_relative_scope() {
+    let mut kernel = Kernel::new();
+
+    kernel.postulate("order.price", 10_u64).unwrap();
+    kernel.postulate("order.quantity", 3_u64).unwrap();
+    let memory = kernel
+        .derive("order", "total", "price * quantity")
+        .unwrap()
+        .clone();
+
+    assert_eq!(memory.operator.as_deref(), Some("="));
+    assert_eq!(memory.expression.as_deref(), Some("price * quantity"));
+    assert_eq!(memory.path, vec!["order".to_string(), "total".to_string()]);
+    assert_eq!(memory.value, Value::from(30_f64));
+    assert_eq!(kernel.read("order.total"), Some(&Value::from(30_f64)));
+}
+
+#[test]
+fn derivation_recomputes_when_dependency_changes() {
+    let mut kernel = Kernel::new();
+
+    kernel.postulate("order.price", 10_u64).unwrap();
+    kernel.postulate("order.quantity", 3_u64).unwrap();
+    kernel.derive("order", "total", "price * quantity").unwrap();
+    kernel.postulate("order.price", 12_u64).unwrap();
+
+    assert_eq!(kernel.read("order.total"), Some(&Value::from(36_f64)));
+    assert_eq!(
+        kernel.memories().last().unwrap().operator.as_deref(),
+        Some("=")
+    );
+    assert_eq!(
+        kernel.memories().last().unwrap().expression.as_deref(),
+        Some("price * quantity")
+    );
+}
+
+#[test]
+fn derivations_cascade_through_derived_refs() {
+    let mut kernel = Kernel::new();
+
+    kernel.postulate("price", 10_u64).unwrap();
+    kernel.derive("", "cost_a", "price * 2").unwrap();
+    kernel.derive("", "total", "cost_a + 5").unwrap();
+
+    assert_eq!(kernel.read("total"), Some(&Value::from(25_f64)));
+
+    kernel.postulate("price", 20_u64).unwrap();
+
+    assert_eq!(kernel.read("cost_a"), Some(&Value::from(40_f64)));
+    assert_eq!(kernel.read("total"), Some(&Value::from(45_f64)));
+}
+
+#[test]
+fn unresolved_derivation_stores_expression_until_inputs_exist() {
+    let mut kernel = Kernel::new();
+
+    kernel.derive("order", "total", "price * quantity").unwrap();
+
+    assert_eq!(
+        kernel.read("order.total"),
+        Some(&Value::from("price * quantity"))
+    );
+
+    kernel.postulate("order.price", 10_u64).unwrap();
+    assert_eq!(
+        kernel.read("order.total"),
+        Some(&Value::from("price * quantity"))
+    );
+
+    kernel.postulate("order.quantity", 2_u64).unwrap();
+    assert_eq!(kernel.read("order.total"), Some(&Value::from(20_f64)));
+}
+
+#[test]
+fn derivation_supports_boolean_expressions() {
+    let mut kernel = Kernel::new();
+
+    kernel.postulate("district.currentLoad", 90_u64).unwrap();
+    kernel.postulate("district.capacity", 100_u64).unwrap();
+    kernel
+        .derive(
+            "district",
+            "needsRedirection",
+            "currentLoad / capacity * 100 > 85",
+        )
+        .unwrap();
+
+    assert_eq!(
+        kernel.read("district.needsRedirection"),
+        Some(&Value::from(true))
+    );
+
+    kernel.postulate("district.currentLoad", 70_u64).unwrap();
+
+    assert_eq!(
+        kernel.read("district.needsRedirection"),
+        Some(&Value::from(false))
+    );
+}
+
+#[test]
+fn derivation_replays_through_snapshot_hydration() {
+    let mut kernel = Kernel::new();
+
+    kernel.postulate("order.price", 10_u64).unwrap();
+    kernel.postulate("order.quantity", 3_u64).unwrap();
+    kernel.derive("order", "total", "price * quantity").unwrap();
+
+    let mut restored = Kernel::hydrate(kernel.export_snapshot()).unwrap();
+
+    assert_eq!(restored.memories(), kernel.memories());
+    assert_eq!(restored.read("order.total"), Some(&Value::from(30_f64)));
+
+    restored.postulate("order.quantity", 4_u64).unwrap();
+
+    assert_eq!(restored.read("order.total"), Some(&Value::from(40_f64)));
+}
+
+#[test]
+fn hydration_rejects_tampered_derivation_expression() {
+    let mut kernel = Kernel::new();
+
+    kernel.postulate("order.price", 10_u64).unwrap();
+    kernel.postulate("order.quantity", 3_u64).unwrap();
+    kernel.derive("order", "total", "price * quantity").unwrap();
+
+    let mut snapshot = kernel.export_snapshot();
+    snapshot.memories[2].expression = Some("price + quantity".to_string());
+
+    let error = Kernel::hydrate(snapshot).expect_err("tampering must be detected");
+
+    assert!(matches!(
+        error,
+        KernelError::HydrationHashMismatch {
+            path,
+            expected: _,
+            actual: _
+        } if path == vec!["order".to_string(), "total".to_string()]
+    ));
+}
+
+#[test]
 fn secret_scope_hides_existing_branch_from_public_index() {
     let mut kernel = Kernel::new();
 

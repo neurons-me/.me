@@ -1,10 +1,12 @@
 use std::collections::hash_map::DefaultHasher;
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::fmt;
 use std::hash::{Hash, Hasher};
 
+mod evaluator;
 mod path;
 
+use evaluator::{evaluate_expression, extract_expression_refs, resolve_ref_path};
 pub use path::{IntoPath, ParsedPath, Path, PathParseError, PathPart, Selector};
 
 #[derive(Debug, Clone, PartialEq)]
@@ -59,6 +61,7 @@ impl From<f64> for Value {
 pub struct Memory {
     pub path: Path,
     pub operator: Option<String>,
+    pub expression: Option<String>,
     pub value: Value,
     pub prev_hash: Option<String>,
     pub hash: String,
@@ -72,6 +75,7 @@ pub struct Snapshot {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum KernelError {
     EmptyPath,
+    EmptyExpression,
     EmptySecret,
     InvalidPath(PathParseError),
     InvalidIdentity(String),
@@ -92,6 +96,7 @@ impl fmt::Display for KernelError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::EmptyPath => write!(f, "path cannot be empty"),
+            Self::EmptyExpression => write!(f, "expression cannot be empty"),
             Self::EmptySecret => write!(f, "secret cannot be empty"),
             Self::InvalidPath(error) => write!(f, "invalid path: {error}"),
             Self::InvalidIdentity(value) => write!(f, "invalid identity: {value}"),
@@ -128,7 +133,16 @@ pub struct Kernel {
     index: BTreeMap<Path, Value>,
     private_index: BTreeMap<Path, Value>,
     secret_scopes: BTreeSet<Path>,
+    derivations: BTreeMap<Path, DerivationRecord>,
+    ref_subscribers: BTreeMap<Path, BTreeSet<Path>>,
     active_identity: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct DerivationRecord {
+    eval_scope: Path,
+    expression: String,
+    refs: BTreeSet<Path>,
 }
 
 impl Kernel {
@@ -175,6 +189,44 @@ impl Kernel {
 
     pub fn remove(&mut self, path: impl IntoPath) -> Result<&Memory, KernelError> {
         self.postulate_with_operator(path, Some("-".to_string()), Value::Null)
+    }
+
+    pub fn derive(
+        &mut self,
+        scope: impl IntoPath,
+        name: impl IntoPath,
+        expression: &str,
+    ) -> Result<&Memory, KernelError> {
+        let eval_scope = scope.into_path().map_err(KernelError::InvalidPath)?;
+        let name = name.into_path().map_err(KernelError::InvalidPath)?;
+        let expression = expression.trim();
+
+        if name.is_empty() {
+            return Err(KernelError::EmptyPath);
+        }
+        if expression.is_empty() {
+            return Err(KernelError::EmptyExpression);
+        }
+
+        let target_path = eval_scope.iter().cloned().chain(name).collect::<Vec<_>>();
+
+        self.register_derivation(
+            target_path.clone(),
+            eval_scope.clone(),
+            expression.to_string(),
+        );
+
+        let value = self
+            .evaluate_expression(&eval_scope, expression)
+            .unwrap_or_else(|| Value::String(expression.to_string()));
+
+        self.commit_memory_with_expression(
+            target_path,
+            Some("=".to_string()),
+            value,
+            Some(expression.to_string()),
+            true,
+        )
     }
 
     pub fn secret(&mut self, path: impl IntoPath, secret: &str) -> Result<&Memory, KernelError> {
@@ -255,6 +307,7 @@ impl Kernel {
             let expected = hash_memory(
                 &memory.path,
                 memory.operator.as_deref(),
+                memory.expression.as_deref(),
                 &memory.value,
                 memory.prev_hash.as_deref(),
             );
@@ -266,6 +319,12 @@ impl Kernel {
                 });
             }
 
+            if memory.operator.as_deref() == Some("=") {
+                if let Some(expression) = memory.expression.clone() {
+                    let eval_scope = parent_path(&memory.path);
+                    kernel.register_derivation(memory.path.clone(), eval_scope, expression);
+                }
+            }
             kernel.apply_memory(&memory);
             expected_prev_hash = Some(memory.hash.clone());
             if memory.operator.as_deref() == Some("@") && memory.path.is_empty() {
@@ -330,13 +389,33 @@ impl Kernel {
         operator: Option<String>,
         value: Value,
     ) -> Result<&Memory, KernelError> {
+        self.commit_memory_with_expression(path, operator, value, None, true)
+    }
+
+    fn commit_memory_with_expression(
+        &mut self,
+        path: Path,
+        operator: Option<String>,
+        value: Value,
+        expression: Option<String>,
+        invalidate: bool,
+    ) -> Result<&Memory, KernelError> {
         ensure_value_is_supported(&value)?;
 
         let prev_hash = self.memories.last().map(|memory| memory.hash.clone());
-        let hash = hash_memory(&path, operator.as_deref(), &value, prev_hash.as_deref());
+        let hash = hash_memory(
+            &path,
+            operator.as_deref(),
+            expression.as_deref(),
+            &value,
+            prev_hash.as_deref(),
+        );
+        let source_path = path.clone();
+        let memory_index = self.memories.len();
         let memory = Memory {
             path,
             operator,
+            expression,
             value,
             prev_hash,
             hash,
@@ -344,10 +423,10 @@ impl Kernel {
 
         self.apply_memory(&memory);
         self.memories.push(memory);
-        Ok(self
-            .memories
-            .last()
-            .expect("memory was just pushed into the log"))
+        if invalidate {
+            self.invalidate_from_path(&source_path);
+        }
+        Ok(&self.memories[memory_index])
     }
 
     fn apply_memory(&mut self, memory: &Memory) {
@@ -365,6 +444,7 @@ impl Kernel {
                 remove_index_prefix(&mut self.private_index, &memory.path);
                 self.secret_scopes
                     .retain(|scope| !path_starts_with(scope, &memory.path));
+                self.clear_derivations_by_prefix(&memory.path);
             }
             _ if self.is_under_secret_scope(&memory.path) => {
                 self.index.remove(&memory.path);
@@ -381,6 +461,104 @@ impl Kernel {
         self.secret_scopes
             .iter()
             .any(|scope| path_starts_with(path, scope))
+    }
+
+    fn register_derivation(&mut self, target_path: Path, eval_scope: Path, expression: String) {
+        self.unregister_derivation(&target_path);
+
+        let refs = extract_expression_refs(&expression)
+            .into_iter()
+            .filter_map(|label| resolve_ref_path(&label, &eval_scope))
+            .collect::<BTreeSet<_>>();
+
+        for ref_path in &refs {
+            self.ref_subscribers
+                .entry(ref_path.clone())
+                .or_default()
+                .insert(target_path.clone());
+        }
+
+        self.derivations.insert(
+            target_path,
+            DerivationRecord {
+                eval_scope,
+                expression,
+                refs,
+            },
+        );
+    }
+
+    fn unregister_derivation(&mut self, target_path: &[String]) {
+        let Some(record) = self.derivations.remove(target_path) else {
+            return;
+        };
+
+        for ref_path in record.refs {
+            if let Some(subscribers) = self.ref_subscribers.get_mut(&ref_path) {
+                subscribers.remove(target_path);
+                if subscribers.is_empty() {
+                    self.ref_subscribers.remove(&ref_path);
+                }
+            }
+        }
+    }
+
+    fn clear_derivations_by_prefix(&mut self, prefix: &[String]) {
+        let targets = self
+            .derivations
+            .keys()
+            .filter(|target| path_starts_with(target, prefix))
+            .cloned()
+            .collect::<Vec<_>>();
+
+        for target in targets {
+            self.unregister_derivation(&target);
+        }
+    }
+
+    fn invalidate_from_path(&mut self, source_path: &[String]) {
+        let mut queue = VecDeque::from([source_path.to_vec()]);
+        let mut seen_targets = BTreeSet::new();
+
+        while let Some(changed_path) = queue.pop_front() {
+            let subscribers = self
+                .ref_subscribers
+                .get(&changed_path)
+                .cloned()
+                .unwrap_or_default();
+
+            for target_path in subscribers {
+                if !seen_targets.insert(target_path.clone()) {
+                    continue;
+                }
+                if self.recompute_target(&target_path) {
+                    queue.push_back(target_path);
+                }
+            }
+        }
+    }
+
+    fn recompute_target(&mut self, target_path: &[String]) -> bool {
+        let Some(record) = self.derivations.get(target_path).cloned() else {
+            return false;
+        };
+
+        let value = self
+            .evaluate_expression(&record.eval_scope, &record.expression)
+            .unwrap_or_else(|| Value::String(record.expression.clone()));
+
+        self.commit_memory_with_expression(
+            target_path.to_vec(),
+            Some("=".to_string()),
+            value,
+            Some(record.expression),
+            false,
+        )
+        .is_ok()
+    }
+
+    fn evaluate_expression(&self, eval_scope: &[String], expression: &str) -> Option<Value> {
+        evaluate_expression(self, eval_scope, expression)
     }
 }
 
@@ -408,6 +586,12 @@ fn move_index_prefix_to_private(
 
 fn path_starts_with(path: &[String], prefix: &[String]) -> bool {
     path.len() >= prefix.len() && path.iter().zip(prefix).all(|(left, right)| left == right)
+}
+
+fn parent_path(path: &[String]) -> Path {
+    path.split_last()
+        .map(|(_, parent)| parent.to_vec())
+        .unwrap_or_default()
 }
 
 fn ensure_value_is_supported(value: &Value) -> Result<(), KernelError> {
@@ -458,12 +642,14 @@ fn normalize_identity(input: &str) -> Result<String, KernelError> {
 fn hash_memory(
     path: &[String],
     operator: Option<&str>,
+    expression: Option<&str>,
     value: &Value,
     prev_hash: Option<&str>,
 ) -> String {
     let mut hasher = DefaultHasher::new();
     path.hash(&mut hasher);
     operator.hash(&mut hasher);
+    expression.hash(&mut hasher);
     hash_value(value, &mut hasher);
     prev_hash.hash(&mut hasher);
     format!("{:016x}", hasher.finish())
