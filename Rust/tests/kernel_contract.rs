@@ -291,3 +291,101 @@ fn root_identity_replays_through_snapshot_hydration() {
         Some(&Value::Identity("worker".to_string()))
     );
 }
+
+#[test]
+fn secret_scope_hides_existing_branch_from_public_index() {
+    let mut kernel = Kernel::new();
+
+    kernel.postulate("wallet.balance", 100_u64).unwrap();
+    let memory = kernel.secret("wallet", "vault-key").unwrap().clone();
+
+    assert_eq!(memory.operator.as_deref(), Some("_"));
+    assert_eq!(memory.path, vec!["wallet".to_string()]);
+    assert_eq!(memory.value, Value::from("***"));
+    assert!(kernel.is_secret_scope("wallet"));
+    assert_eq!(kernel.read("wallet.balance"), Some(&Value::from(100_u64)));
+    assert_eq!(kernel.read_public("wallet.balance"), None);
+}
+
+#[test]
+fn writes_under_secret_scope_stay_out_of_public_index() {
+    let mut kernel = Kernel::new();
+
+    kernel.secret("wallet", "vault-key").unwrap();
+    kernel.postulate("wallet.balance", 100_u64).unwrap();
+    kernel.postulate("profile.name", "Jabellae").unwrap();
+
+    assert_eq!(kernel.read("wallet.balance"), Some(&Value::from(100_u64)));
+    assert_eq!(kernel.read_public("wallet.balance"), None);
+    assert_eq!(
+        kernel.read_public("profile.name"),
+        Some(&Value::from("Jabellae"))
+    );
+}
+
+#[test]
+fn secret_scope_does_not_hide_siblings() {
+    let mut kernel = Kernel::new();
+
+    kernel.secret("wallet", "vault-key").unwrap();
+    kernel.postulate("wallet.balance", 100_u64).unwrap();
+    kernel.postulate("wallets.balance", 200_u64).unwrap();
+
+    assert_eq!(kernel.read_public("wallet.balance"), None);
+    assert_eq!(
+        kernel.read_public("wallets.balance"),
+        Some(&Value::from(200_u64))
+    );
+}
+
+#[test]
+fn remove_secret_scope_clears_private_data_and_scope() {
+    let mut kernel = Kernel::new();
+
+    kernel.secret("wallet", "vault-key").unwrap();
+    kernel.postulate("wallet.balance", 100_u64).unwrap();
+    kernel.remove("wallet").unwrap();
+
+    assert_eq!(kernel.read("wallet.balance"), None);
+    assert_eq!(kernel.read_public("wallet.balance"), None);
+    assert!(!kernel.is_secret_scope("wallet"));
+
+    kernel.postulate("wallet.balance", 200_u64).unwrap();
+    assert_eq!(
+        kernel.read_public("wallet.balance"),
+        Some(&Value::from(200_u64))
+    );
+}
+
+#[test]
+fn secret_scope_replays_through_snapshot_hydration() {
+    let mut kernel = Kernel::new();
+
+    kernel.secret("wallet", "vault-key").unwrap();
+    kernel.postulate("wallet.balance", 100_u64).unwrap();
+    kernel.postulate("profile.name", "Jabellae").unwrap();
+
+    let restored = Kernel::hydrate(kernel.export_snapshot()).unwrap();
+
+    assert_eq!(restored.memories(), kernel.memories());
+    assert!(restored.is_secret_scope("wallet"));
+    assert_eq!(restored.read("wallet.balance"), Some(&Value::from(100_u64)));
+    assert_eq!(restored.read_public("wallet.balance"), None);
+    assert_eq!(
+        restored.read_public("profile.name"),
+        Some(&Value::from("Jabellae"))
+    );
+}
+
+#[test]
+fn empty_secret_is_rejected() {
+    let mut kernel = Kernel::new();
+
+    let error = kernel
+        .secret("wallet", "   ")
+        .expect_err("empty secret should be rejected");
+
+    assert_eq!(error, KernelError::EmptySecret);
+    assert!(!kernel.is_secret_scope("wallet"));
+    assert_eq!(kernel.memories().len(), 0);
+}

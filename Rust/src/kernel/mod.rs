@@ -72,6 +72,7 @@ pub struct Snapshot {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum KernelError {
     EmptyPath,
+    EmptySecret,
     InvalidPath(PathParseError),
     InvalidIdentity(String),
     NonFiniteNumber,
@@ -91,6 +92,7 @@ impl fmt::Display for KernelError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::EmptyPath => write!(f, "path cannot be empty"),
+            Self::EmptySecret => write!(f, "secret cannot be empty"),
             Self::InvalidPath(error) => write!(f, "invalid path: {error}"),
             Self::InvalidIdentity(value) => write!(f, "invalid identity: {value}"),
             Self::NonFiniteNumber => write!(f, "numbers must be finite"),
@@ -124,6 +126,8 @@ impl std::error::Error for KernelError {}
 pub struct Kernel {
     memories: Vec<Memory>,
     index: BTreeMap<Path, Value>,
+    private_index: BTreeMap<Path, Value>,
+    secret_scopes: BTreeSet<Path>,
     active_identity: Option<String>,
 }
 
@@ -138,6 +142,13 @@ impl Kernel {
 
     pub fn active_identity(&self) -> Option<&str> {
         self.active_identity.as_deref()
+    }
+
+    pub fn is_secret_scope(&self, path: impl IntoPath) -> bool {
+        let Ok(path) = path.into_path() else {
+            return false;
+        };
+        self.secret_scopes.contains(&path)
     }
 
     pub fn postulate(
@@ -166,6 +177,23 @@ impl Kernel {
         self.postulate_with_operator(path, Some("-".to_string()), Value::Null)
     }
 
+    pub fn secret(&mut self, path: impl IntoPath, secret: &str) -> Result<&Memory, KernelError> {
+        if secret.trim().is_empty() {
+            return Err(KernelError::EmptySecret);
+        }
+
+        let path = path.into_path().map_err(KernelError::InvalidPath)?;
+        if path.is_empty() {
+            return Err(KernelError::EmptyPath);
+        }
+
+        self.commit_memory(
+            path,
+            Some("_".to_string()),
+            Value::String("***".to_string()),
+        )
+    }
+
     pub fn pointer(
         &mut self,
         path: impl IntoPath,
@@ -190,6 +218,14 @@ impl Kernel {
     }
 
     pub fn read(&self, path: impl IntoPath) -> Option<&Value> {
+        let Ok(path) = path.into_path() else {
+            return None;
+        };
+        self.resolve_index_pointer_path(&path, 8)
+            .and_then(|resolved| self.read_owner_path(&resolved))
+    }
+
+    pub fn read_public(&self, path: impl IntoPath) -> Option<&Value> {
         let Ok(path) = path.into_path() else {
             return None;
         };
@@ -230,7 +266,7 @@ impl Kernel {
                 });
             }
 
-            apply_memory_to_index(&mut kernel.index, &memory);
+            kernel.apply_memory(&memory);
             expected_prev_hash = Some(memory.hash.clone());
             if memory.operator.as_deref() == Some("@") && memory.path.is_empty() {
                 if let Value::Identity(id) = &memory.value {
@@ -281,6 +317,13 @@ impl Kernel {
         None
     }
 
+    fn read_owner_path(&self, path: &[String]) -> Option<&Value> {
+        if self.is_under_secret_scope(path) {
+            return self.private_index.get(path);
+        }
+        self.index.get(path)
+    }
+
     fn commit_memory(
         &mut self,
         path: Path,
@@ -299,26 +342,68 @@ impl Kernel {
             hash,
         };
 
-        apply_memory_to_index(&mut self.index, &memory);
+        self.apply_memory(&memory);
         self.memories.push(memory);
         Ok(self
             .memories
             .last()
             .expect("memory was just pushed into the log"))
     }
-}
 
-fn apply_memory_to_index(index: &mut BTreeMap<Path, Value>, memory: &Memory) {
-    if memory.operator.as_deref() == Some("-") {
-        remove_index_prefix(index, &memory.path);
-        return;
+    fn apply_memory(&mut self, memory: &Memory) {
+        match memory.operator.as_deref() {
+            Some("_") => {
+                self.secret_scopes.insert(memory.path.clone());
+                move_index_prefix_to_private(
+                    &mut self.index,
+                    &mut self.private_index,
+                    &memory.path,
+                );
+            }
+            Some("-") => {
+                remove_index_prefix(&mut self.index, &memory.path);
+                remove_index_prefix(&mut self.private_index, &memory.path);
+                self.secret_scopes
+                    .retain(|scope| !path_starts_with(scope, &memory.path));
+            }
+            _ if self.is_under_secret_scope(&memory.path) => {
+                self.index.remove(&memory.path);
+                self.private_index
+                    .insert(memory.path.clone(), memory.value.clone());
+            }
+            _ => {
+                self.index.insert(memory.path.clone(), memory.value.clone());
+            }
+        }
     }
 
-    index.insert(memory.path.clone(), memory.value.clone());
+    fn is_under_secret_scope(&self, path: &[String]) -> bool {
+        self.secret_scopes
+            .iter()
+            .any(|scope| path_starts_with(path, scope))
+    }
 }
 
 fn remove_index_prefix(index: &mut BTreeMap<Path, Value>, prefix: &[String]) {
     index.retain(|path, _| !path_starts_with(path, prefix));
+}
+
+fn move_index_prefix_to_private(
+    index: &mut BTreeMap<Path, Value>,
+    private_index: &mut BTreeMap<Path, Value>,
+    prefix: &[String],
+) {
+    let keys = index
+        .keys()
+        .filter(|path| path_starts_with(path, prefix))
+        .cloned()
+        .collect::<Vec<_>>();
+
+    for key in keys {
+        if let Some(value) = index.remove(&key) {
+            private_index.insert(key, value);
+        }
+    }
 }
 
 fn path_starts_with(path: &[String], prefix: &[String]) -> bool {
