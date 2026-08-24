@@ -1043,6 +1043,56 @@ fn blob_v3_keys_match_typescript_fixtures() {
 }
 
 #[test]
+fn encrypt_blob_v3_matches_typescript_fixture_and_decrypts() {
+    let mut kernel = Kernel::new();
+    let nonce = [
+        0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e,
+        0x0f,
+    ];
+
+    kernel.secret("wallet", "steel-door").unwrap();
+    kernel.postulate("wallet.balance", 100_u64).unwrap();
+
+    let blob = kernel
+        .encrypt_secret_value_v3("wallet.balance", 100_u64, nonce)
+        .unwrap();
+
+    assert_eq!(
+        blob,
+        "b64u:_m1lAwABAgMEBQYHCAkKCwwNDg96n3ivJyFIHd924OaJDs29P14O"
+    );
+    assert_eq!(
+        kernel
+            .decrypt_secret_value_v3("wallet.balance", &blob)
+            .unwrap(),
+        Some(Value::from(100_u64))
+    );
+}
+
+#[test]
+fn decrypt_blob_v3_tampering_fails_closed() {
+    let mut kernel = Kernel::new();
+    let nonce = [
+        0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e,
+        0x0f,
+    ];
+
+    kernel.secret("wallet", "steel-door").unwrap();
+    let mut blob = kernel
+        .encrypt_secret_value_v3("wallet.balance", 100_u64, nonce)
+        .unwrap();
+    blob.pop();
+    blob.push('A');
+
+    assert_eq!(
+        kernel
+            .decrypt_secret_value_v3("wallet.balance", &blob)
+            .unwrap(),
+        None
+    );
+}
+
+#[test]
 fn writes_under_secret_scope_stay_out_of_public_index() {
     let mut kernel = Kernel::new();
 

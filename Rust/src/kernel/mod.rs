@@ -7,7 +7,10 @@ mod secret_material;
 
 use evaluator::{evaluate_expression, extract_expression_refs, resolve_ref_path};
 pub use path::{IntoPath, ParsedPath, Path, PathParseError, PathPart, Selector};
-use secret_material::{derive_blob_v3_keys, derive_secret_material_v3, lineage_segment};
+use secret_material::{
+    decrypt_blob_v3_cleartext, derive_blob_v3_keys, derive_secret_material_v3,
+    encrypt_blob_v3_cleartext, lineage_segment,
+};
 pub use secret_material::{BlobV3DerivedKeys, SecretMaterialPurpose};
 
 const V3_DOMAIN: &str = "this.me/blob/v3";
@@ -313,6 +316,37 @@ impl Kernel {
             SecretMaterialMode::Value => SecretMaterialPurpose::Value,
         };
         derive_blob_v3_keys(&chain, purpose, &path).ok_or(KernelError::NoSecretContext(path))
+    }
+
+    pub fn encrypt_secret_value_v3(
+        &self,
+        path: impl IntoPath,
+        value: impl Into<Value>,
+        nonce: [u8; 16],
+    ) -> Result<String, KernelError> {
+        let path = path.into_path().map_err(KernelError::InvalidPath)?;
+        let keys = self.secret_blob_keys_v3(path.clone(), SecretMaterialMode::Value)?;
+        let value = value.into();
+        ensure_value_is_supported(&value)?;
+        let mut json = String::new();
+        push_json_value(&mut json, &value);
+        Ok(encrypt_blob_v3_cleartext(json.as_bytes(), &keys, nonce))
+    }
+
+    pub fn decrypt_secret_value_v3(
+        &self,
+        path: impl IntoPath,
+        blob: &str,
+    ) -> Result<Option<Value>, KernelError> {
+        let path = path.into_path().map_err(KernelError::InvalidPath)?;
+        let keys = self.secret_blob_keys_v3(path, SecretMaterialMode::Value)?;
+        let Some(cleartext) = decrypt_blob_v3_cleartext(blob, &keys) else {
+            return Ok(None);
+        };
+        let Ok(json) = String::from_utf8(cleartext) else {
+            return Ok(None);
+        };
+        Ok(json_to_value(&json))
     }
 
     pub fn postulate(
@@ -1253,5 +1287,29 @@ fn push_json_value(out: &mut String, value: &Value) {
             push_json_string(out, id);
             out.push('}');
         }
+    }
+}
+
+fn json_to_value(input: &str) -> Option<Value> {
+    let value = serde_json::from_str::<serde_json::Value>(input).ok()?;
+    serde_json_to_value(value)
+}
+
+fn serde_json_to_value(value: serde_json::Value) -> Option<Value> {
+    match value {
+        serde_json::Value::Null => Some(Value::Null),
+        serde_json::Value::Bool(value) => Some(Value::Bool(value)),
+        serde_json::Value::Number(value) => value.as_f64().map(Value::Number),
+        serde_json::Value::String(value) => Some(Value::String(value)),
+        serde_json::Value::Array(values) => values
+            .into_iter()
+            .map(serde_json_to_value)
+            .collect::<Option<Vec<_>>>()
+            .map(Value::Array),
+        serde_json::Value::Object(values) => values
+            .into_iter()
+            .map(|(key, value)| serde_json_to_value(value).map(|value| (key, value)))
+            .collect::<Option<BTreeMap<_, _>>>()
+            .map(Value::Object),
     }
 }
