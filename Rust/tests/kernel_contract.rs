@@ -388,7 +388,7 @@ fn inspect_redacts_memories_under_secret_scope() {
 }
 
 #[test]
-fn inspect_does_not_redact_owner_snapshot() {
+fn owner_snapshot_keeps_encrypted_secret_blob_not_public_redaction() {
     let mut kernel = Kernel::new();
 
     kernel.secret("wallet", "alpha").unwrap();
@@ -396,9 +396,14 @@ fn inspect_does_not_redact_owner_snapshot() {
 
     let snapshot = kernel.export_snapshot();
     let inspect = kernel.inspect();
+    let restored = Kernel::hydrate(snapshot.clone()).unwrap();
 
-    assert_eq!(snapshot.memories[1].value, Value::from("private"));
+    assert!(matches!(
+        &snapshot.memories[1].value,
+        Value::String(blob) if blob.starts_with("b64u:")
+    ));
     assert_eq!(inspect.memories[1].value, Value::from("****"));
+    assert_eq!(restored.read("wallet.note"), Some(&Value::from("private")));
 }
 
 #[test]
@@ -953,7 +958,10 @@ fn effective_secret_follows_secret_lineage() {
         "f11aeb12"
     );
     assert_eq!(kernel.memories()[0].hash, "4393708b");
-    assert_eq!(kernel.memories()[1].hash, "65ecdd30");
+    assert!(matches!(
+        &kernel.memories()[1].value,
+        Value::String(blob) if blob.starts_with("b64u:")
+    ));
 }
 
 #[test]
@@ -1106,6 +1114,26 @@ fn writes_under_secret_scope_stay_out_of_public_index() {
         kernel.read_public("profile.name"),
         Some(&Value::from("Jabellae"))
     );
+}
+
+#[test]
+fn writes_under_secret_scope_store_encrypted_blobs_in_memory() {
+    let mut kernel = Kernel::new();
+
+    kernel.secret("wallet", "vault-key").unwrap();
+    kernel.postulate("wallet.balance", 100_u64).unwrap();
+
+    let memory = &kernel.memories()[1];
+    assert_eq!(
+        memory.path,
+        vec!["wallet".to_string(), "balance".to_string()]
+    );
+    assert!(matches!(
+        &memory.value,
+        Value::String(blob) if blob.starts_with("b64u:") && blob != "100"
+    ));
+    assert_eq!(kernel.read("wallet.balance"), Some(&Value::from(100_u64)));
+    assert_eq!(kernel.read_public("wallet.balance"), None);
 }
 
 #[test]

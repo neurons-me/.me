@@ -9,7 +9,7 @@ use evaluator::{evaluate_expression, extract_expression_refs, resolve_ref_path};
 pub use path::{IntoPath, ParsedPath, Path, PathParseError, PathPart, Selector};
 use secret_material::{
     decrypt_blob_v3_cleartext, derive_blob_v3_keys, derive_secret_material_v3,
-    encrypt_blob_v3_cleartext, lineage_segment,
+    encrypt_blob_v3_cleartext, lineage_segment, random_blob_v3_nonce,
 };
 pub use secret_material::{BlobV3DerivedKeys, SecretMaterialPurpose};
 
@@ -155,6 +155,8 @@ pub enum KernelError {
     InvalidIdentity(String),
     NonFiniteNumber,
     NoSecretContext(Path),
+    RandomUnavailable,
+    SecretBlobDecryptFailed(Path),
     RootSecretBranchUnsupported,
     HydrationHashMismatch {
         path: Path,
@@ -182,6 +184,16 @@ impl fmt::Display for KernelError {
             Self::NoSecretContext(path) => write!(
                 f,
                 "no secret context active for {}",
+                if path.is_empty() {
+                    "<root>".to_string()
+                } else {
+                    path.join(".")
+                }
+            ),
+            Self::RandomUnavailable => write!(f, "secure random bytes are unavailable"),
+            Self::SecretBlobDecryptFailed(path) => write!(
+                f,
+                "secret blob decrypt failed for {}",
                 if path.is_empty() {
                     "<root>".to_string()
                 } else {
@@ -626,7 +638,7 @@ impl Kernel {
                     kernel.register_derivation(memory.path.clone(), eval_scope, expression);
                 }
             }
-            kernel.apply_memory(&memory);
+            kernel.apply_memory(&memory)?;
             match memory.operator.as_deref() {
                 Some("_") => {
                     if let Some(secret) = snapshot.local_secrets.get(&memory.path) {
@@ -737,11 +749,12 @@ impl Kernel {
 
         let prev_hash = self.memories.last().map(|memory| memory.hash.clone());
         let effective_secret = self.compute_effective_secret(&path);
+        let stored_value = self.stored_value_for_memory(&path, operator.as_deref(), &value)?;
         let hash = hash_memory(
             &path,
             operator.as_deref(),
             expression.as_deref(),
-            &value,
+            &stored_value,
             secret_opt(&effective_secret),
             prev_hash.as_deref(),
         );
@@ -751,12 +764,12 @@ impl Kernel {
             path,
             operator,
             expression,
-            value,
+            value: stored_value,
             prev_hash,
             hash,
         };
 
-        self.apply_memory(&memory);
+        self.apply_memory(&memory)?;
         self.memories.push(memory);
         if invalidate {
             self.invalidate_from_path(&source_path);
@@ -764,7 +777,7 @@ impl Kernel {
         Ok(&self.memories[memory_index])
     }
 
-    fn apply_memory(&mut self, memory: &Memory) {
+    fn apply_memory(&mut self, memory: &Memory) -> Result<(), KernelError> {
         match memory.operator.as_deref() {
             Some("_") => {
                 self.secret_scopes.insert(memory.path.clone());
@@ -792,19 +805,60 @@ impl Kernel {
             }
             _ if self.is_under_secret_scope(&memory.path) => {
                 self.index.remove(&memory.path);
-                self.private_index
-                    .insert(memory.path.clone(), memory.value.clone());
+                let value = self.value_for_private_index(memory)?;
+                self.private_index.insert(memory.path.clone(), value);
             }
             _ => {
                 self.index.insert(memory.path.clone(), memory.value.clone());
             }
         }
+        Ok(())
     }
 
     fn is_under_secret_scope(&self, path: &[String]) -> bool {
         self.secret_scopes
             .iter()
             .any(|scope| path_starts_with(path, scope))
+    }
+
+    fn stored_value_for_memory(
+        &self,
+        path: &[String],
+        operator: Option<&str>,
+        value: &Value,
+    ) -> Result<Value, KernelError> {
+        if !self.should_encrypt_memory_value(path, operator, value) {
+            return Ok(value.clone());
+        }
+        let nonce = random_blob_v3_nonce().ok_or(KernelError::RandomUnavailable)?;
+        let blob = self.encrypt_secret_value_v3(path.to_vec(), value.clone(), nonce)?;
+        Ok(Value::String(blob))
+    }
+
+    fn should_encrypt_memory_value(
+        &self,
+        path: &[String],
+        operator: Option<&str>,
+        value: &Value,
+    ) -> bool {
+        operator.is_none()
+            && self.is_under_secret_scope(path)
+            && !matches!(value, Value::Pointer(_) | Value::Identity(_))
+    }
+
+    fn value_for_private_index(&self, memory: &Memory) -> Result<Value, KernelError> {
+        if !self.should_encrypt_memory_value(
+            &memory.path,
+            memory.operator.as_deref(),
+            &memory.value,
+        ) {
+            return Ok(memory.value.clone());
+        }
+        let Value::String(blob) = &memory.value else {
+            return Err(KernelError::SecretBlobDecryptFailed(memory.path.clone()));
+        };
+        self.decrypt_secret_value_v3(memory.path.clone(), blob)?
+            .ok_or_else(|| KernelError::SecretBlobDecryptFailed(memory.path.clone()))
     }
 
     fn compute_effective_secret(&self, path: &[String]) -> String {

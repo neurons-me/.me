@@ -114,6 +114,12 @@ pub fn encrypt_blob_v3_cleartext(
     format!("{BLOB_BASE64URL_PREFIX}{}", base64_url_encode(&encoded))
 }
 
+pub fn random_blob_v3_nonce() -> Option<[u8; BLOB_V3_NONCE_LENGTH]> {
+    let mut nonce = [0_u8; BLOB_V3_NONCE_LENGTH];
+    getrandom::getrandom(&mut nonce).ok()?;
+    Some(nonce)
+}
+
 pub fn decrypt_blob_v3_cleartext(blob: &str, keys: &BlobV3DerivedKeys) -> Option<Vec<u8>> {
     let bytes = blob_to_bytes(blob)?;
     let header_length = BLOB_V2_MAGIC.len() + 1;
