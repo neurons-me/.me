@@ -7,8 +7,8 @@ mod secret_material;
 
 use evaluator::{evaluate_expression, extract_expression_refs, resolve_ref_path};
 pub use path::{IntoPath, ParsedPath, Path, PathParseError, PathPart, Selector};
-pub use secret_material::SecretMaterialPurpose;
-use secret_material::{derive_secret_material_v3, lineage_segment};
+use secret_material::{derive_blob_v3_keys, derive_secret_material_v3, lineage_segment};
+pub use secret_material::{BlobV3DerivedKeys, SecretMaterialPurpose};
 
 const V3_DOMAIN: &str = "this.me/blob/v3";
 const V3_NO_NOISE_SENTINEL: &str = "this.me/blob/v3/no-noise";
@@ -299,6 +299,20 @@ impl Kernel {
         let path = path.into_path().map_err(KernelError::InvalidPath)?;
         let chain = self.collect_secret_chain_v3(&path, mode)?;
         derive_secret_material_v3(&chain, purpose).ok_or(KernelError::NoSecretContext(path))
+    }
+
+    pub fn secret_blob_keys_v3(
+        &self,
+        path: impl IntoPath,
+        mode: SecretMaterialMode,
+    ) -> Result<BlobV3DerivedKeys, KernelError> {
+        let path = path.into_path().map_err(KernelError::InvalidPath)?;
+        let chain = self.collect_secret_chain_v3(&path, mode)?;
+        let purpose = match mode {
+            SecretMaterialMode::Branch => SecretMaterialPurpose::Branch,
+            SecretMaterialMode::Value => SecretMaterialPurpose::Value,
+        };
+        derive_blob_v3_keys(&chain, purpose, &path).ok_or(KernelError::NoSecretContext(path))
     }
 
     pub fn postulate(

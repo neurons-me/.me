@@ -2,8 +2,9 @@ use this_me::kernel::{
     ExplainOrigin, Kernel, KernelError, SecretMaterialMode, SecretMaterialPurpose, Value,
 };
 
-fn hex(bytes: [u8; 32]) -> String {
+fn hex(bytes: impl AsRef<[u8]>) -> String {
     bytes
+        .as_ref()
         .iter()
         .map(|byte| format!("{byte:02x}"))
         .collect::<String>()
@@ -998,6 +999,47 @@ fn secret_material_v3_matches_typescript_branch_and_value_fixtures() {
         "0ba0895e0c51bd759ebc78552855137ebf7c0e608e5494942793f2dc445756a9"
     );
     assert_ne!(value_balance, value_note);
+}
+
+#[test]
+fn blob_v3_keys_match_typescript_fixtures() {
+    let mut kernel = Kernel::new();
+
+    kernel.secret("wallet", "steel-door").unwrap();
+    kernel.postulate("wallet.balance", 100_u64).unwrap();
+
+    let branch_keys = kernel
+        .secret_blob_keys_v3("wallet.balance", SecretMaterialMode::Branch)
+        .unwrap();
+    let value_keys = kernel
+        .secret_blob_keys_v3("wallet.balance", SecretMaterialMode::Value)
+        .unwrap();
+
+    assert_eq!(
+        hex(&branch_keys.path_context),
+        "77616c6c65742e62616c616e6365"
+    );
+    assert_eq!(
+        hex(branch_keys.enc_key),
+        "d6c083de386973b96784c94708996945e4b6ce49d2c2f4c24b51be96b6c13f71"
+    );
+    assert_eq!(
+        hex(branch_keys.mac_key),
+        "925244047426e98be206dd29dec81cd05bb98e9a4d4d660b8c52c5f16d3f8f4f"
+    );
+
+    assert_eq!(
+        hex(&value_keys.path_context),
+        "77616c6c65742e62616c616e6365"
+    );
+    assert_eq!(
+        hex(value_keys.enc_key),
+        "80938b1df755f88cd88ce4170856658bea69d8ce8e611f2fdf26d4e22b0b57ab"
+    );
+    assert_eq!(
+        hex(value_keys.mac_key),
+        "966dde6a725fbec96a16e324003b60af6ce14da2a8677c8cd91e40a93c09957c"
+    );
 }
 
 #[test]
