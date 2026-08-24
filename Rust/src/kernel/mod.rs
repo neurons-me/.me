@@ -72,6 +72,44 @@ pub struct Snapshot {
     pub memories: Vec<Memory>,
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct ExplainResult {
+    pub path: Path,
+    pub value: Option<Value>,
+    pub expr: Option<String>,
+    pub derivation: Option<ExplainDerivation>,
+    pub meta: ExplainMeta,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ExplainDerivation {
+    pub expression: String,
+    pub inputs: Vec<ExplainInput>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ExplainInput {
+    pub label: String,
+    pub path: Path,
+    pub value: Option<Value>,
+    pub origin: ExplainOrigin,
+    pub masked: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ExplainOrigin {
+    Public,
+    Secret,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ExplainMeta {
+    pub depends_on: Vec<Path>,
+    pub resolved_path: Path,
+    pub pointer_chain: Vec<Path>,
+    pub secret: bool,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum KernelError {
     EmptyPath,
@@ -147,7 +185,19 @@ pub struct Kernel {
 struct DerivationRecord {
     eval_scope: Path,
     expression: String,
-    refs: BTreeSet<Path>,
+    refs: Vec<DerivationRef>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct DerivationRef {
+    label: String,
+    path: Path,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct PointerResolution {
+    resolved_path: Path,
+    pointer_chain: Vec<Path>,
 }
 
 impl Kernel {
@@ -340,6 +390,67 @@ impl Kernel {
             .and_then(|resolved| self.index.get(&resolved))
     }
 
+    pub fn explain(&self, path: impl IntoPath) -> Result<ExplainResult, KernelError> {
+        let path = path.into_path().map_err(KernelError::InvalidPath)?;
+        let resolution = self
+            .resolve_index_pointer_trace(&path, 8)
+            .unwrap_or_else(|| PointerResolution {
+                resolved_path: path.clone(),
+                pointer_chain: Vec::new(),
+            });
+        let value = self.read_owner_path(&resolution.resolved_path).cloned();
+        let record = self.derivations.get(&resolution.resolved_path);
+        let derivation = record.map(|record| ExplainDerivation {
+            expression: record.expression.clone(),
+            inputs: record
+                .refs
+                .iter()
+                .map(|reference| {
+                    let masked = self.is_under_secret_scope(&reference.path);
+                    ExplainInput {
+                        label: reference.label.clone(),
+                        path: reference.path.clone(),
+                        value: if masked {
+                            Some(Value::String("****".to_string()))
+                        } else {
+                            self.read(reference.path.clone()).cloned()
+                        },
+                        origin: if masked {
+                            ExplainOrigin::Secret
+                        } else {
+                            ExplainOrigin::Public
+                        },
+                        masked,
+                    }
+                })
+                .collect(),
+        });
+        let depends_on = record
+            .map(|record| {
+                record
+                    .refs
+                    .iter()
+                    .map(|reference| reference.path.clone())
+                    .collect()
+            })
+            .unwrap_or_default();
+        let expr = record.map(|record| record.expression.clone());
+        let secret = self.is_under_secret_scope(&resolution.resolved_path);
+
+        Ok(ExplainResult {
+            path,
+            value,
+            expr,
+            meta: ExplainMeta {
+                depends_on,
+                resolved_path: resolution.resolved_path,
+                pointer_chain: resolution.pointer_chain,
+                secret,
+            },
+            derivation,
+        })
+    }
+
     pub fn export_snapshot(&self) -> Snapshot {
         Snapshot {
             memories: self.memories.clone(),
@@ -394,14 +505,25 @@ impl Kernel {
     }
 
     fn resolve_index_pointer_path(&self, path: &[String], max_hops: usize) -> Option<Path> {
+        self.resolve_index_pointer_trace(path, max_hops)
+            .map(|resolution| resolution.resolved_path)
+    }
+
+    fn resolve_index_pointer_trace(
+        &self,
+        path: &[String],
+        max_hops: usize,
+    ) -> Option<PointerResolution> {
         let mut current = path.to_vec();
         let mut visited = BTreeSet::new();
+        let mut pointer_chain = Vec::new();
 
         for _ in 0..max_hops {
             if let Some(Value::Pointer(target)) = self.index.get(&current) {
                 if !visited.insert(current.clone()) {
                     return None;
                 }
+                pointer_chain.push(current.clone());
                 current = target.clone();
                 continue;
             }
@@ -412,9 +534,10 @@ impl Kernel {
                 let Some(Value::Pointer(target)) = self.index.get(&prefix) else {
                     continue;
                 };
-                if !visited.insert(prefix) {
+                if !visited.insert(prefix.clone()) {
                     return None;
                 }
+                pointer_chain.push(prefix.clone());
                 let suffix = current[prefix_len..].to_vec();
                 current = target.iter().cloned().chain(suffix).collect();
                 redirected = true;
@@ -425,7 +548,10 @@ impl Kernel {
                 continue;
             }
 
-            return Some(current);
+            return Some(PointerResolution {
+                resolved_path: current,
+                pointer_chain,
+            });
         }
 
         None
@@ -526,14 +652,19 @@ impl Kernel {
     fn register_derivation(&mut self, target_path: Path, eval_scope: Path, expression: String) {
         self.unregister_derivation(&target_path);
 
+        let mut seen = BTreeSet::new();
         let refs = extract_expression_refs(&expression)
             .into_iter()
-            .filter_map(|label| resolve_ref_path(&label, &eval_scope))
-            .collect::<BTreeSet<_>>();
+            .filter_map(|label| {
+                let path = resolve_ref_path(&label, &eval_scope)?;
+                seen.insert(path.clone())
+                    .then_some(DerivationRef { label, path })
+            })
+            .collect::<Vec<_>>();
 
-        for ref_path in &refs {
+        for reference in &refs {
             self.ref_subscribers
-                .entry(ref_path.clone())
+                .entry(reference.path.clone())
                 .or_default()
                 .insert(target_path.clone());
         }
@@ -553,11 +684,11 @@ impl Kernel {
             return;
         };
 
-        for ref_path in record.refs {
-            if let Some(subscribers) = self.ref_subscribers.get_mut(&ref_path) {
+        for reference in record.refs {
+            if let Some(subscribers) = self.ref_subscribers.get_mut(&reference.path) {
                 subscribers.remove(target_path);
                 if subscribers.is_empty() {
-                    self.ref_subscribers.remove(&ref_path);
+                    self.ref_subscribers.remove(&reference.path);
                 }
             }
         }

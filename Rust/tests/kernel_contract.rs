@@ -1,4 +1,4 @@
-use this_me::kernel::{Kernel, KernelError, Value};
+use this_me::kernel::{ExplainOrigin, Kernel, KernelError, Value};
 
 #[test]
 fn public_write_read_round_trips() {
@@ -290,6 +290,119 @@ fn root_identity_replays_through_snapshot_hydration() {
         restored.read("profile.owner"),
         Some(&Value::Identity("worker".to_string()))
     );
+}
+
+#[test]
+fn explain_plain_path_reports_value_without_derivation() {
+    let mut kernel = Kernel::new();
+
+    kernel.postulate("profile.name", "Abella").unwrap();
+
+    let explanation = kernel.explain("profile.name").unwrap();
+
+    assert_eq!(
+        explanation.path,
+        vec!["profile".to_string(), "name".to_string()]
+    );
+    assert_eq!(explanation.value, Some(Value::from("Abella")));
+    assert_eq!(explanation.expr, None);
+    assert_eq!(explanation.derivation, None);
+    assert_eq!(explanation.meta.depends_on, Vec::<Vec<String>>::new());
+    assert_eq!(
+        explanation.meta.resolved_path,
+        vec!["profile".to_string(), "name".to_string()]
+    );
+    assert_eq!(explanation.meta.pointer_chain, Vec::<Vec<String>>::new());
+    assert!(!explanation.meta.secret);
+}
+
+#[test]
+fn explain_derivation_reports_expression_inputs_and_dependencies() {
+    let mut kernel = Kernel::new();
+
+    kernel.postulate("order.price", 10_u64).unwrap();
+    kernel.postulate("order.quantity", 3_u64).unwrap();
+    kernel.derive("order", "total", "price * quantity").unwrap();
+
+    let explanation = kernel.explain("order.total").unwrap();
+    let derivation = explanation.derivation.unwrap();
+
+    assert_eq!(explanation.value, Some(Value::from(30_f64)));
+    assert_eq!(explanation.expr.as_deref(), Some("price * quantity"));
+    assert_eq!(derivation.expression, "price * quantity");
+    assert_eq!(
+        explanation.meta.depends_on,
+        vec![
+            vec!["order".to_string(), "price".to_string()],
+            vec!["order".to_string(), "quantity".to_string()],
+        ]
+    );
+    assert_eq!(derivation.inputs.len(), 2);
+    assert_eq!(derivation.inputs[0].label, "price");
+    assert_eq!(
+        derivation.inputs[0].path,
+        vec!["order".to_string(), "price".to_string()]
+    );
+    assert_eq!(derivation.inputs[0].value, Some(Value::from(10_u64)));
+    assert_eq!(derivation.inputs[0].origin, ExplainOrigin::Public);
+    assert!(!derivation.inputs[0].masked);
+}
+
+#[test]
+fn explain_pointer_reports_resolved_path_and_chain() {
+    let mut kernel = Kernel::new();
+
+    kernel.postulate("wallet.balance", 100_u64).unwrap();
+    kernel.pointer("profile.card", "wallet").unwrap();
+
+    let explanation = kernel.explain("profile.card.balance").unwrap();
+
+    assert_eq!(explanation.value, Some(Value::from(100_u64)));
+    assert_eq!(
+        explanation.meta.resolved_path,
+        vec!["wallet".to_string(), "balance".to_string()]
+    );
+    assert_eq!(
+        explanation.meta.pointer_chain,
+        vec![vec!["profile".to_string(), "card".to_string()]]
+    );
+}
+
+#[test]
+fn explain_masks_secret_derivation_inputs() {
+    let mut kernel = Kernel::new();
+
+    kernel.postulate("pub.base", 10_u64).unwrap();
+    kernel.secret("secure", "alpha").unwrap();
+    kernel.postulate("secure.rate", 2_u64).unwrap();
+    kernel.derive("pub", "score", "base * secure.rate").unwrap();
+
+    let explanation = kernel.explain("pub.score").unwrap();
+    let derivation = explanation.derivation.unwrap();
+    let secret_input = derivation
+        .inputs
+        .iter()
+        .find(|input| input.path == vec!["secure".to_string(), "rate".to_string()])
+        .expect("secret input should be reported");
+
+    assert_eq!(explanation.value, Some(Value::from(20_f64)));
+    assert_eq!(secret_input.label, "secure.rate");
+    assert_eq!(secret_input.value, Some(Value::from("****")));
+    assert_eq!(secret_input.origin, ExplainOrigin::Secret);
+    assert!(secret_input.masked);
+}
+
+#[test]
+fn explain_secret_path_marks_result_secret() {
+    let mut kernel = Kernel::new();
+
+    kernel.secret("wallet", "alpha").unwrap();
+    kernel.postulate("wallet.balance", 100_u64).unwrap();
+
+    let explanation = kernel.explain("wallet.balance").unwrap();
+
+    assert_eq!(explanation.value, Some(Value::from(100_u64)));
+    assert!(explanation.meta.secret);
 }
 
 #[test]
