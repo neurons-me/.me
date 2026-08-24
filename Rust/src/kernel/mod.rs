@@ -156,19 +156,23 @@ impl Kernel {
         let prev_hash = self.memories.last().map(|memory| memory.hash.clone());
         let hash = hash_memory(&path, operator.as_deref(), &value, prev_hash.as_deref());
         let memory = Memory {
-            path: path.clone(),
+            path,
             operator,
-            value: value.clone(),
+            value,
             prev_hash,
             hash,
         };
 
-        self.index.insert(path, value);
+        apply_memory_to_index(&mut self.index, &memory);
         self.memories.push(memory);
         Ok(self
             .memories
             .last()
             .expect("memory was just pushed into the log"))
+    }
+
+    pub fn remove(&mut self, path: impl IntoPath) -> Result<&Memory, KernelError> {
+        self.postulate_with_operator(path, Some("-".to_string()), Value::Null)
     }
 
     pub fn read(&self, path: impl IntoPath) -> Option<&Value> {
@@ -211,15 +215,30 @@ impl Kernel {
                 });
             }
 
-            kernel
-                .index
-                .insert(memory.path.clone(), memory.value.clone());
+            apply_memory_to_index(&mut kernel.index, &memory);
             expected_prev_hash = Some(memory.hash.clone());
             kernel.memories.push(memory);
         }
 
         Ok(kernel)
     }
+}
+
+fn apply_memory_to_index(index: &mut BTreeMap<Path, Value>, memory: &Memory) {
+    if memory.operator.as_deref() == Some("-") {
+        remove_index_prefix(index, &memory.path);
+        return;
+    }
+
+    index.insert(memory.path.clone(), memory.value.clone());
+}
+
+fn remove_index_prefix(index: &mut BTreeMap<Path, Value>, prefix: &[String]) {
+    index.retain(|path, _| !path_starts_with(path, prefix));
+}
+
+fn path_starts_with(path: &[String], prefix: &[String]) -> bool {
+    path.len() >= prefix.len() && path.iter().zip(prefix).all(|(left, right)| left == right)
 }
 
 fn ensure_value_is_supported(value: &Value) -> Result<(), KernelError> {

@@ -96,3 +96,49 @@ fn empty_paths_are_rejected() {
 
     assert_eq!(error, KernelError::EmptyPath);
 }
+
+#[test]
+fn remove_deletes_exact_path_and_descendants_from_index() {
+    let mut kernel = Kernel::new();
+
+    kernel.postulate("apps.demo.title", "Demo").unwrap();
+    kernel.postulate("apps.demo.count", 2_u64).unwrap();
+    kernel.postulate("apps.other.title", "Other").unwrap();
+
+    let memory = kernel.remove("apps.demo").unwrap();
+
+    assert_eq!(memory.operator.as_deref(), Some("-"));
+    assert_eq!(memory.path, vec!["apps".to_string(), "demo".to_string()]);
+    assert_eq!(memory.value, Value::Null);
+    assert_eq!(kernel.read("apps.demo.title"), None);
+    assert_eq!(kernel.read("apps.demo.count"), None);
+    assert_eq!(kernel.read("apps.other.title"), Some(&Value::from("Other")));
+}
+
+#[test]
+fn remove_exact_leaf_does_not_delete_siblings() {
+    let mut kernel = Kernel::new();
+
+    kernel.postulate("apps.demo.title", "Demo").unwrap();
+    kernel.postulate("apps.demo.count", 2_u64).unwrap();
+
+    kernel.remove("apps.demo.title").unwrap();
+
+    assert_eq!(kernel.read("apps.demo.title"), None);
+    assert_eq!(kernel.read("apps.demo.count"), Some(&Value::from(2_u64)));
+}
+
+#[test]
+fn remove_replays_through_snapshot_hydration() {
+    let mut kernel = Kernel::new();
+
+    kernel.postulate("apps.demo.title", "Demo").unwrap();
+    kernel.postulate("apps.demo.count", 2_u64).unwrap();
+    kernel.remove("apps.demo").unwrap();
+
+    let restored = Kernel::hydrate(kernel.export_snapshot()).unwrap();
+
+    assert_eq!(restored.memories(), kernel.memories());
+    assert_eq!(restored.read("apps.demo.title"), None);
+    assert_eq!(restored.read("apps.demo.count"), None);
+}
