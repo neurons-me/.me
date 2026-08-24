@@ -142,3 +142,76 @@ fn remove_replays_through_snapshot_hydration() {
     assert_eq!(restored.read("apps.demo.title"), None);
     assert_eq!(restored.read("apps.demo.count"), None);
 }
+
+#[test]
+fn pointer_redirects_exact_path_reads() {
+    let mut kernel = Kernel::new();
+
+    kernel.postulate("apps.demo.title", "Demo").unwrap();
+    let memory = kernel
+        .pointer("apps.alias.title", "apps.demo.title")
+        .unwrap();
+
+    assert_eq!(memory.operator.as_deref(), Some("__"));
+    assert_eq!(
+        memory.value,
+        Value::Pointer(vec![
+            "apps".to_string(),
+            "demo".to_string(),
+            "title".to_string(),
+        ])
+    );
+    assert_eq!(kernel.read("apps.alias.title"), Some(&Value::from("Demo")));
+}
+
+#[test]
+fn pointer_redirects_prefix_reads() {
+    let mut kernel = Kernel::new();
+
+    kernel.postulate("apps.demo.title", "Demo").unwrap();
+    kernel.postulate("apps.demo.count", 2_u64).unwrap();
+    kernel.pointer("apps.alias", "apps.demo").unwrap();
+
+    assert_eq!(kernel.read("apps.alias.title"), Some(&Value::from("Demo")));
+    assert_eq!(kernel.read("apps.alias.count"), Some(&Value::from(2_u64)));
+}
+
+#[test]
+fn pointer_reads_target_live_value_after_overwrite() {
+    let mut kernel = Kernel::new();
+
+    kernel.postulate("apps.demo.title", "Before").unwrap();
+    kernel
+        .pointer("apps.alias.title", "apps.demo.title")
+        .unwrap();
+    kernel.postulate("apps.demo.title", "After").unwrap();
+
+    assert_eq!(kernel.read("apps.alias.title"), Some(&Value::from("After")));
+}
+
+#[test]
+fn pointer_cycles_fail_closed() {
+    let mut kernel = Kernel::new();
+
+    kernel.pointer("apps.a", "apps.b").unwrap();
+    kernel.pointer("apps.b", "apps.a").unwrap();
+
+    assert_eq!(kernel.read("apps.a"), None);
+    assert_eq!(kernel.read("apps.b"), None);
+}
+
+#[test]
+fn pointer_replays_through_snapshot_hydration() {
+    let mut kernel = Kernel::new();
+
+    kernel.postulate("apps.demo.title", "Demo").unwrap();
+    kernel.pointer("apps.alias", "apps.demo").unwrap();
+
+    let restored = Kernel::hydrate(kernel.export_snapshot()).unwrap();
+
+    assert_eq!(restored.memories(), kernel.memories());
+    assert_eq!(
+        restored.read("apps.alias.title"),
+        Some(&Value::from("Demo"))
+    );
+}

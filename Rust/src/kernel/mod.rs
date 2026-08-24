@@ -1,5 +1,5 @@
 use std::collections::hash_map::DefaultHasher;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 use std::hash::{Hash, Hasher};
 
@@ -15,6 +15,7 @@ pub enum Value {
     String(String),
     Array(Vec<Value>),
     Object(BTreeMap<String, Value>),
+    Pointer(Path),
 }
 
 impl From<&str> for Value {
@@ -175,11 +176,24 @@ impl Kernel {
         self.postulate_with_operator(path, Some("-".to_string()), Value::Null)
     }
 
+    pub fn pointer(
+        &mut self,
+        path: impl IntoPath,
+        target: impl IntoPath,
+    ) -> Result<&Memory, KernelError> {
+        let target = target.into_path().map_err(KernelError::InvalidPath)?;
+        if target.is_empty() {
+            return Err(KernelError::EmptyPath);
+        }
+        self.postulate_with_operator(path, Some("__".to_string()), Value::Pointer(target))
+    }
+
     pub fn read(&self, path: impl IntoPath) -> Option<&Value> {
         let Ok(path) = path.into_path() else {
             return None;
         };
-        self.index.get(&path)
+        self.resolve_index_pointer_path(&path, 8)
+            .and_then(|resolved| self.index.get(&resolved))
     }
 
     pub fn export_snapshot(&self) -> Snapshot {
@@ -222,6 +236,44 @@ impl Kernel {
 
         Ok(kernel)
     }
+
+    fn resolve_index_pointer_path(&self, path: &[String], max_hops: usize) -> Option<Path> {
+        let mut current = path.to_vec();
+        let mut visited = BTreeSet::new();
+
+        for _ in 0..max_hops {
+            if let Some(Value::Pointer(target)) = self.index.get(&current) {
+                if !visited.insert(current.clone()) {
+                    return None;
+                }
+                current = target.clone();
+                continue;
+            }
+
+            let mut redirected = false;
+            for prefix_len in (0..current.len()).rev() {
+                let prefix = current[..prefix_len].to_vec();
+                let Some(Value::Pointer(target)) = self.index.get(&prefix) else {
+                    continue;
+                };
+                if !visited.insert(prefix) {
+                    return None;
+                }
+                let suffix = current[prefix_len..].to_vec();
+                current = target.iter().cloned().chain(suffix).collect();
+                redirected = true;
+                break;
+            }
+
+            if redirected {
+                continue;
+            }
+
+            return Some(current);
+        }
+
+        None
+    }
 }
 
 fn apply_memory_to_index(index: &mut BTreeMap<Path, Value>, memory: &Memory) {
@@ -256,6 +308,7 @@ fn ensure_value_is_supported(value: &Value) -> Result<(), KernelError> {
             }
             Ok(())
         }
+        Value::Pointer(path) if path.is_empty() => Err(KernelError::EmptyPath),
         _ => Ok(()),
     }
 }
@@ -303,6 +356,10 @@ fn hash_value(value: &Value, state: &mut DefaultHasher) {
                 key.hash(state);
                 hash_value(value, state);
             }
+        }
+        Value::Pointer(path) => {
+            6_u8.hash(state);
+            path.hash(state);
         }
     }
 }
