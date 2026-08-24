@@ -37,10 +37,10 @@ fn memory_hash_uses_portable_fnv1a_chain() {
     kernel.postulate("apps.demo.count", 1_u64).unwrap();
     kernel.postulate("apps.demo.count", 2_u64).unwrap();
 
-    assert_eq!(kernel.memories()[0].hash, "cbfc29a5");
+    assert_eq!(kernel.memories()[0].hash, "0e5304b1");
     assert_eq!(kernel.memories()[0].prev_hash, None);
-    assert_eq!(kernel.memories()[1].hash, "5e3ed33f");
-    assert_eq!(kernel.memories()[1].prev_hash, Some("cbfc29a5".to_string()));
+    assert_eq!(kernel.memories()[1].hash, "e33eb2e6");
+    assert_eq!(kernel.memories()[1].prev_hash, Some("0e5304b1".to_string()));
 }
 
 #[test]
@@ -549,6 +549,24 @@ fn noise_under_secret_scope_keeps_public_view_closed() {
 }
 
 #[test]
+fn noise_boundary_restarts_seed_then_applies_allowed_secrets() {
+    let mut kernel = Kernel::new();
+
+    kernel.secret("wallet", "alpha").unwrap();
+    kernel
+        .postulate("wallet.hidden.notes", "alpha-note")
+        .unwrap();
+    kernel.noise("wallet", "noise-A").unwrap();
+    kernel.secret("wallet.hidden", "beta").unwrap();
+    kernel.postulate("wallet.hidden.seed", "beta-seed").unwrap();
+
+    assert_eq!(
+        kernel.effective_secret("wallet.hidden.seed").unwrap(),
+        "36788adc"
+    );
+}
+
+#[test]
 fn remove_noise_scope_clears_boundary() {
     let mut kernel = Kernel::new();
 
@@ -882,6 +900,27 @@ fn secret_scope_hides_existing_branch_from_public_index() {
 }
 
 #[test]
+fn effective_secret_follows_secret_lineage() {
+    let mut kernel = Kernel::new();
+
+    kernel.secret("wallet", "alpha").unwrap();
+    kernel.postulate("wallet.balance", 100_u64).unwrap();
+    kernel.secret("wallet.hidden", "beta").unwrap();
+    kernel.postulate("wallet.hidden.seed", "beta-seed").unwrap();
+
+    assert_eq!(
+        kernel.effective_secret("wallet.balance").unwrap(),
+        "9d3ce45b"
+    );
+    assert_eq!(
+        kernel.effective_secret("wallet.hidden.seed").unwrap(),
+        "f11aeb12"
+    );
+    assert_eq!(kernel.memories()[0].hash, "4393708b");
+    assert_eq!(kernel.memories()[1].hash, "65ecdd30");
+}
+
+#[test]
 fn writes_under_secret_scope_stay_out_of_public_index() {
     let mut kernel = Kernel::new();
 
@@ -949,6 +988,50 @@ fn secret_scope_replays_through_snapshot_hydration() {
         restored.read_public("profile.name"),
         Some(&Value::from("Jabellae"))
     );
+}
+
+#[test]
+fn owner_snapshot_preserves_secret_material_for_hydration() {
+    let mut kernel = Kernel::new();
+
+    kernel.secret("wallet", "alpha").unwrap();
+    kernel.noise("wallet.hidden", "noise-A").unwrap();
+    kernel.secret("wallet.hidden", "beta").unwrap();
+    kernel.postulate("wallet.hidden.seed", "beta-seed").unwrap();
+
+    let restored = Kernel::hydrate(kernel.export_snapshot()).unwrap();
+
+    assert_eq!(
+        restored.effective_secret("wallet.hidden.seed").unwrap(),
+        kernel.effective_secret("wallet.hidden.seed").unwrap()
+    );
+    assert_eq!(
+        restored.read("wallet.hidden.seed"),
+        Some(&Value::from("beta-seed"))
+    );
+}
+
+#[test]
+fn hydration_rejects_tampered_secret_material() {
+    let mut kernel = Kernel::new();
+
+    kernel.secret("wallet", "alpha").unwrap();
+    kernel.postulate("wallet.balance", 100_u64).unwrap();
+    let mut snapshot = kernel.export_snapshot();
+    snapshot
+        .local_secrets
+        .insert(vec!["wallet".to_string()], "gamma".to_string());
+
+    let error = Kernel::hydrate(snapshot).expect_err("secret material tampering must fail");
+
+    assert!(matches!(
+        error,
+        KernelError::HydrationHashMismatch {
+            path,
+            expected: _,
+            actual: _
+        } if path == vec!["wallet".to_string(), "balance".to_string()]
+    ));
 }
 
 #[test]

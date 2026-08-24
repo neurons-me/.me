@@ -68,6 +68,8 @@ pub struct Memory {
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct Snapshot {
     pub memories: Vec<Memory>,
+    pub local_secrets: BTreeMap<Path, String>,
+    pub local_noises: BTreeMap<Path, String>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -193,6 +195,8 @@ pub struct Kernel {
     private_index: BTreeMap<Path, Value>,
     secret_scopes: BTreeSet<Path>,
     noise_scopes: BTreeSet<Path>,
+    local_secrets: BTreeMap<Path, String>,
+    local_noises: BTreeMap<Path, String>,
     derivations: BTreeMap<Path, DerivationRecord>,
     ref_subscribers: BTreeMap<Path, BTreeSet<Path>>,
     active_identity: Option<String>,
@@ -253,6 +257,11 @@ impl Kernel {
             return false;
         };
         self.noise_scopes.contains(&path)
+    }
+
+    pub fn effective_secret(&self, path: impl IntoPath) -> Result<String, KernelError> {
+        let path = path.into_path().map_err(KernelError::InvalidPath)?;
+        Ok(self.compute_effective_secret(&path))
     }
 
     pub fn postulate(
@@ -355,11 +364,16 @@ impl Kernel {
             return Err(KernelError::EmptyPath);
         }
 
+        let path_for_noise = path.clone();
+        let memory_index = self.memories.len();
         self.commit_memory(
             path,
             Some("~".to_string()),
             Value::String("***".to_string()),
-        )
+        )?;
+        self.local_noises
+            .insert(path_for_noise, noise.trim().to_string());
+        Ok(&self.memories[memory_index])
     }
 
     pub fn secret(&mut self, path: impl IntoPath, secret: &str) -> Result<&Memory, KernelError> {
@@ -372,11 +386,16 @@ impl Kernel {
             return Err(KernelError::EmptyPath);
         }
 
+        let path_for_secret = path.clone();
+        let memory_index = self.memories.len();
         self.commit_memory(
             path,
             Some("_".to_string()),
             Value::String("***".to_string()),
-        )
+        )?;
+        self.local_secrets
+            .insert(path_for_secret, secret.trim().to_string());
+        Ok(&self.memories[memory_index])
     }
 
     pub fn pointer(
@@ -482,6 +501,8 @@ impl Kernel {
     pub fn export_snapshot(&self) -> Snapshot {
         Snapshot {
             memories: self.memories.clone(),
+            local_secrets: self.local_secrets.clone(),
+            local_noises: self.local_noises.clone(),
         }
     }
 
@@ -503,6 +524,7 @@ impl Kernel {
                 memory.operator.as_deref(),
                 memory.expression.as_deref(),
                 &memory.value,
+                secret_opt(&kernel.compute_effective_secret(&memory.path)),
                 memory.prev_hash.as_deref(),
             );
             if expected != memory.hash {
@@ -520,6 +542,23 @@ impl Kernel {
                 }
             }
             kernel.apply_memory(&memory);
+            match memory.operator.as_deref() {
+                Some("_") => {
+                    if let Some(secret) = snapshot.local_secrets.get(&memory.path) {
+                        kernel
+                            .local_secrets
+                            .insert(memory.path.clone(), secret.clone());
+                    }
+                }
+                Some("~") => {
+                    if let Some(noise) = snapshot.local_noises.get(&memory.path) {
+                        kernel
+                            .local_noises
+                            .insert(memory.path.clone(), noise.clone());
+                    }
+                }
+                _ => {}
+            }
             expected_prev_hash = Some(memory.hash.clone());
             if memory.operator.as_deref() == Some("@") && memory.path.is_empty() {
                 if let Value::Identity(id) = &memory.value {
@@ -612,11 +651,13 @@ impl Kernel {
         ensure_value_is_supported(&value)?;
 
         let prev_hash = self.memories.last().map(|memory| memory.hash.clone());
+        let effective_secret = self.compute_effective_secret(&path);
         let hash = hash_memory(
             &path,
             operator.as_deref(),
             expression.as_deref(),
             &value,
+            secret_opt(&effective_secret),
             prev_hash.as_deref(),
         );
         let source_path = path.clone();
@@ -658,6 +699,10 @@ impl Kernel {
                     .retain(|scope| !path_starts_with(scope, &memory.path));
                 self.noise_scopes
                     .retain(|scope| !path_starts_with(scope, &memory.path));
+                self.local_secrets
+                    .retain(|scope, _| !path_starts_with(scope, &memory.path));
+                self.local_noises
+                    .retain(|scope, _| !path_starts_with(scope, &memory.path));
                 self.clear_derivations_by_prefix(&memory.path);
             }
             _ if self.is_under_secret_scope(&memory.path) => {
@@ -675,6 +720,46 @@ impl Kernel {
         self.secret_scopes
             .iter()
             .any(|scope| path_starts_with(path, scope))
+    }
+
+    fn compute_effective_secret(&self, path: &[String]) -> String {
+        let active_noise = self.find_active_noise(path);
+        let mut seed = String::from("root");
+
+        if let Some((_, noise)) = &active_noise {
+            seed = portable_hash_fnv1a(&format!("noise::{noise}"));
+        }
+
+        for index in 1..=path.len() {
+            let secret_path = path[..index].to_vec();
+            let Some(secret) = self.local_secrets.get(&secret_path) else {
+                continue;
+            };
+            if !secret_allowed_under_noise(
+                active_noise.as_ref().map(|(path, _)| path),
+                &secret_path,
+            ) {
+                continue;
+            }
+            seed = portable_hash_fnv1a(&format!("{seed}::{secret}"));
+        }
+
+        if seed == "root" {
+            String::new()
+        } else {
+            seed
+        }
+    }
+
+    fn find_active_noise(&self, path: &[String]) -> Option<(Path, String)> {
+        let mut active = None;
+        for index in 1..=path.len() {
+            let noise_path = path[..index].to_vec();
+            if let Some(noise) = self.local_noises.get(&noise_path) {
+                active = Some((noise_path, noise.clone()));
+            }
+        }
+        active
     }
 
     fn register_derivation(&mut self, target_path: Path, eval_scope: Path, expression: String) {
@@ -920,6 +1005,7 @@ fn hash_memory(
     operator: Option<&str>,
     expression: Option<&str>,
     value: &Value,
+    effective_secret: Option<&str>,
     prev_hash: Option<&str>,
 ) -> String {
     let mut input = String::new();
@@ -931,11 +1017,24 @@ fn hash_memory(
     push_json_optional_string(&mut input, expression);
     input.push_str(",\"value\":");
     push_json_value(&mut input, value);
+    input.push_str(",\"effectiveSecret\":");
+    push_json_optional_string(&mut input, effective_secret);
     input.push_str(",\"prevHash\":");
     push_json_string(&mut input, prev_hash.unwrap_or(""));
     input.push('}');
 
     portable_hash_fnv1a(&input)
+}
+
+fn secret_opt(value: &str) -> Option<&str> {
+    (!value.is_empty()).then_some(value)
+}
+
+fn secret_allowed_under_noise(noise_path: Option<&Path>, secret_path: &[String]) -> bool {
+    let Some(noise_path) = noise_path else {
+        return true;
+    };
+    path_starts_with(secret_path, noise_path)
 }
 
 fn portable_hash_fnv1a(input: &str) -> String {
