@@ -16,6 +16,7 @@ pub enum Value {
     Array(Vec<Value>),
     Object(BTreeMap<String, Value>),
     Pointer(Path),
+    Identity(String),
 }
 
 impl From<&str> for Value {
@@ -72,6 +73,7 @@ pub struct Snapshot {
 pub enum KernelError {
     EmptyPath,
     InvalidPath(PathParseError),
+    InvalidIdentity(String),
     NonFiniteNumber,
     HydrationHashMismatch {
         path: Path,
@@ -90,6 +92,7 @@ impl fmt::Display for KernelError {
         match self {
             Self::EmptyPath => write!(f, "path cannot be empty"),
             Self::InvalidPath(error) => write!(f, "invalid path: {error}"),
+            Self::InvalidIdentity(value) => write!(f, "invalid identity: {value}"),
             Self::NonFiniteNumber => write!(f, "numbers must be finite"),
             Self::HydrationHashMismatch {
                 path,
@@ -121,6 +124,7 @@ impl std::error::Error for KernelError {}
 pub struct Kernel {
     memories: Vec<Memory>,
     index: BTreeMap<Path, Value>,
+    active_identity: Option<String>,
 }
 
 impl Kernel {
@@ -130,6 +134,10 @@ impl Kernel {
 
     pub fn memories(&self) -> &[Memory] {
         &self.memories
+    }
+
+    pub fn active_identity(&self) -> Option<&str> {
+        self.active_identity.as_deref()
     }
 
     pub fn postulate(
@@ -151,25 +159,7 @@ impl Kernel {
             return Err(KernelError::EmptyPath);
         }
 
-        let value = value.into();
-        ensure_value_is_supported(&value)?;
-
-        let prev_hash = self.memories.last().map(|memory| memory.hash.clone());
-        let hash = hash_memory(&path, operator.as_deref(), &value, prev_hash.as_deref());
-        let memory = Memory {
-            path,
-            operator,
-            value,
-            prev_hash,
-            hash,
-        };
-
-        apply_memory_to_index(&mut self.index, &memory);
-        self.memories.push(memory);
-        Ok(self
-            .memories
-            .last()
-            .expect("memory was just pushed into the log"))
+        self.commit_memory(path, operator, value.into())
     }
 
     pub fn remove(&mut self, path: impl IntoPath) -> Result<&Memory, KernelError> {
@@ -186,6 +176,17 @@ impl Kernel {
             return Err(KernelError::EmptyPath);
         }
         self.postulate_with_operator(path, Some("__".to_string()), Value::Pointer(target))
+    }
+
+    pub fn claim_identity(&mut self, id: &str) -> Result<&Memory, KernelError> {
+        let id = normalize_identity(id)?;
+        self.active_identity = Some(id.clone());
+        self.commit_memory(Vec::new(), Some("@".to_string()), Value::Identity(id))
+    }
+
+    pub fn identity(&mut self, path: impl IntoPath, id: &str) -> Result<&Memory, KernelError> {
+        let id = normalize_identity(id)?;
+        self.postulate_with_operator(path, Some("@".to_string()), Value::Identity(id))
     }
 
     pub fn read(&self, path: impl IntoPath) -> Option<&Value> {
@@ -231,6 +232,11 @@ impl Kernel {
 
             apply_memory_to_index(&mut kernel.index, &memory);
             expected_prev_hash = Some(memory.hash.clone());
+            if memory.operator.as_deref() == Some("@") && memory.path.is_empty() {
+                if let Value::Identity(id) = &memory.value {
+                    kernel.active_identity = Some(id.clone());
+                }
+            }
             kernel.memories.push(memory);
         }
 
@@ -274,6 +280,32 @@ impl Kernel {
 
         None
     }
+
+    fn commit_memory(
+        &mut self,
+        path: Path,
+        operator: Option<String>,
+        value: Value,
+    ) -> Result<&Memory, KernelError> {
+        ensure_value_is_supported(&value)?;
+
+        let prev_hash = self.memories.last().map(|memory| memory.hash.clone());
+        let hash = hash_memory(&path, operator.as_deref(), &value, prev_hash.as_deref());
+        let memory = Memory {
+            path,
+            operator,
+            value,
+            prev_hash,
+            hash,
+        };
+
+        apply_memory_to_index(&mut self.index, &memory);
+        self.memories.push(memory);
+        Ok(self
+            .memories
+            .last()
+            .expect("memory was just pushed into the log"))
+    }
 }
 
 fn apply_memory_to_index(index: &mut BTreeMap<Path, Value>, memory: &Memory) {
@@ -309,8 +341,33 @@ fn ensure_value_is_supported(value: &Value) -> Result<(), KernelError> {
             Ok(())
         }
         Value::Pointer(path) if path.is_empty() => Err(KernelError::EmptyPath),
+        Value::Identity(id) => normalize_identity(id).map(|_| ()),
         _ => Ok(()),
     }
+}
+
+fn normalize_identity(input: &str) -> Result<String, KernelError> {
+    let id = input.trim().to_ascii_lowercase();
+    if id.len() < 3 || id.len() > 63 {
+        return Err(KernelError::InvalidIdentity(input.to_string()));
+    }
+    if id.contains('.') {
+        return Err(KernelError::InvalidIdentity(input.to_string()));
+    }
+
+    let bytes = id.as_bytes();
+    let is_label_char =
+        |byte: u8| byte.is_ascii_lowercase() || byte.is_ascii_digit() || byte == b'-';
+    let is_edge_char = |byte: u8| byte.is_ascii_lowercase() || byte.is_ascii_digit();
+
+    if !bytes.iter().copied().all(is_label_char) {
+        return Err(KernelError::InvalidIdentity(input.to_string()));
+    }
+    if !is_edge_char(bytes[0]) || !is_edge_char(bytes[bytes.len() - 1]) {
+        return Err(KernelError::InvalidIdentity(input.to_string()));
+    }
+
+    Ok(id)
 }
 
 fn hash_memory(
@@ -360,6 +417,10 @@ fn hash_value(value: &Value, state: &mut DefaultHasher) {
         Value::Pointer(path) => {
             6_u8.hash(state);
             path.hash(state);
+        }
+        Value::Identity(id) => {
+            7_u8.hash(state);
+            id.hash(state);
         }
     }
 }

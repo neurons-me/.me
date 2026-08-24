@@ -215,3 +215,79 @@ fn pointer_replays_through_snapshot_hydration() {
         Some(&Value::from("Demo"))
     );
 }
+
+#[test]
+fn root_identity_claim_sets_active_identity() {
+    let mut kernel = Kernel::new();
+
+    let memory = kernel.claim_identity(" Jabellae ").unwrap().clone();
+
+    assert_eq!(kernel.active_identity(), Some("jabellae"));
+    assert_eq!(memory.path, Vec::<String>::new());
+    assert_eq!(memory.operator.as_deref(), Some("@"));
+    assert_eq!(memory.value, Value::Identity("jabellae".to_string()));
+    assert_eq!(
+        kernel.read(""),
+        Some(&Value::Identity("jabellae".to_string()))
+    );
+}
+
+#[test]
+fn scoped_identity_writes_marker_without_replacing_active_identity() {
+    let mut kernel = Kernel::new();
+
+    kernel.claim_identity("jabellae").unwrap();
+    let memory = kernel
+        .identity("profile.owner", "Worker-01")
+        .unwrap()
+        .clone();
+
+    assert_eq!(kernel.active_identity(), Some("jabellae"));
+    assert_eq!(
+        memory.path,
+        vec!["profile".to_string(), "owner".to_string(),]
+    );
+    assert_eq!(memory.operator.as_deref(), Some("@"));
+    assert_eq!(memory.value, Value::Identity("worker-01".to_string()));
+    assert_eq!(
+        kernel.read("profile.owner"),
+        Some(&Value::Identity("worker-01".to_string()))
+    );
+}
+
+#[test]
+fn identity_claim_rejects_invalid_labels() {
+    let mut kernel = Kernel::new();
+
+    assert!(matches!(
+        kernel.claim_identity("ab"),
+        Err(KernelError::InvalidIdentity(_))
+    ));
+    assert!(matches!(
+        kernel.claim_identity("bad.name"),
+        Err(KernelError::InvalidIdentity(_))
+    ));
+    assert!(matches!(
+        kernel.claim_identity("-bad"),
+        Err(KernelError::InvalidIdentity(_))
+    ));
+    assert_eq!(kernel.active_identity(), None);
+    assert_eq!(kernel.memories().len(), 0);
+}
+
+#[test]
+fn root_identity_replays_through_snapshot_hydration() {
+    let mut kernel = Kernel::new();
+
+    kernel.claim_identity("jabellae").unwrap();
+    kernel.identity("profile.owner", "worker").unwrap();
+
+    let restored = Kernel::hydrate(kernel.export_snapshot()).unwrap();
+
+    assert_eq!(restored.memories(), kernel.memories());
+    assert_eq!(restored.active_identity(), Some("jabellae"));
+    assert_eq!(
+        restored.read("profile.owner"),
+        Some(&Value::Identity("worker".to_string()))
+    );
+}
