@@ -31,6 +31,19 @@ fn memory_log_is_history_index_is_latest_projection() {
 }
 
 #[test]
+fn memory_hash_uses_portable_fnv1a_chain() {
+    let mut kernel = Kernel::new();
+
+    kernel.postulate("apps.demo.count", 1_u64).unwrap();
+    kernel.postulate("apps.demo.count", 2_u64).unwrap();
+
+    assert_eq!(kernel.memories()[0].hash, "cbfc29a5");
+    assert_eq!(kernel.memories()[0].prev_hash, None);
+    assert_eq!(kernel.memories()[1].hash, "5e3ed33f");
+    assert_eq!(kernel.memories()[1].prev_hash, Some("cbfc29a5".to_string()));
+}
+
+#[test]
 fn snapshot_hydrates_equivalent_kernel() {
     let mut kernel = Kernel::new();
 

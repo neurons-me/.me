@@ -1,7 +1,5 @@
-use std::collections::hash_map::DefaultHasher;
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::fmt;
-use std::hash::{Hash, Hasher};
 
 mod evaluator;
 mod path;
@@ -924,52 +922,112 @@ fn hash_memory(
     value: &Value,
     prev_hash: Option<&str>,
 ) -> String {
-    let mut hasher = DefaultHasher::new();
-    path.hash(&mut hasher);
-    operator.hash(&mut hasher);
-    expression.hash(&mut hasher);
-    hash_value(value, &mut hasher);
-    prev_hash.hash(&mut hasher);
-    format!("{:016x}", hasher.finish())
+    let mut input = String::new();
+    input.push_str("{\"path\":");
+    push_json_string(&mut input, &path.join("."));
+    input.push_str(",\"operator\":");
+    push_json_optional_string(&mut input, operator);
+    input.push_str(",\"expression\":");
+    push_json_optional_string(&mut input, expression);
+    input.push_str(",\"value\":");
+    push_json_value(&mut input, value);
+    input.push_str(",\"prevHash\":");
+    push_json_string(&mut input, prev_hash.unwrap_or(""));
+    input.push('}');
+
+    portable_hash_fnv1a(&input)
 }
 
-fn hash_value(value: &Value, state: &mut DefaultHasher) {
+fn portable_hash_fnv1a(input: &str) -> String {
+    let mut hash = 0x811c_9dc5_u32;
+    for unit in input.encode_utf16() {
+        hash ^= u32::from(unit);
+        hash = hash.wrapping_mul(0x0100_0193);
+    }
+    format!("{hash:08x}")
+}
+
+fn push_json_optional_string(out: &mut String, value: Option<&str>) {
     match value {
-        Value::Null => 0_u8.hash(state),
-        Value::Bool(value) => {
-            1_u8.hash(state);
-            value.hash(state);
-        }
-        Value::Number(value) => {
-            2_u8.hash(state);
-            value.to_bits().hash(state);
-        }
-        Value::String(value) => {
-            3_u8.hash(state);
-            value.hash(state);
-        }
-        Value::Array(values) => {
-            4_u8.hash(state);
-            values.len().hash(state);
-            for value in values {
-                hash_value(value, state);
+        Some(value) => push_json_string(out, value),
+        None => out.push_str("null"),
+    }
+}
+
+fn push_json_string(out: &mut String, value: &str) {
+    out.push('"');
+    for ch in value.chars() {
+        match ch {
+            '"' => out.push_str("\\\""),
+            '\\' => out.push_str("\\\\"),
+            '\u{08}' => out.push_str("\\b"),
+            '\u{0c}' => out.push_str("\\f"),
+            '\n' => out.push_str("\\n"),
+            '\r' => out.push_str("\\r"),
+            '\t' => out.push_str("\\t"),
+            ch if ch <= '\u{1f}' => {
+                out.push_str("\\u00");
+                push_hex_nibble(out, (ch as u32 >> 4) & 0x0f);
+                push_hex_nibble(out, ch as u32 & 0x0f);
             }
+            ch => out.push(ch),
+        }
+    }
+    out.push('"');
+}
+
+fn push_hex_nibble(out: &mut String, value: u32) {
+    let ch = match value {
+        0..=9 => char::from(b'0' + value as u8),
+        10..=15 => char::from(b'a' + (value as u8 - 10)),
+        _ => unreachable!("hex nibble must be <= 15"),
+    };
+    out.push(ch);
+}
+
+fn push_json_value(out: &mut String, value: &Value) {
+    match value {
+        Value::Null => out.push_str("null"),
+        Value::Bool(value) => out.push_str(if *value { "true" } else { "false" }),
+        Value::Number(value) => {
+            if value.to_bits() == (-0.0_f64).to_bits() {
+                out.push('0');
+            } else {
+                out.push_str(&value.to_string());
+            }
+        }
+        Value::String(value) => push_json_string(out, value),
+        Value::Array(values) => {
+            out.push('[');
+            for (index, value) in values.iter().enumerate() {
+                if index > 0 {
+                    out.push(',');
+                }
+                push_json_value(out, value);
+            }
+            out.push(']');
         }
         Value::Object(values) => {
-            5_u8.hash(state);
-            values.len().hash(state);
-            for (key, value) in values {
-                key.hash(state);
-                hash_value(value, state);
+            out.push('{');
+            for (index, (key, value)) in values.iter().enumerate() {
+                if index > 0 {
+                    out.push(',');
+                }
+                push_json_string(out, key);
+                out.push(':');
+                push_json_value(out, value);
             }
+            out.push('}');
         }
         Value::Pointer(path) => {
-            6_u8.hash(state);
-            path.hash(state);
+            out.push_str("{\"__ptr\":");
+            push_json_string(out, &path.join("."));
+            out.push('}');
         }
         Value::Identity(id) => {
-            7_u8.hash(state);
-            id.hash(state);
+            out.push_str("{\"__id\":");
+            push_json_string(out, id);
+            out.push('}');
         }
     }
 }
