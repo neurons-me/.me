@@ -1,1 +1,3 @@
-// Crate root — this-me/crate/src/lib.rs
+//! Clean Rust boilerplate for the `.me` kernel.
+
+pub mod kernel;

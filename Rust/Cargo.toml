@@ -1,23 +1,18 @@
 [package]
 name = "this-me"
-version = "0.2.2"
+version = "0.3.0"
 edition = "2021"
 authors = ["suiGn <admin@neurons.me>"]
-description = ".me identity engine."
+description = "Rust ground for the modern .me semantic kernel."
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/neurons-me/this.me"
 homepage = "https://neurons.me"
 readme = "README.md"
-keywords = ["identity", "hashing", "cryptography"]
-categories = ["cryptography"]
+keywords = ["semantic-kernel", "memory", "identity", "cryptography"]
+categories = ["data-structures", "cryptography"]
 default-run = "me"
 
-[dependencies]  
-sha3 = "0.10"
-hex = "0.4"
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
-owo-colors = "4.2.3"
+[dependencies]
 
 [[bin]]
 name = "me"

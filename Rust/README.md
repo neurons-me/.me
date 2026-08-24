@@ -1,9 +1,12 @@
-# .me · Rust 🦀
+# .me Rust
 
-**Not ready yet.** The working implementation is in [.me · Typescript](https://neurons-me.github.io/.me/Typescript/) — start there.
+Clean Rust boilerplate for the `.me` kernel.
 
-Status: in development. `cargo add this-me` is the reserved package name for when this lands; there is no functional Rust code here yet.
+No external runtime dependencies yet.
 
----
-
-→ [.me · Typescript (working implementation)](https://neurons-me.github.io/.me/Typescript/) · [.me on GitHub](https://github.com/neurons-me/.me)
+```bash
+cargo fmt --check
+cargo check
+cargo test
+cargo clippy --all-targets --all-features -- -D warnings
+```
