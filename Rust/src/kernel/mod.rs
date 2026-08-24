@@ -76,6 +76,7 @@ pub struct Snapshot {
 pub enum KernelError {
     EmptyPath,
     EmptyExpression,
+    EmptyQuery,
     EmptySecret,
     InvalidPath(PathParseError),
     InvalidIdentity(String),
@@ -97,6 +98,7 @@ impl fmt::Display for KernelError {
         match self {
             Self::EmptyPath => write!(f, "path cannot be empty"),
             Self::EmptyExpression => write!(f, "expression cannot be empty"),
+            Self::EmptyQuery => write!(f, "query must contain at least one path"),
             Self::EmptySecret => write!(f, "secret cannot be empty"),
             Self::InvalidPath(error) => write!(f, "invalid path: {error}"),
             Self::InvalidIdentity(value) => write!(f, "invalid identity: {value}"),
@@ -227,6 +229,32 @@ impl Kernel {
             Some(expression.to_string()),
             true,
         )
+    }
+
+    pub fn collect<I, P>(&self, paths: I) -> Result<Value, KernelError>
+    where
+        I: IntoIterator<Item = P>,
+        P: IntoPath,
+    {
+        self.collect_from_scope(&[], paths)
+    }
+
+    pub fn query<I, P>(
+        &mut self,
+        target_path: impl IntoPath,
+        paths: I,
+    ) -> Result<&Memory, KernelError>
+    where
+        I: IntoIterator<Item = P>,
+        P: IntoPath,
+    {
+        let target_path = target_path.into_path().map_err(KernelError::InvalidPath)?;
+        if target_path.is_empty() {
+            return Err(KernelError::EmptyPath);
+        }
+
+        let value = self.collect_from_scope(&target_path, paths)?;
+        self.commit_memory(target_path, Some("?".to_string()), value)
     }
 
     pub fn secret(&mut self, path: impl IntoPath, secret: &str) -> Result<&Memory, KernelError> {
@@ -560,6 +588,29 @@ impl Kernel {
     fn evaluate_expression(&self, eval_scope: &[String], expression: &str) -> Option<Value> {
         evaluate_expression(self, eval_scope, expression)
     }
+
+    fn collect_from_scope<I, P>(&self, scope: &[String], paths: I) -> Result<Value, KernelError>
+    where
+        I: IntoIterator<Item = P>,
+        P: IntoPath,
+    {
+        let mut values = Vec::new();
+
+        for path in paths {
+            let path = path.into_path().map_err(KernelError::InvalidPath)?;
+            if path.is_empty() {
+                return Err(KernelError::EmptyPath);
+            }
+            let path = resolve_query_path(scope, path);
+            values.push(self.read(path).cloned().unwrap_or(Value::Null));
+        }
+
+        if values.is_empty() {
+            return Err(KernelError::EmptyQuery);
+        }
+
+        Ok(Value::Array(values))
+    }
 }
 
 fn remove_index_prefix(index: &mut BTreeMap<Path, Value>, prefix: &[String]) {
@@ -592,6 +643,13 @@ fn parent_path(path: &[String]) -> Path {
     path.split_last()
         .map(|(_, parent)| parent.to_vec())
         .unwrap_or_default()
+}
+
+fn resolve_query_path(scope: &[String], path: Path) -> Path {
+    if scope.is_empty() || path.len() != 1 {
+        return path;
+    }
+    scope.iter().cloned().chain(path).collect()
 }
 
 fn ensure_value_is_supported(value: &Value) -> Result<(), KernelError> {

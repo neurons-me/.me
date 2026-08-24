@@ -293,6 +293,136 @@ fn root_identity_replays_through_snapshot_hydration() {
 }
 
 #[test]
+fn collect_returns_values_without_committing_memory() {
+    let mut kernel = Kernel::new();
+
+    kernel.postulate("profile.name", "Abella").unwrap();
+    kernel.postulate("profile.city", "Veracruz").unwrap();
+
+    let values = kernel
+        .collect(["profile.name", "profile.city"])
+        .expect("collect should read values");
+
+    assert_eq!(
+        values,
+        Value::Array(vec![Value::from("Abella"), Value::from("Veracruz")])
+    );
+    assert_eq!(kernel.memories().len(), 2);
+}
+
+#[test]
+fn query_commits_collect_memory_at_target_path() {
+    let mut kernel = Kernel::new();
+
+    kernel.postulate("profile.name", "Abella").unwrap();
+    kernel.postulate("profile.city", "Veracruz").unwrap();
+    let memory = kernel
+        .query("profile.summary", ["profile.name", "profile.city"])
+        .unwrap()
+        .clone();
+
+    assert_eq!(memory.operator.as_deref(), Some("?"));
+    assert_eq!(
+        memory.value,
+        Value::Array(vec![Value::from("Abella"), Value::from("Veracruz")])
+    );
+    assert_eq!(
+        kernel.read("profile.summary"),
+        Some(&Value::Array(vec![
+            Value::from("Abella"),
+            Value::from("Veracruz")
+        ]))
+    );
+}
+
+#[test]
+fn query_single_segment_paths_are_relative_to_target_scope() {
+    let mut kernel = Kernel::new();
+
+    kernel.postulate("profile.name", "Abella").unwrap();
+    kernel.postulate("profile.city", "Veracruz").unwrap();
+    kernel.query("profile", ["name", "city"]).unwrap();
+
+    assert_eq!(
+        kernel.read("profile"),
+        Some(&Value::Array(vec![
+            Value::from("Abella"),
+            Value::from("Veracruz")
+        ]))
+    );
+}
+
+#[test]
+fn query_missing_paths_are_null() {
+    let mut kernel = Kernel::new();
+
+    kernel.postulate("profile.name", "Abella").unwrap();
+    kernel
+        .query("profile.summary", ["profile.name", "profile.age"])
+        .unwrap();
+
+    assert_eq!(
+        kernel.read("profile.summary"),
+        Some(&Value::Array(vec![Value::from("Abella"), Value::Null]))
+    );
+}
+
+#[test]
+fn query_under_secret_scope_stays_out_of_public_index() {
+    let mut kernel = Kernel::new();
+
+    kernel.secret("profile", "alpha").unwrap();
+    kernel.postulate("profile.name", "Abella").unwrap();
+    kernel.postulate("profile.city", "Veracruz").unwrap();
+    let memory = kernel.query("profile", ["name", "city"]).unwrap().clone();
+
+    assert_eq!(memory.operator.as_deref(), Some("?"));
+    assert_eq!(
+        kernel.read("profile"),
+        Some(&Value::Array(vec![
+            Value::from("Abella"),
+            Value::from("Veracruz")
+        ]))
+    );
+    assert_eq!(kernel.read_public("profile"), None);
+    assert_eq!(kernel.read_public("profile.name"), None);
+}
+
+#[test]
+fn query_replays_through_snapshot_hydration() {
+    let mut kernel = Kernel::new();
+
+    kernel.postulate("profile.name", "Abella").unwrap();
+    kernel.postulate("profile.city", "Veracruz").unwrap();
+    kernel
+        .query("profile.summary", ["profile.name", "profile.city"])
+        .unwrap();
+
+    let restored = Kernel::hydrate(kernel.export_snapshot()).unwrap();
+
+    assert_eq!(restored.memories(), kernel.memories());
+    assert_eq!(
+        restored.read("profile.summary"),
+        Some(&Value::Array(vec![
+            Value::from("Abella"),
+            Value::from("Veracruz")
+        ]))
+    );
+}
+
+#[test]
+fn empty_query_is_rejected() {
+    let mut kernel = Kernel::new();
+
+    let error = kernel
+        .query("profile.summary", Vec::<&str>::new())
+        .expect_err("empty query should be rejected");
+
+    assert_eq!(error, KernelError::EmptyQuery);
+    assert_eq!(kernel.memories().len(), 0);
+}
+
+#[test]
 fn derivation_computes_from_relative_scope() {
     let mut kernel = Kernel::new();
 
