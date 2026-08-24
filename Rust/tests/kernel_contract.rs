@@ -293,6 +293,92 @@ fn root_identity_replays_through_snapshot_hydration() {
 }
 
 #[test]
+fn inspect_reports_public_kernel_shape() {
+    let mut kernel = Kernel::new();
+
+    kernel.postulate("profile.name", "Abella").unwrap();
+    kernel.noise("wallet", "noise-A").unwrap();
+    kernel.postulate("order.price", 10_u64).unwrap();
+    kernel.postulate("order.quantity", 3_u64).unwrap();
+    kernel.derive("order", "total", "price * quantity").unwrap();
+
+    let inspect = kernel.inspect();
+
+    assert_eq!(inspect.memories.len(), kernel.memories().len());
+    assert_eq!(
+        inspect
+            .index
+            .get(&vec!["profile".to_string(), "name".to_string()]),
+        Some(&Value::from("Abella"))
+    );
+    assert_eq!(inspect.noise_scopes, vec![vec!["wallet".to_string()]]);
+    assert_eq!(
+        inspect.derivations,
+        vec![vec!["order".to_string(), "total".to_string()]]
+    );
+}
+
+#[test]
+fn inspect_last_returns_tail_memories_only() {
+    let mut kernel = Kernel::new();
+
+    kernel.postulate("a", 1_u64).unwrap();
+    kernel.postulate("b", 2_u64).unwrap();
+    kernel.postulate("c", 3_u64).unwrap();
+
+    let inspect = kernel.inspect_last(2);
+
+    assert_eq!(inspect.memories.len(), 2);
+    assert_eq!(inspect.memories[0].path, vec!["b".to_string()]);
+    assert_eq!(inspect.memories[1].path, vec!["c".to_string()]);
+}
+
+#[test]
+fn inspect_redacts_memories_under_secret_scope() {
+    let mut kernel = Kernel::new();
+
+    kernel.postulate("wallet.balance", 100_u64).unwrap();
+    kernel.secret("wallet", "alpha").unwrap();
+    kernel.postulate("wallet.note", "private").unwrap();
+
+    let inspect = kernel.inspect();
+    let balance = inspect
+        .memories
+        .iter()
+        .find(|memory| memory.path == vec!["wallet".to_string(), "balance".to_string()])
+        .expect("balance memory should remain observable");
+    let note = inspect
+        .memories
+        .iter()
+        .find(|memory| memory.path == vec!["wallet".to_string(), "note".to_string()])
+        .expect("note memory should remain observable");
+
+    assert_eq!(inspect.secret_scopes, vec![vec!["wallet".to_string()]]);
+    assert_eq!(balance.value, Value::from("****"));
+    assert_eq!(note.value, Value::from("****"));
+    assert_eq!(
+        inspect
+            .index
+            .get(&vec!["wallet".to_string(), "balance".to_string()]),
+        None
+    );
+}
+
+#[test]
+fn inspect_does_not_redact_owner_snapshot() {
+    let mut kernel = Kernel::new();
+
+    kernel.secret("wallet", "alpha").unwrap();
+    kernel.postulate("wallet.note", "private").unwrap();
+
+    let snapshot = kernel.export_snapshot();
+    let inspect = kernel.inspect();
+
+    assert_eq!(snapshot.memories[1].value, Value::from("private"));
+    assert_eq!(inspect.memories[1].value, Value::from("****"));
+}
+
+#[test]
 fn explain_plain_path_reports_value_without_derivation() {
     let mut kernel = Kernel::new();
 

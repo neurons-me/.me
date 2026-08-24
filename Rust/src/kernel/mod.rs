@@ -73,6 +73,25 @@ pub struct Snapshot {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub struct InspectResult {
+    pub memories: Vec<InspectMemory>,
+    pub index: BTreeMap<Path, Value>,
+    pub secret_scopes: Vec<Path>,
+    pub noise_scopes: Vec<Path>,
+    pub derivations: Vec<Path>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct InspectMemory {
+    pub path: Path,
+    pub operator: Option<String>,
+    pub expression: Option<String>,
+    pub value: Value,
+    pub prev_hash: Option<String>,
+    pub hash: String,
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct ExplainResult {
     pub path: Path,
     pub value: Option<Value>,
@@ -207,6 +226,17 @@ impl Kernel {
 
     pub fn memories(&self) -> &[Memory] {
         &self.memories
+    }
+
+    pub fn inspect(&self) -> InspectResult {
+        self.inspect_memories(self.memories.iter())
+    }
+
+    pub fn inspect_last(&self, last: usize) -> InspectResult {
+        if last == 0 || last >= self.memories.len() {
+            return self.inspect();
+        }
+        self.inspect_memories(self.memories[self.memories.len() - last..].iter())
     }
 
     pub fn active_identity(&self) -> Option<&str> {
@@ -773,6 +803,33 @@ impl Kernel {
         }
 
         Ok(Value::Array(values))
+    }
+
+    fn inspect_memories<'a>(&self, memories: impl Iterator<Item = &'a Memory>) -> InspectResult {
+        InspectResult {
+            memories: memories
+                .map(|memory| InspectMemory {
+                    path: memory.path.clone(),
+                    operator: memory.operator.clone(),
+                    expression: if self.is_under_secret_scope(&memory.path) {
+                        None
+                    } else {
+                        memory.expression.clone()
+                    },
+                    value: if self.is_under_secret_scope(&memory.path) {
+                        Value::String("****".to_string())
+                    } else {
+                        memory.value.clone()
+                    },
+                    prev_hash: memory.prev_hash.clone(),
+                    hash: memory.hash.clone(),
+                })
+                .collect(),
+            index: self.index.clone(),
+            secret_scopes: self.secret_scopes.iter().cloned().collect(),
+            noise_scopes: self.noise_scopes.iter().cloned().collect(),
+            derivations: self.derivations.keys().cloned().collect(),
+        }
     }
 }
 
