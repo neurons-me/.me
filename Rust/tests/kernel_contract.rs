@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use this_me::kernel::{
     ExplainOrigin, Kernel, KernelError, Memory, RecomputeMode, SecretMaterialMode,
     SecretMaterialPurpose, Value,
@@ -16,6 +18,15 @@ fn path_parts(value: &str) -> Vec<String> {
         return Vec::new();
     }
     value.split('.').map(str::to_string).collect()
+}
+
+fn object(entries: impl IntoIterator<Item = (&'static str, Value)>) -> Value {
+    Value::Object(
+        entries
+            .into_iter()
+            .map(|(key, value)| (key.to_string(), value))
+            .collect::<BTreeMap<_, _>>(),
+    )
 }
 
 fn replay_record(
@@ -45,6 +56,95 @@ fn public_write_read_round_trips() {
     assert_eq!(
         kernel.read("apps.demo.title"),
         Some(&Value::from("Demo Space"))
+    );
+}
+
+#[test]
+fn children_lists_immediate_public_descendants_for_plural_shape() {
+    let mut kernel = Kernel::new();
+
+    kernel
+        .postulate("apps.demo.notes[alpha].title", "Alpha")
+        .unwrap();
+    kernel
+        .postulate("apps.demo.notes[beta].title", "Beta")
+        .unwrap();
+    kernel
+        .postulate("apps.demo.notes[beta].tags.primary", "work")
+        .unwrap();
+
+    assert_eq!(
+        kernel.children("apps.demo.notes[]").unwrap(),
+        vec!["alpha".to_string(), "beta".to_string()]
+    );
+}
+
+#[test]
+fn public_subtree_expands_plural_members() {
+    let mut kernel = Kernel::new();
+
+    kernel
+        .postulate("apps.demo.notes[alpha].title", "Alpha")
+        .unwrap();
+    kernel
+        .postulate("apps.demo.notes[beta].title", "Beta")
+        .unwrap();
+    kernel
+        .postulate("apps.demo.notes[beta].tags.primary", "work")
+        .unwrap();
+
+    assert_eq!(
+        kernel.read_public_subtree("apps.demo.notes[]").unwrap(),
+        Some(object([
+            ("alpha", object([("title", Value::from("Alpha"))])),
+            (
+                "beta",
+                object([
+                    ("tags", object([("primary", Value::from("work"))])),
+                    ("title", Value::from("Beta")),
+                ]),
+            ),
+        ]))
+    );
+}
+
+#[test]
+fn public_subtree_exact_value_wins_over_descendants() {
+    let mut kernel = Kernel::new();
+
+    kernel.postulate("apps.demo.status", "online").unwrap();
+    kernel
+        .postulate("apps.demo.status.detail", "warming")
+        .unwrap();
+
+    assert_eq!(
+        kernel.read_public_subtree("apps.demo.status").unwrap(),
+        Some(Value::from("online"))
+    );
+}
+
+#[test]
+fn public_subtree_excludes_secret_branches() {
+    let mut kernel = Kernel::new();
+
+    kernel
+        .postulate("apps.demo.public.title", "Public")
+        .unwrap();
+    kernel.secret("apps.demo.private", "vault").unwrap();
+    kernel
+        .postulate("apps.demo.private.note", "Hidden")
+        .unwrap();
+
+    assert_eq!(
+        kernel.children("apps.demo").unwrap(),
+        vec!["public".to_string()]
+    );
+    assert_eq!(
+        kernel.read_public_subtree("apps.demo").unwrap(),
+        Some(object([(
+            "public",
+            object([("title", Value::from("Public"))]),
+        )]))
     );
 }
 

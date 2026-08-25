@@ -644,6 +644,40 @@ impl Kernel {
             .and_then(|resolved| self.index.get(&resolved))
     }
 
+    pub fn children(&self, prefix: impl IntoPath) -> Result<Vec<String>, KernelError> {
+        let prefix = prefix.into_path().map_err(KernelError::InvalidPath)?;
+        let mut children = BTreeSet::new();
+
+        for path in self.index.keys() {
+            if path.len() <= prefix.len() || !path_starts_with(path, &prefix) {
+                continue;
+            }
+            children.insert(path[prefix.len()].clone());
+        }
+
+        Ok(children.into_iter().collect())
+    }
+
+    pub fn read_public_subtree(&self, prefix: impl IntoPath) -> Result<Option<Value>, KernelError> {
+        let prefix = prefix.into_path().map_err(KernelError::InvalidPath)?;
+        if let Some(value) = self.index.get(&prefix) {
+            return Ok(Some(value.clone()));
+        }
+
+        let mut root = BTreeMap::new();
+        let mut wrote_any = false;
+
+        for (path, value) in &self.index {
+            if path.len() <= prefix.len() || !path_starts_with(path, &prefix) {
+                continue;
+            }
+            insert_subtree_value(&mut root, &path[prefix.len()..], value.clone());
+            wrote_any = true;
+        }
+
+        Ok(wrote_any.then_some(Value::Object(root)))
+    }
+
     pub fn explain_fresh(&mut self, path: impl IntoPath) -> Result<ExplainResult, KernelError> {
         let path = path.into_path().map_err(KernelError::InvalidPath)?;
         self.read_fresh(path.clone());
@@ -1516,6 +1550,27 @@ impl Kernel {
 
 fn remove_index_prefix(index: &mut BTreeMap<Path, Value>, prefix: &[String]) {
     index.retain(|path, _| !path_starts_with(path, prefix));
+}
+
+fn insert_subtree_value(root: &mut BTreeMap<String, Value>, rel_path: &[String], value: Value) {
+    let Some((head, tail)) = rel_path.split_first() else {
+        return;
+    };
+    if tail.is_empty() {
+        root.insert(head.clone(), value);
+        return;
+    }
+
+    let entry = root
+        .entry(head.clone())
+        .or_insert_with(|| Value::Object(BTreeMap::new()));
+    if !matches!(entry, Value::Object(_)) {
+        *entry = Value::Object(BTreeMap::new());
+    }
+    let Value::Object(child) = entry else {
+        return;
+    };
+    insert_subtree_value(child, tail, value);
 }
 
 fn default_operators() -> BTreeMap<String, OperatorDefinition> {
