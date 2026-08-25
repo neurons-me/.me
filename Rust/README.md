@@ -28,3 +28,9 @@ Run the fan-out sensitivity benchmark:
 ```bash
 cargo run --release --bin bench-fanout
 ```
+
+Run the cold vs warm runtime benchmark:
+
+```bash
+cargo run --release --bin bench-cold-warm
+```
