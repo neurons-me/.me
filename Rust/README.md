@@ -10,3 +10,9 @@ cargo check
 cargo test
 cargo clippy --all-targets --all-features -- -D warnings
 ```
+
+Run the first O(k) recompute benchmark:
+
+```bash
+cargo run --release --bin bench-ok
+```

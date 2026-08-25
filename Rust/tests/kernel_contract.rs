@@ -1254,6 +1254,34 @@ fn explain_reports_last_recompute_wave_for_direct_dependency() {
 }
 
 #[test]
+fn recompute_wave_ignores_irrelevant_public_nodes() {
+    let mut kernel = Kernel::new();
+
+    for index in 0..1_000 {
+        kernel
+            .postulate(format!("bench.irrelevant[{index}].value"), index as u64)
+            .unwrap();
+    }
+    kernel.postulate("order.price", 10_u64).unwrap();
+    kernel.postulate("order.quantity", 3_u64).unwrap();
+    kernel.derive("order", "total", "price * quantity").unwrap();
+
+    kernel.postulate("order.price", 12_u64).unwrap();
+
+    let explanation = kernel.explain("order.total").unwrap();
+    assert_eq!(kernel.read("order.total"), Some(&Value::from(36_f64)));
+    assert_eq!(explanation.meta.k, 1);
+    assert_eq!(
+        explanation.meta.recomputed,
+        vec![vec!["order".to_string(), "total".to_string()]]
+    );
+    assert_eq!(
+        explanation.meta.source_path,
+        Some(vec!["order".to_string(), "price".to_string()])
+    );
+}
+
+#[test]
 fn derivations_cascade_through_derived_refs() {
     let mut kernel = Kernel::new();
 
