@@ -34,3 +34,9 @@ Run the cold vs warm runtime benchmark:
 ```bash
 cargo run --release --bin bench-cold-warm
 ```
+
+Run the explain overhead benchmark:
+
+```bash
+cargo run --release --bin bench-explain-overhead
+```

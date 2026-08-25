@@ -36,3 +36,7 @@ path = "src/bin/bench_fanout.rs"
 [[bin]]
 name = "bench-cold-warm"
 path = "src/bin/bench_cold_warm.rs"
+
+[[bin]]
+name = "bench-explain-overhead"
+path = "src/bin/bench_explain_overhead.rs"
