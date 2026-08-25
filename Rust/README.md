@@ -11,6 +11,8 @@ cargo test
 cargo clippy --all-targets --all-features -- -D warnings
 ```
 
+See [BENCHMARKS.md](BENCHMARKS.md) for the benchmark suite map.
+
 Run the first O(k) recompute benchmark:
 
 ```bash
