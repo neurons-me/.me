@@ -1,5 +1,6 @@
 use this_me::kernel::{
-    ExplainOrigin, Kernel, KernelError, SecretMaterialMode, SecretMaterialPurpose, Value,
+    ExplainOrigin, Kernel, KernelError, RecomputeMode, SecretMaterialMode, SecretMaterialPurpose,
+    Value,
 };
 
 fn hex(bytes: impl AsRef<[u8]>) -> String {
@@ -884,6 +885,32 @@ fn derivation_recomputes_when_dependency_changes() {
 }
 
 #[test]
+fn recompute_mode_defaults_to_eager_and_can_switch_to_lazy() {
+    let mut kernel = Kernel::new();
+
+    assert_eq!(kernel.recompute_mode(), RecomputeMode::Eager);
+
+    kernel.set_recompute_mode(RecomputeMode::Lazy);
+
+    assert_eq!(kernel.recompute_mode(), RecomputeMode::Lazy);
+}
+
+#[test]
+fn lazy_mode_defers_derivation_until_fresh_read() {
+    let mut kernel = Kernel::new();
+
+    kernel.set_recompute_mode(RecomputeMode::Lazy);
+    kernel.postulate("order.price", 10_u64).unwrap();
+    kernel.postulate("order.quantity", 3_u64).unwrap();
+    kernel.derive("order", "total", "price * quantity").unwrap();
+    kernel.postulate("order.price", 12_u64).unwrap();
+
+    assert_eq!(kernel.read("order.total"), Some(&Value::from(30_f64)));
+    assert_eq!(kernel.read_fresh("order.total"), Some(Value::from(36_f64)));
+    assert_eq!(kernel.read("order.total"), Some(&Value::from(36_f64)));
+}
+
+#[test]
 fn explain_reports_last_recompute_wave_for_direct_dependency() {
     let mut kernel = Kernel::new();
 
@@ -940,6 +967,33 @@ fn explain_reports_cascaded_recompute_wave() {
     assert_eq!(
         explanation.meta.source_path,
         Some(vec!["price".to_string()])
+    );
+}
+
+#[test]
+fn lazy_mode_fresh_read_recomputes_cascade_and_reports_wave() {
+    let mut kernel = Kernel::new();
+
+    kernel.set_recompute_mode(RecomputeMode::Lazy);
+    kernel.postulate("price", 10_u64).unwrap();
+    kernel.derive("", "cost_a", "price * 2").unwrap();
+    kernel.derive("", "total", "cost_a + 5").unwrap();
+    kernel.postulate("price", 20_u64).unwrap();
+
+    assert_eq!(kernel.read("cost_a"), Some(&Value::from(20_f64)));
+    assert_eq!(kernel.read("total"), Some(&Value::from(25_f64)));
+    assert_eq!(kernel.read_fresh("total"), Some(Value::from(45_f64)));
+
+    let explanation = kernel.explain("total").unwrap();
+
+    assert_eq!(explanation.meta.k, 2);
+    assert_eq!(
+        explanation.meta.recomputed,
+        vec![vec!["cost_a".to_string()], vec!["total".to_string()]]
+    );
+    assert_eq!(
+        explanation.meta.source_path,
+        Some(vec!["total".to_string()])
     );
 }
 

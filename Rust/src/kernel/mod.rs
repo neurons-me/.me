@@ -142,6 +142,12 @@ pub enum SecretMaterialMode {
     Value,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RecomputeMode {
+    Eager,
+    Lazy,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ExplainMeta {
     pub depends_on: Vec<Path>,
@@ -261,6 +267,8 @@ pub struct Kernel {
     operators: BTreeMap<String, OperatorDefinition>,
     last_recompute_wave_by_target: BTreeMap<Path, RecomputeWave>,
     active_recompute_wave: Option<RecomputeWave>,
+    recompute_mode: RecomputeMode,
+    stale_derivations: BTreeSet<Path>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -304,6 +312,8 @@ impl Default for Kernel {
             operators: default_operators(),
             last_recompute_wave_by_target: BTreeMap::new(),
             active_recompute_wave: None,
+            recompute_mode: RecomputeMode::Eager,
+            stale_derivations: BTreeSet::new(),
         }
     }
 }
@@ -340,6 +350,15 @@ impl Kernel {
         self.operators
             .get(operator)
             .map(|definition| definition.kind.as_str())
+    }
+
+    pub fn recompute_mode(&self) -> RecomputeMode {
+        self.recompute_mode
+    }
+
+    pub fn set_recompute_mode(&mut self, mode: RecomputeMode) -> &mut Self {
+        self.recompute_mode = mode;
+        self
     }
 
     pub fn define_operator(&mut self, operator: &str, kind: &str) -> Result<(), KernelError> {
@@ -605,12 +624,30 @@ impl Kernel {
             .and_then(|resolved| self.read_owner_path(&resolved))
     }
 
+    pub fn read_fresh(&mut self, path: impl IntoPath) -> Option<Value> {
+        let Ok(path) = path.into_path() else {
+            return None;
+        };
+        let resolved = self
+            .resolve_index_pointer_path(&path, 8)
+            .unwrap_or_else(|| path.clone());
+        self.ensure_target_fresh(&resolved, &mut BTreeSet::new());
+        self.resolve_index_pointer_path(&path, 8)
+            .and_then(|resolved| self.read_owner_path(&resolved).cloned())
+    }
+
     pub fn read_public(&self, path: impl IntoPath) -> Option<&Value> {
         let Ok(path) = path.into_path() else {
             return None;
         };
         self.resolve_index_pointer_path(&path, 8)
             .and_then(|resolved| self.index.get(&resolved))
+    }
+
+    pub fn explain_fresh(&mut self, path: impl IntoPath) -> Result<ExplainResult, KernelError> {
+        let path = path.into_path().map_err(KernelError::InvalidPath)?;
+        self.read_fresh(path.clone());
+        self.explain(path)
     }
 
     pub fn explain(&self, path: impl IntoPath) -> Result<ExplainResult, KernelError> {
@@ -1120,6 +1157,7 @@ impl Kernel {
             return;
         };
         self.last_recompute_wave_by_target.remove(target_path);
+        self.stale_derivations.remove(target_path);
 
         for reference in record.refs {
             if let Some(subscribers) = self.ref_subscribers.get_mut(&reference.path) {
@@ -1146,6 +1184,14 @@ impl Kernel {
 
     fn invalidate_from_path(&mut self, source_path: &[String]) {
         let started_wave = self.begin_recompute_wave(source_path);
+        if self.recompute_mode == RecomputeMode::Lazy {
+            self.mark_stale_from_path(source_path);
+            if started_wave {
+                self.finalize_recompute_wave();
+            }
+            return;
+        }
+
         let mut queue = VecDeque::from([source_path.to_vec()]);
         let mut seen_targets = BTreeSet::new();
 
@@ -1171,6 +1217,27 @@ impl Kernel {
         }
     }
 
+    fn mark_stale_from_path(&mut self, source_path: &[String]) {
+        let mut queue = VecDeque::from([source_path.to_vec()]);
+        let mut seen_targets = BTreeSet::new();
+
+        while let Some(changed_path) = queue.pop_front() {
+            let subscribers = self
+                .ref_subscribers
+                .get(&changed_path)
+                .cloned()
+                .unwrap_or_default();
+
+            for target_path in subscribers {
+                if !seen_targets.insert(target_path.clone()) {
+                    continue;
+                }
+                self.stale_derivations.insert(target_path.clone());
+                queue.push_back(target_path);
+            }
+        }
+    }
+
     fn recompute_target(&mut self, target_path: &[String]) -> bool {
         let Some(record) = self.derivations.get(target_path).cloned() else {
             return false;
@@ -1192,9 +1259,51 @@ impl Kernel {
 
         if recomputed {
             self.record_recomputed_target(target_path);
+            self.stale_derivations.remove(target_path);
         }
 
         recomputed
+    }
+
+    fn ensure_target_fresh(
+        &mut self,
+        target_path: &[String],
+        visiting: &mut BTreeSet<Path>,
+    ) -> bool {
+        if self.recompute_mode != RecomputeMode::Lazy {
+            return false;
+        }
+        if !self.derivations.contains_key(target_path) {
+            return false;
+        }
+        if !visiting.insert(target_path.to_vec()) {
+            return false;
+        }
+
+        let started_wave = self.begin_recompute_wave(target_path);
+        let refs = self
+            .derivations
+            .get(target_path)
+            .map(|record| record.refs.clone())
+            .unwrap_or_default();
+
+        for reference in refs {
+            if self.derivations.contains_key(&reference.path) {
+                self.ensure_target_fresh(&reference.path, visiting);
+            }
+        }
+
+        let changed = if self.stale_derivations.contains(target_path) {
+            self.recompute_target(target_path)
+        } else {
+            false
+        };
+
+        visiting.remove(target_path);
+        if started_wave {
+            self.finalize_recompute_wave();
+        }
+        changed
     }
 
     fn begin_recompute_wave(&mut self, source_path: &[String]) -> bool {
