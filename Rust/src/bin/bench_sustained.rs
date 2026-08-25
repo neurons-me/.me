@@ -77,31 +77,34 @@ fn run_sustained_mutation() -> SustainedResult {
             .expect("item value write should succeed");
     }
     kernel
+        .postulate("factor", 1_u64)
+        .expect("factor write should succeed");
+    kernel
         .derive("items[1]", "score", "value * 2")
         .expect("warm item derivation should succeed");
     kernel
-        .derive(format!("items[{NODE_COUNT}]"), "score", "value * 2")
+        .derive(format!("items[{NODE_COUNT}]"), "score", "value * factor")
         .expect("measured item derivation should succeed");
 
     assert_eq!(
         kernel.read(format!("items[{NODE_COUNT}].score")),
-        Some(&Value::from((base_value() * 2) as f64))
+        Some(&Value::from(base_value() as f64))
     );
 
     let mut samples = Vec::with_capacity(UPDATES);
 
     for update in 1..=UPDATES {
-        let value = base_value() + (update % 17) as u64;
+        let factor = (update % 17) + 1;
         let started = Instant::now();
         kernel
-            .postulate(format!("items[{NODE_COUNT}].value"), value)
-            .expect("item mutation should succeed");
+            .postulate("factor", factor as u64)
+            .expect("factor mutation should succeed");
         let score = kernel
             .read(format!("items[{NODE_COUNT}].score"))
             .cloned()
             .expect("measured score should be readable");
         samples.push(started.elapsed());
-        assert_eq!(score, Value::from((value * 2) as f64));
+        assert_eq!(score, Value::from((base_value() * factor as u64) as f64));
     }
 
     let mut sorted = samples.clone();

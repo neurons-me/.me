@@ -1,17 +1,6 @@
 use std::collections::BTreeSet;
 
-use super::{IntoPath, Kernel, Path, Value};
-
-pub(super) fn resolve_ref_path(label: &str, eval_scope: &[String]) -> Option<Path> {
-    let parts = label.into_path().ok()?;
-    if parts.is_empty() {
-        return None;
-    }
-    if label.contains('.') {
-        return Some(parts);
-    }
-    Some(eval_scope.iter().cloned().chain(parts).collect())
-}
+use super::{IntoPath, Kernel, Value};
 
 pub(super) fn extract_expression_refs(expression: &str) -> BTreeSet<String> {
     tokenize_eval_expression(expression)

@@ -5,7 +5,7 @@ mod evaluator;
 mod path;
 mod secret_material;
 
-use evaluator::{evaluate_expression, extract_expression_refs, resolve_ref_path};
+use evaluator::{evaluate_expression, extract_expression_refs};
 pub use path::{IntoPath, ParsedPath, Path, PathParseError, PathPart, Selector};
 use secret_material::{
     decrypt_blob_v3_cleartext, derive_blob_v3_keys, derive_secret_material_v3,
@@ -1284,9 +1284,13 @@ impl Kernel {
         let mut seen = BTreeSet::new();
         let refs = extract_expression_refs(&expression)
             .into_iter()
-            .filter_map(|label| {
-                let path = resolve_ref_path(&label, &eval_scope)?;
-                seen.insert(path.clone())
+            .flat_map(|label| {
+                self.resolve_derivation_ref_paths(&label, &eval_scope)
+                    .into_iter()
+                    .map(move |path| (label.clone(), path))
+            })
+            .filter_map(|(label, path)| {
+                seen.insert((label.clone(), path.clone()))
                     .then_some(DerivationRef { label, path })
             })
             .collect::<Vec<_>>();
@@ -1306,6 +1310,31 @@ impl Kernel {
                 refs,
             },
         );
+    }
+
+    fn resolve_derivation_ref_paths(&self, label: &str, eval_scope: &[String]) -> Vec<Path> {
+        let Ok(parts) = label.into_path() else {
+            return Vec::new();
+        };
+        if parts.is_empty() {
+            return Vec::new();
+        }
+        if label.contains('.') {
+            return vec![parts];
+        }
+
+        let relative = eval_scope
+            .iter()
+            .cloned()
+            .chain(parts.iter().cloned())
+            .collect::<Path>();
+        if relative == parts || self.read(relative.clone()).is_some() {
+            return vec![relative];
+        }
+        if self.read(parts.clone()).is_some() {
+            return vec![parts];
+        }
+        vec![relative]
     }
 
     fn unregister_derivation(&mut self, target_path: &[String]) {

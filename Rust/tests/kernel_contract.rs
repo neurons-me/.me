@@ -1254,6 +1254,57 @@ fn explain_reports_last_recompute_wave_for_direct_dependency() {
 }
 
 #[test]
+fn derivation_subscribes_to_absolute_fallback_refs() {
+    let mut kernel = Kernel::new();
+
+    kernel.postulate("factor", 2_u64).unwrap();
+    kernel.postulate("items[1].value", 13_u64).unwrap();
+    kernel
+        .derive("items[1]", "score", "value * factor")
+        .unwrap();
+
+    assert_eq!(kernel.read("items[1].score"), Some(&Value::from(26_f64)));
+
+    kernel.postulate("factor", 3_u64).unwrap();
+
+    let explanation = kernel.explain("items[1].score").unwrap();
+    assert_eq!(kernel.read("items[1].score"), Some(&Value::from(39_f64)));
+    assert_eq!(explanation.meta.k, 1);
+    assert_eq!(
+        explanation.meta.recomputed,
+        vec![vec![
+            "items".to_string(),
+            "1".to_string(),
+            "score".to_string(),
+        ]]
+    );
+    assert_eq!(
+        explanation.meta.source_path,
+        Some(vec!["factor".to_string()])
+    );
+}
+
+#[test]
+fn lazy_derivation_fresh_read_uses_absolute_fallback_refs() {
+    let mut kernel = Kernel::new();
+
+    kernel.set_recompute_mode(RecomputeMode::Lazy);
+    kernel.postulate("factor", 2_u64).unwrap();
+    kernel.postulate("items[1].value", 13_u64).unwrap();
+    kernel
+        .derive("items[1]", "score", "value * factor")
+        .unwrap();
+    kernel.postulate("factor", 3_u64).unwrap();
+
+    assert_eq!(kernel.read("items[1].score"), Some(&Value::from(26_f64)));
+    assert_eq!(
+        kernel.read_fresh("items[1].score"),
+        Some(Value::from(39_f64))
+    );
+    assert_eq!(kernel.read("items[1].score"), Some(&Value::from(39_f64)));
+}
+
+#[test]
 fn recompute_wave_ignores_irrelevant_public_nodes() {
     let mut kernel = Kernel::new();
 
