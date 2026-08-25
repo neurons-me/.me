@@ -1,6 +1,6 @@
 use this_me::kernel::{
-    ExplainOrigin, Kernel, KernelError, RecomputeMode, SecretMaterialMode, SecretMaterialPurpose,
-    Value,
+    ExplainOrigin, Kernel, KernelError, Memory, RecomputeMode, SecretMaterialMode,
+    SecretMaterialPurpose, Value,
 };
 
 fn hex(bytes: impl AsRef<[u8]>) -> String {
@@ -9,6 +9,29 @@ fn hex(bytes: impl AsRef<[u8]>) -> String {
         .iter()
         .map(|byte| format!("{byte:02x}"))
         .collect::<String>()
+}
+
+fn path_parts(value: &str) -> Vec<String> {
+    if value.is_empty() {
+        return Vec::new();
+    }
+    value.split('.').map(str::to_string).collect()
+}
+
+fn replay_record(
+    path_expr: &str,
+    operator: Option<&str>,
+    expression: Option<&str>,
+    value: Value,
+) -> Memory {
+    Memory {
+        path: path_parts(path_expr),
+        operator: operator.map(str::to_string),
+        expression: expression.map(str::to_string),
+        value,
+        prev_hash: Some("ignored-prev".to_string()),
+        hash: "ignored-hash".to_string(),
+    }
 }
 
 #[test]
@@ -66,6 +89,199 @@ fn snapshot_hydrates_equivalent_kernel() {
     assert_eq!(restored.memories(), kernel.memories());
     assert_eq!(restored.read("apps.demo.title"), Some(&Value::from("Demo")));
     assert_eq!(restored.read("apps.demo.count"), Some(&Value::from(3_u64)));
+}
+
+#[test]
+fn learn_replays_memory_semantically_on_current_chain() {
+    let mut source = Kernel::new();
+    let original = source
+        .postulate("apps.demo.title", "Demo Space")
+        .unwrap()
+        .clone();
+
+    let mut target = Kernel::new();
+    target.postulate("receiver.note", "local").unwrap();
+    let previous_hash = target.memories()[0].hash.clone();
+    let learned = target.learn(&original).unwrap().clone();
+
+    assert_eq!(
+        target.read("apps.demo.title"),
+        Some(&Value::from("Demo Space"))
+    );
+    assert_eq!(learned.path, original.path);
+    assert_eq!(learned.value, original.value);
+    assert_eq!(learned.prev_hash, Some(previous_hash));
+    assert_ne!(learned.hash, original.hash);
+}
+
+#[test]
+fn learn_replays_structural_operators() {
+    let mut kernel = Kernel::new();
+
+    kernel
+        .learn(&replay_record(
+            "",
+            Some("@"),
+            None,
+            Value::Identity("jabellae".to_string()),
+        ))
+        .unwrap();
+    kernel
+        .learn(&replay_record(
+            "wallet",
+            Some("_"),
+            Some("vault-key"),
+            Value::from("***"),
+        ))
+        .unwrap();
+    kernel
+        .learn(&replay_record(
+            "wallet.balance",
+            None,
+            None,
+            Value::from(100_u64),
+        ))
+        .unwrap();
+    kernel
+        .learn(&replay_record(
+            "profile.wallet",
+            Some("__"),
+            None,
+            Value::Pointer(path_parts("wallet")),
+        ))
+        .unwrap();
+    kernel
+        .learn(&replay_record(
+            "profile.legacy",
+            None,
+            None,
+            Value::from("remove-me"),
+        ))
+        .unwrap();
+    kernel
+        .learn(&replay_record(
+            "profile.legacy",
+            Some("-"),
+            None,
+            Value::from("ignored"),
+        ))
+        .unwrap();
+
+    assert_eq!(kernel.active_identity(), Some("jabellae"));
+    assert!(kernel.is_secret_scope("wallet"));
+    assert_eq!(kernel.read("wallet.balance"), Some(&Value::from(100_u64)));
+    assert_eq!(kernel.read_public("wallet.balance"), None);
+    assert_eq!(
+        kernel.read("profile.wallet.balance"),
+        Some(&Value::from(100_u64))
+    );
+    assert_eq!(kernel.read("profile.legacy"), None);
+}
+
+#[test]
+fn learn_preserves_custom_operator_aliases() {
+    let mut kernel = Kernel::new();
+
+    kernel.define_operator("hide", "secret").unwrap();
+    kernel.define_operator("drop", "remove").unwrap();
+    let learned_secret = kernel
+        .learn(&replay_record(
+            "vault",
+            Some("hide"),
+            Some("alpha"),
+            Value::from("***"),
+        ))
+        .unwrap()
+        .clone();
+    kernel.postulate("vault.note", "private").unwrap();
+    let learned_remove = kernel
+        .learn(&replay_record("vault", Some("drop"), None, Value::Null))
+        .unwrap()
+        .clone();
+
+    assert_eq!(learned_secret.operator.as_deref(), Some("hide"));
+    assert_eq!(learned_remove.operator.as_deref(), Some("drop"));
+    assert_eq!(kernel.read("vault.note"), None);
+    assert_eq!(kernel.operator_kind("hide"), Some("secret"));
+    assert_eq!(kernel.operator_kind("drop"), Some("remove"));
+}
+
+#[test]
+fn learned_derivation_remains_live() {
+    let mut kernel = Kernel::new();
+
+    kernel
+        .learn(&replay_record(
+            "order.price",
+            None,
+            None,
+            Value::from(10_u64),
+        ))
+        .unwrap();
+    kernel
+        .learn(&replay_record(
+            "order.quantity",
+            None,
+            None,
+            Value::from(3_u64),
+        ))
+        .unwrap();
+    kernel
+        .learn(&replay_record(
+            "order.total",
+            Some("="),
+            Some("price * quantity"),
+            Value::from(30_f64),
+        ))
+        .unwrap();
+
+    assert_eq!(kernel.read("order.total"), Some(&Value::from(30_f64)));
+
+    kernel.postulate("order.quantity", 4_u64).unwrap();
+
+    assert_eq!(kernel.read("order.total"), Some(&Value::from(40_f64)));
+}
+
+#[test]
+fn replay_memories_resets_state_but_preserves_runtime_configuration() {
+    let mut kernel = Kernel::new();
+
+    kernel.define_operator("drop", "remove").unwrap();
+    kernel.set_recompute_mode(RecomputeMode::Lazy);
+    kernel.postulate("old.value", "gone").unwrap();
+
+    kernel
+        .replay_memories(vec![
+            replay_record("apps.demo.title", None, None, Value::from("Demo")),
+            replay_record("apps.demo.count", None, None, Value::from(3_u64)),
+        ])
+        .unwrap();
+
+    assert_eq!(kernel.read("old.value"), None);
+    assert_eq!(kernel.read("apps.demo.title"), Some(&Value::from("Demo")));
+    assert_eq!(kernel.read("apps.demo.count"), Some(&Value::from(3_u64)));
+    assert_eq!(kernel.memories().len(), 2);
+    assert_eq!(kernel.operator_kind("drop"), Some("remove"));
+    assert_eq!(kernel.recompute_mode(), RecomputeMode::Lazy);
+}
+
+#[test]
+fn replay_memories_is_atomic_when_learning_fails() {
+    let mut kernel = Kernel::new();
+
+    kernel.postulate("stable.value", "keep").unwrap();
+    let original_memories = kernel.memories().to_vec();
+    let error = kernel
+        .replay_memories(vec![
+            replay_record("new.value", None, None, Value::from("pending")),
+            replay_record("", None, None, Value::from("invalid")),
+        ])
+        .expect_err("invalid replay should fail");
+
+    assert_eq!(error, KernelError::EmptyPath);
+    assert_eq!(kernel.memories(), original_memories.as_slice());
+    assert_eq!(kernel.read("stable.value"), Some(&Value::from("keep")));
+    assert_eq!(kernel.read("new.value"), None);
 }
 
 #[test]

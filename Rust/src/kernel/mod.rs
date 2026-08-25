@@ -803,6 +803,28 @@ impl Kernel {
         Ok(kernel)
     }
 
+    pub fn learn(&mut self, memory: &Memory) -> Result<&Memory, KernelError> {
+        let memory_index = self.memories.len();
+        self.learn_record(memory)?;
+        Ok(&self.memories[memory_index])
+    }
+
+    pub fn replay_memories<I>(&mut self, memories: I) -> Result<(), KernelError>
+    where
+        I: IntoIterator<Item = Memory>,
+    {
+        let mut replayed = Self::new();
+        replayed.operators = self.operators.clone();
+        replayed.recompute_mode = self.recompute_mode;
+
+        for memory in memories {
+            replayed.learn(&memory)?;
+        }
+
+        *self = replayed;
+        Ok(())
+    }
+
     fn resolve_index_pointer_path(&self, path: &[String], max_hops: usize) -> Option<Path> {
         self.resolve_index_pointer_trace(path, max_hops)
             .map(|resolution| resolution.resolved_path)
@@ -959,6 +981,104 @@ impl Kernel {
                 self.index.insert(memory.path.clone(), memory.value.clone());
             }
         }
+        Ok(())
+    }
+
+    fn learn_record(&mut self, memory: &Memory) -> Result<(), KernelError> {
+        let operator_kind = memory
+            .operator
+            .as_deref()
+            .and_then(|operator| self.operator_kind(operator))
+            .map(ToOwned::to_owned);
+
+        if memory.path.is_empty() && operator_kind.as_deref() != Some("identity") {
+            return Err(KernelError::EmptyPath);
+        }
+
+        match operator_kind.as_deref() {
+            Some("secret") => {
+                let secret = secret_from_memory(memory);
+                let memory_index = self.memories.len();
+                self.commit_memory_with_expression(
+                    memory.path.clone(),
+                    memory.operator.clone(),
+                    Value::String("***".to_string()),
+                    memory.expression.clone(),
+                    true,
+                )?;
+                self.local_secrets.insert(memory.path.clone(), secret);
+                debug_assert_eq!(self.memories.len(), memory_index + 1);
+            }
+            Some("noise") => {
+                let noise = secret_from_memory(memory);
+                let memory_index = self.memories.len();
+                self.commit_memory_with_expression(
+                    memory.path.clone(),
+                    memory.operator.clone(),
+                    Value::String("***".to_string()),
+                    memory.expression.clone(),
+                    true,
+                )?;
+                self.local_noises.insert(memory.path.clone(), noise);
+                debug_assert_eq!(self.memories.len(), memory_index + 1);
+            }
+            Some("identity") => {
+                let id = identity_from_memory(memory)?;
+                let id = normalize_identity(&id)?;
+                self.commit_memory_with_expression(
+                    memory.path.clone(),
+                    memory.operator.clone(),
+                    Value::Identity(id.clone()),
+                    memory.expression.clone(),
+                    true,
+                )?;
+                if memory.path.is_empty() {
+                    self.active_identity = Some(id);
+                }
+            }
+            Some("pointer") => {
+                let target = pointer_from_memory(memory)?;
+                self.commit_memory_with_expression(
+                    memory.path.clone(),
+                    memory.operator.clone(),
+                    Value::Pointer(target),
+                    memory.expression.clone(),
+                    true,
+                )?;
+            }
+            Some("remove") => {
+                self.commit_memory_with_expression(
+                    memory.path.clone(),
+                    memory.operator.clone(),
+                    Value::Null,
+                    memory.expression.clone(),
+                    true,
+                )?;
+            }
+            Some("eval") => {
+                if let Some(expression) = &memory.expression {
+                    let eval_scope = parent_path(&memory.path);
+                    self.register_derivation(memory.path.clone(), eval_scope, expression.clone());
+                }
+                self.commit_memory_with_expression(
+                    memory.path.clone(),
+                    memory.operator.clone(),
+                    memory.value.clone(),
+                    memory.expression.clone(),
+                    true,
+                )?;
+            }
+            _ => {
+                self.commit_memory_with_expression(
+                    memory.path.clone(),
+                    memory.operator.clone(),
+                    memory.value.clone(),
+                    memory.expression.clone(),
+                    true,
+                )?;
+            }
+        }
+
         Ok(())
     }
 
@@ -1452,6 +1572,57 @@ fn resolve_query_path(scope: &[String], path: Path) -> Path {
         return path;
     }
     scope.iter().cloned().chain(path).collect()
+}
+
+fn secret_from_memory(memory: &Memory) -> String {
+    memory
+        .expression
+        .as_deref()
+        .filter(|value| !value.trim().is_empty())
+        .map(|value| value.trim().to_string())
+        .or_else(|| match &memory.value {
+            Value::String(value) => {
+                let value = value.trim();
+                (!value.is_empty() && value != "***" && value != "****").then(|| value.to_string())
+            }
+            _ => None,
+        })
+        .unwrap_or_else(|| "***".to_string())
+}
+
+fn identity_from_memory(memory: &Memory) -> Result<String, KernelError> {
+    identity_from_value(&memory.value)
+        .or_else(|| memory.expression.clone())
+        .ok_or_else(|| KernelError::InvalidIdentity(String::new()))
+}
+
+fn identity_from_value(value: &Value) -> Option<String> {
+    match value {
+        Value::Identity(id) | Value::String(id) => Some(id.clone()),
+        Value::Object(values) => values.get("__id").and_then(identity_from_value),
+        _ => None,
+    }
+}
+
+fn pointer_from_memory(memory: &Memory) -> Result<Path, KernelError> {
+    pointer_from_value(&memory.value)
+        .or_else(|| {
+            memory
+                .expression
+                .as_deref()
+                .and_then(|expression| expression.into_path().ok())
+        })
+        .filter(|path| !path.is_empty())
+        .ok_or(KernelError::EmptyPath)
+}
+
+fn pointer_from_value(value: &Value) -> Option<Path> {
+    match value {
+        Value::Pointer(path) => Some(path.clone()),
+        Value::String(path) => path.as_str().into_path().ok(),
+        Value::Object(values) => values.get("__ptr").and_then(pointer_from_value),
+        _ => None,
+    }
 }
 
 fn ensure_value_is_supported(value: &Value) -> Result<(), KernelError> {
