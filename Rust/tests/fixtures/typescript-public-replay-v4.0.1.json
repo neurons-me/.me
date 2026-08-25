@@ -1,0 +1,83 @@
+{
+  "source": "Typescript this.me 4.0.1",
+  "generatedBy": "Typescript/index.ts",
+  "description": "Public semantic replay parity fixture for Rust .me.",
+  "memories": [
+    {
+      "path": "profile.name",
+      "operator": null,
+      "expression": "Jabellae",
+      "value": "Jabellae",
+      "hash": "47b6919e",
+      "prevHash": "",
+      "timestamp": 1787633692432
+    },
+    {
+      "path": "order.price",
+      "operator": null,
+      "expression": 10,
+      "value": 10,
+      "hash": "203d6dae",
+      "prevHash": "47b6919e",
+      "timestamp": 1787633692432
+    },
+    {
+      "path": "order.quantity",
+      "operator": null,
+      "expression": 3,
+      "value": 3,
+      "hash": "fd4c7fd4",
+      "prevHash": "203d6dae",
+      "timestamp": 1787633692432
+    },
+    {
+      "path": "order.total",
+      "operator": "=",
+      "expression": 30,
+      "value": 30,
+      "hash": "71e46b80",
+      "prevHash": "fd4c7fd4",
+      "timestamp": 1787633692433
+    },
+    {
+      "path": "profile.primary",
+      "operator": "__",
+      "expression": {
+        "__ptr": "order"
+      },
+      "value": {
+        "__ptr": "order"
+      },
+      "hash": "2b08f5f5",
+      "prevHash": "71e46b80",
+      "timestamp": 1787633692433
+    },
+    {
+      "path": "legacy.note",
+      "operator": null,
+      "expression": "remove-me",
+      "value": "remove-me",
+      "hash": "91d9c097",
+      "prevHash": "2b08f5f5",
+      "timestamp": 1787633692433
+    },
+    {
+      "path": "legacy",
+      "operator": "-",
+      "expression": "-",
+      "value": "-",
+      "hash": "2d089e0b",
+      "prevHash": "91d9c097",
+      "timestamp": 1787633692433
+    }
+  ],
+  "expectations": {
+    "profile.name": "Jabellae",
+    "order.price": 10,
+    "order.quantity": 3,
+    "order.total": 30,
+    "profile.primary.total": 30,
+    "legacy.note": null,
+    "memoryCount": 7
+  }
+}
