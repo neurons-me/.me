@@ -48,3 +48,7 @@ path = "src/bin/bench_secret_scope.rs"
 [[bin]]
 name = "bench-push-pull"
 path = "src/bin/bench_push_pull.rs"
+
+[[bin]]
+name = "bench-secret-push-pull"
+path = "src/bin/bench_secret_push_pull.rs"

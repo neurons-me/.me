@@ -52,3 +52,9 @@ Run the push vs pull benchmark:
 ```bash
 cargo run --release --bin bench-push-pull
 ```
+
+Run the secret push vs pull benchmark:
+
+```bash
+cargo run --release --bin bench-secret-push-pull
+```
