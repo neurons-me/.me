@@ -482,7 +482,7 @@ impl Kernel {
     }
 
     pub fn remove(&mut self, path: impl IntoPath) -> Result<&Memory, KernelError> {
-        self.postulate_with_operator(path, Some("-".to_string()), Value::Null)
+        self.postulate_with_operator(path, Some("-".to_string()), Value::String("-".to_string()))
     }
 
     pub fn derive(
@@ -561,13 +561,13 @@ impl Kernel {
 
         let path_for_noise = path.clone();
         let memory_index = self.memories.len();
+        self.local_noises
+            .insert(path_for_noise.clone(), noise.trim().to_string());
         self.commit_memory(
             path,
             Some("~".to_string()),
             Value::String("***".to_string()),
         )?;
-        self.local_noises
-            .insert(path_for_noise, noise.trim().to_string());
         Ok(&self.memories[memory_index])
     }
 
@@ -583,13 +583,13 @@ impl Kernel {
 
         let path_for_secret = path.clone();
         let memory_index = self.memories.len();
+        self.local_secrets
+            .insert(path_for_secret.clone(), secret.trim().to_string());
         self.commit_memory(
             path,
             Some("_".to_string()),
             Value::String("***".to_string()),
         )?;
-        self.local_secrets
-            .insert(path_for_secret, secret.trim().to_string());
         Ok(&self.memories[memory_index])
     }
 
@@ -743,12 +743,32 @@ impl Kernel {
                 });
             }
 
+            let operator_kind = memory
+                .operator
+                .as_deref()
+                .and_then(|operator| kernel.operator_kind(operator))
+                .map(ToOwned::to_owned);
+            if operator_kind.as_deref() == Some("secret") {
+                if let Some(secret) = snapshot.local_secrets.get(&memory.path) {
+                    kernel
+                        .local_secrets
+                        .insert(memory.path.clone(), secret.clone());
+                }
+            }
+            if operator_kind.as_deref() == Some("noise") {
+                if let Some(noise) = snapshot.local_noises.get(&memory.path) {
+                    kernel
+                        .local_noises
+                        .insert(memory.path.clone(), noise.clone());
+                }
+            }
+
             let expected = hash_memory(
                 &memory.path,
                 memory.operator.as_deref(),
                 memory.expression.as_ref(),
                 &memory.value,
-                secret_opt(&kernel.compute_effective_secret(&memory.path)),
+                &kernel.compute_effective_secret(&memory.path),
                 memory.prev_hash.as_deref(),
             );
             if expected != memory.hash {
@@ -759,34 +779,13 @@ impl Kernel {
                 });
             }
 
-            let operator_kind = memory
-                .operator
-                .as_deref()
-                .and_then(|operator| kernel.operator_kind(operator));
-            if operator_kind == Some("eval") {
+            if operator_kind.as_deref() == Some("eval") {
                 if let Some(expression) = expression_string_from_memory(&memory) {
                     let eval_scope = parent_path(&memory.path);
                     kernel.register_derivation(memory.path.clone(), eval_scope, expression);
                 }
             }
             kernel.apply_memory(&memory)?;
-            match memory.operator.as_deref() {
-                Some("_") => {
-                    if let Some(secret) = snapshot.local_secrets.get(&memory.path) {
-                        kernel
-                            .local_secrets
-                            .insert(memory.path.clone(), secret.clone());
-                    }
-                }
-                Some("~") => {
-                    if let Some(noise) = snapshot.local_noises.get(&memory.path) {
-                        kernel
-                            .local_noises
-                            .insert(memory.path.clone(), noise.clone());
-                    }
-                }
-                _ => {}
-            }
             expected_prev_hash = Some(memory.hash.clone());
             let operator_kind = memory
                 .operator
@@ -891,7 +890,7 @@ impl Kernel {
         operator: Option<String>,
         value: Value,
     ) -> Result<&Memory, KernelError> {
-        self.commit_memory_with_expression(path, operator, value, None, true)
+        self.commit_memory_with_expression(path, operator, value.clone(), Some(value), true)
     }
 
     fn commit_memory_with_expression(
@@ -915,7 +914,7 @@ impl Kernel {
             operator.as_deref(),
             expression.as_ref(),
             &stored_value,
-            secret_opt(&effective_secret),
+            &effective_secret,
             prev_hash.as_deref(),
         );
         let source_path = path.clone();
@@ -1002,6 +1001,7 @@ impl Kernel {
             Some("secret") => {
                 let secret = secret_from_memory(memory);
                 let memory_index = self.memories.len();
+                self.local_secrets.insert(memory.path.clone(), secret);
                 self.commit_memory_with_expression(
                     memory.path.clone(),
                     memory.operator.clone(),
@@ -1009,12 +1009,12 @@ impl Kernel {
                     memory.expression.clone(),
                     true,
                 )?;
-                self.local_secrets.insert(memory.path.clone(), secret);
                 debug_assert_eq!(self.memories.len(), memory_index + 1);
             }
             Some("noise") => {
                 let noise = secret_from_memory(memory);
                 let memory_index = self.memories.len();
+                self.local_noises.insert(memory.path.clone(), noise);
                 self.commit_memory_with_expression(
                     memory.path.clone(),
                     memory.operator.clone(),
@@ -1022,7 +1022,6 @@ impl Kernel {
                     memory.expression.clone(),
                     true,
                 )?;
-                self.local_noises.insert(memory.path.clone(), noise);
                 debug_assert_eq!(self.memories.len(), memory_index + 1);
             }
             Some("identity") => {
@@ -1053,7 +1052,7 @@ impl Kernel {
                 self.commit_memory_with_expression(
                     memory.path.clone(),
                     memory.operator.clone(),
-                    Value::Null,
+                    Value::String("-".to_string()),
                     memory.expression.clone(),
                     true,
                 )?;
@@ -1685,7 +1684,7 @@ fn hash_memory(
     operator: Option<&str>,
     expression: Option<&Value>,
     value: &Value,
-    effective_secret: Option<&str>,
+    effective_secret: &str,
     prev_hash: Option<&str>,
 ) -> String {
     let mut input = String::new();
@@ -1698,16 +1697,12 @@ fn hash_memory(
     input.push_str(",\"value\":");
     push_json_value(&mut input, value);
     input.push_str(",\"effectiveSecret\":");
-    push_json_optional_string(&mut input, effective_secret);
+    push_json_string(&mut input, effective_secret);
     input.push_str(",\"prevHash\":");
     push_json_string(&mut input, prev_hash.unwrap_or(""));
     input.push('}');
 
     portable_hash_fnv1a(&input)
-}
-
-fn secret_opt(value: &str) -> Option<&str> {
-    (!value.is_empty()).then_some(value)
 }
 
 fn secret_allowed_under_noise(noise_path: Option<&Path>, secret_path: &[String]) -> bool {

@@ -71,10 +71,10 @@ fn memory_hash_uses_portable_fnv1a_chain() {
     kernel.postulate("apps.demo.count", 1_u64).unwrap();
     kernel.postulate("apps.demo.count", 2_u64).unwrap();
 
-    assert_eq!(kernel.memories()[0].hash, "0e5304b1");
+    assert_eq!(kernel.memories()[0].hash, "650e695c");
     assert_eq!(kernel.memories()[0].prev_hash, None);
-    assert_eq!(kernel.memories()[1].hash, "e33eb2e6");
-    assert_eq!(kernel.memories()[1].prev_hash, Some("0e5304b1".to_string()));
+    assert_eq!(kernel.memories()[1].hash, "cb8489bb");
+    assert_eq!(kernel.memories()[1].prev_hash, Some("650e695c".to_string()));
 }
 
 #[test]
@@ -195,7 +195,12 @@ fn learn_preserves_custom_operator_aliases() {
         .clone();
     kernel.postulate("vault.note", "private").unwrap();
     let learned_remove = kernel
-        .learn(&replay_record("vault", Some("drop"), None, Value::Null))
+        .learn(&replay_record(
+            "vault",
+            Some("drop"),
+            None,
+            Value::from("-"),
+        ))
         .unwrap()
         .clone();
 
@@ -389,7 +394,7 @@ fn custom_operator_kind_applies_to_memory_replay() {
     kernel.define_operator("drop", "remove").unwrap();
     kernel.postulate("apps.demo.title", "Demo").unwrap();
     kernel
-        .postulate_with_operator("apps.demo", Some("drop".to_string()), Value::Null)
+        .postulate_with_operator("apps.demo", Some("drop".to_string()), Value::from("-"))
         .unwrap();
 
     assert_eq!(kernel.read("apps.demo.title"), None);
@@ -412,7 +417,7 @@ fn remove_deletes_exact_path_and_descendants_from_index() {
 
     assert_eq!(memory.operator.as_deref(), Some("-"));
     assert_eq!(memory.path, vec!["apps".to_string(), "demo".to_string()]);
-    assert_eq!(memory.value, Value::Null);
+    assert_eq!(memory.value, Value::from("-"));
     assert_eq!(kernel.read("apps.demo.title"), None);
     assert_eq!(kernel.read("apps.demo.count"), None);
     assert_eq!(kernel.read("apps.other.title"), Some(&Value::from("Other")));
@@ -1334,7 +1339,7 @@ fn effective_secret_follows_secret_lineage() {
         kernel.effective_secret("wallet.hidden.seed").unwrap(),
         "f11aeb12"
     );
-    assert_eq!(kernel.memories()[0].hash, "4393708b");
+    assert_eq!(kernel.memories()[0].hash, "d995d624");
     assert!(matches!(
         &kernel.memories()[1].value,
         Value::String(blob) if blob.starts_with("b64u:")
@@ -1607,7 +1612,7 @@ fn hydration_rejects_tampered_secret_material() {
             path,
             expected: _,
             actual: _
-        } if path == vec!["wallet".to_string(), "balance".to_string()]
+        } if path == vec!["wallet".to_string()]
     ));
 }
 

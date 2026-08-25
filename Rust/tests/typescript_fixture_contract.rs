@@ -49,7 +49,7 @@ fn rust_preserves_typescript_expression_value_shape() {
 }
 
 #[test]
-fn rust_replay_uses_typescript_memory_as_semantic_input_not_hash_truth() {
+fn rust_replay_preserves_typescript_public_hashes_for_supported_shapes() {
     let fixture = parse_fixture(PUBLIC_REPLAY_FIXTURE);
     let source_hashes = fixture
         .memories
@@ -66,11 +66,14 @@ fn rust_replay_uses_typescript_memory_as_semantic_input_not_hash_truth() {
         kernel.memories()[1].prev_hash,
         Some(kernel.memories()[0].hash.clone())
     );
-    assert!(kernel
-        .memories()
-        .iter()
-        .zip(source_hashes)
-        .any(|(rust_memory, ts_hash)| rust_memory.hash != ts_hash));
+    assert_eq!(
+        kernel
+            .memories()
+            .iter()
+            .map(|memory| memory.hash.clone())
+            .collect::<Vec<_>>(),
+        source_hashes
+    );
 }
 
 struct ParsedFixture {
