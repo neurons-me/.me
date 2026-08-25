@@ -40,3 +40,9 @@ Run the explain overhead benchmark:
 ```bash
 cargo run --release --bin bench-explain-overhead
 ```
+
+Run the secret-scope performance benchmark:
+
+```bash
+cargo run --release --bin bench-secret-scope
+```

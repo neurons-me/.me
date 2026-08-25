@@ -40,3 +40,7 @@ path = "src/bin/bench_cold_warm.rs"
 [[bin]]
 name = "bench-explain-overhead"
 path = "src/bin/bench_explain_overhead.rs"
+
+[[bin]]
+name = "bench-secret-scope"
+path = "src/bin/bench_secret_scope.rs"
