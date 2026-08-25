@@ -148,6 +148,9 @@ pub struct ExplainMeta {
     pub resolved_path: Path,
     pub pointer_chain: Vec<Path>,
     pub secret: bool,
+    pub k: usize,
+    pub recomputed: Vec<Path>,
+    pub source_path: Option<Path>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -256,6 +259,8 @@ pub struct Kernel {
     ref_subscribers: BTreeMap<Path, BTreeSet<Path>>,
     active_identity: Option<String>,
     operators: BTreeMap<String, OperatorDefinition>,
+    last_recompute_wave_by_target: BTreeMap<Path, RecomputeWave>,
+    active_recompute_wave: Option<RecomputeWave>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -269,6 +274,12 @@ struct DerivationRecord {
 struct DerivationRef {
     label: String,
     path: Path,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct RecomputeWave {
+    source_path: Path,
+    recomputed: BTreeSet<Path>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -291,6 +302,8 @@ impl Default for Kernel {
             ref_subscribers: BTreeMap::new(),
             active_identity: None,
             operators: default_operators(),
+            last_recompute_wave_by_target: BTreeMap::new(),
+            active_recompute_wave: None,
         }
     }
 }
@@ -646,6 +659,12 @@ impl Kernel {
             .unwrap_or_default();
         let expr = record.map(|record| record.expression.clone());
         let secret = self.is_under_secret_scope(&resolution.resolved_path);
+        let wave = self
+            .last_recompute_wave_by_target
+            .get(&resolution.resolved_path);
+        let recomputed = wave
+            .map(|wave| wave.recomputed.iter().cloned().collect::<Vec<_>>())
+            .unwrap_or_default();
 
         Ok(ExplainResult {
             path,
@@ -656,6 +675,9 @@ impl Kernel {
                 resolved_path: resolution.resolved_path,
                 pointer_chain: resolution.pointer_chain,
                 secret,
+                k: recomputed.len(),
+                recomputed,
+                source_path: wave.map(|wave| wave.source_path.clone()),
             },
             derivation,
         })
@@ -1097,6 +1119,7 @@ impl Kernel {
         let Some(record) = self.derivations.remove(target_path) else {
             return;
         };
+        self.last_recompute_wave_by_target.remove(target_path);
 
         for reference in record.refs {
             if let Some(subscribers) = self.ref_subscribers.get_mut(&reference.path) {
@@ -1122,6 +1145,7 @@ impl Kernel {
     }
 
     fn invalidate_from_path(&mut self, source_path: &[String]) {
+        let started_wave = self.begin_recompute_wave(source_path);
         let mut queue = VecDeque::from([source_path.to_vec()]);
         let mut seen_targets = BTreeSet::new();
 
@@ -1141,6 +1165,10 @@ impl Kernel {
                 }
             }
         }
+
+        if started_wave {
+            self.finalize_recompute_wave();
+        }
     }
 
     fn recompute_target(&mut self, target_path: &[String]) -> bool {
@@ -1152,14 +1180,52 @@ impl Kernel {
             .evaluate_expression(&record.eval_scope, &record.expression)
             .unwrap_or_else(|| Value::String(record.expression.clone()));
 
-        self.commit_memory_with_expression(
-            target_path.to_vec(),
-            Some("=".to_string()),
-            value,
-            Some(record.expression),
-            false,
-        )
-        .is_ok()
+        let recomputed = self
+            .commit_memory_with_expression(
+                target_path.to_vec(),
+                Some("=".to_string()),
+                value,
+                Some(record.expression),
+                false,
+            )
+            .is_ok();
+
+        if recomputed {
+            self.record_recomputed_target(target_path);
+        }
+
+        recomputed
+    }
+
+    fn begin_recompute_wave(&mut self, source_path: &[String]) -> bool {
+        if self.active_recompute_wave.is_some() {
+            return false;
+        }
+        self.active_recompute_wave = Some(RecomputeWave {
+            source_path: source_path.to_vec(),
+            recomputed: BTreeSet::new(),
+        });
+        true
+    }
+
+    fn record_recomputed_target(&mut self, target_path: &[String]) {
+        let Some(wave) = &mut self.active_recompute_wave else {
+            return;
+        };
+        wave.recomputed.insert(target_path.to_vec());
+    }
+
+    fn finalize_recompute_wave(&mut self) {
+        let Some(wave) = self.active_recompute_wave.take() else {
+            return;
+        };
+        if wave.recomputed.is_empty() {
+            return;
+        }
+        for target_path in &wave.recomputed {
+            self.last_recompute_wave_by_target
+                .insert(target_path.clone(), wave.clone());
+        }
     }
 
     fn evaluate_expression(&self, eval_scope: &[String], expression: &str) -> Option<Value> {

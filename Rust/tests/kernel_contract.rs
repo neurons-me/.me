@@ -884,6 +884,28 @@ fn derivation_recomputes_when_dependency_changes() {
 }
 
 #[test]
+fn explain_reports_last_recompute_wave_for_direct_dependency() {
+    let mut kernel = Kernel::new();
+
+    kernel.postulate("order.price", 10_u64).unwrap();
+    kernel.postulate("order.quantity", 3_u64).unwrap();
+    kernel.derive("order", "total", "price * quantity").unwrap();
+    kernel.postulate("order.price", 12_u64).unwrap();
+
+    let explanation = kernel.explain("order.total").unwrap();
+
+    assert_eq!(explanation.meta.k, 1);
+    assert_eq!(
+        explanation.meta.recomputed,
+        vec![vec!["order".to_string(), "total".to_string()]]
+    );
+    assert_eq!(
+        explanation.meta.source_path,
+        Some(vec!["order".to_string(), "price".to_string()])
+    );
+}
+
+#[test]
 fn derivations_cascade_through_derived_refs() {
     let mut kernel = Kernel::new();
 
@@ -897,6 +919,28 @@ fn derivations_cascade_through_derived_refs() {
 
     assert_eq!(kernel.read("cost_a"), Some(&Value::from(40_f64)));
     assert_eq!(kernel.read("total"), Some(&Value::from(45_f64)));
+}
+
+#[test]
+fn explain_reports_cascaded_recompute_wave() {
+    let mut kernel = Kernel::new();
+
+    kernel.postulate("price", 10_u64).unwrap();
+    kernel.derive("", "cost_a", "price * 2").unwrap();
+    kernel.derive("", "total", "cost_a + 5").unwrap();
+    kernel.postulate("price", 20_u64).unwrap();
+
+    let explanation = kernel.explain("total").unwrap();
+
+    assert_eq!(explanation.meta.k, 2);
+    assert_eq!(
+        explanation.meta.recomputed,
+        vec![vec!["cost_a".to_string()], vec!["total".to_string()]]
+    );
+    assert_eq!(
+        explanation.meta.source_path,
+        Some(vec!["price".to_string()])
+    );
 }
 
 #[test]
