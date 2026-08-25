@@ -16,3 +16,9 @@ Run the first O(k) recompute benchmark:
 ```bash
 cargo run --release --bin bench-ok
 ```
+
+Run the sustained mutation benchmark:
+
+```bash
+cargo run --release --bin bench-sustained
+```

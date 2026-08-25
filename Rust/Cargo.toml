@@ -24,3 +24,7 @@ path = "src/main.rs"
 [[bin]]
 name = "bench-ok"
 path = "src/bin/bench_ok.rs"
+
+[[bin]]
+name = "bench-sustained"
+path = "src/bin/bench_sustained.rs"
