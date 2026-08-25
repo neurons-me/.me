@@ -27,7 +27,7 @@ fn replay_record(
     Memory {
         path: path_parts(path_expr),
         operator: operator.map(str::to_string),
-        expression: expression.map(str::to_string),
+        expression: expression.map(Value::from),
         value,
         prev_hash: Some("ignored-prev".to_string()),
         hash: "ignored-hash".to_string(),
@@ -1074,7 +1074,7 @@ fn derivation_computes_from_relative_scope() {
         .clone();
 
     assert_eq!(memory.operator.as_deref(), Some("="));
-    assert_eq!(memory.expression.as_deref(), Some("price * quantity"));
+    assert_eq!(memory.expression, Some(Value::from("price * quantity")));
     assert_eq!(memory.path, vec!["order".to_string(), "total".to_string()]);
     assert_eq!(memory.value, Value::from(30_f64));
     assert_eq!(kernel.read("order.total"), Some(&Value::from(30_f64)));
@@ -1095,8 +1095,8 @@ fn derivation_recomputes_when_dependency_changes() {
         Some("=")
     );
     assert_eq!(
-        kernel.memories().last().unwrap().expression.as_deref(),
-        Some("price * quantity")
+        kernel.memories().last().unwrap().expression,
+        Some(Value::from("price * quantity"))
     );
 }
 
@@ -1288,7 +1288,7 @@ fn hydration_rejects_tampered_derivation_expression() {
     kernel.derive("order", "total", "price * quantity").unwrap();
 
     let mut snapshot = kernel.export_snapshot();
-    snapshot.memories[2].expression = Some("price + quantity".to_string());
+    snapshot.memories[2].expression = Some(Value::from("price + quantity"));
 
     let error = Kernel::hydrate(snapshot).expect_err("tampering must be detected");
 

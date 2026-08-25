@@ -68,7 +68,7 @@ impl From<f64> for Value {
 pub struct Memory {
     pub path: Path,
     pub operator: Option<String>,
-    pub expression: Option<String>,
+    pub expression: Option<Value>,
     pub value: Value,
     pub prev_hash: Option<String>,
     pub hash: String,
@@ -100,7 +100,7 @@ pub struct InspectResult {
 pub struct InspectMemory {
     pub path: Path,
     pub operator: Option<String>,
-    pub expression: Option<String>,
+    pub expression: Option<Value>,
     pub value: Value,
     pub prev_hash: Option<String>,
     pub hash: String,
@@ -518,7 +518,7 @@ impl Kernel {
             target_path,
             Some("=".to_string()),
             value,
-            Some(expression.to_string()),
+            Some(Value::String(expression.to_string())),
             true,
         )
     }
@@ -746,7 +746,7 @@ impl Kernel {
             let expected = hash_memory(
                 &memory.path,
                 memory.operator.as_deref(),
-                memory.expression.as_deref(),
+                memory.expression.as_ref(),
                 &memory.value,
                 secret_opt(&kernel.compute_effective_secret(&memory.path)),
                 memory.prev_hash.as_deref(),
@@ -764,7 +764,7 @@ impl Kernel {
                 .as_deref()
                 .and_then(|operator| kernel.operator_kind(operator));
             if operator_kind == Some("eval") {
-                if let Some(expression) = memory.expression.clone() {
+                if let Some(expression) = expression_string_from_memory(&memory) {
                     let eval_scope = parent_path(&memory.path);
                     kernel.register_derivation(memory.path.clone(), eval_scope, expression);
                 }
@@ -899,10 +899,13 @@ impl Kernel {
         path: Path,
         operator: Option<String>,
         value: Value,
-        expression: Option<String>,
+        expression: Option<Value>,
         invalidate: bool,
     ) -> Result<&Memory, KernelError> {
         ensure_value_is_supported(&value)?;
+        if let Some(expression) = &expression {
+            ensure_value_is_supported(expression)?;
+        }
 
         let prev_hash = self.memories.last().map(|memory| memory.hash.clone());
         let effective_secret = self.compute_effective_secret(&path);
@@ -910,7 +913,7 @@ impl Kernel {
         let hash = hash_memory(
             &path,
             operator.as_deref(),
-            expression.as_deref(),
+            expression.as_ref(),
             &stored_value,
             secret_opt(&effective_secret),
             prev_hash.as_deref(),
@@ -1056,9 +1059,9 @@ impl Kernel {
                 )?;
             }
             Some("eval") => {
-                if let Some(expression) = &memory.expression {
+                if let Some(expression) = expression_string_from_memory(memory) {
                     let eval_scope = parent_path(&memory.path);
-                    self.register_derivation(memory.path.clone(), eval_scope, expression.clone());
+                    self.register_derivation(memory.path.clone(), eval_scope, expression);
                 }
                 self.commit_memory_with_expression(
                     memory.path.clone(),
@@ -1372,7 +1375,7 @@ impl Kernel {
                 target_path.to_vec(),
                 Some("=".to_string()),
                 value,
-                Some(record.expression),
+                Some(Value::String(record.expression)),
                 false,
             )
             .is_ok();
@@ -1577,8 +1580,9 @@ fn resolve_query_path(scope: &[String], path: Path) -> Path {
 fn secret_from_memory(memory: &Memory) -> String {
     memory
         .expression
-        .as_deref()
-        .filter(|value| !value.trim().is_empty())
+        .as_ref()
+        .and_then(string_from_value)
+        .filter(|value| !value.is_empty())
         .map(|value| value.trim().to_string())
         .or_else(|| match &memory.value {
             Value::String(value) => {
@@ -1592,7 +1596,7 @@ fn secret_from_memory(memory: &Memory) -> String {
 
 fn identity_from_memory(memory: &Memory) -> Result<String, KernelError> {
     identity_from_value(&memory.value)
-        .or_else(|| memory.expression.clone())
+        .or_else(|| memory.expression.as_ref().and_then(identity_from_value))
         .ok_or_else(|| KernelError::InvalidIdentity(String::new()))
 }
 
@@ -1606,12 +1610,7 @@ fn identity_from_value(value: &Value) -> Option<String> {
 
 fn pointer_from_memory(memory: &Memory) -> Result<Path, KernelError> {
     pointer_from_value(&memory.value)
-        .or_else(|| {
-            memory
-                .expression
-                .as_deref()
-                .and_then(|expression| expression.into_path().ok())
-        })
+        .or_else(|| memory.expression.as_ref().and_then(pointer_from_value))
         .filter(|path| !path.is_empty())
         .ok_or(KernelError::EmptyPath)
 }
@@ -1621,6 +1620,17 @@ fn pointer_from_value(value: &Value) -> Option<Path> {
         Value::Pointer(path) => Some(path.clone()),
         Value::String(path) => path.as_str().into_path().ok(),
         Value::Object(values) => values.get("__ptr").and_then(pointer_from_value),
+        _ => None,
+    }
+}
+
+fn expression_string_from_memory(memory: &Memory) -> Option<String> {
+    memory.expression.as_ref().and_then(string_from_value)
+}
+
+fn string_from_value(value: &Value) -> Option<String> {
+    match value {
+        Value::String(value) => Some(value.trim().to_string()),
         _ => None,
     }
 }
@@ -1673,7 +1683,7 @@ fn normalize_identity(input: &str) -> Result<String, KernelError> {
 fn hash_memory(
     path: &[String],
     operator: Option<&str>,
-    expression: Option<&str>,
+    expression: Option<&Value>,
     value: &Value,
     effective_secret: Option<&str>,
     prev_hash: Option<&str>,
@@ -1684,7 +1694,7 @@ fn hash_memory(
     input.push_str(",\"operator\":");
     push_json_optional_string(&mut input, operator);
     input.push_str(",\"expression\":");
-    push_json_optional_string(&mut input, expression);
+    push_json_optional_value(&mut input, expression);
     input.push_str(",\"value\":");
     push_json_value(&mut input, value);
     input.push_str(",\"effectiveSecret\":");
@@ -1719,6 +1729,13 @@ fn portable_hash_fnv1a(input: &str) -> String {
 fn push_json_optional_string(out: &mut String, value: Option<&str>) {
     match value {
         Some(value) => push_json_string(out, value),
+        None => out.push_str("null"),
+    }
+}
+
+fn push_json_optional_value(out: &mut String, value: Option<&Value>) {
+    match value {
+        Some(value) => push_json_value(out, value),
         None => out.push_str("null"),
     }
 }

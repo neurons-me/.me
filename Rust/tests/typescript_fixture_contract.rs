@@ -27,6 +27,28 @@ fn rust_replays_typescript_public_memory_fixture() {
 }
 
 #[test]
+fn rust_preserves_typescript_expression_value_shape() {
+    let fixture = parse_fixture(PUBLIC_REPLAY_FIXTURE);
+    let mut kernel = Kernel::new();
+
+    kernel.replay_memories(fixture.memories).unwrap();
+
+    assert_eq!(
+        kernel.memories()[0].expression,
+        Some(Value::from("Jabellae"))
+    );
+    assert_eq!(kernel.memories()[1].expression, Some(Value::from(10_f64)));
+    assert_eq!(kernel.memories()[3].expression, Some(Value::from(30_f64)));
+    assert_eq!(
+        kernel.memories()[4].expression,
+        Some(Value::Object(BTreeMap::from([(
+            "__ptr".to_string(),
+            Value::from("order")
+        )])))
+    );
+}
+
+#[test]
 fn rust_replay_uses_typescript_memory_as_semantic_input_not_hash_truth() {
     let fixture = parse_fixture(PUBLIC_REPLAY_FIXTURE);
     let source_hashes = fixture
@@ -87,10 +109,7 @@ fn parse_memory(raw: &JsonValue) -> Memory {
             .get("operator")
             .and_then(JsonValue::as_str)
             .map(str::to_string),
-        expression: raw
-            .get("expression")
-            .and_then(JsonValue::as_str)
-            .map(str::to_string),
+        expression: raw.get("expression").map(parse_value),
         value: raw
             .get("value")
             .map(parse_value)
