@@ -44,3 +44,7 @@ path = "src/bin/bench_explain_overhead.rs"
 [[bin]]
 name = "bench-secret-scope"
 path = "src/bin/bench_secret_scope.rs"
+
+[[bin]]
+name = "bench-push-pull"
+path = "src/bin/bench_push_pull.rs"

@@ -46,3 +46,9 @@ Run the secret-scope performance benchmark:
 ```bash
 cargo run --release --bin bench-secret-scope
 ```
+
+Run the push vs pull benchmark:
+
+```bash
+cargo run --release --bin bench-push-pull
+```
