@@ -22,3 +22,9 @@ Run the sustained mutation benchmark:
 ```bash
 cargo run --release --bin bench-sustained
 ```
+
+Run the fan-out sensitivity benchmark:
+
+```bash
+cargo run --release --bin bench-fanout
+```

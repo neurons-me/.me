@@ -1,5 +1,6 @@
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::fmt;
+use std::sync::Arc;
 
 mod evaluator;
 mod path;
@@ -265,7 +266,7 @@ pub struct Kernel {
     ref_subscribers: BTreeMap<Path, BTreeSet<Path>>,
     active_identity: Option<String>,
     operators: BTreeMap<String, OperatorDefinition>,
-    last_recompute_wave_by_target: BTreeMap<Path, RecomputeWave>,
+    last_recompute_wave_by_target: BTreeMap<Path, Arc<RecomputeWave>>,
     active_recompute_wave: Option<RecomputeWave>,
     recompute_mode: RecomputeMode,
     stale_derivations: BTreeSet<Path>,
@@ -1516,9 +1517,10 @@ impl Kernel {
         if wave.recomputed.is_empty() {
             return;
         }
+        let wave = Arc::new(wave);
         for target_path in &wave.recomputed {
             self.last_recompute_wave_by_target
-                .insert(target_path.clone(), wave.clone());
+                .insert(target_path.clone(), Arc::clone(&wave));
         }
     }
 
