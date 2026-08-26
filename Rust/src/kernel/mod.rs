@@ -117,6 +117,14 @@ pub struct StoredWrappedKey {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub struct KernelEvent {
+    pub path: Path,
+    pub operator: Option<String>,
+    pub value: Option<Value>,
+    pub memory_hash: String,
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct InspectResult {
     pub memories: Vec<InspectMemory>,
     pub index: BTreeMap<Path, Value>,
@@ -294,6 +302,7 @@ pub struct Kernel {
     recipient_keyring: BTreeMap<String, P256PrivateKey>,
     derivations: BTreeMap<Path, DerivationRecord>,
     ref_subscribers: BTreeMap<Path, BTreeSet<Path>>,
+    events: Vec<KernelEvent>,
     active_identity: Option<String>,
     seed: Option<String>,
     identity_hash: Option<String>,
@@ -344,6 +353,7 @@ impl Default for Kernel {
             recipient_keyring: BTreeMap::new(),
             derivations: BTreeMap::new(),
             ref_subscribers: BTreeMap::new(),
+            events: Vec::new(),
             active_identity: None,
             seed: None,
             identity_hash: None,
@@ -442,6 +452,19 @@ impl Kernel {
 
     pub fn operators(&self) -> &BTreeMap<String, OperatorDefinition> {
         &self.operators
+    }
+
+    pub fn events(&self) -> &[KernelEvent] {
+        &self.events
+    }
+
+    pub fn drain_events(&mut self) -> Vec<KernelEvent> {
+        std::mem::take(&mut self.events)
+    }
+
+    pub fn clear_events(&mut self) -> &mut Self {
+        self.events.clear();
+        self
     }
 
     pub fn operator_kind(&self, operator: &str) -> Option<&str> {
@@ -954,6 +977,7 @@ impl Kernel {
             replayed.learn(&memory)?;
         }
 
+        replayed.clear_events();
         *self = replayed;
         Ok(())
     }
@@ -1064,6 +1088,7 @@ impl Kernel {
 
         self.apply_memory(&memory)?;
         self.memories.push(memory);
+        self.record_event_from_memory(memory_index, &source_path);
         if invalidate {
             self.invalidate_from_path(&source_path);
         }
@@ -1118,6 +1143,18 @@ impl Kernel {
             }
         }
         Ok(())
+    }
+
+    fn record_event_from_memory(&mut self, memory_index: usize, path: &[String]) {
+        let Some(memory) = self.memories.get(memory_index) else {
+            return;
+        };
+        self.events.push(KernelEvent {
+            path: path.to_vec(),
+            operator: memory.operator.clone(),
+            value: self.read_owner_path(path).cloned(),
+            memory_hash: memory.hash.clone(),
+        });
     }
 
     fn learn_record(&mut self, memory: &Memory) -> Result<(), KernelError> {

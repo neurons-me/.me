@@ -5,7 +5,7 @@ use serde_json::{Map, Value as JsonValue};
 
 use super::{
     ExecuteValue, ExplainInput, ExplainOrigin, ExplainResult, InspectMemory, InspectResult,
-    IntoPath, Memory, OperatorDefinition, Path, ProofResult, RecomputeMode, Snapshot,
+    IntoPath, KernelEvent, Memory, OperatorDefinition, Path, ProofResult, RecomputeMode, Snapshot,
     StoredWrappedKey, Value,
 };
 
@@ -111,6 +111,9 @@ pub fn execute_value_to_json(value: &ExecuteValue) -> JsonValue {
         ExecuteValue::Memories(memories) => {
             JsonValue::Array(memories.iter().map(memory_to_json).collect())
         }
+        ExecuteValue::Events(events) => {
+            JsonValue::Array(events.iter().map(kernel_event_to_json).collect())
+        }
         ExecuteValue::Snapshot(snapshot) => snapshot_to_json(snapshot),
         ExecuteValue::Inspect(inspect) => inspect_to_json(inspect),
         ExecuteValue::Explain(explain) => explain_to_json(explain),
@@ -152,6 +155,28 @@ pub fn execute_value_to_json(value: &ExecuteValue) -> JsonValue {
             bytes_to_json(bytes)
         }
     }
+}
+
+pub fn kernel_event_to_json(event: &KernelEvent) -> JsonValue {
+    JsonValue::Object(Map::from_iter([
+        ("path".to_string(), path_to_json(&event.path)),
+        (
+            "operator".to_string(),
+            optional_string_to_json(event.operator.as_deref()),
+        ),
+        (
+            "value".to_string(),
+            event
+                .value
+                .as_ref()
+                .map(kernel_value_to_json)
+                .unwrap_or(JsonValue::Null),
+        ),
+        (
+            "memoryHash".to_string(),
+            JsonValue::String(event.memory_hash.clone()),
+        ),
+    ]))
 }
 
 pub fn proof_result_to_json(proof: &ProofResult) -> JsonValue {

@@ -3,8 +3,8 @@ use std::fmt;
 
 use super::{
     path_starts_with, unwrap_secret_v1, ExplainResult, InspectMemory, InspectResult, IntoPath,
-    Kernel, KernelError, Memory, P256PrivateKey, Path, RecomputeMode, Snapshot, StoredWrappedKey,
-    Value, WrappedSecretCleartext, WrappedSecretError, WrappedSecretOutput,
+    Kernel, KernelError, KernelEvent, Memory, P256PrivateKey, Path, RecomputeMode, Snapshot,
+    StoredWrappedKey, Value, WrappedSecretCleartext, WrappedSecretError, WrappedSecretOutput,
 };
 
 #[derive(Debug, Clone, PartialEq)]
@@ -22,6 +22,7 @@ pub enum ExecuteValue {
     None,
     Value(Value),
     Memories(Vec<Memory>),
+    Events(Vec<KernelEvent>),
     Snapshot(Snapshot),
     Inspect(InspectResult),
     Explain(ExplainResult),
@@ -275,6 +276,7 @@ impl Kernel {
 
         match operation {
             "read" => self.handle_kernel_read(&key),
+            "drain" => self.handle_kernel_drain(&key),
             "export" => self.handle_kernel_export(&key),
             "import" => {
                 let snapshot = expect_snapshot_body(body, "kernel:import requires a payload")?;
@@ -307,10 +309,21 @@ impl Kernel {
     fn handle_kernel_read(&self, key: &str) -> Result<ExecuteValue, ExecuteError> {
         match key {
             "memory" | "memories" | "logs" => Ok(ExecuteValue::Memories(self.memories().to_vec())),
+            "events" => Ok(ExecuteValue::Events(self.events().to_vec())),
             "snapshot" => Ok(ExecuteValue::Snapshot(self.export_snapshot())),
             "mode" | "recompute.mode" => Ok(ExecuteValue::Mode(self.recompute_mode())),
             _ => Err(ExecuteError::UnsupportedKernelPath {
                 operation: "read".to_string(),
+                path: key.to_string(),
+            }),
+        }
+    }
+
+    fn handle_kernel_drain(&mut self, key: &str) -> Result<ExecuteValue, ExecuteError> {
+        match key {
+            "events" => Ok(ExecuteValue::Events(self.drain_events())),
+            _ => Err(ExecuteError::UnsupportedKernelPath {
+                operation: "drain".to_string(),
                 path: key.to_string(),
             }),
         }

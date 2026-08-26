@@ -10,6 +10,7 @@ The Rust kernel now includes:
 - Ed25519 `.prove()` identity proofs,
 - WrappedSecretV1 key wrapping,
 - JSON snapshot storage,
+- a runtime event queue for changed paths,
 - and a small `me` CLI for local use.
 
 ```bash
@@ -77,6 +78,10 @@ cargo run -- --state /tmp/me-state.json read profile.name
 cargo run -- --state /tmp/me-state.json exec me://self:write/wallet.income 1000
 cargo run -- --state /tmp/me-state.json snapshot
 ```
+
+Runtime events are intentionally not persisted in snapshots. Long-lived hosts such
+as `monad.ai` can drain them in-process through `me://kernel:drain/events`; a new
+CLI invocation starts a fresh runtime and only reloads semantic memory.
 
 Produce a branch-scoped proof:
 
