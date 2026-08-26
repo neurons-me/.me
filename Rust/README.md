@@ -231,6 +231,7 @@ The test suite is contract-first. Important files:
 ## Benchmarks
 
 See [BENCHMARKS.md](BENCHMARKS.md) for the benchmark map.
+The current recorded run is `this-me` v0.3.0 Run #001 from Aug 26, 2026.
 
 Run benchmarks in release mode:
 
