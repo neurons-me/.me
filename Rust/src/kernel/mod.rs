@@ -4,6 +4,7 @@ use std::sync::Arc;
 
 mod evaluator;
 mod execute;
+mod json;
 mod path;
 mod proof;
 mod secret_material;
@@ -12,6 +13,10 @@ mod wrapped_secret;
 use evaluator::{evaluate_expression, extract_expression_refs};
 pub use execute::{
     normalize_executable_path, parse_executable_target, ExecuteError, ExecuteValue, MeTargetAst,
+};
+pub use json::{
+    execute_value_to_json, kernel_value_from_json, kernel_value_to_json, parse_kernel_value,
+    proof_result_to_json, snapshot_from_json, snapshot_to_json, JsonCodecError,
 };
 pub use path::{IntoPath, ParsedPath, Path, PathParseError, PathPart, Selector};
 pub use proof::{
