@@ -462,6 +462,36 @@ impl Kernel {
         std::mem::take(&mut self.events)
     }
 
+    pub fn events_matching(&self, path: impl IntoPath) -> Result<Vec<KernelEvent>, KernelError> {
+        let path = path.into_path().map_err(KernelError::InvalidPath)?;
+        Ok(self
+            .events
+            .iter()
+            .filter(|event| event_matches_subscription_path(&path, &event.path))
+            .cloned()
+            .collect())
+    }
+
+    pub fn drain_events_matching(
+        &mut self,
+        path: impl IntoPath,
+    ) -> Result<Vec<KernelEvent>, KernelError> {
+        let path = path.into_path().map_err(KernelError::InvalidPath)?;
+        let mut drained = Vec::new();
+        let mut retained = Vec::new();
+
+        for event in self.events.drain(..) {
+            if event_matches_subscription_path(&path, &event.path) {
+                drained.push(event);
+            } else {
+                retained.push(event);
+            }
+        }
+
+        self.events = retained;
+        Ok(drained)
+    }
+
     pub fn clear_events(&mut self) -> &mut Self {
         self.events.clear();
         self
@@ -1932,6 +1962,13 @@ fn secret_allowed_under_noise(noise_path: Option<&Path>, secret_path: &[String])
         return true;
     };
     path_starts_with(secret_path, noise_path)
+}
+
+fn event_matches_subscription_path(subscribed_path: &[String], written_path: &[String]) -> bool {
+    subscribed_path.is_empty()
+        || subscribed_path == written_path
+        || path_starts_with(subscribed_path, written_path)
+        || path_starts_with(written_path, subscribed_path)
 }
 
 fn portable_hash_fnv1a(input: &str) -> String {

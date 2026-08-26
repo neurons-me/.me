@@ -82,6 +82,9 @@ cargo run -- --state /tmp/me-state.json snapshot
 Runtime events are intentionally not persisted in snapshots. Long-lived hosts such
 as `monad.ai` can drain them in-process through `me://kernel:drain/events`; a new
 CLI invocation starts a fresh runtime and only reloads semantic memory.
+Event filters use the same ancestor/descendant rule as monad's NRP path stream:
+`me://kernel:read/events/apps.fulltrailer` returns events written at that path,
+below it, or replacing one of its ancestors.
 
 Produce a branch-scoped proof:
 

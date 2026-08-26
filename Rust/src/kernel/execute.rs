@@ -276,7 +276,7 @@ impl Kernel {
 
         match operation {
             "read" => self.handle_kernel_read(&key),
-            "drain" => self.handle_kernel_drain(&key),
+            "drain" => self.handle_kernel_drain(&path.parts, &key),
             "export" => self.handle_kernel_export(&key),
             "import" => {
                 let snapshot = expect_snapshot_body(body, "kernel:import requires a payload")?;
@@ -307,6 +307,10 @@ impl Kernel {
     }
 
     fn handle_kernel_read(&self, key: &str) -> Result<ExecuteValue, ExecuteError> {
+        if let Some(path) = event_filter_path(key) {
+            return Ok(ExecuteValue::Events(self.events_matching(path)?));
+        }
+
         match key {
             "memory" | "memories" | "logs" => Ok(ExecuteValue::Memories(self.memories().to_vec())),
             "events" => Ok(ExecuteValue::Events(self.events().to_vec())),
@@ -319,7 +323,17 @@ impl Kernel {
         }
     }
 
-    fn handle_kernel_drain(&mut self, key: &str) -> Result<ExecuteValue, ExecuteError> {
+    fn handle_kernel_drain(
+        &mut self,
+        parts: &[String],
+        key: &str,
+    ) -> Result<ExecuteValue, ExecuteError> {
+        if parts.first().map(String::as_str) == Some("events") && parts.len() > 1 {
+            return Ok(ExecuteValue::Events(
+                self.drain_events_matching(parts[1..].to_vec())?,
+            ));
+        }
+
         match key {
             "events" => Ok(ExecuteValue::Events(self.drain_events())),
             _ => Err(ExecuteError::UnsupportedKernelPath {
@@ -629,6 +643,12 @@ fn normalize_executable_path_inner(raw_path: &str) -> Result<ExecutablePath, Exe
         key: parts.join("."),
         parts,
     })
+}
+
+fn event_filter_path(key: &str) -> Option<String> {
+    key.strip_prefix("events.")
+        .map(str::to_string)
+        .or_else(|| key.strip_prefix("events/").map(str::to_string))
 }
 
 fn split_target_namespace(

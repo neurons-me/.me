@@ -103,6 +103,86 @@ fn events_can_be_drained_through_kernel_execute() {
 }
 
 #[test]
+fn event_filters_match_exact_ancestor_and_descendant_paths() {
+    let mut kernel = Kernel::new();
+    kernel
+        .postulate("apps.fulltrailer.tractos.records.0.status", "ok")
+        .unwrap();
+    kernel
+        .postulate("apps.fulltrailer.summary", "ready")
+        .unwrap();
+
+    let exact = kernel
+        .events_matching("apps.fulltrailer.tractos.records.0.status")
+        .unwrap();
+    assert_eq!(exact.len(), 1);
+    assert_eq!(
+        exact[0].path.join("."),
+        "apps.fulltrailer.tractos.records.0.status"
+    );
+
+    let ancestor = kernel.events_matching("apps.fulltrailer.tractos").unwrap();
+    assert_eq!(ancestor.len(), 1);
+    assert_eq!(
+        ancestor[0].path.join("."),
+        "apps.fulltrailer.tractos.records.0.status"
+    );
+
+    let descendant = kernel
+        .events_matching("apps.fulltrailer.tractos.records.0.status.label")
+        .unwrap();
+    assert_eq!(descendant.len(), 1);
+    assert_eq!(
+        descendant[0].path.join("."),
+        "apps.fulltrailer.tractos.records.0.status"
+    );
+}
+
+#[test]
+fn filtered_drain_only_removes_matching_events() {
+    let mut kernel = Kernel::new();
+    kernel
+        .postulate("apps.fulltrailer.home.count", 3_u64)
+        .unwrap();
+    kernel.postulate("apps.other.home.count", 1_u64).unwrap();
+
+    let drained = kernel.drain_events_matching("apps.fulltrailer").unwrap();
+    assert_eq!(drained.len(), 1);
+    assert_eq!(drained[0].path.join("."), "apps.fulltrailer.home.count");
+
+    assert_eq!(kernel.events().len(), 1);
+    assert_eq!(kernel.events()[0].path.join("."), "apps.other.home.count");
+}
+
+#[test]
+fn filtered_events_are_exposed_through_kernel_execute() {
+    let mut kernel = Kernel::new();
+    kernel
+        .postulate("apps.fulltrailer.home.count", 3_u64)
+        .unwrap();
+    kernel.postulate("apps.other.home.count", 1_u64).unwrap();
+
+    let ExecuteValue::Events(events) = kernel
+        .execute("me://kernel:read/events/apps.fulltrailer", None)
+        .unwrap()
+    else {
+        panic!("kernel:read/events/<path> should return filtered events");
+    };
+    assert_eq!(events.len(), 1);
+    assert_eq!(events[0].path.join("."), "apps.fulltrailer.home.count");
+
+    let ExecuteValue::Events(drained) = kernel
+        .execute("me://kernel:drain/events/apps.fulltrailer", None)
+        .unwrap()
+    else {
+        panic!("kernel:drain/events/<path> should return filtered events");
+    };
+    assert_eq!(drained.len(), 1);
+    assert_eq!(kernel.events().len(), 1);
+    assert_eq!(kernel.events()[0].path.join("."), "apps.other.home.count");
+}
+
+#[test]
 fn replay_and_hydration_do_not_reemit_runtime_events() {
     let mut kernel = Kernel::new();
     kernel.postulate("profile.name", "Jabellae").unwrap();
