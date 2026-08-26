@@ -48,6 +48,12 @@ pub struct KernelRuntime<S> {
     store: S,
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct RuntimeReceipt<T> {
+    pub result: T,
+    pub events: Vec<KernelEvent>,
+}
+
 impl<S> KernelRuntime<S>
 where
     S: MemoryStore,
@@ -95,6 +101,21 @@ where
         Ok(memory)
     }
 
+    pub fn write_with_receipt(
+        &mut self,
+        path: impl IntoPath,
+        value: impl Into<Value>,
+    ) -> Result<RuntimeReceipt<Memory>, RuntimeError> {
+        let event_cursor = self.kernel.event_cursor();
+        let memory = self.kernel.postulate(path, value)?.clone();
+        self.save()?;
+        let events = self.kernel.drain_events_since(event_cursor);
+        Ok(RuntimeReceipt {
+            result: memory,
+            events,
+        })
+    }
+
     pub fn execute(
         &mut self,
         target: impl AsRef<str>,
@@ -103,6 +124,18 @@ where
         let result = self.kernel.execute(target, body)?;
         self.save()?;
         Ok(result)
+    }
+
+    pub fn execute_with_receipt(
+        &mut self,
+        target: impl AsRef<str>,
+        body: Option<ExecuteValue>,
+    ) -> Result<RuntimeReceipt<ExecuteValue>, RuntimeError> {
+        let event_cursor = self.kernel.event_cursor();
+        let result = self.kernel.execute(target, body)?;
+        self.save()?;
+        let events = self.kernel.drain_events_since(event_cursor);
+        Ok(RuntimeReceipt { result, events })
     }
 
     pub fn events(&self) -> &[KernelEvent] {

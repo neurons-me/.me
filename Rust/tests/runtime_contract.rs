@@ -48,6 +48,79 @@ fn runtime_execute_persists_mutating_me_targets() {
 }
 
 #[test]
+fn runtime_write_receipt_returns_only_new_events() {
+    let path = temp_state_path("write-receipt");
+    let mut runtime = KernelRuntime::load(JsonFileStore::new(&path)).unwrap();
+    runtime.write("profile.name", "Jabellae").unwrap();
+
+    let receipt = runtime
+        .write_with_receipt("apps.fulltrailer.home.count", 3_u64)
+        .unwrap();
+
+    assert_eq!(
+        receipt.result.path,
+        vec![
+            "apps".to_string(),
+            "fulltrailer".to_string(),
+            "home".to_string(),
+            "count".to_string()
+        ]
+    );
+    assert_eq!(receipt.events.len(), 1);
+    assert_eq!(
+        receipt.events[0].path.join("."),
+        "apps.fulltrailer.home.count"
+    );
+
+    assert_eq!(runtime.events().len(), 1);
+    assert_eq!(runtime.events()[0].path.join("."), "profile.name");
+
+    let restored = KernelRuntime::load(JsonFileStore::new(&path)).unwrap();
+    assert_eq!(
+        restored.read("apps.fulltrailer.home.count"),
+        Some(&Value::from(3_u64))
+    );
+    assert!(restored.events().is_empty());
+
+    let _ = fs::remove_file(path);
+}
+
+#[test]
+fn runtime_execute_receipt_includes_cascaded_events() {
+    let path = temp_state_path("execute-receipt");
+    let mut runtime = KernelRuntime::load(JsonFileStore::new(&path)).unwrap();
+
+    runtime
+        .kernel_mut()
+        .derive("", "wallet.total", "wallet.income - wallet.expenses")
+        .unwrap();
+    runtime.drain_events();
+
+    let receipt = runtime
+        .execute_with_receipt(
+            "me://self:write/wallet.income",
+            Some(ExecuteValue::from(100_u64)),
+        )
+        .unwrap();
+
+    assert_eq!(receipt.result, ExecuteValue::Value(Value::from(100_u64)));
+    assert_eq!(
+        receipt
+            .events
+            .iter()
+            .map(|event| event.path.join("."))
+            .collect::<Vec<_>>(),
+        vec!["wallet.income".to_string(), "wallet.total".to_string()]
+    );
+    assert!(runtime.events().is_empty());
+
+    let restored = KernelRuntime::load(JsonFileStore::new(&path)).unwrap();
+    assert_eq!(restored.read("wallet.income"), Some(&Value::from(100_u64)));
+
+    let _ = fs::remove_file(path);
+}
+
+#[test]
 fn runtime_filtered_events_are_live_not_persisted() {
     let path = temp_state_path("events");
     let mut runtime = KernelRuntime::load(JsonFileStore::new(&path)).unwrap();

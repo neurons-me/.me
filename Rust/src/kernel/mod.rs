@@ -458,6 +458,22 @@ impl Kernel {
         &self.events
     }
 
+    pub fn event_cursor(&self) -> usize {
+        self.events.len()
+    }
+
+    pub fn events_since(&self, cursor: usize) -> &[KernelEvent] {
+        let cursor = cursor.min(self.events.len());
+        &self.events[cursor..]
+    }
+
+    pub fn drain_events_since(&mut self, cursor: usize) -> Vec<KernelEvent> {
+        if cursor >= self.events.len() {
+            return Vec::new();
+        }
+        self.events.split_off(cursor)
+    }
+
     pub fn drain_events(&mut self) -> Vec<KernelEvent> {
         std::mem::take(&mut self.events)
     }

@@ -155,6 +155,28 @@ fn filtered_drain_only_removes_matching_events() {
 }
 
 #[test]
+fn event_cursors_expose_and_drain_new_events_only() {
+    let mut kernel = Kernel::new();
+    kernel.postulate("profile.name", "Jabellae").unwrap();
+    let cursor = kernel.event_cursor();
+
+    kernel
+        .postulate("apps.fulltrailer.home.count", 3_u64)
+        .unwrap();
+    kernel.postulate("apps.other.home.count", 2_u64).unwrap();
+
+    let events = kernel.events_since(cursor).to_vec();
+    assert_eq!(events.len(), 2);
+    assert_eq!(events[0].path.join("."), "apps.fulltrailer.home.count");
+    assert_eq!(events[1].path.join("."), "apps.other.home.count");
+
+    let drained = kernel.drain_events_since(cursor);
+    assert_eq!(drained, events);
+    assert_eq!(kernel.events().len(), 1);
+    assert_eq!(kernel.events()[0].path.join("."), "profile.name");
+}
+
+#[test]
 fn filtered_events_are_exposed_through_kernel_execute() {
     let mut kernel = Kernel::new();
     kernel
