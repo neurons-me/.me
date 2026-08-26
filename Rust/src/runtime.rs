@@ -1,7 +1,10 @@
 use std::fmt;
 
+use serde_json::{Map, Value as JsonValue};
+
 use crate::kernel::{
-    ExecuteError, ExecuteValue, IntoPath, Kernel, KernelError, KernelEvent, Memory, Value,
+    execute_value_to_json, kernel_event_to_json, memory_to_json, ExecuteError, ExecuteValue,
+    IntoPath, Kernel, KernelError, KernelEvent, Memory, Value,
 };
 use crate::storage::{MemoryStore, StorageError};
 
@@ -52,6 +55,38 @@ pub struct KernelRuntime<S> {
 pub struct RuntimeReceipt<T> {
     pub result: T,
     pub events: Vec<KernelEvent>,
+}
+
+pub trait RuntimeReceiptResultJson {
+    fn to_receipt_result_json(&self) -> JsonValue;
+}
+
+impl RuntimeReceiptResultJson for ExecuteValue {
+    fn to_receipt_result_json(&self) -> JsonValue {
+        execute_value_to_json(self)
+    }
+}
+
+impl RuntimeReceiptResultJson for Memory {
+    fn to_receipt_result_json(&self) -> JsonValue {
+        memory_to_json(self)
+    }
+}
+
+pub fn runtime_receipt_to_json<T>(receipt: &RuntimeReceipt<T>) -> JsonValue
+where
+    T: RuntimeReceiptResultJson,
+{
+    JsonValue::Object(Map::from_iter([
+        (
+            "result".to_string(),
+            receipt.result.to_receipt_result_json(),
+        ),
+        (
+            "events".to_string(),
+            JsonValue::Array(receipt.events.iter().map(kernel_event_to_json).collect()),
+        ),
+    ]))
 }
 
 impl<S> KernelRuntime<S>

@@ -2,7 +2,7 @@ use std::fs;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use this_me::kernel::{ExecuteValue, Value};
-use this_me::runtime::KernelRuntime;
+use this_me::runtime::{runtime_receipt_to_json, KernelRuntime};
 use this_me::storage::JsonFileStore;
 
 #[test]
@@ -86,6 +86,26 @@ fn runtime_write_receipt_returns_only_new_events() {
 }
 
 #[test]
+fn runtime_write_receipt_serializes_for_hosts() {
+    let path = temp_state_path("write-receipt-json");
+    let mut runtime = KernelRuntime::load(JsonFileStore::new(&path)).unwrap();
+
+    let receipt = runtime
+        .write_with_receipt("apps.fulltrailer.home.count", 3_u64)
+        .unwrap();
+    let json = runtime_receipt_to_json(&receipt);
+
+    assert_eq!(json["result"]["path"][0], "apps");
+    assert_eq!(json["result"]["path"][1], "fulltrailer");
+    assert_eq!(json["result"]["value"], 3.0);
+    assert_eq!(json["events"][0]["path"][2], "home");
+    assert_eq!(json["events"][0]["value"], 3.0);
+    assert!(!json["events"][0]["memoryHash"].as_str().unwrap().is_empty());
+
+    let _ = fs::remove_file(path);
+}
+
+#[test]
 fn runtime_execute_receipt_includes_cascaded_events() {
     let path = temp_state_path("execute-receipt");
     let mut runtime = KernelRuntime::load(JsonFileStore::new(&path)).unwrap();
@@ -116,6 +136,27 @@ fn runtime_execute_receipt_includes_cascaded_events() {
 
     let restored = KernelRuntime::load(JsonFileStore::new(&path)).unwrap();
     assert_eq!(restored.read("wallet.income"), Some(&Value::from(100_u64)));
+
+    let _ = fs::remove_file(path);
+}
+
+#[test]
+fn runtime_execute_receipt_serializes_for_hosts() {
+    let path = temp_state_path("execute-receipt-json");
+    let mut runtime = KernelRuntime::load(JsonFileStore::new(&path)).unwrap();
+
+    let receipt = runtime
+        .execute_with_receipt(
+            "me://self:write/apps.fulltrailer.home.count",
+            Some(ExecuteValue::from(3_u64)),
+        )
+        .unwrap();
+    let json = runtime_receipt_to_json(&receipt);
+
+    assert_eq!(json["result"], 3.0);
+    assert_eq!(json["events"][0]["path"][0], "apps");
+    assert_eq!(json["events"][0]["path"][1], "fulltrailer");
+    assert_eq!(json["events"][0]["value"], 3.0);
 
     let _ = fs::remove_file(path);
 }

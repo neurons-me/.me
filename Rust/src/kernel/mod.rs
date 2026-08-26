@@ -15,8 +15,9 @@ pub use execute::{
     normalize_executable_path, parse_executable_target, ExecuteError, ExecuteValue, MeTargetAst,
 };
 pub use json::{
-    execute_value_to_json, kernel_value_from_json, kernel_value_to_json, parse_kernel_value,
-    proof_result_to_json, snapshot_from_json, snapshot_to_json, JsonCodecError,
+    execute_value_to_json, kernel_event_to_json, kernel_value_from_json, kernel_value_to_json,
+    memory_to_json, parse_kernel_value, proof_result_to_json, snapshot_from_json, snapshot_to_json,
+    JsonCodecError,
 };
 pub use path::{IntoPath, ParsedPath, Path, PathParseError, PathPart, Selector};
 pub use proof::{

@@ -263,7 +263,7 @@ pub fn snapshot_from_json(raw: &JsonValue) -> Result<Snapshot, JsonCodecError> {
     })
 }
 
-fn memory_to_json(memory: &Memory) -> JsonValue {
+pub fn memory_to_json(memory: &Memory) -> JsonValue {
     JsonValue::Object(Map::from_iter([
         ("path".to_string(), path_to_json(&memory.path)),
         (
