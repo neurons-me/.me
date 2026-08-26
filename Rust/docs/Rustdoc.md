@@ -1,3 +1,9 @@
+---
+layout: readme
+title: Rust .me rustdoc and docs.rs
+image: https://neurons-me.github.io/docs/assets/img/me.png
+---
+
 # rustdoc and docs.rs
 
 Rust documentation has two layers:
@@ -21,7 +27,8 @@ This crate wires its docs.rs front page through `src/lib.rs`:
 #![doc = include_str!("../docs/API.md")]
 ```
 
-That file is [`API.md`](API.html).
+That file is
+[`API.md`](https://github.com/neurons-me/.me/blob/main/Rust/docs/API.md).
 
 To preview locally:
 

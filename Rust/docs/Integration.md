@@ -1,3 +1,9 @@
+---
+layout: readme
+title: Rust .me Integration Notes
+image: https://neurons-me.github.io/docs/assets/img/me.png
+---
+
 # Integration Notes
 
 Rust `.me` is currently usable as:

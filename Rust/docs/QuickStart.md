@@ -1,3 +1,9 @@
+---
+layout: readme
+title: Rust .me Quick Start
+image: https://neurons-me.github.io/docs/assets/img/me.png
+---
+
 # Quick Start
 
 Install the crate:

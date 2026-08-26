@@ -1,3 +1,9 @@
+---
+layout: readme
+title: Rust .me Benchmark Map
+image: https://neurons-me.github.io/docs/assets/img/me.png
+---
+
 # Rust .me Benchmarks
 
 This directory contains the Rust benchmark ground for the `.me` kernel port.

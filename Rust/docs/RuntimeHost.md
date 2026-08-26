@@ -1,3 +1,9 @@
+---
+layout: readme
+title: Rust .me Runtime Host
+image: https://neurons-me.github.io/docs/assets/img/me.png
+---
+
 # Runtime Host
 
 `KernelRuntime<S>` wraps a `Kernel` with a `MemoryStore`.

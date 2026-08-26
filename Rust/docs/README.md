@@ -1,3 +1,9 @@
+---
+layout: readme
+title: Rust .me Docs
+image: https://neurons-me.github.io/docs/assets/img/me.png
+---
+
 # Rust .me Docs
 
 These docs are specific to the Rust implementation of `.me`.
@@ -33,14 +39,15 @@ docs.rs/this-me
 - [Parity With TypeScript](Parity.html)
 - [Integration Notes](Integration.html)
 - [rustdoc and docs.rs](Rustdoc.html)
-- [docs.rs front page source](API.html)
+- [docs.rs API reference](https://docs.rs/this-me)
 
 ## docs.rs
 
 `docs.rs` does not automatically read every Markdown file in this folder.
 It builds the Rust crate with `rustdoc`.
 
-The crate-level docs are wired from [`API.md`](API.html) through
+The crate-level docs are wired from
+[`API.md`](https://github.com/neurons-me/.me/blob/main/Rust/docs/API.md) through
 `src/lib.rs`:
 
 ```rust

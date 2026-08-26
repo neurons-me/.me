@@ -31,6 +31,14 @@ kramdown:
   parse_block_html: true
   hard_wrap: false
 
+defaults:
+  - scope:
+      path: "Rust"
+      type: "pages"
+    values:
+      layout: readme
+      image: "https://neurons-me.github.io/docs/assets/img/me.png"
+
 me_theme:
   brand: .me
   favicon: "https://res.cloudinary.com/dkwnxf6gm/image/upload/v1769890772/this.me.png"

@@ -1,3 +1,9 @@
+---
+layout: readme
+title: Rust .me Parity With TypeScript
+image: https://neurons-me.github.io/docs/assets/img/me.png
+---
+
 # Parity With TypeScript
 
 Rust `.me` is a port of the TypeScript kernel, not a new semantic system.

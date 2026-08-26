@@ -1,3 +1,9 @@
+---
+layout: readme
+title: Rust .me Benchmarks
+image: https://neurons-me.github.io/docs/assets/img/me.png
+---
+
 # Benchmarks
 
 The Rust benchmarks live as executable binaries under `src/bin/`.

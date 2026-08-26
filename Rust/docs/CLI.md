@@ -1,3 +1,9 @@
+---
+layout: readme
+title: Rust .me CLI
+image: https://neurons-me.github.io/docs/assets/img/me.png
+---
+
 # CLI
 
 The `me` binary is a small local tool for exercising the Rust kernel.
