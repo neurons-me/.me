@@ -118,3 +118,22 @@ impl MemoryStore for JsonFileStore {
         Ok(())
     }
 }
+
+impl<S> MemoryStore for Option<S>
+where
+    S: MemoryStore,
+{
+    fn load_snapshot(&self) -> Result<Option<Snapshot>, StorageError> {
+        match self {
+            Some(store) => store.load_snapshot(),
+            None => Ok(None),
+        }
+    }
+
+    fn save_snapshot(&self, snapshot: &Snapshot) -> Result<(), StorageError> {
+        match self {
+            Some(store) => store.save_snapshot(snapshot),
+            None => Ok(()),
+        }
+    }
+}

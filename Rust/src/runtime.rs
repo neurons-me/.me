@@ -65,6 +65,10 @@ where
         &self.kernel
     }
 
+    pub fn kernel_mut(&mut self) -> &mut Kernel {
+        &mut self.kernel
+    }
+
     pub fn store(&self) -> &S {
         &self.store
     }

@@ -7,7 +7,8 @@ use this_me::kernel::{
     execute_value_to_json, kernel_value_to_json, parse_kernel_value, proof_result_to_json,
     snapshot_to_json, ExecuteValue, Kernel, ProofInput,
 };
-use this_me::storage::{JsonFileStore, MemoryStore};
+use this_me::runtime::KernelRuntime;
+use this_me::storage::JsonFileStore;
 
 fn main() {
     if let Err(error) = run() {
@@ -31,13 +32,13 @@ fn run() -> Result<(), CliError> {
         return Ok(());
     }
 
-    let mut kernel = load_kernel(cli.state.as_ref())?;
-    apply_identity_options(&mut kernel, &cli)?;
+    let mut runtime = load_runtime(cli.state.as_ref())?;
+    apply_identity_options(runtime.kernel_mut(), &cli)?;
 
     let output = match cli.command[0].as_str() {
         "read" => {
             let path = cli.required_arg(1, "read requires a path")?;
-            kernel
+            runtime
                 .read(path)
                 .map(kernel_value_to_json)
                 .unwrap_or(JsonValue::Null)
@@ -45,8 +46,7 @@ fn run() -> Result<(), CliError> {
         "write" => {
             let path = cli.required_arg(1, "write requires a path")?;
             let value = parse_kernel_value(cli.required_arg(2, "write requires a JSON value")?)?;
-            kernel.postulate(path, value.clone())?;
-            save_kernel(cli.state.as_ref(), &kernel)?;
+            runtime.write(path, value.clone())?;
             kernel_value_to_json(&value)
         }
         "exec" => {
@@ -56,8 +56,7 @@ fn run() -> Result<(), CliError> {
                 .get(2)
                 .map(|raw| parse_kernel_value(raw).map(ExecuteValue::Value))
                 .transpose()?;
-            let result = kernel.execute(target, body)?;
-            save_kernel(cli.state.as_ref(), &kernel)?;
+            let result = runtime.execute(target, body)?;
             execute_value_to_json(&result)
         }
         "inspect" => {
@@ -65,15 +64,17 @@ fn run() -> Result<(), CliError> {
                 Some(path) if !path.trim().is_empty() => format!("me://self:inspect/{path}"),
                 _ => "me://self:inspect/".to_string(),
             };
-            let result = kernel.execute(target, None)?;
+            let result = runtime.kernel_mut().execute(target, None)?;
             execute_value_to_json(&result)
         }
         "explain" => {
             let path = cli.required_arg(1, "explain requires a path")?;
-            let result = kernel.execute(format!("me://self:explain/{path}"), None)?;
+            let result = runtime
+                .kernel_mut()
+                .execute(format!("me://self:explain/{path}"), None)?;
             execute_value_to_json(&result)
         }
-        "snapshot" => snapshot_to_json(&kernel.export_snapshot()),
+        "snapshot" => snapshot_to_json(&runtime.kernel().export_snapshot()),
         "prove" => {
             let root_namespace = cli.required_arg(1, "prove requires a root namespace")?;
             let challenge = cli.command.get(2).cloned();
@@ -83,7 +84,7 @@ fn run() -> Result<(), CliError> {
                 .as_millis()
                 .try_into()
                 .map_err(|_| CliError::new("timestamp does not fit u64"))?;
-            let proof = kernel.prove_with_timestamp(
+            let proof = runtime.kernel().prove_with_timestamp(
                 ProofInput {
                     root_namespace: root_namespace.to_string(),
                     challenge,
@@ -162,19 +163,8 @@ fn next_option_value(
         .ok_or_else(|| CliError::new(format!("{option} requires a value")))
 }
 
-fn load_kernel(state: Option<&PathBuf>) -> Result<Kernel, CliError> {
-    let Some(path) = state else {
-        return Ok(Kernel::new());
-    };
-    Ok(JsonFileStore::new(path).load_kernel()?)
-}
-
-fn save_kernel(state: Option<&PathBuf>, kernel: &Kernel) -> Result<(), CliError> {
-    let Some(path) = state else {
-        return Ok(());
-    };
-    JsonFileStore::new(path).save_kernel(kernel)?;
-    Ok(())
+fn load_runtime(state: Option<&PathBuf>) -> Result<KernelRuntime<Option<JsonFileStore>>, CliError> {
+    KernelRuntime::load(state.map(JsonFileStore::new)).map_err(CliError::from)
 }
 
 fn apply_identity_options(kernel: &mut Kernel, cli: &Cli) -> Result<(), CliError> {
@@ -276,6 +266,12 @@ impl From<this_me::kernel::JsonCodecError> for CliError {
 
 impl From<this_me::storage::StorageError> for CliError {
     fn from(error: this_me::storage::StorageError) -> Self {
+        Self(error.to_string())
+    }
+}
+
+impl From<this_me::runtime::RuntimeError> for CliError {
+    fn from(error: this_me::runtime::RuntimeError) -> Self {
         Self(error.to_string())
     }
 }

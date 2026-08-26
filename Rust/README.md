@@ -71,7 +71,8 @@ Run the secret push vs pull benchmark:
 cargo run --release --bin bench-secret-push-pull
 ```
 
-Use the CLI against a local snapshot file:
+Use the CLI against a local snapshot file. The CLI is backed by the same
+`KernelRuntime` host used by embedders:
 
 ```bash
 cargo run -- --state /tmp/me-state.json write profile.name '"Jabellae"'
