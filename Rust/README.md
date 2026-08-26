@@ -10,6 +10,7 @@ The Rust kernel now includes:
 - Ed25519 `.prove()` identity proofs,
 - WrappedSecretV1 key wrapping,
 - JSON snapshot storage,
+- a reusable `KernelRuntime` host for write-through persistence,
 - a runtime event queue for changed paths,
 - and a small `me` CLI for local use.
 

@@ -2,4 +2,5 @@
 
 pub mod kernel;
 pub mod me_uri;
+pub mod runtime;
 pub mod storage;
