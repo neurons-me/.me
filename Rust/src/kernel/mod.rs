@@ -3,10 +3,14 @@ use std::fmt;
 use std::sync::Arc;
 
 mod evaluator;
+mod execute;
 mod path;
 mod secret_material;
 
 use evaluator::{evaluate_expression, extract_expression_refs};
+pub use execute::{
+    normalize_executable_path, parse_executable_target, ExecuteError, ExecuteValue, MeTargetAst,
+};
 pub use path::{IntoPath, ParsedPath, Path, PathParseError, PathPart, Selector};
 use secret_material::{
     decrypt_blob_v3_cleartext, derive_blob_v3_keys, derive_secret_material_v3,
