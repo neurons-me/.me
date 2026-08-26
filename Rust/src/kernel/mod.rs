@@ -5,6 +5,7 @@ use std::sync::Arc;
 mod evaluator;
 mod execute;
 mod path;
+mod proof;
 mod secret_material;
 mod wrapped_secret;
 
@@ -13,6 +14,11 @@ pub use execute::{
     normalize_executable_path, parse_executable_target, ExecuteError, ExecuteValue, MeTargetAst,
 };
 pub use path::{IntoPath, ParsedPath, Path, PathParseError, PathPart, Selector};
+pub use proof::{
+    derive_branch_proof_seed, derive_compound_seed, derive_identity_hash, normalize_proof_payload,
+    normalize_root_namespace, prove_with_timestamp, verify_ed25519_signature, ProofError,
+    ProofInput, ProofResult,
+};
 use secret_material::{
     decrypt_blob_v3_cleartext, derive_blob_v3_keys, derive_secret_material_v3,
     encrypt_blob_v3_cleartext, lineage_segment, random_blob_v3_nonce,
@@ -284,6 +290,9 @@ pub struct Kernel {
     derivations: BTreeMap<Path, DerivationRecord>,
     ref_subscribers: BTreeMap<Path, BTreeSet<Path>>,
     active_identity: Option<String>,
+    seed: Option<String>,
+    identity_hash: Option<String>,
+    active_expression: Option<String>,
     operators: BTreeMap<String, OperatorDefinition>,
     last_recompute_wave_by_target: BTreeMap<Path, Arc<RecomputeWave>>,
     active_recompute_wave: Option<RecomputeWave>,
@@ -331,6 +340,9 @@ impl Default for Kernel {
             derivations: BTreeMap::new(),
             ref_subscribers: BTreeMap::new(),
             active_identity: None,
+            seed: None,
+            identity_hash: None,
+            active_expression: None,
             operators: default_operators(),
             last_recompute_wave_by_target: BTreeMap::new(),
             active_recompute_wave: None,
@@ -345,8 +357,67 @@ impl Kernel {
         Self::default()
     }
 
+    pub fn with_seed(seed: impl Into<String>) -> Self {
+        let mut kernel = Self::new();
+        kernel.set_seed(seed);
+        kernel
+    }
+
+    pub fn with_compound_seed(who: &str, secret: &str) -> Self {
+        let mut kernel = Self::new();
+        kernel.reseed_identity(who, secret);
+        kernel
+    }
+
     pub fn memories(&self) -> &[Memory] {
         &self.memories
+    }
+
+    pub fn set_seed(&mut self, seed: impl Into<String>) -> &mut Self {
+        let seed = seed.into();
+        self.identity_hash = Some(derive_identity_hash(&seed));
+        self.seed = Some(seed);
+        self
+    }
+
+    pub fn reseed_identity(&mut self, who: &str, secret: &str) -> &mut Self {
+        let seed = derive_compound_seed(who, secret);
+        self.identity_hash = Some(derive_identity_hash(&seed));
+        self.seed = Some(seed);
+        self.active_expression = Some(who.to_string());
+        self
+    }
+
+    pub fn identity_hash(&self) -> Option<&str> {
+        self.identity_hash.as_deref()
+    }
+
+    pub fn active_expression(&self) -> Option<&str> {
+        self.active_expression.as_deref()
+    }
+
+    pub fn set_active_expression(&mut self, expression: impl Into<Option<String>>) -> &mut Self {
+        self.active_expression = expression.into();
+        self
+    }
+
+    pub fn prove_with_timestamp(
+        &self,
+        input: ProofInput,
+        timestamp: u64,
+    ) -> Result<ProofResult, ProofError> {
+        let seed = self.seed.as_deref().ok_or(ProofError::EmptySeed)?;
+        let expression = self
+            .active_expression
+            .as_deref()
+            .ok_or(ProofError::ActiveExpressionRequired)?;
+        prove_with_timestamp(
+            seed,
+            expression,
+            &input.root_namespace,
+            input.challenge.as_deref(),
+            timestamp,
+        )
     }
 
     pub fn inspect(&self) -> InspectResult {

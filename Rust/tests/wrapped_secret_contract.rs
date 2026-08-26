@@ -127,7 +127,10 @@ fn flip_nested_string(envelope: &mut Value, key: &str) {
     let Some(Value::String(value)) = encryption.get_mut(key) else {
         panic!("{key} should be a string");
     };
-    let replacement = if value.ends_with('A') { 'B' } else { 'A' };
-    value.pop();
-    value.push(replacement);
+    let first = value
+        .chars()
+        .next()
+        .expect("encoded field should not be empty");
+    let replacement = if first == 'A' { 'B' } else { 'A' };
+    value.replace_range(0..first.len_utf8(), &replacement.to_string());
 }
