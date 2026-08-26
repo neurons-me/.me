@@ -1,4 +1,4 @@
-//! Clean Rust boilerplate for the `.me` kernel.
+#![doc = include_str!("../docs/API.md")]
 
 pub mod kernel;
 pub mod me_uri;
