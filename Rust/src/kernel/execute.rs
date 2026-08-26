@@ -3,7 +3,7 @@ use std::fmt;
 
 use super::{
     path_starts_with, ExplainResult, InspectMemory, InspectResult, IntoPath, Kernel, KernelError,
-    Memory, Path, RecomputeMode, Snapshot, Value,
+    Memory, Path, RecomputeMode, Snapshot, StoredWrappedKey, Value,
 };
 
 #[derive(Debug, Clone, PartialEq)]
@@ -25,6 +25,13 @@ pub enum ExecuteValue {
     Inspect(InspectResult),
     Explain(ExplainResult),
     Mode(RecomputeMode),
+    KeySpaceManifest(BTreeMap<String, StoredWrappedKey>),
+    WrappedKey(Value),
+    WrappedKeyWrite {
+        envelope: Value,
+        recipient_key_id: Option<String>,
+    },
+    RecipientPrivateKey(Vec<u8>),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -42,6 +49,13 @@ pub enum ExecuteError {
     UnsupportedSelfOperation(String),
     UnsupportedKernelOperation(String),
     UnsupportedKernelPath { operation: String, path: String },
+    UnsupportedKeysOperation(String),
+    EmptyRecipientKeyId,
+    EmptyKeyId(&'static str),
+    KeySpaceNotFound(String),
+    InvalidWrappedKeyEnvelope,
+    NoRecipientPrivateKey(String),
+    WrappedSecretCryptoUnavailable,
     SelfWriteRequiresPath,
     SelfExplainRequiresPath,
 }
@@ -84,6 +98,25 @@ impl fmt::Display for ExecuteError {
                 f,
                 "unsupported kernel:{operation} path: {}",
                 if path.is_empty() { "<root>" } else { path }
+            ),
+            Self::UnsupportedKeysOperation(operation) => {
+                write!(f, "unsupported keys operation: {operation}")
+            }
+            Self::EmptyRecipientKeyId => {
+                write!(f, "install_recipient_key(...) requires a recipient key id")
+            }
+            Self::EmptyKeyId(message) => write!(f, "{message}"),
+            Self::KeySpaceNotFound(key_id) => write!(f, "key space \"{key_id}\" was not found"),
+            Self::InvalidWrappedKeyEnvelope => {
+                write!(f, "store_wrapped_key(...) requires a valid WrappedSecretV1 envelope")
+            }
+            Self::NoRecipientPrivateKey(key_id) => write!(
+                f,
+                "no recipient private key is available to open \"{key_id}\". Install one first or pass it inline"
+            ),
+            Self::WrappedSecretCryptoUnavailable => write!(
+                f,
+                "wrapped secret cryptographic open is not implemented in the Rust kernel yet"
             ),
             Self::SelfWriteRequiresPath => write!(f, "self:write requires a semantic path"),
             Self::SelfExplainRequiresPath => write!(f, "self:explain requires a semantic path"),
@@ -187,6 +220,10 @@ impl Kernel {
         raw_path: &str,
         body: Option<ExecuteValue>,
     ) -> Result<ExecuteValue, ExecuteError> {
+        if let Some(key_id) = parse_keyspace_path(raw_path) {
+            return self.handle_keyspace_target(operation, key_id.as_deref(), body);
+        }
+
         let path = normalize_executable_path_inner(raw_path)?;
 
         match operation {
@@ -341,6 +378,120 @@ impl Kernel {
                 .collect(),
         }
     }
+
+    pub fn install_recipient_key(
+        &mut self,
+        recipient_key_id: &str,
+        private_key: impl Into<Vec<u8>>,
+    ) -> Result<&mut Self, ExecuteError> {
+        let key_id = recipient_key_id.trim();
+        if key_id.is_empty() {
+            return Err(ExecuteError::EmptyRecipientKeyId);
+        }
+        self.recipient_keyring
+            .insert(key_id.to_string(), private_key.into());
+        Ok(self)
+    }
+
+    pub fn uninstall_recipient_key(&mut self, recipient_key_id: &str) -> &mut Self {
+        let key_id = recipient_key_id.trim();
+        if !key_id.is_empty() {
+            self.recipient_keyring.remove(key_id);
+        }
+        self
+    }
+
+    pub fn store_wrapped_key(
+        &mut self,
+        key_id: &str,
+        envelope: Value,
+        recipient_key_id: Option<String>,
+    ) -> Result<&mut Self, ExecuteError> {
+        let normalized_key_id = key_id.trim();
+        if normalized_key_id.is_empty() {
+            return Err(ExecuteError::EmptyKeyId(
+                "store_wrapped_key(...) requires a key id",
+            ));
+        }
+        ensure_wrapped_secret_v1_envelope(&envelope)?;
+        self.key_spaces.insert(
+            normalized_key_id.to_string(),
+            StoredWrappedKey {
+                envelope,
+                recipient_key_id,
+            },
+        );
+        Ok(self)
+    }
+
+    pub fn read_wrapped_key(&self, key_id: &str) -> Result<Value, ExecuteError> {
+        let Some(entry) = self.key_spaces.get(key_id) else {
+            return Err(ExecuteError::KeySpaceNotFound(key_id.to_string()));
+        };
+        Ok(entry.envelope.clone())
+    }
+
+    pub fn key_space_manifest(&self) -> BTreeMap<String, StoredWrappedKey> {
+        self.key_spaces.clone()
+    }
+
+    fn handle_keyspace_target(
+        &mut self,
+        operation: &str,
+        key_id: Option<&str>,
+        body: Option<ExecuteValue>,
+    ) -> Result<ExecuteValue, ExecuteError> {
+        match operation {
+            "read" => {
+                if let Some(key_id) = key_id {
+                    Ok(ExecuteValue::WrappedKey(self.read_wrapped_key(key_id)?))
+                } else {
+                    Ok(ExecuteValue::KeySpaceManifest(self.key_space_manifest()))
+                }
+            }
+            "write" => {
+                let Some(key_id) = key_id else {
+                    return Err(ExecuteError::EmptyKeyId(
+                        "self:write/keys requires a key id",
+                    ));
+                };
+                let (envelope, recipient_key_id) = expect_wrapped_key_write_body(body)?;
+                self.store_wrapped_key(key_id, envelope.clone(), recipient_key_id)?;
+                Ok(ExecuteValue::WrappedKey(envelope))
+            }
+            "open" | "use" => {
+                let Some(key_id) = key_id else {
+                    return Err(ExecuteError::EmptyKeyId("self:open/keys requires a key id"));
+                };
+                let entry = self
+                    .key_spaces
+                    .get(key_id)
+                    .ok_or_else(|| ExecuteError::KeySpaceNotFound(key_id.to_string()))?;
+                let inline_private_key = match body {
+                    Some(ExecuteValue::RecipientPrivateKey(private_key)) => Some(private_key),
+                    Some(_) => {
+                        return Err(ExecuteError::InvalidBody(
+                            "self:open/keys expects recipient private key material",
+                        ))
+                    }
+                    None => None,
+                };
+                let private_key = inline_private_key.or_else(|| {
+                    entry
+                        .recipient_key_id
+                        .as_ref()
+                        .and_then(|key_id| self.recipient_keyring.get(key_id).cloned())
+                });
+                if private_key.is_none() {
+                    return Err(ExecuteError::NoRecipientPrivateKey(key_id.to_string()));
+                }
+                Err(ExecuteError::WrappedSecretCryptoUnavailable)
+            }
+            operation => Err(ExecuteError::UnsupportedKeysOperation(
+                operation.to_string(),
+            )),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -398,6 +549,20 @@ pub fn parse_executable_target(raw_target: &str) -> Result<MeTargetAst, ExecuteE
 pub fn normalize_executable_path(raw_path: &str) -> Result<(String, Path), ExecuteError> {
     let path = normalize_executable_path_inner(raw_path)?;
     Ok((path.key, path.parts))
+}
+
+pub fn parse_keyspace_path(raw_path: &str) -> Option<Option<String>> {
+    let trimmed = raw_path.trim().trim_matches('/');
+    if trimmed.is_empty() {
+        return None;
+    }
+    if trimmed == "keys" {
+        return Some(None);
+    }
+    if let Some(key_id) = trimmed.strip_prefix("keys/") {
+        return Some(non_empty_key_id(key_id));
+    }
+    trimmed.strip_prefix("keys.").map(non_empty_key_id)
 }
 
 fn normalize_executable_path_inner(raw_path: &str) -> Result<ExecutablePath, ExecuteError> {
@@ -526,6 +691,48 @@ fn expect_recompute_mode_body(body: Option<ExecuteValue>) -> Result<RecomputeMod
             "kernel:set/recompute.mode only accepts \"eager\" or \"lazy\"",
         )),
     }
+}
+
+fn expect_wrapped_key_write_body(
+    body: Option<ExecuteValue>,
+) -> Result<(Value, Option<String>), ExecuteError> {
+    match body {
+        Some(ExecuteValue::WrappedKeyWrite {
+            envelope,
+            recipient_key_id,
+        }) => {
+            ensure_wrapped_secret_v1_envelope(&envelope)?;
+            Ok((envelope, recipient_key_id))
+        }
+        Some(ExecuteValue::WrappedKey(envelope)) | Some(ExecuteValue::Value(envelope)) => {
+            ensure_wrapped_secret_v1_envelope(&envelope)?;
+            Ok((envelope, None))
+        }
+        None => Err(ExecuteError::MissingBody(
+            "self:write/keys requires a payload",
+        )),
+        _ => Err(ExecuteError::InvalidBody(
+            "self:write/keys expects a wrapped key envelope payload",
+        )),
+    }
+}
+
+fn ensure_wrapped_secret_v1_envelope(envelope: &Value) -> Result<(), ExecuteError> {
+    let Value::Object(object) = envelope else {
+        return Err(ExecuteError::InvalidWrappedKeyEnvelope);
+    };
+    if object.get("version") != Some(&Value::from(1_u64)) {
+        return Err(ExecuteError::InvalidWrappedKeyEnvelope);
+    }
+    if !object.contains_key("kid") || !object.contains_key("encryption") {
+        return Err(ExecuteError::InvalidWrappedKeyEnvelope);
+    }
+    Ok(())
+}
+
+fn non_empty_key_id(key_id: &str) -> Option<String> {
+    let key_id = key_id.trim();
+    (!key_id.is_empty()).then(|| key_id.to_string())
 }
 
 fn matches_scope(candidate: &[String], scope: &[String]) -> bool {

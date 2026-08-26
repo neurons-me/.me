@@ -89,7 +89,14 @@ pub struct Snapshot {
     pub memories: Vec<Memory>,
     pub local_secrets: BTreeMap<Path, String>,
     pub local_noises: BTreeMap<Path, String>,
+    pub key_spaces: BTreeMap<String, StoredWrappedKey>,
     pub operators: BTreeMap<String, OperatorDefinition>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct StoredWrappedKey {
+    pub envelope: Value,
+    pub recipient_key_id: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -266,6 +273,8 @@ pub struct Kernel {
     noise_scopes: BTreeSet<Path>,
     local_secrets: BTreeMap<Path, String>,
     local_noises: BTreeMap<Path, String>,
+    key_spaces: BTreeMap<String, StoredWrappedKey>,
+    recipient_keyring: BTreeMap<String, Vec<u8>>,
     derivations: BTreeMap<Path, DerivationRecord>,
     ref_subscribers: BTreeMap<Path, BTreeSet<Path>>,
     active_identity: Option<String>,
@@ -311,6 +320,8 @@ impl Default for Kernel {
             noise_scopes: BTreeSet::new(),
             local_secrets: BTreeMap::new(),
             local_noises: BTreeMap::new(),
+            key_spaces: BTreeMap::new(),
+            recipient_keyring: BTreeMap::new(),
             derivations: BTreeMap::new(),
             ref_subscribers: BTreeMap::new(),
             active_identity: None,
@@ -764,6 +775,7 @@ impl Kernel {
             memories: self.memories.clone(),
             local_secrets: self.local_secrets.clone(),
             local_noises: self.local_noises.clone(),
+            key_spaces: self.key_spaces.clone(),
             operators: self.operators.clone(),
         }
     }
@@ -771,6 +783,7 @@ impl Kernel {
     pub fn hydrate(snapshot: Snapshot) -> Result<Self, KernelError> {
         let mut kernel = Self::new();
         kernel.operators.extend(snapshot.operators.clone());
+        kernel.key_spaces = snapshot.key_spaces.clone();
         let mut expected_prev_hash = None;
 
         for (index, memory) in snapshot.memories.into_iter().enumerate() {
