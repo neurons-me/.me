@@ -2,8 +2,9 @@ use std::collections::BTreeMap;
 use std::fmt;
 
 use super::{
-    path_starts_with, ExplainResult, InspectMemory, InspectResult, IntoPath, Kernel, KernelError,
-    Memory, Path, RecomputeMode, Snapshot, StoredWrappedKey, Value,
+    path_starts_with, unwrap_secret_v1, ExplainResult, InspectMemory, InspectResult, IntoPath,
+    Kernel, KernelError, Memory, P256PrivateKey, Path, RecomputeMode, Snapshot, StoredWrappedKey,
+    Value, WrappedSecretCleartext, WrappedSecretError, WrappedSecretOutput,
 };
 
 #[derive(Debug, Clone, PartialEq)]
@@ -31,7 +32,13 @@ pub enum ExecuteValue {
         envelope: Value,
         recipient_key_id: Option<String>,
     },
+    WrappedKeyOpenOptions {
+        recipient_key_id: Option<String>,
+        recipient_private_key: Option<P256PrivateKey>,
+        output: WrappedSecretOutput,
+    },
     RecipientPrivateKey(Vec<u8>),
+    Bytes(Vec<u8>),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -55,7 +62,6 @@ pub enum ExecuteError {
     KeySpaceNotFound(String),
     InvalidWrappedKeyEnvelope,
     NoRecipientPrivateKey(String),
-    WrappedSecretCryptoUnavailable,
     SelfWriteRequiresPath,
     SelfExplainRequiresPath,
 }
@@ -114,10 +120,6 @@ impl fmt::Display for ExecuteError {
                 f,
                 "no recipient private key is available to open \"{key_id}\". Install one first or pass it inline"
             ),
-            Self::WrappedSecretCryptoUnavailable => write!(
-                f,
-                "wrapped secret cryptographic open is not implemented in the Rust kernel yet"
-            ),
             Self::SelfWriteRequiresPath => write!(f, "self:write requires a semantic path"),
             Self::SelfExplainRequiresPath => write!(f, "self:explain requires a semantic path"),
         }
@@ -129,6 +131,15 @@ impl std::error::Error for ExecuteError {}
 impl From<KernelError> for ExecuteError {
     fn from(error: KernelError) -> Self {
         Self::Kernel(error)
+    }
+}
+
+impl From<WrappedSecretError> for ExecuteError {
+    fn from(error: WrappedSecretError) -> Self {
+        match error {
+            WrappedSecretError::InvalidEnvelope => Self::InvalidWrappedKeyEnvelope,
+            _ => Self::InvalidBody("wrapped secret cryptographic operation failed"),
+        }
     }
 }
 
@@ -388,8 +399,11 @@ impl Kernel {
         if key_id.is_empty() {
             return Err(ExecuteError::EmptyRecipientKeyId);
         }
+        let private_key = P256PrivateKey::from_slice(&private_key.into()).map_err(|_| {
+            ExecuteError::InvalidBody("recipient private key must be a P-256 scalar")
+        })?;
         self.recipient_keyring
-            .insert(key_id.to_string(), private_key.into());
+            .insert(key_id.to_string(), private_key);
         Ok(self)
     }
 
@@ -467,25 +481,44 @@ impl Kernel {
                     .key_spaces
                     .get(key_id)
                     .ok_or_else(|| ExecuteError::KeySpaceNotFound(key_id.to_string()))?;
-                let inline_private_key = match body {
-                    Some(ExecuteValue::RecipientPrivateKey(private_key)) => Some(private_key),
+                let (inline_private_key, recipient_key_id, output) = match body {
+                    Some(ExecuteValue::WrappedKeyOpenOptions {
+                        recipient_key_id,
+                        recipient_private_key,
+                        output,
+                    }) => (recipient_private_key, recipient_key_id, output),
+                    Some(ExecuteValue::RecipientPrivateKey(private_key)) => (
+                        Some(P256PrivateKey::from_slice(&private_key).map_err(|_| {
+                            ExecuteError::InvalidBody(
+                                "recipient private key must be a P-256 scalar",
+                            )
+                        })?),
+                        None,
+                        WrappedSecretOutput::Bytes,
+                    ),
                     Some(_) => {
                         return Err(ExecuteError::InvalidBody(
                             "self:open/keys expects recipient private key material",
                         ))
                     }
-                    None => None,
+                    None => (None, None, WrappedSecretOutput::Bytes),
                 };
+                let resolved_recipient_key_id = recipient_key_id
+                    .as_ref()
+                    .or(entry.recipient_key_id.as_ref());
                 let private_key = inline_private_key.or_else(|| {
-                    entry
-                        .recipient_key_id
-                        .as_ref()
+                    resolved_recipient_key_id
                         .and_then(|key_id| self.recipient_keyring.get(key_id).cloned())
                 });
-                if private_key.is_none() {
+                let Some(private_key) = private_key else {
                     return Err(ExecuteError::NoRecipientPrivateKey(key_id.to_string()));
+                };
+                match unwrap_secret_v1(&entry.envelope, &private_key, output)? {
+                    WrappedSecretCleartext::Bytes(bytes) => Ok(ExecuteValue::Bytes(bytes)),
+                    WrappedSecretCleartext::Utf8(text) => {
+                        Ok(ExecuteValue::Value(Value::from(text)))
+                    }
                 }
-                Err(ExecuteError::WrappedSecretCryptoUnavailable)
             }
             operation => Err(ExecuteError::UnsupportedKeysOperation(
                 operation.to_string(),

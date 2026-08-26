@@ -6,6 +6,7 @@ mod evaluator;
 mod execute;
 mod path;
 mod secret_material;
+mod wrapped_secret;
 
 use evaluator::{evaluate_expression, extract_expression_refs};
 pub use execute::{
@@ -17,6 +18,11 @@ use secret_material::{
     encrypt_blob_v3_cleartext, lineage_segment, random_blob_v3_nonce,
 };
 pub use secret_material::{BlobV3DerivedKeys, SecretMaterialPurpose};
+pub use wrapped_secret::{
+    export_p256_public_key_from_private, generate_p256_key_pair, unwrap_secret_v1, wrap_secret_v1,
+    P256KeyPair, P256PrivateKey, P256PublicKeyCoordinates, WrappedSecretCleartext,
+    WrappedSecretError, WrappedSecretOutput,
+};
 
 const V3_DOMAIN: &str = "this.me/blob/v3";
 const V3_NO_NOISE_SENTINEL: &str = "this.me/blob/v3/no-noise";
@@ -274,7 +280,7 @@ pub struct Kernel {
     local_secrets: BTreeMap<Path, String>,
     local_noises: BTreeMap<Path, String>,
     key_spaces: BTreeMap<String, StoredWrappedKey>,
-    recipient_keyring: BTreeMap<String, Vec<u8>>,
+    recipient_keyring: BTreeMap<String, P256PrivateKey>,
     derivations: BTreeMap<Path, DerivationRecord>,
     ref_subscribers: BTreeMap<Path, BTreeSet<Path>>,
     active_identity: Option<String>,

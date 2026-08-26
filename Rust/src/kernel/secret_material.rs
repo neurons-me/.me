@@ -296,7 +296,7 @@ fn blob_to_bytes(blob: &str) -> Option<Vec<u8>> {
     hex_decode(clean)
 }
 
-fn base64_url_encode(bytes: &[u8]) -> String {
+pub(crate) fn base64_url_encode(bytes: &[u8]) -> String {
     const ALPHABET: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
     let mut out = String::new();
     let mut index = 0;
@@ -324,7 +324,7 @@ fn base64_url_encode(bytes: &[u8]) -> String {
     out
 }
 
-fn base64_url_decode(input: &str) -> Option<Vec<u8>> {
+pub(crate) fn base64_url_decode(input: &str) -> Option<Vec<u8>> {
     let mut values = Vec::new();
     for byte in input.bytes() {
         let value = match byte {

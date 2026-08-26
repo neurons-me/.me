@@ -1,6 +1,9 @@
 use std::collections::BTreeMap;
 
-use this_me::kernel::{ExecuteError, ExecuteValue, Kernel, Value};
+use this_me::kernel::{
+    generate_p256_key_pair, wrap_secret_v1, ExecuteError, ExecuteValue, Kernel, Value,
+    WrappedSecretOutput,
+};
 
 fn object(entries: impl IntoIterator<Item = (&'static str, Value)>) -> Value {
     Value::Object(
@@ -36,9 +39,10 @@ fn envelope(kid: &str) -> Value {
 fn keyspace_write_read_and_manifest_match_typescript_routes() {
     let mut kernel = Kernel::new();
     let envelope = envelope("orgboat.keysCustomName");
+    let recipient = generate_p256_key_pair().unwrap();
 
     kernel
-        .install_recipient_key("self.master", b"local-private-key".to_vec())
+        .install_recipient_key("self.master", recipient.private_key.to_bytes())
         .unwrap();
 
     assert_eq!(
@@ -77,10 +81,19 @@ fn keyspace_write_read_and_manifest_match_typescript_routes() {
 #[test]
 fn keyspace_envelopes_survive_snapshot_but_recipient_keys_do_not() {
     let mut kernel = Kernel::new();
-    let envelope = envelope("orgboat.keysCustomName");
+    let recipient = generate_p256_key_pair().unwrap();
+    let envelope = wrap_secret_v1(
+        "orgboat-super-secret",
+        &recipient.public_key,
+        "orgboat.keysCustomName",
+        "identity-key",
+        Some(&recipient.public_key),
+        None,
+    )
+    .unwrap();
 
     kernel
-        .install_recipient_key("self.master", b"local-private-key".to_vec())
+        .install_recipient_key("self.master", recipient.private_key.to_bytes())
         .unwrap();
     kernel
         .execute(
@@ -112,15 +125,21 @@ fn keyspace_envelopes_survive_snapshot_but_recipient_keys_do_not() {
     ));
 
     recovered
-        .install_recipient_key("self.master", b"local-private-key".to_vec())
+        .install_recipient_key("self.master", recipient.private_key.to_bytes())
         .unwrap();
-    let error = recovered
-        .execute("me://self:use/keys/orgboat.keysCustomName", None)
-        .unwrap_err();
-    assert!(matches!(
-        error,
-        ExecuteError::WrappedSecretCryptoUnavailable
-    ));
+    assert_eq!(
+        recovered
+            .execute(
+                "me://self:use/keys/orgboat.keysCustomName",
+                Some(ExecuteValue::WrappedKeyOpenOptions {
+                    recipient_key_id: None,
+                    recipient_private_key: None,
+                    output: WrappedSecretOutput::Utf8,
+                }),
+            )
+            .unwrap(),
+        ExecuteValue::Value(Value::from("orgboat-super-secret"))
+    );
 }
 
 #[test]
