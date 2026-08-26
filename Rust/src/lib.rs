@@ -2,3 +2,4 @@
 
 pub mod kernel;
 pub mod me_uri;
+pub mod storage;

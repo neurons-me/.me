@@ -2,7 +2,15 @@
 
 Clean Rust boilerplate for the `.me` kernel.
 
-No external runtime dependencies yet.
+The Rust kernel now includes:
+
+- a hash-chained semantic memory core,
+- the main `.me` operators (`@`, `_`, `~`, `__`, `=`, `?`, `-`),
+- canonical `me://` target dispatch,
+- Ed25519 `.prove()` identity proofs,
+- WrappedSecretV1 key wrapping,
+- JSON snapshot storage,
+- and a small `me` CLI for local use.
 
 ```bash
 cargo fmt --check
@@ -59,4 +67,19 @@ Run the secret push vs pull benchmark:
 
 ```bash
 cargo run --release --bin bench-secret-push-pull
+```
+
+Use the CLI against a local snapshot file:
+
+```bash
+cargo run -- --state /tmp/me-state.json write profile.name '"Jabellae"'
+cargo run -- --state /tmp/me-state.json read profile.name
+cargo run -- --state /tmp/me-state.json exec me://self:write/wallet.income 1000
+cargo run -- --state /tmp/me-state.json snapshot
+```
+
+Produce a branch-scoped proof:
+
+```bash
+cargo run -- --who jabellae --secret 'correct horse battery staple' prove local.netget '{"nonce":"n-1"}'
 ```

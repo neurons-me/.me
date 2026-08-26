@@ -1,13 +1,13 @@
 use std::fmt;
-use std::fs;
 use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use serde_json::Value as JsonValue;
 use this_me::kernel::{
     execute_value_to_json, kernel_value_to_json, parse_kernel_value, proof_result_to_json,
-    snapshot_from_json, snapshot_to_json, ExecuteValue, Kernel, ProofInput,
+    snapshot_to_json, ExecuteValue, Kernel, ProofInput,
 };
+use this_me::storage::{JsonFileStore, MemoryStore};
 
 fn main() {
     if let Err(error) = run() {
@@ -166,28 +166,14 @@ fn load_kernel(state: Option<&PathBuf>) -> Result<Kernel, CliError> {
     let Some(path) = state else {
         return Ok(Kernel::new());
     };
-    if !path.exists() {
-        return Ok(Kernel::new());
-    }
-
-    let raw = fs::read_to_string(path)?;
-    if raw.trim().is_empty() {
-        return Ok(Kernel::new());
-    }
-    let json = serde_json::from_str::<JsonValue>(&raw)?;
-    let snapshot = snapshot_from_json(&json)?;
-    Ok(Kernel::hydrate(snapshot)?)
+    Ok(JsonFileStore::new(path).load_kernel()?)
 }
 
 fn save_kernel(state: Option<&PathBuf>, kernel: &Kernel) -> Result<(), CliError> {
     let Some(path) = state else {
         return Ok(());
     };
-    if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent)?;
-    }
-    let json = snapshot_to_json(&kernel.export_snapshot());
-    fs::write(path, serde_json::to_string_pretty(&json)?)?;
+    JsonFileStore::new(path).save_kernel(kernel)?;
     Ok(())
 }
 
@@ -284,6 +270,12 @@ impl From<this_me::kernel::ProofError> for CliError {
 
 impl From<this_me::kernel::JsonCodecError> for CliError {
     fn from(error: this_me::kernel::JsonCodecError) -> Self {
+        Self(error.to_string())
+    }
+}
+
+impl From<this_me::storage::StorageError> for CliError {
+    fn from(error: this_me::storage::StorageError) -> Self {
         Self(error.to_string())
     }
 }
