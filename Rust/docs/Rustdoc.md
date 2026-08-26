@@ -21,7 +21,7 @@ This crate wires its docs.rs front page through `src/lib.rs`:
 #![doc = include_str!("../docs/API.md")]
 ```
 
-That file is [`API.md`](API.md).
+That file is [`API.md`](API.html).
 
 To preview locally:
 

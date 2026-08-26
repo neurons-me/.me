@@ -26,21 +26,21 @@ docs.rs/this-me
 
 ## Pages
 
-- [Quick Start](QuickStart.md)
-- [Runtime Host](RuntimeHost.md)
-- [CLI](CLI.md)
-- [Benchmarks](Benchmarks.md)
-- [Parity With TypeScript](Parity.md)
-- [Integration Notes](Integration.md)
-- [rustdoc and docs.rs](Rustdoc.md)
-- [docs.rs front page source](API.md)
+- [Quick Start](QuickStart.html)
+- [Runtime Host](RuntimeHost.html)
+- [CLI](CLI.html)
+- [Benchmarks](Benchmarks.html)
+- [Parity With TypeScript](Parity.html)
+- [Integration Notes](Integration.html)
+- [rustdoc and docs.rs](Rustdoc.html)
+- [docs.rs front page source](API.html)
 
 ## docs.rs
 
 `docs.rs` does not automatically read every Markdown file in this folder.
 It builds the Rust crate with `rustdoc`.
 
-The crate-level docs are wired from [`API.md`](API.md) through
+The crate-level docs are wired from [`API.md`](API.html) through
 `src/lib.rs`:
 
 ```rust

@@ -47,7 +47,8 @@ npm install
 npm run build
 ```
 
-🦀 [Rust](https://neurons-me.github.io/.me/Rust/) — 🐍 [Python](https://neurons-me.github.io/.me/Python/) — Not Available Yet.
+🦀 [Rust](https://neurons-me.github.io/.me/Rust/) — [crates.io](https://crates.io/crates/this-me) · [docs.rs](https://docs.rs/this-me)  
+🐍 [Python](https://neurons-me.github.io/.me/Python/) — Not Available Yet.
 
 ## Demos
 

@@ -40,4 +40,4 @@ The important distinction:
   returning events.
 - `JsonFileStore` is the current file-backed snapshot store.
 
-For HTTP/WS hosts, start with [Runtime Host](RuntimeHost.md), not raw `Kernel`.
+For HTTP/WS hosts, start with [Runtime Host](RuntimeHost.html), not raw `Kernel`.

@@ -2,7 +2,7 @@
 
 The Rust benchmarks live as executable binaries under `src/bin/`.
 
-The benchmark map is maintained in [`../BENCHMARKS.md`](../BENCHMARKS.md).
+The benchmark map is maintained in [`../BENCHMARKS.md`](../BENCHMARKS.html).
 
 Run benchmarks in release mode:
 

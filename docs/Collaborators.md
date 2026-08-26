@@ -19,4 +19,4 @@ Once cloned, select your preferred language and run the corresponding setup comm
 |---|---|---|---|
 | Typescript | `cd .me/Typescript && npm install` | npm | [node.js Docs ⟡](https://neurons-me.github.io/.me/Typescript/typedocs/) |
 | Python | `cd .me/Python/` | Not Available | Pip Docs 𓆚 |
-| Rust | `cd .me/Rust/` | Not Available | Rust Docs |
+| Rust | `cd .me/Rust && cargo test` | crates.io | [Rust Docs](https://neurons-me.github.io/.me/Rust/) · [docs.rs](https://docs.rs/this-me) |
