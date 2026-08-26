@@ -97,6 +97,25 @@ assert_eq!(me.read("wallet.total"), Some(&Value::from(60_u64)));
 The memory log remains append-only. Reads are the latest projection of that
 history.
 
+## Runnable Examples
+
+The crate ships with small, tested examples under `examples/`:
+
+```bash
+cargo run --example quickstart
+cargo run --example plural_selectors
+cargo run --example operators
+cargo run --example runtime_persistence
+cargo run --example proof
+cargo run --example wrapped_audience
+```
+
+Keep them honest with:
+
+```bash
+cargo test --examples
+```
+
 ## Runtime Host
 
 `Kernel` is the semantic core. `KernelRuntime<S>` is the host wrapper: it loads a

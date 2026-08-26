@@ -56,3 +56,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 Manual Rust implementation docs live in the repository under `Rust/docs/`.
 The generated API reference is built by rustdoc and published by docs.rs.
+
+## Runnable Examples
+
+The repository includes executable examples under `Rust/examples/`.
+
+```bash
+cargo test --examples
+cargo run --example quickstart
+cargo run --example runtime_persistence
+```

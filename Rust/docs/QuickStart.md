@@ -36,6 +36,7 @@ Run the local repository gate:
 cargo fmt --check
 cargo check
 cargo test
+cargo test --examples
 cargo clippy --all-targets --all-features -- -D warnings
 ```
 
@@ -47,3 +48,14 @@ The important distinction:
 - `JsonFileStore` is the current file-backed snapshot store.
 
 For HTTP/WS hosts, start with [Runtime Host](RuntimeHost.html), not raw `Kernel`.
+
+Runnable examples live under `examples/`:
+
+```bash
+cargo run --example quickstart
+cargo run --example plural_selectors
+cargo run --example operators
+cargo run --example runtime_persistence
+cargo run --example proof
+cargo run --example wrapped_audience
+```
