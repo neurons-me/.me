@@ -12,8 +12,9 @@ The benchmark map is maintained in [`../BENCHMARKS.md`](../BENCHMARKS.html).
 It includes the latest recorded release-mode run: `this-me` v0.3.0 Run #001
 from Aug 26, 2026 on Suis-MacBook-Air.local.
 
-The first Rust-vs-TypeScript mirror run is documented in
+The Rust-vs-TypeScript mirror suite is documented in
 [`../BENCHMARK_COMPARISON.md`](../BENCHMARK_COMPARISON.html).
+Run #002 records the source-versioned lazy invalidation fix.
 
 Run benchmarks in release mode:
 
@@ -43,8 +44,8 @@ Coverage:
 Benchmarks are not hard regression thresholds yet. They are measurement tools
 for keeping the Rust port honest while it catches up to the TypeScript kernel.
 
-The current run confirms the important shape: irrelevant memory stays out of
+The current runs confirm the important shape: irrelevant memory stays out of
 small recompute waves, sustained mutation does not drift upward, hydration is a
-startup cost, and eager/lazy recompute expose the expected write/read tradeoff.
+startup cost, and lazy writes no longer walk every subscriber at mutation time.
 
 The rule: improve mechanics, but do not change `.me` meaning to chase a number.

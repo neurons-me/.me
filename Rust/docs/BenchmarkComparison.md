@@ -9,7 +9,7 @@ image: https://neurons-me.github.io/docs/assets/img/me.png
 The full mirror-run writeup lives in
 [`../BENCHMARK_COMPARISON.md`](../BENCHMARK_COMPARISON.html).
 
-Run #001 compares:
+Run #002 compares:
 
 - Rust `this-me` `0.3.0`
 - TypeScript `this.me` `4.0.1`
@@ -20,11 +20,12 @@ The short version:
 
 - Rust wins O(k) isolation, sustained mutation, eager fanout, and direct secret
   write/read.
-- TypeScript wins lazy mutation invalidation at high fanout.
-- The next Rust optimization target is lazy invalidation mechanics, not the
-  algebra itself.
+- Run #001 found Rust's lazy invalidation gap.
+- Run #002 closes that gap with source path versions and stale-on-read checks.
+- Rust lazy mutation no longer scales with fanout in the mirror workload.
 
 Raw JSON:
 
+- [`../bench-results/rust-mirror-run-002.json`](../bench-results/rust-mirror-run-002.json)
 - [`../bench-results/rust-mirror-run-001.json`](../bench-results/rust-mirror-run-001.json)
 - [`../bench-results/typescript-mirror-run-001.json`](../bench-results/typescript-mirror-run-001.json)

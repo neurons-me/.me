@@ -312,7 +312,8 @@ pub struct Kernel {
     last_recompute_wave_by_target: BTreeMap<Path, Arc<RecomputeWave>>,
     active_recompute_wave: Option<RecomputeWave>,
     recompute_mode: RecomputeMode,
-    stale_derivations: BTreeSet<Path>,
+    path_version_clock: u64,
+    path_versions: BTreeMap<Path, u64>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -320,6 +321,7 @@ struct DerivationRecord {
     eval_scope: Path,
     expression: String,
     refs: Vec<DerivationRef>,
+    ref_versions: BTreeMap<Path, u64>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -363,7 +365,8 @@ impl Default for Kernel {
             last_recompute_wave_by_target: BTreeMap::new(),
             active_recompute_wave: None,
             recompute_mode: RecomputeMode::Eager,
-            stale_derivations: BTreeSet::new(),
+            path_version_clock: 0,
+            path_versions: BTreeMap::new(),
         }
     }
 }
@@ -1134,6 +1137,7 @@ impl Kernel {
         };
 
         self.apply_memory(&memory)?;
+        self.bump_path_version(&source_path);
         self.memories.push(memory);
         self.record_event_from_memory(memory_index, &source_path);
         if invalidate {
@@ -1478,6 +1482,15 @@ impl Kernel {
                     .then_some(DerivationRef { label, path })
             })
             .collect::<Vec<_>>();
+        let ref_versions = refs
+            .iter()
+            .map(|reference| {
+                (
+                    reference.path.clone(),
+                    self.current_path_version(&reference.path),
+                )
+            })
+            .collect::<BTreeMap<_, _>>();
 
         for reference in &refs {
             self.ref_subscribers
@@ -1492,6 +1505,7 @@ impl Kernel {
                 eval_scope,
                 expression,
                 refs,
+                ref_versions,
             },
         );
     }
@@ -1526,7 +1540,6 @@ impl Kernel {
             return;
         };
         self.last_recompute_wave_by_target.remove(target_path);
-        self.stale_derivations.remove(target_path);
 
         for reference in record.refs {
             if let Some(subscribers) = self.ref_subscribers.get_mut(&reference.path) {
@@ -1552,15 +1565,11 @@ impl Kernel {
     }
 
     fn invalidate_from_path(&mut self, source_path: &[String]) {
-        let started_wave = self.begin_recompute_wave(source_path);
         if self.recompute_mode == RecomputeMode::Lazy {
-            self.mark_stale_from_path(source_path);
-            if started_wave {
-                self.finalize_recompute_wave();
-            }
             return;
         }
 
+        let started_wave = self.begin_recompute_wave(source_path);
         let mut queue = VecDeque::from([source_path.to_vec()]);
         let mut seen_targets = BTreeSet::new();
 
@@ -1586,27 +1595,6 @@ impl Kernel {
         }
     }
 
-    fn mark_stale_from_path(&mut self, source_path: &[String]) {
-        let mut queue = VecDeque::from([source_path.to_vec()]);
-        let mut seen_targets = BTreeSet::new();
-
-        while let Some(changed_path) = queue.pop_front() {
-            let subscribers = self
-                .ref_subscribers
-                .get(&changed_path)
-                .cloned()
-                .unwrap_or_default();
-
-            for target_path in subscribers {
-                if !seen_targets.insert(target_path.clone()) {
-                    continue;
-                }
-                self.stale_derivations.insert(target_path.clone());
-                queue.push_back(target_path);
-            }
-        }
-    }
-
     fn recompute_target(&mut self, target_path: &[String]) -> bool {
         let Some(record) = self.derivations.get(target_path).cloned() else {
             return false;
@@ -1627,8 +1615,8 @@ impl Kernel {
             .is_ok();
 
         if recomputed {
+            self.refresh_derivation_ref_versions(target_path);
             self.record_recomputed_target(target_path);
-            self.stale_derivations.remove(target_path);
         }
 
         recomputed
@@ -1662,7 +1650,7 @@ impl Kernel {
             }
         }
 
-        let changed = if self.stale_derivations.contains(target_path) {
+        let changed = if self.derivation_refs_changed(target_path) {
             self.recompute_target(target_path)
         } else {
             false
@@ -1673,6 +1661,55 @@ impl Kernel {
             self.finalize_recompute_wave();
         }
         changed
+    }
+
+    fn current_path_version(&self, path: &[String]) -> u64 {
+        self.path_versions.get(path).copied().unwrap_or_default()
+    }
+
+    fn bump_path_version(&mut self, path: &[String]) {
+        self.path_version_clock = self.path_version_clock.saturating_add(1);
+        self.path_versions
+            .insert(path.to_vec(), self.path_version_clock);
+    }
+
+    fn derivation_refs_changed(&self, target_path: &[String]) -> bool {
+        let Some(record) = self.derivations.get(target_path) else {
+            return false;
+        };
+
+        record.refs.iter().any(|reference| {
+            self.current_path_version(&reference.path)
+                > record
+                    .ref_versions
+                    .get(&reference.path)
+                    .copied()
+                    .unwrap_or_default()
+        })
+    }
+
+    fn refresh_derivation_ref_versions(&mut self, target_path: &[String]) {
+        let Some(refs) = self
+            .derivations
+            .get(target_path)
+            .map(|record| record.refs.clone())
+        else {
+            return;
+        };
+
+        let ref_versions = refs
+            .iter()
+            .map(|reference| {
+                (
+                    reference.path.clone(),
+                    self.current_path_version(&reference.path),
+                )
+            })
+            .collect::<BTreeMap<_, _>>();
+
+        if let Some(record) = self.derivations.get_mut(target_path) {
+            record.ref_versions = ref_versions;
+        }
     }
 
     fn begin_recompute_wave(&mut self, source_path: &[String]) -> bool {

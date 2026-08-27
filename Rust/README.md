@@ -251,8 +251,9 @@ The test suite is contract-first. Important files:
 
 See [BENCHMARKS.md](BENCHMARKS.md) for the benchmark map.
 The current recorded run is `this-me` v0.3.0 Run #001 from Aug 26, 2026.
-See [BENCHMARK_COMPARISON.md](BENCHMARK_COMPARISON.md) for the first
-Rust-vs-TypeScript mirror run.
+See [BENCHMARK_COMPARISON.md](BENCHMARK_COMPARISON.md) for the
+Rust-vs-TypeScript mirror suite. Run #002 records the source-versioned lazy
+invalidation fix.
 
 Run benchmarks in release mode:
 
@@ -270,7 +271,7 @@ cargo run --release --bin bench-mirror
 
 Benchmarks are not hard pass/fail thresholds yet. They are there to keep the
 shape honest: O(k) recompute behavior, sustained mutation, fan-out, cold/warm
-hydration, explain overhead, secret cost, and eager/lazy tradeoffs.
+hydration, explain overhead, secret cost, and eager/lazy write/read tradeoffs.
 
 ## Module Map
 
