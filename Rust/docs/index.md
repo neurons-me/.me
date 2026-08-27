@@ -36,6 +36,7 @@ docs.rs/this-me
 - [Runtime Host](RuntimeHost.html)
 - [CLI](CLI.html)
 - [Benchmarks](Benchmarks.html)
+- [Rust vs TypeScript Benchmarks](BenchmarkComparison.html)
 - [Parity With TypeScript](Parity.html)
 - [Integration Notes](Integration.html)
 - [rustdoc and docs.rs](Rustdoc.html)

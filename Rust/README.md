@@ -251,6 +251,8 @@ The test suite is contract-first. Important files:
 
 See [BENCHMARKS.md](BENCHMARKS.md) for the benchmark map.
 The current recorded run is `this-me` v0.3.0 Run #001 from Aug 26, 2026.
+See [BENCHMARK_COMPARISON.md](BENCHMARK_COMPARISON.md) for the first
+Rust-vs-TypeScript mirror run.
 
 Run benchmarks in release mode:
 
@@ -263,6 +265,7 @@ cargo run --release --bin bench-explain-overhead
 cargo run --release --bin bench-secret-scope
 cargo run --release --bin bench-push-pull
 cargo run --release --bin bench-secret-push-pull
+cargo run --release --bin bench-mirror
 ```
 
 Benchmarks are not hard pass/fail thresholds yet. They are there to keep the

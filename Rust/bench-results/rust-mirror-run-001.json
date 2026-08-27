@@ -1,0 +1,334 @@
+{
+  "cases": {
+    "ok_isolation": [
+      {
+        "k": 1,
+        "max_ms": 0.047041,
+        "memories": 453,
+        "nodes": 10,
+        "p50_ms": 0.017333,
+        "p95_ms": 0.022542,
+        "p99_ms": 0.038833,
+        "result": 69.0,
+        "runs": 200
+      },
+      {
+        "k": 1,
+        "max_ms": 0.068792,
+        "memories": 543,
+        "nodes": 100,
+        "p50_ms": 0.014166,
+        "p95_ms": 0.017209000000000002,
+        "p99_ms": 0.043625000000000004,
+        "result": 69.0,
+        "runs": 200
+      },
+      {
+        "k": 1,
+        "max_ms": 0.017959,
+        "memories": 1443,
+        "nodes": 1000,
+        "p50_ms": 0.014292,
+        "p95_ms": 0.014957999999999999,
+        "p99_ms": 0.017291,
+        "result": 69.0,
+        "runs": 200
+      },
+      {
+        "k": 1,
+        "max_ms": 0.013541,
+        "memories": 5443,
+        "nodes": 5000,
+        "p50_ms": 0.009000000000000001,
+        "p95_ms": 0.009583,
+        "p99_ms": 0.012374999999999999,
+        "result": 69.0,
+        "runs": 200
+      },
+      {
+        "k": 1,
+        "max_ms": 0.018709,
+        "memories": 10443,
+        "nodes": 10000,
+        "p50_ms": 0.006958,
+        "p95_ms": 0.007958000000000002,
+        "p99_ms": 0.009625,
+        "result": 69.0,
+        "runs": 200
+      }
+    ],
+    "push_pull": [
+      {
+        "fanout": 10,
+        "iterations": 150,
+        "k": 10,
+        "mode": "eager",
+        "mutation_p50_ms": 0.054333000000000006,
+        "mutation_p95_ms": 0.062208,
+        "mutation_p99_ms": 0.06724999999999999,
+        "read_p50_ms": 0.0011250000000000001,
+        "read_p95_ms": 0.001167,
+        "read_p99_ms": 0.0012920000000000002
+      },
+      {
+        "fanout": 100,
+        "iterations": 150,
+        "k": 100,
+        "mode": "eager",
+        "mutation_p50_ms": 0.620833,
+        "mutation_p95_ms": 0.66225,
+        "mutation_p99_ms": 0.714792,
+        "read_p50_ms": 0.0015,
+        "read_p95_ms": 0.001667,
+        "read_p99_ms": 0.002375
+      },
+      {
+        "fanout": 500,
+        "iterations": 80,
+        "k": 500,
+        "mode": "eager",
+        "mutation_p50_ms": 3.4402500000000003,
+        "mutation_p95_ms": 3.51575,
+        "mutation_p99_ms": 4.245958,
+        "read_p50_ms": 0.002334,
+        "read_p95_ms": 0.0027080000000000003,
+        "read_p99_ms": 0.0035
+      },
+      {
+        "fanout": 1000,
+        "iterations": 50,
+        "k": 1000,
+        "mode": "eager",
+        "mutation_p50_ms": 7.311833,
+        "mutation_p95_ms": 7.474041,
+        "mutation_p99_ms": 7.523875,
+        "read_p50_ms": 0.002,
+        "read_p95_ms": 0.002333,
+        "read_p99_ms": 0.002875
+      },
+      {
+        "fanout": 2500,
+        "iterations": 20,
+        "k": 2500,
+        "mode": "eager",
+        "mutation_p50_ms": 18.94725,
+        "mutation_p95_ms": 19.438125,
+        "mutation_p99_ms": 19.438125,
+        "read_p50_ms": 0.002875,
+        "read_p95_ms": 0.003125,
+        "read_p99_ms": 0.003125
+      },
+      {
+        "fanout": 5000,
+        "iterations": 10,
+        "k": 5000,
+        "mode": "eager",
+        "mutation_p50_ms": 39.519375000000004,
+        "mutation_p95_ms": 42.328292,
+        "mutation_p99_ms": 42.328292,
+        "read_p50_ms": 0.004041,
+        "read_p95_ms": 0.005417,
+        "read_p99_ms": 0.005417
+      },
+      {
+        "fanout": 10,
+        "iterations": 150,
+        "k": 1,
+        "mode": "lazy",
+        "mutation_p50_ms": 0.006625,
+        "mutation_p95_ms": 0.008584,
+        "mutation_p99_ms": 0.012166,
+        "read_p50_ms": 0.006459,
+        "read_p95_ms": 0.008334,
+        "read_p99_ms": 0.010332999999999998
+      },
+      {
+        "fanout": 100,
+        "iterations": 150,
+        "k": 1,
+        "mode": "lazy",
+        "mutation_p50_ms": 0.06770799999999999,
+        "mutation_p95_ms": 0.071916,
+        "mutation_p99_ms": 0.083625,
+        "read_p50_ms": 0.007458,
+        "read_p95_ms": 0.008375,
+        "read_p99_ms": 0.01575
+      },
+      {
+        "fanout": 500,
+        "iterations": 80,
+        "k": 1,
+        "mode": "lazy",
+        "mutation_p50_ms": 0.41362499999999996,
+        "mutation_p95_ms": 0.45258400000000004,
+        "mutation_p99_ms": 0.45975,
+        "read_p50_ms": 0.010416,
+        "read_p95_ms": 0.011625,
+        "read_p99_ms": 0.036875000000000005
+      },
+      {
+        "fanout": 1000,
+        "iterations": 50,
+        "k": 1,
+        "mode": "lazy",
+        "mutation_p50_ms": 0.901416,
+        "mutation_p95_ms": 1.010334,
+        "mutation_p99_ms": 1.041625,
+        "read_p50_ms": 0.009042000000000001,
+        "read_p95_ms": 0.01325,
+        "read_p99_ms": 0.046
+      },
+      {
+        "fanout": 2500,
+        "iterations": 20,
+        "k": 1,
+        "mode": "lazy",
+        "mutation_p50_ms": 2.393958,
+        "mutation_p95_ms": 2.76575,
+        "mutation_p99_ms": 2.76575,
+        "read_p50_ms": 0.012041,
+        "read_p95_ms": 0.017333,
+        "read_p99_ms": 0.017333
+      },
+      {
+        "fanout": 5000,
+        "iterations": 10,
+        "k": 1,
+        "mode": "lazy",
+        "mutation_p50_ms": 4.990125,
+        "mutation_p95_ms": 5.930124999999999,
+        "mutation_p99_ms": 5.930124999999999,
+        "read_p50_ms": 0.015792,
+        "read_p95_ms": 0.037708,
+        "read_p99_ms": 0.037708
+      }
+    ],
+    "secret_scope": [
+      {
+        "case": "write_read",
+        "iterations": 1500,
+        "k": 0,
+        "p50_ms": 0.002,
+        "p95_ms": 0.0027080000000000003,
+        "p99_ms": 0.003,
+        "scope": "public"
+      },
+      {
+        "case": "write_read",
+        "iterations": 1500,
+        "k": 0,
+        "p50_ms": 0.015083,
+        "p95_ms": 0.016915999999999997,
+        "p99_ms": 0.023292,
+        "scope": "secret"
+      },
+      {
+        "case": "derivation_lazy",
+        "iterations": 240,
+        "k": 1,
+        "nodes": 600,
+        "p50_ms": 0.524791,
+        "p95_ms": 0.5640000000000001,
+        "p99_ms": 0.612959,
+        "scope": "public"
+      },
+      {
+        "case": "derivation_lazy",
+        "iterations": 240,
+        "k": 1,
+        "nodes": 600,
+        "p50_ms": 0.668875,
+        "p95_ms": 0.7093750000000001,
+        "p99_ms": 0.7602909999999999,
+        "scope": "secret"
+      }
+    ],
+    "sustained_mutation": {
+      "nodes": 4000,
+      "overall": {
+        "max_ms": 0.050374999999999996,
+        "p50_ms": 0.009334,
+        "p95_ms": 0.010084000000000001,
+        "p99_ms": 0.012209
+      },
+      "p95_drift_pct": 10.967088607594944,
+      "updates": 2000,
+      "window": 200,
+      "windows": [
+        {
+          "end": 200,
+          "p50_ms": 0.009375,
+          "p95_ms": 0.009875,
+          "p99_ms": 0.013667,
+          "start": 1
+        },
+        {
+          "end": 400,
+          "p50_ms": 0.009334,
+          "p95_ms": 0.010083,
+          "p99_ms": 0.013834,
+          "start": 201
+        },
+        {
+          "end": 600,
+          "p50_ms": 0.009375,
+          "p95_ms": 0.010541,
+          "p99_ms": 0.017791,
+          "start": 401
+        },
+        {
+          "end": 800,
+          "p50_ms": 0.009334,
+          "p95_ms": 0.009708999999999999,
+          "p99_ms": 0.010791,
+          "start": 601
+        },
+        {
+          "end": 1000,
+          "p50_ms": 0.009334,
+          "p95_ms": 0.009667,
+          "p99_ms": 0.010584000000000001,
+          "start": 801
+        },
+        {
+          "end": 1200,
+          "p50_ms": 0.009375,
+          "p95_ms": 0.009833999999999999,
+          "p99_ms": 0.021333,
+          "start": 1001
+        },
+        {
+          "end": 1400,
+          "p50_ms": 0.009333000000000001,
+          "p95_ms": 0.010417000000000001,
+          "p99_ms": 0.014542000000000001,
+          "start": 1201
+        },
+        {
+          "end": 1600,
+          "p50_ms": 0.009334,
+          "p95_ms": 0.010332999999999998,
+          "p99_ms": 0.010708,
+          "start": 1401
+        },
+        {
+          "end": 1800,
+          "p50_ms": 0.009375,
+          "p95_ms": 0.01025,
+          "p99_ms": 0.011250000000000001,
+          "start": 1601
+        },
+        {
+          "end": 2000,
+          "p50_ms": 0.009333000000000001,
+          "p95_ms": 0.010958,
+          "p99_ms": 0.013209,
+          "start": 1801
+        }
+      ]
+    }
+  },
+  "implementation": "rust",
+  "suite": "this.me mirror benchmark",
+  "version": "0.3.0"
+}

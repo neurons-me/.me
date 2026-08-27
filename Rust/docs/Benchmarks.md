@@ -12,6 +12,9 @@ The benchmark map is maintained in [`../BENCHMARKS.md`](../BENCHMARKS.html).
 It includes the latest recorded release-mode run: `this-me` v0.3.0 Run #001
 from Aug 26, 2026 on Suis-MacBook-Air.local.
 
+The first Rust-vs-TypeScript mirror run is documented in
+[`../BENCHMARK_COMPARISON.md`](../BENCHMARK_COMPARISON.html).
+
 Run benchmarks in release mode:
 
 ```bash
@@ -23,6 +26,7 @@ cargo run --release --bin bench-explain-overhead
 cargo run --release --bin bench-secret-scope
 cargo run --release --bin bench-push-pull
 cargo run --release --bin bench-secret-push-pull
+cargo run --release --bin bench-mirror
 ```
 
 Coverage:

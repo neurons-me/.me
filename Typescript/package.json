@@ -41,6 +41,7 @@
     "bench:phase3:ivf-tuning": "node --expose-gc tests/Benchmarks/benchmark.ivf-tuning.ts",
     "bench:phase3:cascade": "node --expose-gc tests/Benchmarks/benchmark.cascade-10dep.ts",
     "bench:phase3:vector:corpus": "node tests/Benchmarks/benchmark.vector-corpus.ts",
+    "bench:mirror": "node tests/Benchmarks/benchmark.mirror.ts",
     "test:phase3": "npm run test:phase3:search:exact && npm run test:phase3:search:ivf",
     "bench:phase3": "npm run bench:phase3:exact-scale && npm run bench:phase3:ivf-vs-exact && npm run bench:phase3:ivf-tuning && npm run bench:phase3:vector:corpus",
     "phase3": "npm run test:phase3 && npm run bench:phase3",
