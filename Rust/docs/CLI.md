@@ -49,5 +49,16 @@ Equivalent seed mode:
 cargo run -- --seed '<seed>' --expression jabellae prove local.netget '{"nonce":"n-1"}'
 ```
 
+Bind an expression with `about`:
+
+```bash
+cargo run -- --who jabellae --secret 'correct horse battery staple' about 'x > 10'
+cargo run -- --who jabellae --secret 'correct horse battery staple' about 'x > 10' prove local.netget '{"nonce":"n-1"}'
+```
+
+`about <expression>` by itself prints the active context. With another command
+after it, `about` applies that expression to the command. Expressions containing
+shell operators such as `>` must be quoted.
+
 The CLI is backed by `KernelRuntime`, so the command path exercises the same
 load/execute/save lifecycle that embedders use.

@@ -186,6 +186,18 @@ Equivalent seed mode:
 cargo run -- --seed '<seed>' --expression jabellae prove local.netget '{"nonce":"n-1"}'
 ```
 
+Use `about` as a readable expression-binding prefix. It keeps `--who` and
+`--secret` as the identity/seed, then binds the active `.me` expression for the
+command that follows:
+
+```bash
+cargo run -- --who jabellae --secret 'correct horse battery staple' about 'x > 10'
+cargo run -- --who jabellae --secret 'correct horse battery staple' about 'x > 10' prove local.netget '{"nonce":"n-1"}'
+```
+
+Quote expressions containing shell operators such as `>` so the terminal passes
+them to `me` instead of treating them as redirection.
+
 ## Events
 
 Runtime events are live process state. They are intentionally not persisted in

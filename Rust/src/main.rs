@@ -2,7 +2,7 @@ use std::fmt;
 use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use serde_json::Value as JsonValue;
+use serde_json::{json, Value as JsonValue};
 use this_me::kernel::{
     execute_value_to_json, kernel_value_to_json, parse_kernel_value, proof_result_to_json,
     snapshot_to_json, ExecuteValue, Kernel, ProofInput,
@@ -18,7 +18,8 @@ fn main() {
 }
 
 fn run() -> Result<(), CliError> {
-    let cli = Cli::parse(std::env::args().skip(1))?;
+    let mut cli = Cli::parse(std::env::args().skip(1))?;
+    apply_about_command(&mut cli)?;
     if cli.command.is_empty() {
         print_help();
         return Ok(());
@@ -75,6 +76,10 @@ fn run() -> Result<(), CliError> {
             execute_value_to_json(&result)
         }
         "snapshot" => snapshot_to_json(&runtime.kernel().export_snapshot()),
+        "context" => json!({
+            "expression": runtime.kernel().active_expression(),
+            "identityHash": runtime.kernel().identity_hash(),
+        }),
         "prove" => {
             let root_namespace = cli.required_arg(1, "prove requires a root namespace")?;
             let challenge = cli.command.get(2).cloned();
@@ -97,6 +102,31 @@ fn run() -> Result<(), CliError> {
     };
 
     println!("{}", serde_json::to_string_pretty(&output)?);
+    Ok(())
+}
+
+fn apply_about_command(cli: &mut Cli) -> Result<(), CliError> {
+    if cli.command.first().map(String::as_str) != Some("about") {
+        return Ok(());
+    }
+
+    let expression = cli
+        .command
+        .get(1)
+        .ok_or_else(|| CliError::new("about requires an expression"))?
+        .trim()
+        .to_string();
+    if expression.is_empty() {
+        return Err(CliError::new("about requires a non-empty expression"));
+    }
+
+    let remaining = cli.command.drain(2..).collect::<Vec<_>>();
+    cli.expression = Some(expression);
+    cli.command = if remaining.is_empty() {
+        vec!["context".to_string()]
+    } else {
+        remaining
+    };
     Ok(())
 }
 
@@ -205,8 +235,14 @@ Usage:
   me [--state FILE] inspect [path]
   me [--state FILE] explain <path>
   me [--state FILE] snapshot
+  me [--who <id> --secret <secret>] about <expression>
+  me [--who <id> --secret <secret>] about <expression> <command> [args...]
   me --who <id> --secret <secret> prove <root-namespace> [challenge]
   me --seed <seed> --expression <id> prove <root-namespace> [challenge]
+
+Examples:
+  me --who jabellae --secret 'secret' about 'x > 10'
+  me --who jabellae --secret 'secret' about 'x > 10' prove local.netget '{{"nonce":"n-1"}}'
 "#
     );
 }

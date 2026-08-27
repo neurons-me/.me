@@ -98,6 +98,72 @@ fn cli_prove_emits_verifiable_ed25519_proof() {
     ));
 }
 
+#[test]
+fn cli_about_reports_active_context() {
+    let output = me()
+        .args([
+            "--who",
+            "jabellae",
+            "--secret",
+            "correct horse battery staple",
+            "about",
+            "x > 10",
+        ])
+        .output()
+        .expect("me binary should run");
+    assert_success(&output);
+
+    let context = parse_stdout(&output);
+    assert_eq!(context["expression"], "x > 10");
+    assert!(context["identityHash"].as_str().unwrap().len() >= 64);
+}
+
+#[test]
+fn cli_about_scopes_proof_expression() {
+    let output = me()
+        .args([
+            "--who",
+            "jabellae",
+            "--secret",
+            "correct horse battery staple",
+            "about",
+            "x > 10",
+            "prove",
+            "local.netget",
+            "{\"nonce\":\"n-1\"}",
+        ])
+        .output()
+        .expect("me binary should run");
+    assert_success(&output);
+
+    let proof = parse_stdout(&output);
+    assert_eq!(proof["expression"], "x > 10");
+    assert_eq!(proof["rootNamespace"], "local.netget");
+    assert_eq!(proof["namespace"], "x > 10.local.netget");
+    assert!(verify_ed25519_signature(
+        proof["publicKey"].as_str().unwrap(),
+        proof["message"].as_str().unwrap(),
+        proof["signature"].as_str().unwrap(),
+    ));
+}
+
+#[test]
+fn cli_about_requires_expression() {
+    let output = me()
+        .args([
+            "--who",
+            "jabellae",
+            "--secret",
+            "correct horse battery staple",
+            "about",
+        ])
+        .output()
+        .expect("me binary should run");
+
+    assert_failure(&output);
+    assert!(String::from_utf8_lossy(&output.stderr).contains("about requires an expression"));
+}
+
 fn me() -> Command {
     Command::new(env!("CARGO_BIN_EXE_me"))
 }
@@ -106,6 +172,15 @@ fn assert_success(output: &std::process::Output) {
     assert!(
         output.status.success(),
         "command failed\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+fn assert_failure(output: &std::process::Output) {
+    assert!(
+        !output.status.success(),
+        "command unexpectedly succeeded\nstdout:\n{}\nstderr:\n{}",
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr)
     );
