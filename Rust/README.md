@@ -78,6 +78,7 @@ https://docs.rs/this-me
 ```
 
 Start with [docs/](docs/).
+Release notes live in [CHANGELOG.md](CHANGELOG.md).
 
 ## Quick Kernel Example
 
@@ -250,7 +251,8 @@ The test suite is contract-first. Important files:
 ## Benchmarks
 
 See [BENCHMARKS.md](BENCHMARKS.md) for the benchmark map.
-The current recorded run is `this-me` v0.3.0 Run #001 from Aug 26, 2026.
+The current crate release is `this-me` v0.3.2. The current recorded standalone
+benchmark run is `this-me` v0.3.0 Run #001 from Aug 26, 2026.
 See [BENCHMARK_COMPARISON.md](BENCHMARK_COMPARISON.md) for the
 Rust-vs-TypeScript mirror suite. Run #002 records the `this-me` v0.3.1
 source-versioned lazy invalidation fix.

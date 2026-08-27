@@ -39,6 +39,7 @@ docs.rs/this-me
 - [Rust vs TypeScript Benchmarks](BenchmarkComparison.html)
 - [Parity With TypeScript](Parity.html)
 - [Integration Notes](Integration.html)
+- [Changelog](../CHANGELOG.html)
 - [rustdoc and docs.rs](Rustdoc.html)
 - [docs.rs API reference](https://docs.rs/this-me)
 

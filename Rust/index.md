@@ -10,6 +10,8 @@ image: https://neurons-me.github.io/docs/assets/img/me.png
   <a href="https://docs.rs/this-me">docs.rs API</a>
   &nbsp;·&nbsp;
   <a href="./docs/">Rust implementation docs</a>
+  &nbsp;·&nbsp;
+  <a href="./CHANGELOG.html">changelog</a>
 </p>
 
 ---
