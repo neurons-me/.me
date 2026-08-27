@@ -20,7 +20,7 @@ Versions:
 
 | implementation | version |
 | --- | --- |
-| Rust | `this-me` `0.3.0` |
+| Rust | `this-me` `0.3.1` |
 | TypeScript | `this.me` `4.0.1` |
 
 Commands:

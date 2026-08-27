@@ -11,7 +11,7 @@ The full mirror-run writeup lives in
 
 Run #002 compares:
 
-- Rust `this-me` `0.3.0`
+- Rust `this-me` `0.3.1`
 - TypeScript `this.me` `4.0.1`
 
 Same machine, same operation shapes, same JSON output format.
