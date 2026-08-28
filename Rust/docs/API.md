@@ -192,6 +192,7 @@ stable JSON shapes:
 
 ## Release Notes
 
+- `0.3.3` - CLI `about <expression>` binding for context-scoped proofs.
 - `0.3.2` - docs.rs/API polish and release documentation.
 - `0.3.1` - source-versioned lazy invalidation; Run #002 mirror benchmark.
 - `0.3.0` - first modern Rust kernel release on crates.io.

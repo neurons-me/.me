@@ -1,5 +1,21 @@
 # Rust .me Changelog
 
+## 0.3.3 - 2026-08-28
+
+CLI release for expression-bound identity proofs.
+
+- Added `me ... about <expression>` as readable sugar for binding the active
+  `.me` expression in a single CLI invocation.
+- Added `me ... about <expression> prove <root-namespace> [challenge]` so a
+  proof can be generated from an explicit subject/context phrase without
+  replacing the underlying identity seed.
+- Added CLI contracts for context reporting, expression-scoped proofs, and
+  missing-expression failures.
+- Documented quoting requirements for expressions containing shell operators
+  such as `>`.
+
+No kernel semantics changed in this release.
+
 ## 0.3.2 - 2026-08-26
 
 Documentation release for the Rust crate.
