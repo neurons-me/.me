@@ -15,7 +15,14 @@
 // - guest reads can be simulated with an explicit caller scope
 // - ergonomic sugar like `.as(null)` can be layered on top afterward
 import { ME } from "./src/me.ts";
-import { normalizeProofMessage, verifyEd25519Signature } from "./src/crypto.ts";
+import {
+  deriveBranchProofSeed,
+  exportEd25519PublicKey,
+  importEd25519SigningKey,
+  normalizeProofMessage,
+  signEd25519Proof,
+  verifyEd25519Signature,
+} from "./src/crypto.ts";
 import { DiskStore, MemoryStore } from "./src/instance-store.ts";
 import { createMe, write, define, subscribe } from "./src/kernel/cascade.ts";
 import { createThisMe } from "./src/factory.ts";
@@ -92,13 +99,17 @@ export {
   canonicalizeLegacyAtOperator,
   canonicalizeHumanIdentity,
   createThisMe,
+  deriveBranchProofSeed,
+  exportEd25519PublicKey,
   formatCanonicalMeUri,
+  importEd25519SigningKey,
   normalizeCanonicalHandle,
   normalizeCanonicalSpace,
   normalizeProofMessage,
   parseCanonicalMeUri,
   parseMeUri,
   projectDnsHostToNamespace,
+  signEd25519Proof,
   tryParseMeUri,
   verifyEd25519Signature,
 };
