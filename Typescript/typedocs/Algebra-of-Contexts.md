@@ -80,6 +80,29 @@ Examples:
 
 No new noun is required beyond `space`.
 
+## Anchored vs. Derived Shared Spaces ​
+
+A shared space (`|A| > 1` — "group" in everyday language) can hold its identity two ways:
+
+- **anchored**: `P` is chosen once and stays stable. `A` is a mutable set inside it — members
+  join or leave without changing what the space is or where it lives.
+- **derived**: `P` is a function of `A` itself, computed from the exact member set. Change the
+  set, and the space's own identity changes with it.
+
+```txt
+anchored:  P is stable; A varies inside P
+derived:   P = f(A)
+```
+
+Anchored is the model already running here and in cleaker's own `groups.<key>.*` convention (a
+claimed namespace holding `members[]`, `admins[]`, `invites[]`) — the same shape netget's
+owner/admin ledger uses. Derived has no namespace primitive in this kernel; it is what NRP's
+concrete syntax calls `surface[a+b]` — the space's own address is the hash of its sorted member
+seeds, so removing one seed leaves nothing to derive back to, no separate `revoke` needed. Both
+modes, spelled out in that grammar (`group:name` vs `surface[a+b]`) with their current
+implementation status, live in
+[NRP Chemistry](https://neurons-me.github.io/monad/Typescript/typedocs/architecture/nrp-chemistry.html).
+
 ## Refinement ​
 
 More specific spaces are subsets of less specific spaces.
