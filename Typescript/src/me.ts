@@ -47,6 +47,22 @@ import {
 import * as ProxyRuntime from "./proxy.ts";
 import * as Secret from "./secret.ts";
 import { collectSecretChainV3 } from "./secret-context.ts";
+import {
+  changeIdentityPassword as changeIdentityPasswordImpl,
+  createIdentityRoot as createIdentityRootImpl,
+  currentIdentityRootId,
+  exportIdentityRootBackup as exportIdentityRootBackupImpl,
+  hasIdentityRoot as hasIdentityRootImpl,
+  importIdentityRootBackup as importIdentityRootBackupImpl,
+  isIdentityUnlocked as isIdentityUnlockedImpl,
+  lockIdentity as lockIdentityImpl,
+  resetIdentityRootForIdentityTransition,
+  rotateIdentityRoot as rotateIdentityRootImpl,
+  unlockIdentity as unlockIdentityImpl,
+} from "./identity-context.ts";
+import type { RotateIdentityRootResult } from "./identity-context.ts";
+import { migrateBranchesToV4, migrateValuesToV4 } from "./identity-migration.ts";
+import type { MigrateBranchesToV4Report, MigrateValuesToV4Report } from "./identity-migration.ts";
 import { enableDiskStoreDebug, takeDiskStoreDebugWindow } from "./instance-store.ts";
 import { buildVectorIndex as buildVectorIndexSidecar, searchVector as searchVectorSidecar } from "./vector-index.ts";
 import { searchExact as searchExactVectors } from "./vector-scan.ts";
@@ -61,6 +77,7 @@ import {
 import type {
   EncryptedBlob,
   EncryptedBranchPlane,
+  IdentityRootEnvelope,
   KernelMemory,
   MappingInstruction,
   MEBranchScopeCacheEntry,
@@ -325,6 +342,17 @@ export class ME {
         this.#seed = deriveCompoundSeed(who, secret);
         this.#identityHash = deriveIdentityHash(this.#seed);
         this.#activeExpression = who;
+        // Full identity transition: per the Identity-Bound Secrets design
+        // (decision #2), switching (who, secret) must not carry over any
+        // access from the previous identity — neither its private root nor
+        // the raw `_()`/`~()` values that were sitting in localSecrets/
+        // localNoises (those aren't bound to #seed today and would
+        // otherwise keep decrypting the old identity's v3 branches).
+        resetIdentityRootForIdentityTransition(this as unknown as MEKernelLike);
+        this.localSecrets = {};
+        this.localNoises = {};
+        this.protectedScopeKeys.clear();
+        (this as any)._ownerScope = null;
         this.bumpSecretEpoch();
         this.rebuildIndex();
       },
@@ -365,6 +393,17 @@ export class ME {
         this.#seed = deriveCompoundSeed(who, secret);
         this.#identityHash = deriveIdentityHash(this.#seed);
         this.#activeExpression = who;
+        // Full identity transition: per the Identity-Bound Secrets design
+        // (decision #2), switching (who, secret) must not carry over any
+        // access from the previous identity — neither its private root nor
+        // the raw `_()`/`~()` values that were sitting in localSecrets/
+        // localNoises (those aren't bound to #seed today and would
+        // otherwise keep decrypting the old identity's v3 branches).
+        resetIdentityRootForIdentityTransition(this as unknown as MEKernelLike);
+        this.localSecrets = {};
+        this.localNoises = {};
+        this.protectedScopeKeys.clear();
+        (this as any)._ownerScope = null;
         this.bumpSecretEpoch();
         this.rebuildIndex();
       },
@@ -758,6 +797,126 @@ export class ME {
     }
 
     return report;
+  }
+
+  // --- Identity-Bound Secrets: private root lifecycle ---
+  // See typedocs/Identity-Bound-Secrets.md. These are thin delegations to
+  // identity-context.ts (lifecycle) and identity-migration.ts (v3->v4);
+  // the crypto itself lives in identity-root.ts / crypto.ts.
+
+  /** Whether this kernel has ever created/imported an identity root (locked or not). */
+  hasIdentityRoot(): boolean {
+    return hasIdentityRootImpl(this as unknown as MEKernelLike);
+  }
+
+  /** Whether the identity root is currently unwrapped in this session. */
+  isIdentityUnlocked(): boolean {
+    return isIdentityUnlockedImpl(this as unknown as MEKernelLike);
+  }
+
+  /**
+   * The current root's public, non-secret identifier — or null if none.
+   * Named `currentIdentityRootId` (not `identityRootId`) because the raw
+   * `identityRootId` string field already lives directly on kernel state
+   * (see kernel-state.ts) — a same-named method would be shadowed by that
+   * own data property the moment the instance is constructed.
+   */
+  currentIdentityRootId(): string | null {
+    return currentIdentityRootId(this as unknown as MEKernelLike);
+  }
+
+  /**
+   * Create a brand-new identity root, wrap it under `password`, and leave it
+   * unlocked for the remainder of this session. Throws if a root already
+   * exists — use `rotateIdentityRoot()` to replace one explicitly.
+   */
+  async createIdentityRoot(password: string, iterations?: number): Promise<{ rootId: string }> {
+    return createIdentityRootImpl(this as unknown as MEKernelLike, password, iterations);
+  }
+
+  /**
+   * Unlock the identity root for this session. Per Option B this never
+   * restores branch `_()`/`~()` secrets — only `_()`/`~()` themselves do
+   * that, explicitly, per scope. Throws on a wrong password.
+   */
+  async unlockIdentity(password: string): Promise<{ rootId: string }> {
+    return unlockIdentityImpl(this as unknown as MEKernelLike, password);
+  }
+
+  /**
+   * Lock the identity: wipe the unwrapped root and every derived-key /
+   * decrypted-plaintext cache, and clear session-supplied `_()`/`~()`
+   * values. See identity-context.ts for the documented limits of
+   * JavaScript memory scrubbing this relies on.
+   */
+  lockIdentity(): void {
+    return lockIdentityImpl(this as unknown as MEKernelLike);
+  }
+
+  /**
+   * Change the password protecting the identity root. Re-wraps the SAME
+   * root under the new password; branch ciphertext is untouched. Distinct
+   * from `rotateIdentityRoot()` — never treat the two as interchangeable.
+   */
+  async changeIdentityPassword(oldPassword: string, newPassword: string): Promise<void> {
+    return changeIdentityPasswordImpl(this as unknown as MEKernelLike, oldPassword, newPassword);
+  }
+
+  /**
+   * Replace the identity root with a brand-new, independently-random one.
+   * A real "rotate + re-encrypt every scope" migration platform is out of
+   * scope for this phase (see typedocs/Identity-Bound-Secrets.md) — this
+   * mints the new root/rootId and requires the caller to acknowledge that
+   * v4 ciphertext under the OLD root becomes undecryptable from the new
+   * one. v3 ciphertext is unaffected either way.
+   */
+  async rotateIdentityRoot(
+    newPassword: string,
+    options: { acknowledgeExistingV4CiphertextBecomesUnreadable: boolean; iterations?: number },
+  ): Promise<RotateIdentityRootResult> {
+    return rotateIdentityRootImpl(this as unknown as MEKernelLike, newPassword, options);
+  }
+
+  /**
+   * Export the wrapped (ciphertext) root envelope for backup. Never returns
+   * the raw root. Safe to persist/transmit; it is still password-protected.
+   */
+  exportIdentityRootBackup(): IdentityRootEnvelope {
+    return exportIdentityRootBackupImpl(this as unknown as MEKernelLike);
+  }
+
+  /**
+   * Restore a previously-exported envelope. Per Option B this never
+   * auto-unlocks or auto-restores branch secrets — call `unlockIdentity()`
+   * afterward. Refuses to overwrite a different existing root unless
+   * `{ force: true }` is passed explicitly.
+   */
+  importIdentityRootBackup(envelope: IdentityRootEnvelope, options?: { force?: boolean }): { rootId: string } {
+    return importIdentityRootBackupImpl(this as unknown as MEKernelLike, envelope, options);
+  }
+
+  /**
+   * Re-encrypt existing v3 branch chunks into v4, scope by scope. Only
+   * touches scopes whose secret is currently available AND whose identity
+   * is unlocked; anything else is recorded pending and left untouched.
+   * Resumable and idempotent — safe to call repeatedly as more secrets
+   * become available in later sessions.
+   * @internal Maintenance helper for the v3->v4 migration.
+   */
+  migrateEncryptedBranchesToV4(): MigrateBranchesToV4Report {
+    return migrateBranchesToV4(this as unknown as MEKernelLike);
+  }
+
+  /**
+   * Re-encrypt existing v3 root-scope value blobs into v4. Does not mutate
+   * historical memory-log entries (would break hash-chain integrity,
+   * axiom A8) — instead re-asserts each plaintext through the normal write
+   * path, appending a new v4-encrypted memory entry. See
+   * identity-migration.ts for the full reasoning.
+   * @internal Maintenance helper for the v3->v4 migration.
+   */
+  migrateEncryptedValuesToV4(): MigrateValuesToV4Report {
+    return migrateValuesToV4(this as unknown as MEKernelLike);
   }
 
   private bumpSecretEpoch(): void {

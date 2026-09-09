@@ -165,6 +165,11 @@ test("ME: DiskStore preserves secret reads, stealth roots, snapshots, and explai
       restored.rehydrate(snapshot);
 
       assert.equal(restored("wallet"), undefined);
+      // Identity-Bound Secrets, Option B (typedocs/Identity-Bound-Secrets.md):
+      // exportSnapshot() redacts the real "_()" value, so the branch stays
+      // closed until the secret is resupplied in the new session.
+      assert.equal(restored("wallet.net"), undefined);
+      restored.wallet["_"]("steel-door");
       assert.equal(restored("wallet.net"), 600);
       assert.deepEqual(restored.encryptedBranches, snapshot.encryptedBranches);
     } finally {

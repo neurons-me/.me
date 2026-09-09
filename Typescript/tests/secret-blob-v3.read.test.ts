@@ -25,6 +25,23 @@ function clone<T>(value: T): T {
     : JSON.parse(JSON.stringify(value));
 }
 
+/**
+ * Identity-Bound Secrets, Option B (typedocs/Identity-Bound-Secrets.md):
+ * exportSnapshot() now redacts localSecrets/localNoises to a "***" topology
+ * placeholder instead of the real `_()`/`~()` value. These tests exercise
+ * v3 blob decrypt paths directly (this file predates the identity root
+ * feature and never touches it), so they simulate "the caller already
+ * knows this snapshot's secret" by overlaying the real values from the
+ * live source instance back onto the exported snapshot — the same pattern
+ * used in tests/contracts/_fixtures/secret-blobs.fixture.mjs.
+ */
+function withRealSecrets(source: any, snapshot: any): any {
+  const next = clone(snapshot);
+  next.localSecrets = clone(source.localSecrets);
+  next.localNoises = clone(source.localNoises);
+  return next;
+}
+
 function flipLastHexNibble(blob: string): string {
   const hex = String(blob).slice(2);
   const last = hex.slice(-1).toLowerCase();
@@ -123,7 +140,7 @@ async function main(): Promise<void> {
 
   await test("v3 branch blob reads through normal secret path", () => {
     const source = makeBranchFixture();
-    const snapshot = clone(source.exportSnapshot());
+    const snapshot = withRealSecrets(source, source.exportSnapshot());
     const chain = collectSecretChainV3(source, ["wallet"], "branch");
     snapshot.encryptedBranches.wallet.balance_root = encryptBlobV3(
       { balance: 100 },
@@ -141,7 +158,7 @@ async function main(): Promise<void> {
 
   await test("v3 value-level blob reads through normal path", () => {
     const source = makeRootFixture();
-    const snapshot = clone(source.exportSnapshot());
+    const snapshot = withRealSecrets(source, source.exportSnapshot());
     const chain = collectSecretChainV3(source, ["profile", "name"], "value");
     replaceMemoryValue(
       snapshot,
@@ -247,7 +264,7 @@ async function main(): Promise<void> {
     v2.wallet.balance(100);
     v2.wallet.note("private-savings");
     const restoredV2: any = new ME();
-    restoredV2.rehydrate(v2.exportSnapshot());
+    restoredV2.rehydrate(withRealSecrets(v2, v2.exportSnapshot()));
     assert.equal(restoredV2("wallet.balance"), 100);
 
     const { snapshot } = makeLegacySecretSnapshot();
@@ -258,7 +275,7 @@ async function main(): Promise<void> {
 
   await test("tampered v3 branch blob fails closed", () => {
     const source = makeBranchFixture();
-    const snapshot = clone(source.exportSnapshot());
+    const snapshot = withRealSecrets(source, source.exportSnapshot());
     const chain = collectSecretChainV3(source, ["wallet"], "branch");
     snapshot.encryptedBranches.wallet.balance_root = flipLastHexNibble(
       encryptBlobV3({ balance: 100 }, chain, "branch", ["wallet"]),
@@ -273,7 +290,7 @@ async function main(): Promise<void> {
 
   await test("wrong secret for v3 branch blob fails closed", () => {
     const source = makeBranchFixture();
-    const snapshot = clone(source.exportSnapshot());
+    const snapshot = withRealSecrets(source, source.exportSnapshot());
     const chain = collectSecretChainV3(source, ["wallet"], "branch");
     snapshot.encryptedBranches.wallet.balance_root = encryptBlobV3(
       { balance: 100 },
@@ -292,7 +309,7 @@ async function main(): Promise<void> {
 
   await test("wrong path for v3 value-level blob fails closed", () => {
     const source = makeRootFixture();
-    const snapshot = clone(source.exportSnapshot());
+    const snapshot = withRealSecrets(source, source.exportSnapshot());
     const chain = collectSecretChainV3(source, ["profile", "name"], "value");
     replaceMemoryValue(
       snapshot,
@@ -310,7 +327,7 @@ async function main(): Promise<void> {
 
   await test("wrong noise for v3 branch blob fails closed", () => {
     const source = makeNoiseFixture();
-    const snapshot = clone(source.exportSnapshot());
+    const snapshot = withRealSecrets(source, source.exportSnapshot());
     const chain = collectSecretChainV3(source, ["wallet", "hidden"], "branch");
     snapshot.encryptedBranches["wallet.hidden"].seed_root = encryptBlobV3(
       { seed: "beta-seed" },

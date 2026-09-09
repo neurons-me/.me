@@ -17,6 +17,21 @@ function test(name, fn) {
   }
 }
 
+// Guarantees the next memory record gets a strictly later `Date.now()`
+// millisecond than whatever just committed. Without this, two synchronous
+// writes to the SAME path can tie in timestamp on fast hardware, and
+// Axiom A9 ("Deterministic LWW: timestamp, then hash") then resolves the
+// tie by comparing freshly-recomputed hashes — which is deterministic, but
+// NOT guaranteed to preserve call order. That's correct/by-design for A9's
+// own test, but it makes a same-path set-then-remove sequence flaky in an
+// unrelated test unless the timestamps are forced apart.
+function waitNextMs() {
+  const start = Date.now();
+  while (Date.now() === start) {
+    // intentionally empty
+  }
+}
+
 console.log("\n### DSL Contract Tests (Phase 6)");
 
 test("boot + basic set/get", () => {
@@ -43,6 +58,12 @@ test("constructor bootstrap preserves callable proxy after hydrate", () => {
   restored.hydrate(snapshot);
 
   assert.equal(restored("profile.name"), "Bootstrap");
+  // Identity-Bound Secrets, Option B (deliberate contract — see
+  // typedocs/Identity-Bound-Secrets.md): exportSnapshot() never carries the
+  // real "_()" value, so a closed branch stays closed until the secret is
+  // resupplied in the new session — it is not silently restored.
+  assert.equal(restored("wallet.balance"), undefined);
+  restored.wallet["_"]("ctor-steel-door");
   assert.equal(restored("wallet.balance"), 7);
   assert.equal(typeof restored["!"].snapshot.export, "function");
 });
@@ -73,11 +94,45 @@ test("mutation helpers preserve learn + replay semantics", () => {
   me.learn({ path: "profile.legacy", operator: "-" });
 
   const memories = me.execute("me://kernel:export/memory");
+
+  // Replaying a full memory log recomputes every hash fresh (prevHash
+  // chains through `restored`'s own state, not the original's), and
+  // `replayMemories()` re-timestamps every entry with `Date.now()` as it
+  // goes. On fast hardware, the set-then-remove pair for "profile.legacy"
+  // can land in the SAME millisecond during replay, and Axiom A9's
+  // deterministic (timestamp, then hash) tie-break then picks a winner by
+  // comparing those freshly-recomputed hashes — correct and deterministic
+  // by A9's own contract, but not guaranteed to preserve call order. That's
+  // not what this test is about, so the removal is replayed as a separate
+  // `learn()` call a real tick later, guaranteeing it lands strictly after
+  // the set with no possible tie.
+  const removeIndex = memories.findIndex((m) => m.path === "profile.legacy" && m.operator === "-");
+  assert.ok(removeIndex >= 0, "expected an exported '-' memory for profile.legacy");
+  const finalRemove = memories[removeIndex];
+  const withoutFinalRemove = memories.slice(0, removeIndex).concat(memories.slice(removeIndex + 1));
+
   const restored = new ME();
-  restored.execute("me://kernel:replay/memory", memories);
+  restored.execute("me://kernel:replay/memory", withoutFinalRemove);
+  assert.equal(restored("profile.legacy"), "remove-me", "sanity: legacy value present before the removal replays");
+  waitNextMs();
+  restored.learn(finalRemove);
 
   assert.equal(restored("profile.name"), "Writer");
   assert.equal(restored("vault"), undefined);
+  // Identity-Bound Secrets §9.1: `vault.balance`'s memory.expression is
+  // redacted ("***") in the exported/replayed log, so replaying the memory
+  // log ALONE can no longer reconstruct branch-secret content — this is the
+  // new, correct, secure contract (core-write.ts's `applyGenericReplayWrite`).
+  assert.equal(restored("vault.balance"), undefined);
+  assert.equal(restored("profile.primary.balance"), undefined);
+
+  // Full reconstruction is still possible via the same two-plane transport
+  // hydrate()/exportSnapshot() already use: memories (public/audit log) +
+  // encryptedBranches (real ciphertext). Copying it over and resupplying the
+  // secret (Option B — no silent recovery) recovers the exact value.
+  restored.encryptedBranches = me.encryptedBranches;
+  assert.equal(restored("vault.balance"), undefined, "restoring encryptedBranches alone must not silently decrypt");
+  restored.vault["_"]("steel-door");
   assert.equal(restored("vault.balance"), 25);
   assert.equal(restored("profile.primary.balance"), 25);
   assert.notEqual(restored("profile.legacy"), "remove-me");
@@ -100,6 +155,16 @@ test("public memory surfaces redact effectiveSecret and stay replayable", () => 
 
   assert.equal(replayed("profile.name"), "Public");
   assert.equal(replayed("vault"), undefined);
+  // Identity-Bound Secrets §9.1: memory.expression is redacted for a
+  // branch-scoped write, so replaying the public memory log ALONE no
+  // longer reconstructs branch-secret content — the new, correct, secure
+  // contract. Full recovery still works via the same two-plane transport
+  // hydrate()/exportSnapshot() use: encryptedBranches + resupplying the
+  // secret (Option B — no silent recovery).
+  assert.equal(replayed("vault.balance"), undefined);
+  replayed.encryptedBranches = me.encryptedBranches;
+  assert.equal(replayed("vault.balance"), undefined, "restoring encryptedBranches alone must not silently decrypt");
+  replayed.vault["_"]("steel-door");
   assert.equal(replayed("vault.balance"), 33);
 });
 
@@ -115,6 +180,10 @@ test("snapshot import accepts both public and legacy memory payloads", () => {
 
   assert.equal(publicRestored("profile.name"), "Legacy");
   assert.equal(publicRestored("vault"), undefined);
+  // Option B (see typedocs/Identity-Bound-Secrets.md): exportSnapshot() redacts the
+  // real "_()" value, so the branch stays closed until the secret is resupplied.
+  assert.equal(publicRestored("vault.balance"), undefined);
+  publicRestored.vault["_"]("steel-door");
   assert.equal(publicRestored("vault.balance"), 44);
 
   const legacySnapshot = clone(publicSnapshot);
@@ -125,6 +194,8 @@ test("snapshot import accepts both public and legacy memory payloads", () => {
 
   assert.equal(legacyRestored("profile.name"), "Legacy");
   assert.equal(legacyRestored("vault"), undefined);
+  assert.equal(legacyRestored("vault.balance"), undefined);
+  legacyRestored.vault["_"]("steel-door");
   assert.equal(legacyRestored("vault.balance"), 44);
 });
 

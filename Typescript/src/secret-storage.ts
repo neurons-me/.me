@@ -1,11 +1,12 @@
 import {
   decryptBlobV3WithDerivedKeys,
+  decryptBlobV4WithDerivedKeys,
   detectBlobVersion,
   xorDecrypt,
   xorEncrypt,
 } from "./crypto.ts";
 import { isIdentityRef, isPointer } from "./operators.ts";
-import { getOrDeriveV3Keys } from "./secret-context.ts";
+import { getOrDeriveV3Keys, getOrDeriveV4Keys } from "./secret-context.ts";
 import type {
   EncryptedBlob,
   MEKernelLike,
@@ -362,7 +363,16 @@ export function getDecryptedChunk(
   const version = detectBlobVersion(blob);
   let data: unknown = null;
   const decryptStartedAt = nowMs();
-  if (version === "v3") {
+  if (version === "v4") {
+    // No fallback to v3/legacy after a v4 failure — locked identity and a
+    // bad/tampered blob both resolve to `null` here, same as v3 below.
+    try {
+      const keys = getOrDeriveV4Keys(self, scope, "branch");
+      data = decryptBlobV4WithDerivedKeys(blob, keys);
+    } catch {
+      data = null;
+    }
+  } else if (version === "v3") {
     try {
       const keys = getOrDeriveV3Keys(self, scope, "branch");
       data = decryptBlobV3WithDerivedKeys(blob, keys);

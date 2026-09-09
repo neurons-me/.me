@@ -219,7 +219,17 @@ console.log(m[1].prevHash === m[0].hash);
 
 ### A9 | Deterministic Conflict Resolution (LWW) ​
 
-When writes collide, the system always resolves to a single deterministic truth using `(timestamp asc, hash asc)`.
+When writes collide, the system always resolves to a single deterministic truth — ordered by a monotonic
+**logical** clock (`seq`, a Lamport-style scalar counter incremented once per write) first, with `hash`
+as the final tiebreak. The physical `timestamp` is still recorded on every memory, but is no longer part
+of how ties are broken: two writes issued moments apart on the *same* process can share a millisecond
+timestamp, and using physical time to decide that case meant the second of two sequential writes could
+lose to the first based on an arbitrary hash comparison — breaking the much more basic guarantee that
+"the second of two sequential writes wins." `seq` fixes that by construction (no two writes on one
+process ever share a `seq`, and it cannot move backward even if the system clock does), while `hash`
+remains available as the deterministic tiebreak for what LWW is actually meant to resolve: genuinely
+concurrent writers. Memories persisted before `seq` existed fall back to the original `(timestamp asc,
+hash asc)` rule unchanged, so already-recorded history's order never changes.
 
 **Proof:**
 
@@ -235,7 +245,7 @@ try {
   (Date as any).now = originalNow;
 }
 
-console.log(me("wallet.balance")); // always the same deterministic winner
+console.log(me("wallet.balance")); // 222 — the second write, every time, by seq (not by hash)
 ```
 
 ---

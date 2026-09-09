@@ -1,4 +1,10 @@
 import type { InstanceStore } from "./instance-store.ts";
+import type { IdentityRootEnvelope } from "./identity-root.ts";
+
+export type { IdentityRootEnvelope } from "./identity-root.ts";
+
+/** Per-scope / per-value-path v3->v4 migration status. Not secret. */
+export type MEMigrationV4Status = "pending" | "migrated";
 
 // -----------------------------
 // Core runtime data shapes
@@ -48,6 +54,29 @@ export interface Memory {
   /** previous memory hash for chain integrity (genesis = "") */
   prevHash?: string;
   timestamp: number;
+  /**
+   * Monotonic local logical order (Lamport-style scalar clock) — see
+   * `compareLWW` in core-index.ts and typedocs/Axioms.md's A9 for why this
+   * exists: `timestamp` alone (millisecond resolution) cannot tell two
+   * writes issued moments apart on the SAME process apart from two writes
+   * that are genuinely concurrent (different processes/nodes), and using
+   * physical time to decide the former class silently breaks "the second
+   * of two sequential writes wins" whenever they land in the same
+   * millisecond, and is not robust to the physical clock moving backward.
+   * Absent (`undefined`) on any memory persisted before this field existed
+   * — `compareLWW` falls back to the original `(timestamp, hash)` rule
+   * for comparisons where NEITHER side has a `seq`, preserving old logs'
+   * already-established deterministic order exactly. A memory that DOES
+   * have `seq` always outranks one that doesn't (real local writes are
+   * causally after all pre-existing, pre-migration history, by
+   * construction). Assigned once, at write time, from `self.seqCounter`;
+   * restored after a snapshot import as `max(seq in _memories) + 1`
+   * (`rebuildIndex()`) — the same rule a future merge of a genuinely
+   * different node's history would use to advance past it (classic
+   * Lamport-clock update), even though no such merge exists in this
+   * codebase yet.
+   */
+  seq?: number;
 }
 
 /**
@@ -650,25 +679,49 @@ export interface MERecomputeWave {
  * Memory records exported here are redacted and never expose `effectiveSecret`.
  */
 export interface MESnapshot {
+  /** Snapshot payload shape version. 2 = redacted localSecrets/localNoises + identityRoot. */
+  formatVersion?: number;
   memories: Memory[];
+  /**
+   * Topology only: every key that has (or had) a `_()`/`~()` declaration,
+   * value always redacted to "***" — never the real secret. This is what
+   * lets a fresh kernel know a path is protected after hydrate() without
+   * silently recovering access to it (Option B — see
+   * typedocs/Identity-Bound-Secrets.md §"Semántica del árbol").
+   */
   localSecrets: Record<string, string>;
   localNoises: Record<string, string>;
   encryptedBranches: EncryptedBranchPlane;
   keySpaces: Record<string, StoredWrappedKey>;
   operators: Record<string, { kind: string }>;
+  /** Wrapped (ciphertext) identity root envelope. Safe to persist. Never the raw root. */
+  identityRoot: IdentityRootEnvelope | null;
+  migrationV4: Record<string, MEMigrationV4Status>;
+  migrationV4Values: Record<string, MEMigrationV4Status>;
 }
 
 /**
  * Snapshot import shape.
  * Accepts both modern redacted memories and legacy/internal memory payloads.
+ * `localSecrets`/`localNoises` here MAY carry real values if the caller
+ * explicitly constructs one that way (e.g. test fixtures, or a controlled
+ * in-process transfer where the caller is deliberately supplying secrets it
+ * already holds) — hydrate() does not distinguish "real value" from "***"
+ * placeholder, it just stores what it's given. The disk-safe guarantee comes
+ * from `exportSnapshot()` itself only ever emitting "***" (see above), not
+ * from hydrate() refusing real values.
  */
 export interface MESnapshotInput {
+  formatVersion?: number;
   memories?: ReplayMemoryInput[];
   localSecrets?: Record<string, string>;
   localNoises?: Record<string, string>;
   encryptedBranches?: EncryptedBranchPlane;
   keySpaces?: Record<string, StoredWrappedKey>;
   operators?: Record<string, { kind: string }>;
+  identityRoot?: IdentityRootEnvelope | null;
+  migrationV4?: Record<string, MEMigrationV4Status>;
+  migrationV4Values?: Record<string, MEMigrationV4Status>;
 }
 
 export interface MEWrappedKeyOpenOptions {
@@ -704,6 +757,8 @@ export interface MERuntimeMethodDescriptor {
 export interface MEKernelLike extends Record<string, any> {
   localSecrets: Record<string, string>;
   localNoises: Record<string, string>;
+  /** Durable topology of every scope key ever declared with `_()` — see kernel-state.ts. */
+  protectedScopeKeys: Set<string>;
   branchStore: InstanceStore;
   encryptedBranches: EncryptedBranchPlane;
   /** Internal write preference. v3 is the default from Corte 4; v2 remains for compatibility and rollback. */
@@ -711,6 +766,10 @@ export interface MEKernelLike extends Record<string, any> {
   keySpaces: Record<string, StoredWrappedKey>;
   recipientKeyring: Record<string, CryptoKey>;
   index: Record<string, any>;
+  /** Which entry currently backs each `index` key — see kernel-state.ts. */
+  indexWinner: Record<string, { timestamp: number; seq?: number; hash: string }>;
+  /** Next `seq` to assign to a new memory — see kernel-state.ts. */
+  seqCounter: number;
   _memories: KernelMemory[];
   derivations: Record<string, MEDerivationRecord>;
   refSubscribers: Record<string, Set<string>>;
@@ -727,12 +786,18 @@ export interface MEKernelLike extends Record<string, any> {
   writeBranchCache: Map<string, MEDecryptedBranchCacheEntry>;
   decryptedValueCache: Map<string, MEDecryptedValueCacheEntry>;
   v3KeyCache: Map<string, MEBlobV3KeyCacheEntry>;
+  v4KeyCache: Map<string, MEBlobV3KeyCacheEntry>;
   vectorIndexes: Map<string, MEVectorIndex>;
   readonly secretChunkSize: number;
   readonly secretHashBuckets: number;
   readonly unsafeEval: boolean;
   operators: Record<string, { kind: string }>;
   memories: Memory[];
+  identityRootEnvelope: IdentityRootEnvelope | null;
+  identityRootUnwrapped: Uint8Array | null;
+  identityRootId: string | null;
+  migrationV4: Record<string, MEMigrationV4Status>;
+  migrationV4Values: Record<string, MEMigrationV4Status>;
 
   inspect(opts?: { last?: number }): MEInspectResult;
   explain(path: string): MEExplainResult;

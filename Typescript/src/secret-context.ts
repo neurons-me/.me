@@ -1,4 +1,4 @@
-import { deriveBlobV3Keys } from "./crypto.ts";
+import { deriveBlobV3Keys, deriveBlobV4Keys } from "./crypto.ts";
 import type {
   MEBlobV3KeyCacheEntry,
   MEKernelLike,
@@ -9,8 +9,25 @@ import { hashFn } from "./utils.ts";
 const MAX_SCOPE_CACHE_ENTRIES = 256;
 const MAX_EFFECTIVE_SECRET_CACHE_ENTRIES = 256;
 const MAX_V3_KEY_CACHE_ENTRIES = 256;
+const MAX_V4_KEY_CACHE_ENTRIES = 256;
 const V3_DOMAIN = "this.me/blob/v3";
 const V3_NO_NOISE_SENTINEL = "this.me/blob/v3/no-noise";
+const V4_DOMAIN = "this.me/blob/v4";
+const V4_NO_NOISE_SENTINEL = "this.me/blob/v4/no-noise";
+
+/**
+ * Thrown by `getOrDeriveV4Keys` when no identity root is unwrapped in the
+ * current session. Callers on the read/write path must catch this and treat
+ * it exactly like a failed decrypt/derivation (stealth-safe null) — never
+ * fall back to a different blob format and never surface it as "public".
+ */
+export class IdentityLockedError extends Error {
+  code = "IDENTITY_LOCKED" as const;
+  constructor(message = "Identity root is locked; unlock it before deriving v4 keys.") {
+    super(message);
+    this.name = "IdentityLockedError";
+  }
+}
 
 function touchLruEntry<K, V>(cache: Map<K, V>, key: K, value: V): void {
   if (cache.has(key)) cache.delete(key);
@@ -36,6 +53,20 @@ function trimV3KeyCache(self: MEKernelLike): void {
       entry.pathContext.fill(0);
     }
     self.v3KeyCache.delete(oldest.value);
+  }
+}
+
+function trimV4KeyCache(self: MEKernelLike): void {
+  while (self.v4KeyCache.size > MAX_V4_KEY_CACHE_ENTRIES) {
+    const oldest = self.v4KeyCache.keys().next();
+    if (oldest.done) return;
+    const entry = self.v4KeyCache.get(oldest.value);
+    if (entry) {
+      entry.encKey.fill(0);
+      entry.macKey.fill(0);
+      entry.pathContext.fill(0);
+    }
+    self.v4KeyCache.delete(oldest.value);
   }
 }
 
@@ -138,6 +169,12 @@ export function bumpSecretEpoch(self: MEKernelLike): void {
     cached.pathContext.fill(0);
   }
   self.v3KeyCache.clear();
+  for (const cached of self.v4KeyCache.values()) {
+    cached.encKey.fill(0);
+    cached.macKey.fill(0);
+    cached.pathContext.fill(0);
+  }
+  self.v4KeyCache.clear();
 }
 
 export function computeEffectiveSecret(self: MEKernelLike, path: SemanticPath): string {
@@ -276,5 +313,80 @@ export function getOrDeriveV3Keys(
   };
   touchLruEntry(self.v3KeyCache, cacheKey, cached);
   trimV3KeyCache(self);
+  return cached;
+}
+
+/**
+ * v4 chain (Identity-Bound Secrets). Structurally the same lineage/noise
+ * collection as v3 (`collectLineageSegments` is shared, unmodified), under
+ * the v4 domain label. The identity root itself is deliberately NOT one of
+ * these chain segments — it is required separately, as mandatory HMAC key
+ * material in `deriveSecretMaterialV4` (crypto.ts) — so nothing in this
+ * lineage list (including a `~()` noise reset) can ever exclude it.
+ */
+export function collectSecretChainV4(
+  self: MEKernelLike,
+  targetPath: SemanticPath,
+  mode: "branch" | "value",
+): Uint8Array[] {
+  const scopePath = resolveBranchScope(self, targetPath);
+  if (!scopePath) {
+    throw new Error(`No secret context active for "${targetPath.join(".")}".`);
+  }
+  if (mode === "branch" && scopePath.length === 0) {
+    throw new Error("Branch v4 derivation does not support the root secret scope.");
+  }
+
+  const anchorPath = mode === "branch" ? scopePath : targetPath;
+  const activeNoise = findActiveNoiseBoundary(self, anchorPath);
+  const noiseBoundaryBytes =
+    activeNoise.key === null ? utf8Bytes(V4_NO_NOISE_SENTINEL) : utf8Bytes(activeNoise.key);
+
+  return [
+    utf8Bytes(V4_DOMAIN),
+    utf8Bytes(mode),
+    normalizePathBytes(scopePath),
+    normalizePathBytes(anchorPath),
+    noiseBoundaryBytes,
+    ...collectLineageSegments(self, anchorPath, activeNoise),
+  ];
+}
+
+/**
+ * v4 counterpart of `getOrDeriveV3Keys`. Requires `self.identityRootUnwrapped`
+ * to be set (i.e. the identity is unlocked this session) — throws
+ * `IdentityLockedError` otherwise. Cache entries are keyed by rootId in
+ * addition to path/mode so switching identities (which always wipes
+ * `identityRootUnwrapped` first, see `identity-context.ts`) can never serve
+ * a stale cross-identity key even if an epoch bump were somehow missed.
+ * @internal
+ */
+export function getOrDeriveV4Keys(
+  self: MEKernelLike,
+  path: SemanticPath,
+  mode: "branch" | "value",
+): MEBlobV3KeyCacheEntry {
+  const identityRoot = self.identityRootUnwrapped;
+  if (!identityRoot || identityRoot.length === 0) {
+    throw new IdentityLockedError();
+  }
+
+  const cacheKey = `${mode}::${path.join(".")}::${self.identityRootId ?? ""}`;
+  const hit = self.v4KeyCache.get(cacheKey);
+  if (hit && hit.epoch === self.secretEpoch) {
+    touchLruEntry(self.v4KeyCache, cacheKey, hit);
+    return hit;
+  }
+
+  const chain = collectSecretChainV4(self, path, mode);
+  const derived = deriveBlobV4Keys(chain, mode, path, identityRoot);
+  const cached: MEBlobV3KeyCacheEntry = {
+    epoch: self.secretEpoch,
+    encKey: Uint8Array.from(derived.encKey),
+    macKey: Uint8Array.from(derived.macKey),
+    pathContext: Uint8Array.from(derived.pathContext),
+  };
+  touchLruEntry(self.v4KeyCache, cacheKey, cached);
+  trimV4KeyCache(self);
   return cached;
 }

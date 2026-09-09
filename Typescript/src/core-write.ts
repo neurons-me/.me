@@ -1,5 +1,6 @@
 import {
   encryptBlobV3WithDerivedKeys,
+  encryptBlobV4WithDerivedKeys,
   xorEncrypt,
 } from "./crypto.ts";
 import {
@@ -36,7 +37,7 @@ import {
   setChunkBlob,
 } from "./secret.ts";
 import { materializeDecryptedChunk } from "./secret-storage.ts";
-import { getOrDeriveV3Keys } from "./secret-context.ts";
+import { getOrDeriveV3Keys, getOrDeriveV4Keys } from "./secret-context.ts";
 import {
   materializeColumnarData,
   prepareColumnarChunkForEncryption,
@@ -305,6 +306,7 @@ function registerStealthScope(self: MEKernelLike, scopePath: SemanticPath, scope
   const normalizedScopePath = normalizeSelectorPath(scopePath);
   const scopeKey = normalizedScopePath.join(".");
   self.localSecrets[scopeKey] = scopeValue;
+  self.protectedScopeKeys.add(scopeKey);
   (self as any)._ownerScope = scopeValue;
 }
 
@@ -347,18 +349,21 @@ export function learn(self: MEKernelLike, memory: unknown): void {
     return;
   }
 
-  self.postulate(path, next.expression, next.operator ?? null);
+  applyGenericReplayWrite(self, path, next.expression, next.operator ?? null, next.value);
 }
 
 export function replayMemories(self: MEKernelLike, memories: ReplayMemoryInput[]): void {
   self.localSecrets = {};
   self.localNoises = {};
+  self.protectedScopeKeys.clear();
   self.branchStore.clear();
   self.keySpaces = {};
   (self as any)._ownerScope = null;
   (self as any)._currentCallerScope = undefined;
   bumpSecretEpoch(self);
   self.index = {};
+  self.indexWinner = {};
+  self.seqCounter = 0;
   self._memories = [];
   self.derivations = {};
   self.refSubscribers = {};
@@ -403,9 +408,59 @@ export function replayMemories(self: MEKernelLike, memories: ReplayMemoryInput[]
       continue;
     }
 
-    self.postulate(path, t.expression, t.operator);
+    applyGenericReplayWrite(self, path, t.expression, t.operator, t.value);
   }
   self.rebuildIndex();
+}
+
+/**
+ * Shared generic-write replay logic for `learn()`/`replayMemories()`.
+ *
+ * `learn()` serves two different callers, and this function must tell them
+ * apart:
+ *  1. Application code instructing a fresh, real write (e.g. the DSL
+ *     contract tests' `me.learn({ path: "vault.balance", expression: 25 })`)
+ *     — `expression` is real, actionable data, and must go through the full
+ *     `postulate()` pipeline exactly as before this function existed, so a
+ *     protected target still gets properly encrypted.
+ *  2. Replaying an entry that came FROM an already-exported memory log
+ *     (`exportSnapshot()`/`me.memories`) — for a protected write,
+ *     `commitValueMapping` redacted its `expression` to
+ *     `MEMORY_LOG_SECRET_PLACEHOLDER` at write time (alongside `value`; see
+ *     Identity-Bound-Secrets.md §3.5/§9.1). Re-running that placeholder
+ *     through `postulate()` would silently overwrite real content with the
+ *     literal string "***".
+ *
+ * The two are told apart by the one signal that actually distinguishes
+ * them: whether `expression` IS the redaction placeholder. Only case 2 skips
+ * `postulate()`, re-appending the entry verbatim via `commitMemoryOnly`
+ * instead:
+ *
+ * - Value-mode secrets: `value` already holds real, reusable ciphertext
+ *   (only `expression` was redacted) — reusing it directly reconstructs
+ *   the exact same readable state once the real secret is resupplied,
+ *   with zero information lost.
+ * - Branch-scope secrets: neither `expression` nor `value` on a single log
+ *   entry ever carried reconstructable content (branch content lives in
+ *   `encryptedBranches`, a separate plane `hydrate()` already restores
+ *   directly). Re-appending the entry keeps the audit trail and topology
+ *   (the scope stays correctly marked protected) without fabricating
+ *   wrong branch content; real content must be restored by also copying
+ *   `encryptedBranches` (`me.encryptedBranches = source.encryptedBranches`)
+ *   the same way `hydrate()`/`exportSnapshot()` already transport it.
+ */
+function applyGenericReplayWrite(
+  self: MEKernelLike,
+  path: SemanticPath,
+  expression: any,
+  operator: string | null,
+  value: any,
+): void {
+  if (expression === MEMORY_LOG_SECRET_PLACEHOLDER) {
+    commitMemoryOnly(self, path, operator, expression, value);
+    return;
+  }
+  self.postulate(path, expression, operator);
 }
 
 export function commitMemoryOnly(
@@ -428,6 +483,7 @@ export function commitMemoryOnly(
   });
   const hash = hashFn(hashInput);
   const timestamp = Date.now();
+  const seq = self.seqCounter++;
   const memory: KernelMemory = {
     path: pathStr,
     operator,
@@ -437,6 +493,7 @@ export function commitMemoryOnly(
     hash,
     prevHash,
     timestamp,
+    seq,
   };
   self._memories.push(memory);
   self.applyMemoryToIndex(memory);
@@ -489,6 +546,7 @@ function commitBatchMemoryOnly(
     prevHash,
   });
   const hash = hashFn(hashInput);
+  const seq = self.seqCounter++;
   const memory: KernelMemory = {
     path: pathStr,
     operator,
@@ -498,6 +556,7 @@ function commitBatchMemoryOnly(
     hash,
     prevHash,
     timestamp,
+    seq,
   };
   self._memories.push(memory);
   self.applyMemoryToIndex(memory);
@@ -545,6 +604,34 @@ function isEmptyPlainObject(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === "object" && !Array.isArray(value) && Object.keys(value).length === 0;
 }
 
+/**
+ * Selects the write format for a new protected blob (branch or value).
+ * - `secretBlobVersion === "v2"` is an explicit rollback/testing escape
+ *   hatch (`setSecretBlobVersionForTesting`) and always wins.
+ * - Otherwise: v4 whenever this kernel has an identity root unlocked this
+ *   session — Identity-Bound Secrets' "new protected writes use v4".
+ * - Otherwise: v3, exactly as before this feature existed. A kernel that
+ *   never opts into `createIdentityRoot()`/`unlockIdentity()` sees no
+ *   behavior change at all — v3 stays the default, untouched.
+ */
+function encryptForWrite(
+  self: MEKernelLike,
+  path: SemanticPath,
+  mode: "branch" | "value",
+  encryptable: any,
+  legacySecret: string,
+): any {
+  if (self.secretBlobVersion === "v2") {
+    return xorEncrypt(encryptable, legacySecret, path);
+  }
+  if (self.identityRootUnwrapped) {
+    const keys = getOrDeriveV4Keys(self, path, mode);
+    return encryptBlobV4WithDerivedKeys(encryptable, keys);
+  }
+  const keys = getOrDeriveV3Keys(self, path, mode);
+  return encryptBlobV3WithDerivedKeys(encryptable, keys);
+}
+
 function persistSecretBranch(
   self: MEKernelLike,
   scope: SemanticPath,
@@ -569,14 +656,9 @@ function persistSecretBranch(
 
   let keyDeriveMs = 0;
   const encryptStartedAt = nowMs();
-  const blob = self.secretBlobVersion === "v2"
-    ? xorEncrypt(encryptable, scopeSecret, scope)
-    : (() => {
-        const deriveStartedAt = nowMs();
-        const keys = getOrDeriveV3Keys(self, scope, "branch");
-        keyDeriveMs = nowMs() - deriveStartedAt;
-        return encryptBlobV3WithDerivedKeys(encryptable, keys);
-      })();
+  const deriveStartedAt = nowMs();
+  const blob = encryptForWrite(self, scope, "branch", encryptable, scopeSecret);
+  keyDeriveMs = self.secretBlobVersion === "v2" ? 0 : nowMs() - deriveStartedAt;
   const encryptMs = nowMs() - encryptStartedAt;
   const setBlobStartedAt = nowMs();
   setChunkBlob(self, scope, chunkId, blob, scopeSecret);
@@ -687,6 +769,63 @@ export function commitIndexedBatch(
   return [batchMemory];
 }
 
+/**
+ * Placeholder written into a memory record's `value` field in place of a
+ * branch-scoped write's plaintext. Matches the "***" convention `_()`/`~()`
+ * declarations already use (see `commitMapping`'s "secret" case and the
+ * noise-call handling in `postulate`) so redaction reads consistently
+ * across the memory log.
+ */
+export const MEMORY_LOG_SECRET_PLACEHOLDER = "***";
+
+/**
+ * True when `targetPath` falls under a scope that is durably known to be
+ * protected — i.e. a scope that was genuinely established with `_()` at
+ * some point — regardless of whether that scope's secret is active in the
+ * CURRENT session. Deliberately separate from `resolveBranchScope` (which
+ * only looks at `self.localSecrets`, i.e. session-current declarations):
+ * this check is what lets `commitValueMapping` refuse to treat a
+ * currently-locked protected path as an ordinary public write.
+ *
+ * Two independent sources of evidence, both consulted:
+ *
+ * 1. `self.protectedScopeKeys` — every scope key ever passed to `_()` in
+ *    this kernel's lifetime, INCLUDING the root scope (`""`). This is the
+ *    fix for a real bug found by the adversarial security audit: the
+ *    branchStore-only version below covers named branch scopes (whose
+ *    ciphertext durably lives in `branchStore`) but NOT root/value-mode
+ *    scopes declared via bare `me["_"](...)`, which never populate
+ *    `branchStore` at all — so after `lockIdentity()` (which used to wipe
+ *    `localSecrets` with no trace left), a write to a root-secret-protected
+ *    path fell all the way through to the plain public branch below,
+ *    silently persisting plaintext. `protectedScopeKeys` is topology only
+ *    (scope KEYS, never secret VALUES) and is deliberately NOT cleared by
+ *    `lockIdentity()` — see kernel-state.ts and identity-context.ts.
+ * 2. `self.branchStore.listScopes()` — kept as a second, independent check
+ *    for defense in depth, and for backward compatibility with a snapshot
+ *    hydrated from before this fix existed (whose `protectedScopeKeys` may
+ *    be absent/empty even though real branch ciphertext already exists —
+ *    `core-snapshot.ts`'s `hydrate()` also backfills `protectedScopeKeys`
+ *    from the hydrated `localSecrets`'/`localNoises`' keys for the same
+ *    reason, but this loop covers the case even if that backfill were ever
+ *    skipped).
+ *
+ * See `tests/Security/scopes-and-noise.test.ts` and
+ * `tests/Security/root-scope-lock.test.ts` for the regression tests.
+ */
+function hasExistingProtectedAncestor(self: MEKernelLike, targetPath: SemanticPath): boolean {
+  for (const scopeKey of self.protectedScopeKeys) {
+    const scopeSegments = scopeKey.split(".").filter(Boolean);
+    if (pathStartsWith(targetPath, scopeSegments)) return true;
+  }
+  for (const scopeKey of self.branchStore.listScopes()) {
+    const scopeSegments = scopeKey.split(".").filter(Boolean);
+    if (scopeSegments.length === 0) continue;
+    if (pathStartsWith(targetPath, scopeSegments)) return true;
+  }
+  return false;
+}
+
 export function commitValueMapping(
   self: MEKernelLike,
   targetPath: SemanticPath,
@@ -694,6 +833,12 @@ export function commitValueMapping(
   operator: string | null = null,
 ): KernelMemory {
   let storedValue: any = expression;
+  // The value actually written into the memory log's `expression` field.
+  // Defaults to the real `expression` (public paths keep full fidelity);
+  // redacted below for any write whose `value` is also redacted/encrypted,
+  // so the two fields are always redacted together — never `value` alone.
+  // See typedocs/Identity-Bound-Secrets.md §3.5/§9.1.
+  let loggedExpression: any = expression;
   const pathStr = targetPath.join(".");
   const effectiveSecret = computeEffectiveSecret(self, targetPath);
   const scope = resolveBranchScope(self, targetPath);
@@ -723,21 +868,83 @@ export function commitValueMapping(
     if (scopeSecret) {
       persistSecretBranch(self, scope, scopeSecret, chunkId, branchObj);
     }
-    storedValue = expression;
+    // The real value is already correctly encrypted into branchStore above.
+    // Historically `storedValue` (the memory log's `value` field) was the
+    // plaintext `expression` — see typedocs/Identity-Bound-Secrets.md's
+    // "No basta con cambiar toPublicMemory" finding. That was fixed first;
+    // `expression` itself carried the same plaintext under a different
+    // field name until now (§9.1's "KNOWN GAP"). Neither field is read back
+    // for a branch-scoped write: `applyMemoryToIndex` skips `inSecret`
+    // paths entirely, and `replayMemories`'s generic case now recognizes a
+    // branch-protected target and re-appends the (redacted) log entry
+    // verbatim instead of trying to re-derive branch content from it — real
+    // content is restored separately via `encryptedBranches`, the same
+    // plane `hydrate()` already uses (see §9.1's resolution).
+    storedValue = MEMORY_LOG_SECRET_PLACEHOLDER;
+    loggedExpression = MEMORY_LOG_SECRET_PLACEHOLDER;
   } else if (effectiveSecret) {
     const shouldEncryptValue = operator !== "=" && operator !== "?";
     if (isPointer(expression) || isIdentityRef(expression) || !shouldEncryptValue) {
       storedValue = expression;
     } else {
-      storedValue = self.secretBlobVersion === "v2"
-        ? xorEncrypt(expression, effectiveSecret, targetPath)
-        : encryptBlobV3WithDerivedKeys(expression, getOrDeriveV3Keys(self, targetPath, "value"));
+      storedValue = encryptForWrite(self, targetPath, "value", expression, effectiveSecret);
+      // `storedValue` is now real, reusable ciphertext (not a placeholder) —
+      // `replayMemories`/`learn()` reuse it directly on replay instead of
+      // re-deriving from `expression`, so redacting `expression` here loses
+      // no reconstructive power. See §9.1's resolution.
+      loggedExpression = MEMORY_LOG_SECRET_PLACEHOLDER;
     }
+  } else if (hasExistingProtectedAncestor(self, targetPath)) {
+    // FIX (adversarial security battery, §2 "scopes, herencia y noise"):
+    // targetPath is within a scope that has real persisted branch
+    // ciphertext, but no secret for that scope is active THIS session
+    // (e.g. right after lockIdentity(), or a fresh/restarted process that
+    // never re-declared `_()` for it yet). Before this fix, execution fell
+    // through to the plain `storedValue = expression` branch below —
+    // silently writing the caller's plaintext into the public memory log
+    // AND the public index, for a path that is nominally protected
+    // forever. That is a real confidentiality leak (anyone with ordinary
+    // public read access to the path would see it in the clear) and a
+    // "closed scope became public for lack of a secret" violation. Refused
+    // the same way a declared-but-wrong-secret branch write already is:
+    // no plaintext persisted, no existing ciphertext touched, redacted
+    // memory-log placeholder for audit continuity.
+    //
+    // The index needs care, not a blanket delete: for a VALUE-mode/
+    // root-scope path (unlike a branch-mode one, whose real ciphertext
+    // lives entirely in `branchStore` and never touches `self.index` at
+    // all — `applyMemoryToIndex` skips those), `self.index[pathStr]` IS
+    // the actual storage location read back on every future decrypt. A
+    // refused write's own `commitMemoryOnly` call still runs
+    // `applyMemoryToIndex` on the redacted "***" record (this refusal path
+    // isn't recognized as "in secret" by that function, precisely because
+    // no session secret is active to recognize it by), which would
+    // otherwise leave the literal string "***" sitting in the index as if
+    // it were real content. So: capture whatever was there before, let the
+    // redacted entry go through, then either restore the PRE-EXISTING real
+    // ciphertext untouched (a previously-written protected value must
+    // remain exactly as it was, recoverable once unlocked) or, if nothing
+    // was there yet (a never-before-written leaf under a locked scope —
+    // the "empty scope" case), remove the "***" the indexing just wrote so
+    // the path reads back as ordinary stealth-safe absence, not as a
+    // literal, distinguishable placeholder (would itself weaken the
+    // closed/absent indistinguishability §3.4 relies on).
+    const hadPriorIndexValue = Object.prototype.hasOwnProperty.call(self.index, pathStr);
+    const priorIndexValue = self.index[pathStr];
+    storedValue = MEMORY_LOG_SECRET_PLACEHOLDER;
+    loggedExpression = MEMORY_LOG_SECRET_PLACEHOLDER;
+    const refusedMemory = commitMemoryOnly(self, targetPath, operator, loggedExpression, storedValue);
+    if (hadPriorIndexValue) {
+      self.index[pathStr] = priorIndexValue;
+    } else {
+      delete self.index[pathStr];
+    }
+    return refusedMemory;
   } else {
     storedValue = expression;
   }
 
-  return commitMemoryOnly(self, targetPath, operator, expression, storedValue);
+  return commitMemoryOnly(self, targetPath, operator, loggedExpression, storedValue);
 }
 
 export function commitMapping(
@@ -972,6 +1179,7 @@ export function removeSubtree(self: MEKernelLike, targetPath: SemanticPath) {
     prevHash,
   });
   const hash = hashFn(hashInput);
+  const seq = self.seqCounter++;
   const memory: KernelMemory = {
     path: pathStr,
     operator: "-",
@@ -981,6 +1189,7 @@ export function removeSubtree(self: MEKernelLike, targetPath: SemanticPath) {
     hash,
     prevHash,
     timestamp,
+    seq,
   };
   self._memories.push(memory);
   self.applyMemoryToIndex(memory);

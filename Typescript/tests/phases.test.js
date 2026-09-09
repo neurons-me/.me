@@ -167,7 +167,12 @@ runPhase(
   [
     "Memory log can be exported from the current runtime",
     "A new empty instance can replay that memory",
-    "Replay reconstructs equivalent semantic results",
+    "Replay reconstructs equivalent public/derived semantic results",
+    "Deliberate contract (Identity-Bound Secrets §9.1): memory.expression no longer",
+    "carries plaintext for a branch-scoped write, so replaying the memory log ALONE",
+    "can no longer reconstruct branch-secret content — real content lives in",
+    "encryptedBranches, the same separate plane rehydrate()/hydrate() already use;",
+    "restoring it and then resupplying the secret still recovers the exact value",
   ],
   () => {
     const exportedMemory = me.inspect().memories;
@@ -179,16 +184,32 @@ runPhase(
     assert.equal(replayedCost, originalCost, "Replay failed to recover derived state");
 
     assert.equal(me2("finance"), undefined, "Replay should preserve stealth secret root");
-    assert.equal(me2("finance.fuel_price"), 24.5, "Replay lost secret leaf value");
+    // Identity-Bound Secrets §9.1: memory.expression is redacted for a
+    // branch-scoped write, so the memory log alone no longer carries
+    // reconstructable branch content — this is the new, correct, secure
+    // contract (see core-write.ts's `applyGenericReplayWrite`).
+    assert.equal(me2("finance.fuel_price"), undefined, "Replay alone must not reconstruct branch-secret content from expression");
+
+    // Full reconstruction is still possible via the same two-plane transport
+    // hydrate()/exportSnapshot() already use: memories (public/audit log) +
+    // encryptedBranches (real ciphertext). Copying it over and resupplying
+    // the secret (Option B — no silent recovery) recovers the exact value.
+    me2.encryptedBranches = me.encryptedBranches;
+    assert.equal(me2("finance.fuel_price"), undefined, "Restoring encryptedBranches alone must not silently decrypt (Option B)");
+    me2.finance["_"]("my-secret-key-2026");
+    assert.equal(me2("finance.fuel_price"), 24.5, "Resupplying the secret after encryptedBranches restore must recover the exact original value");
   }
 );
 
 runPhase(
   "Phase 7B - Atomic Snapshot Rehydration",
   [
-    "Snapshot exports full kernel state (memory + secrets + noises + encrypted branches)",
+    "Snapshot exports full kernel state (memory + encrypted branches + protected-scope topology)",
     "A fresh runtime can import snapshot atomically",
-    "Imported runtime preserves exact encrypted structures and semantic outputs",
+    "Public/derived output is preserved exactly",
+    "Deliberate contract (Identity-Bound Secrets, Option B): exportSnapshot() never carries",
+    "real _()/~()  values — only a redacted topology placeholder — so a closed scope stays",
+    "closed after rehydrate() until its secret is resupplied in-session, not silently restored",
   ],
   () => {
     const snapshot = me.exportSnapshot();
@@ -197,12 +218,23 @@ runPhase(
 
     assert.deepEqual(me3.inspect().memories, me.inspect().memories, "Memory log mismatch after snapshot import");
     assert.deepEqual(me3("fleet.trucks[2].total_cost"), me("fleet.trucks[2].total_cost"), "Snapshot lost derived value");
-    assert.deepEqual(me3("finance.fuel_price"), me("finance.fuel_price"), "Snapshot lost secret leaf value");
 
-    // Internal encrypted planes should be identical for atomic portability.
+    // Internal encrypted planes should be identical for atomic portability —
+    // branch ciphertext survives the round trip untouched.
     assert.deepEqual(me3.encryptedBranches, me.encryptedBranches, "Encrypted branches mismatch after import");
-    assert.deepEqual(me3.localSecrets, me.localSecrets, "Local secret scopes mismatch after import");
-    assert.deepEqual(me3.localNoises, me.localNoises, "Local noise scopes mismatch after import");
+
+    // Option B: the real "_()" secret never travels through exportSnapshot(); only a
+    // "***" topology placeholder does. So the scope stays reported as closed (not
+    // reclassified as public, and not silently readable) until the real secret is
+    // resupplied in this new session.
+    assert.equal(snapshot.localSecrets.finance, "***", "exportSnapshot() must redact real secret values");
+    assert.equal(me3("finance.fuel_price"), undefined, "Closed scope must not silently decrypt after hydrate");
+    assert.equal(me3("finance"), undefined, "Closed scope must stay stealth (not reclassified public) after hydrate");
+
+    // Supplying the correct secret in the new session recovers the data — this is the
+    // explicit, non-silent recovery path Option B requires.
+    me3.finance["_"]("my-secret-key-2026");
+    assert.deepEqual(me3("finance.fuel_price"), me("finance.fuel_price"), "Resupplying the secret must recover the value");
   }
 );
 

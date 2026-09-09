@@ -1,5 +1,6 @@
 import {
   decryptBlobV3WithDerivedKeys,
+  decryptBlobV4WithDerivedKeys,
   detectBlobVersion,
   isEncryptedBlob,
   xorDecrypt,
@@ -36,7 +37,7 @@ import {
   isPointer,
   pathStartsWith,
 } from "./operators.ts";
-import { getOrDeriveV3Keys } from "./secret-context.ts";
+import { getOrDeriveV3Keys, getOrDeriveV4Keys } from "./secret-context.ts";
 import {
   computeEffectiveSecret,
   getChunkId,
@@ -345,6 +346,21 @@ export function readPath(self: MEKernelLike, rawPath: SemanticPath): any {
   if (isIdentityRef(raw)) return raw;
   if (!isEncryptedBlob(raw)) return raw;
   const blobVersion = detectBlobVersion(raw);
+  if (blobVersion === "v4") {
+    // Never fall back to v3/legacy after a v4 auth failure — a locked
+    // identity or a bad/tampered blob both resolve to the same
+    // stealth-safe `null`, exactly like the v3 branch below.
+    try {
+      const cached = getCachedValueDecrypt(self, path, raw);
+      if (cached !== undefined) return cached;
+      const keys = getOrDeriveV4Keys(self, path, "value");
+      const value = decryptBlobV4WithDerivedKeys(raw, keys);
+      if (value === null || value === undefined) return value;
+      return setCachedValueDecrypt(self, path, raw, value);
+    } catch {
+      return null;
+    }
+  }
   if (blobVersion === "v3") {
     try {
       const cached = getCachedValueDecrypt(self, path, raw);

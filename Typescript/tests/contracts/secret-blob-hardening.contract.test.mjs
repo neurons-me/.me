@@ -136,8 +136,21 @@ test("replay from public memories preserves secret semantics", () => {
 
   assert.equal(restored("profile.name"), "Mixed");
   assert.equal(restored("wallet"), undefined);
-  assert.equal(restored("wallet.balance"), 100);
+  // Identity-Bound Secrets §9.1: memory.expression is redacted for a
+  // branch-scoped write, so the public memory log ALONE no longer
+  // reconstructs branch-secret content — the new, correct, secure contract
+  // (core-write.ts's `applyGenericReplayWrite`). Full recovery still works
+  // via the same two-plane transport hydrate()/exportSnapshot() already
+  // use: memories (public/audit log) + encryptedBranches (real ciphertext),
+  // followed by resupplying the secret (Option B — no silent recovery).
+  assert.equal(restored("wallet.balance"), undefined);
   assert.deepEqual(restored("profile.primary"), { __ptr: "wallet" });
+  assert.equal(restored("profile.primary.balance"), undefined);
+
+  restored.encryptedBranches = clone(source.encryptedBranches);
+  assert.equal(restored("wallet.balance"), undefined, "restoring encryptedBranches alone must not silently decrypt");
+  restored.wallet["_"]("steel-door");
+  assert.equal(restored("wallet.balance"), 100);
   assert.equal(restored("profile.primary.balance"), 100);
 });
 

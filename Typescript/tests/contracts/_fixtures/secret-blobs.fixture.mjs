@@ -92,9 +92,24 @@ export function makeBranchSecretRuntime() {
   return me;
 }
 
+// Identity-Bound Secrets, Option B (see typedocs/Identity-Bound-Secrets.md):
+// `me.exportSnapshot()` now redacts localSecrets/localNoises to a "***"
+// topology placeholder — it never carries the real `_()`/`~()` value. These
+// fixtures simulate "the caller already knows this snapshot's secret" (the
+// normal hydrate() contract still honors an explicitly-supplied real value —
+// see core-snapshot.ts), which is why each one overlays the REAL values from
+// the live runtime's `localSecrets`/`localNoises` back onto the exported
+// snapshot, rather than relying on exportSnapshot() to carry them.
+function withRealSecretsOverlay(me, snapshot) {
+  const next = clone(snapshot);
+  next.localSecrets = clone(me.localSecrets);
+  next.localNoises = clone(me.localNoises);
+  return next;
+}
+
 export function makeBranchSecretSnapshot() {
   const me = makeBranchSecretRuntime();
-  return { me, snapshot: clone(me.exportSnapshot()) };
+  return { me, snapshot: withRealSecretsOverlay(me, me.exportSnapshot()) };
 }
 
 export function makeMixedSecretSnapshot() {
@@ -105,7 +120,7 @@ export function makeMixedSecretSnapshot() {
   me.wallet.balance(100);
   me.wallet.note("private-savings");
   me.profile.primary["->"]("wallet");
-  return { me, snapshot: clone(me.exportSnapshot()) };
+  return { me, snapshot: withRealSecretsOverlay(me, me.exportSnapshot()) };
 }
 
 export function makeNoisySecretSnapshot() {
@@ -115,7 +130,7 @@ export function makeNoisySecretSnapshot() {
   me.wallet["~"]("noise-A");
   me.wallet.hidden["_"]("beta");
   me.wallet.hidden.seed("beta-seed");
-  return { me, snapshot: clone(me.exportSnapshot()) };
+  return { me, snapshot: withRealSecretsOverlay(me, me.exportSnapshot()) };
 }
 
 export function makeValueLevelSecretSnapshot() {
@@ -123,7 +138,7 @@ export function makeValueLevelSecretSnapshot() {
   me["_"]("root-secret");
   me.profile.name("RootPrivate");
   me.profile.mode("locked");
-  return { me, snapshot: clone(me.exportSnapshot()) };
+  return { me, snapshot: withRealSecretsOverlay(me, me.exportSnapshot()) };
 }
 
 export function makeLegacySecretSnapshot() {

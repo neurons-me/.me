@@ -12,6 +12,7 @@ type Memory = {
   hash: string;
   prevHash?: string;
   timestamp: number;
+  seq?: number;
 };
 
 type AxiomCase = {
@@ -533,24 +534,38 @@ const axioms: AxiomCase[] = [
   },
   {
     id: "A9",
-    title: "Deterministic LWW (timestamp, then hash)",
-    challenge: "If two writers collide on the same path, can every node converge to one deterministic truth?",
-    resolution: "Index rebuild is ordered by (timestamp asc, hash asc); winner is last write in that deterministic order.",
+    title: "Deterministic LWW (logical seq, then hash; physical timestamp is for display only)",
+    challenge: "If two writers collide on the same path, can every node converge to one deterministic truth — without a sequential write on ONE node ever losing to an earlier one just because they landed in the same millisecond?",
+    resolution:
+      "Every memory carries a monotonic per-instance logical clock (`seq`, a Lamport-style scalar counter) in addition to its physical `timestamp`. Index rebuild — and every live write, via the same shared comparator — is ordered by (seq asc, hash asc) whenever both sides being compared have a real seq; `timestamp` is kept on the record for display but is never consulted for ordering in that case. A write's seq is assigned once, at write time, and never revised — so two writes issued moments apart on the SAME process always resolve in that real order, immune to the physical clock (including it moving backward), and the hash tiebreak is reserved for what A9 actually describes: genuinely concurrent writers, not a single process's own sequential history. Entries persisted before `seq` existed (neither side has one) still resolve via the ORIGINAL (timestamp asc, hash asc) rule, unchanged, for full backward compatibility.",
     checks: [
-      "Higher timestamp wins for same path",
-      "When timestamps tie, higher hash wins",
-      "Read-path and index converge to same winner",
+      "A later write on a distinct timestamp wins",
+      "Two SEQUENTIAL writes sharing the same physical timestamp still resolve in real (seq) order — the second one wins, not whichever has the higher hash",
+      "Read-path and index converge to the same winner",
     ],
     run(me) {
       const originalNow = Date.now;
       try {
-        // Case 1: higher timestamp wins.
+        // Case 1: distinct timestamps, later one wins.
         (Date as any).now = () => 1000;
         me.wallet.balance(10);
         (Date as any).now = () => 2000;
         me.wallet.balance(20);
 
-        // Case 2: tie timestamp, hash tiebreak.
+        // Case 2: SAME frozen timestamp, genuinely sequential writes — the
+        // second call must win via its higher `seq`. This is a REVISION of
+        // A9's ordering mechanism, not a bugfix to a wrong rule: the
+        // original `(timestamp, hash)` order still holds for records that
+        // predate `seq` (see compareLWW's legacy branch, core-index.ts),
+        // and the axiom's INTENT — the same set of operations converges to
+        // the same result regardless of arrival order — is unchanged. What
+        // changed is the mechanism: `(timestamp, hash)` had a real
+        // limitation against sequential same-process writes (it couldn't
+        // tell "happened after" from "happened to hash higher"), which a
+        // monotonic logical clock resolves without giving up convergence —
+        // see typedocs/Identity-Bound-Secrets.md §12 and
+        // tests/Security/lww-index-consistency.test.ts for the full
+        // incident this revision responds to.
         (Date as any).now = () => 3000;
         me.wallet.balance(111);
         me.wallet.balance(222);
@@ -563,23 +578,27 @@ const axioms: AxiomCase[] = [
 
       const stm = getSTM(me).filter((t) => t.path === "wallet.balance" && t.operator === null);
       assert.ok(stm.length >= 4, "expected at least four wallet.balance memories");
-      const lastTwoTie = stm.slice(-2);
-      assert.equal(lastTwoTie[0].timestamp, lastTwoTie[1].timestamp, "expected tie timestamp case");
+      const lastTwoSequential = stm.slice(-2);
+      assert.equal(lastTwoSequential[0].timestamp, lastTwoSequential[1].timestamp, "expected same-timestamp sequential case");
+      assert.ok((lastTwoSequential[1].seq ?? -1) > (lastTwoSequential[0].seq ?? -1), "expected the second call to carry the higher logical seq");
 
-      const expectedTieWinner = lastTwoTie[0].hash > lastTwoTie[1].hash ? lastTwoTie[0] : lastTwoTie[1];
-      assert.deepEqual(me("wallet.balance"), expectedTieWinner.value);
-      assert.deepEqual(((me as any).index || {})["wallet.balance"], expectedTieWinner.value);
+      // The winner must be the SECOND write (222), by construction of the
+      // logical clock — not "whichever has the higher hash" (the previous
+      // mechanism for this same-timestamp case, revised here — see the
+      // comment above).
+      assert.deepEqual(me("wallet.balance"), lastTwoSequential[1].value);
+      assert.deepEqual(((me as any).index || {})["wallet.balance"], lastTwoSequential[1].value);
     },
     proofs(me) {
       const stm = getSTM(me).filter((t) => t.path === "wallet.balance" && t.operator === null);
       const firstTwo = stm.slice(0, 2);
-      const tieTwo = stm.slice(-2);
+      const sequentialTwo = stm.slice(-2);
       const tsWinnerValue = firstTwo[0].timestamp > firstTwo[1].timestamp ? firstTwo[0].value : firstTwo[1].value;
-      const tieWinner = tieTwo[0].hash > tieTwo[1].hash ? tieTwo[0] : tieTwo[1];
+      const sequentialWinner = sequentialTwo[1]; // the causally-second write, by seq — see run()
       return [
         { label: "timestamp winner value", expected: 20, actual: tsWinnerValue },
-        { label: "tie winner by hash equals read", expected: tieWinner.value, actual: me("wallet.balance") },
-        { label: "index equals read winner", expected: tieWinner.value, actual: ((me as any).index || {})["wallet.balance"] },
+        { label: "sequential (same-timestamp) winner is the SECOND write, by seq — equals read", expected: sequentialWinner.value, actual: me("wallet.balance") },
+        { label: "index equals read winner", expected: sequentialWinner.value, actual: ((me as any).index || {})["wallet.balance"] },
       ];
     },
   },
