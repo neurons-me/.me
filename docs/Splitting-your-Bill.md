@@ -1,6 +1,8 @@
 ---
 layout: readme
 title: Splitting your Bill
+description: "Shared expenses settle themselves — every balance updates the moment a payment lands. A live .me demo: three friends, one trip wallet, no spreadsheet."
+image: "https://neurons-me.github.io/neurons-me/media/split_bill_wallet.gif"
 ---
 
 
