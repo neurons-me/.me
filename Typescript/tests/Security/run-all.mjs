@@ -28,6 +28,7 @@ const sections = [
   "replay-restart.test.ts",
   "migration.test.ts",
   "generative.test.ts",
+  "seed-persistence.test.ts",
 ];
 
 let anyFailed = false;

@@ -191,6 +191,18 @@ export interface MEVectorSearchResult {
 
 export interface MEOptions {
   store?: InstanceStore;
+  /**
+   * Root namespace to bind at construction time (e.g. "local.cleaker") --
+   * requires the compound (who, secret, options) constructor form, since
+   * binding needs an active expression ("who") to compose with. Written
+   * via the same profile.rootNamespace/profile.namespace path convention
+   * every other caller of this data already uses -- just another stored
+   * value, not a distinct capability. Replaces the old bindNamespace()
+   * method: that was a whole extra public verb on an otherwise abstract
+   * kernel for something that's really just configuration data at
+   * construction time.
+   */
+  namespace?: string;
 }
 
 // -----------------------------
@@ -820,7 +832,7 @@ export interface MEKernelLike extends Record<string, any> {
   installRecipientKey(recipientKeyId: string, privateKey: CryptoKey): this;
   uninstallRecipientKey(recipientKeyId: string): this;
   storeWrappedKey(keyId: string, envelope: WrappedSecretV1, options?: { recipientKeyId?: string }): this;
-  execute(rawTarget: string | MeTargetAst, body?: any): any;
+  execute(rawTarget: string | MeTargetAst, body?: any, operator?: string | null): any;
   exportSnapshot(): MESnapshot;
   hydrate(snapshot: MESnapshotInput): void;
   importSnapshot(snapshot: MESnapshotInput): void;

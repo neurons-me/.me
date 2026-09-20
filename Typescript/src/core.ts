@@ -205,12 +205,17 @@ export function inspect(self: MEKernelLike, opts?: { last?: number }): MEInspect
   };
 }
 
-export function execute(self: MEKernelLike, rawTarget: string | MeTargetAst, body?: any): any {
+export function execute(
+  self: MEKernelLike,
+  rawTarget: string | MeTargetAst,
+  body?: any,
+  operator?: string | null,
+): any {
   const target = normalizeExecutableTarget(self, rawTarget);
 
   switch (target.namespace) {
     case "self":
-      return handleSelfTarget(self, target.operation, target.path, body);
+      return handleSelfTarget(self, target.operation, target.path, body, operator);
     case "kernel":
       return handleKernelTarget(self, target.operation, target.path, body);
     default:
@@ -225,6 +230,7 @@ export function handleSelfTarget(
   operation: string,
   rawPath: string,
   body?: any,
+  operator?: string | null,
 ): any {
   const keyPath = parseKeySpacePath(rawPath);
   if (keyPath.isKeySpace) {
@@ -239,7 +245,15 @@ export function handleSelfTarget(
     case "write":
       if (!path.key) throw new Error("self:write requires a semantic path.");
       if (body === undefined) throw new Error("self:write requires a body payload.");
-      return self.postulate(path.parts, body);
+      // operator defaults to null (a plain set) — callers outside this
+      // package (monad.ai's kernelWrite(), specifically) can pass "-" here
+      // to record a real tombstone instead of a value. Before this fix,
+      // execute()/handleSelfTarget() had no channel for it at all, so
+      // every self:write silently became operator:null regardless of
+      // what the caller asked for — see gatewaySetupSession.ts's own
+      // incident notes for why this matters: a "delete" that's actually
+      // an unconditional set is not a delete.
+      return self.postulate(path.parts, body, operator ?? null);
     case "inspect":
       return inspectAtPath(self, path.key);
     case "explain":

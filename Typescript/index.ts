@@ -17,6 +17,7 @@
 import { ME } from "./src/me.ts";
 import {
   deriveBranchProofSeed,
+  deriveHkdfBytes,
   exportEd25519PublicKey,
   importEd25519SigningKey,
   normalizeProofMessage,
@@ -24,6 +25,13 @@ import {
   verifyEd25519Signature,
 } from "./src/crypto.ts";
 import { DiskStore, MemoryStore } from "./src/instance-store.ts";
+import {
+  changeIdentityRootPassword,
+  generateIdentityRoot,
+  unwrapIdentityRoot,
+  wrapIdentityRoot,
+} from "./src/identity-root.ts";
+import type { IdentityRootEnvelope } from "./src/identity-root.ts";
 import { createMe, write, define, subscribe } from "./src/kernel/cascade.ts";
 import { createThisMe } from "./src/factory.ts";
 import {
@@ -69,6 +77,11 @@ export type ThisMeFactory = typeof ME & {
   subscribe: typeof subscribe;
   normalizeProofMessage: typeof normalizeProofMessage;
   verifyEd25519Signature: typeof verifyEd25519Signature;
+  deriveHkdfBytes: typeof deriveHkdfBytes;
+  generateIdentityRoot: typeof generateIdentityRoot;
+  wrapIdentityRoot: typeof wrapIdentityRoot;
+  unwrapIdentityRoot: typeof unwrapIdentityRoot;
+  changeIdentityRootPassword: typeof changeIdentityRootPassword;
 };
 
 const MERuntime: ThisMeFactory = ThisMe as unknown as ThisMeFactory;
@@ -92,6 +105,11 @@ MERuntime.define = define;
 MERuntime.subscribe = subscribe;
 MERuntime.normalizeProofMessage = normalizeProofMessage;
 MERuntime.verifyEd25519Signature = verifyEd25519Signature;
+MERuntime.deriveHkdfBytes = deriveHkdfBytes;
+MERuntime.generateIdentityRoot = generateIdentityRoot;
+MERuntime.wrapIdentityRoot = wrapIdentityRoot;
+MERuntime.unwrapIdentityRoot = unwrapIdentityRoot;
+MERuntime.changeIdentityRootPassword = changeIdentityRootPassword;
 
 export default MERuntime;
 export {
@@ -112,7 +130,13 @@ export {
   signEd25519Proof,
   tryParseMeUri,
   verifyEd25519Signature,
+  deriveHkdfBytes,
+  generateIdentityRoot,
+  wrapIdentityRoot,
+  unwrapIdentityRoot,
+  changeIdentityRootPassword,
 };
+export type { IdentityRootEnvelope } from "./src/identity-root.ts";
 export type {
   EncryptedBranchPlane,
   EncryptedScopeEntry,

@@ -187,7 +187,31 @@ function persistSeed(seed: string): void {
 
 function resolveSeed(seed: unknown): string {
   const normalized = normalizeSeedInput(seed);
-  const resolved = normalized ?? readStoredSeed() ?? generateSeed();
+  // An explicit seed — either the raw 1-arg `new ME(seed)` form, or the
+  // compound seed `new ME(who, secret)` derives before ever reaching here
+  // (see the constructor: `resolveSeed(deriveCompoundSeed(...))`) — IS the
+  // caller's private identity root. It must never be written to
+  // `DEFAULT_SEED_STORAGE_KEY`: that key is a single, unnamespaced,
+  // plaintext localStorage slot meant only to give an ANONYMOUS `new ME()`
+  // (no seed, no compound secret) a stable identity across page reloads —
+  // every explicit-seed construction used to fall through the same
+  // `persistSeed()` call and silently overwrite it with real key material
+  // in plaintext, readable by any script with localStorage access on that
+  // origin. Returning immediately here also leaves `runtimeDefaultSeed`
+  // (the in-memory cache backing the anonymous path) untouched, so an
+  // explicit identity can never leak into becoming a later anonymous
+  // `new ME()`'s fallback seed either.
+  if (normalized !== undefined) return normalized;
+
+  // Anonymous fallback only: no seed and no compound secret were given, so
+  // this instance's identity IS whatever was previously cached for this
+  // origin (or a freshly generated one) — persisting it here is the whole
+  // point, and is unchanged from before this fix. `readStoredSeed()` keeps
+  // reading the SAME `DEFAULT_SEED_STORAGE_KEY` a pre-fix runtime already
+  // wrote to, so an anonymous kernel created before this fix still resolves
+  // to its same seed after upgrading — no migration step needed for that
+  // case, only explicit-seed callers stop being persisted going forward.
+  const resolved = readStoredSeed() ?? generateSeed();
   persistSeed(resolved);
   return resolved;
 }
@@ -408,6 +432,21 @@ export class ME {
         this.rebuildIndex();
       },
     });
+    // Namespace binding, at construction time, as plain configuration
+    // data -- not a separate public method (see MEOptions.namespace's own
+    // doc comment for why this replaced bindNamespace()). Same guards
+    // that method used to enforce: a namespace without a "who" makes no
+    // sense to bind, so this requires the compound-secret form (which
+    // already set #activeExpression above) -- the 1-arg raw-seed form has
+    // no expression to compose with at this point.
+    if (runtimeOptions.namespace) {
+      const expression = String(this.#activeExpression || "").trim();
+      if (!expression) throw new Error("ACTIVE_EXPRESSION_REQUIRED");
+      const rootNamespace = normalizeRootNamespace(runtimeOptions.namespace);
+      if (!rootNamespace) throw new Error("ROOT_NAMESPACE_REQUIRED");
+      rootProxy.profile.rootNamespace(rootNamespace);
+      rootProxy.profile.namespace(`${expression}.${rootNamespace}`);
+    }
     return rootProxy as unknown as ME;
   }
 
@@ -431,8 +470,8 @@ export class ME {
    * Execute a raw target string or parsed target AST without going through proxy property access.
    * Useful for tooling, explicit runtime dispatch, and tests.
    */
-  execute(rawTarget: string | MeTargetAst, body?: any): any {
-    return Core.execute(this as unknown as MEKernelLike, rawTarget, body);
+  execute(rawTarget: string | MeTargetAst, body?: any, operator?: string | null): any {
+    return Core.execute(this as unknown as MEKernelLike, rawTarget, body, operator);
   }
 
   /**
@@ -648,63 +687,6 @@ export class ME {
       signature,
       timestamp,
     };
-  }
-
-  /**
-   * Bind this kernel's active expression to a root namespace — the same
-   * `<handle>.<root>` composition prove() already derives internally, made
-   * explicit and reusable ahead of a claim/open call (e.g.
-   * `Me(username, secret).bindNamespace('local.cleaker')`). Requires an
-   * active expression (same guard prove() uses) — a namespace without a
-   * "who" makes no sense to bind. Writes via the same profile.rootNamespace/
-   * profile.namespace convention createThisMe()'s configureIdentity()
-   * already uses (factory.ts) — not a new storage shape, just exposing it
-   * as its own chainable step instead of only as a side effect of the
-   * combined name+namespace factory path.
-   *
-   * Named `bindNamespace`, not `namespace`: the proxy's get trap (proxy.ts)
-   * dispatches a real method whenever `prop in self` is true, for ANY
-   * property access anywhere in the path tree — not just top-level calls.
-   * A method literally named `namespace` would shadow the *existing*
-   * `profile.namespace` data path this very method writes to, since that
-   * check has no notion of path depth — confirmed live: it recurses
-   * infinitely (`profile.namespace(...)` calls back into this method,
-   * which calls `profile.namespace(...)` again). `bindNamespace` doesn't
-   * collide with any existing path segment.
-   *
-   * This is a context binding, not an identity: it says which root this
-   * kernel is CURRENTLY addressing (e.g. "I'm operating against
-   * local.cleaker right now"), not who the kernel IS. The real identity is
-   * the seed/identityHash — stable across every root a given seed ever
-   * binds to. Calling this again with a different root re-points the same
-   * identity at a different context; it does not create or change who the
-   * caller is. Keep that distinction in mind at call sites: reach for
-   * `identityHash` (or the seed itself) when "who is this," and
-   * `bindNamespace`/`profile.rootNamespace` only when "which root is this
-   * session scoped to."
-   */
-  bindNamespace(root: string): this {
-    const expression = String(this.#activeExpression || "").trim();
-    if (!expression) throw new Error("ACTIVE_EXPRESSION_REQUIRED");
-
-    const rootNamespace = normalizeRootNamespace(root);
-    if (!rootNamespace) throw new Error("ROOT_NAMESPACE_REQUIRED");
-
-    // A class method's own `this` is the raw kernel instance, not the
-    // path-DSL-capable Proxy wrapping it (proxy.ts's get trap dispatches
-    // real methods via `existing.apply(self, args)`, unwrapped) — so
-    // `this.profile` has none of the magic property-path behavior. Same
-    // fix as(scope) already uses: mint a fresh proxy over `this` and write
-    // through that instead.
-    const proxy = this.createProxy([]);
-    proxy.profile.rootNamespace(rootNamespace);
-    proxy.profile.namespace(`${expression}.${rootNamespace}`);
-
-    // Return the fresh proxy, not the raw `this` — same reasoning as
-    // as(scope)'s own return: a caller chaining further calls off the
-    // result needs the path-DSL-capable wrapper, not the unwrapped
-    // instance a bare `this` would give them here.
-    return proxy as unknown as this;
   }
 
   /**
