@@ -15,8 +15,20 @@
   page's own title/nav and this hero already establish both, so hide that
   too rather than showing it a second time right below the hero.
 -->
-<style>.static-hero, .readme-intro { display: none; }</style>
-<table border="0" cellspacing="0" cellpadding="0" style="border:none;">
+<style>
+  .static-hero, .readme-intro { display: none; }
+  .me-hero-wrap { position: relative; }
+  .me-hero-table { width: 100%; max-width: 560px; }
+  .me-hero-right { min-width: 300px; }
+  .me-hero-tag {
+    position: absolute; top: 6px; right: 10px;
+    font-family: monospace; font-size: 0.62rem; text-transform: uppercase;
+    letter-spacing: 0.08em; color: #6b7280; opacity: 0.8; white-space: nowrap;
+  }
+</style>
+<div class="me-hero-wrap">
+<div class="me-hero-tag">A Cryptographic Identity.</div>
+<table class="me-hero-table" border="0" cellspacing="0" cellpadding="0" style="border:none;">
   <tr>
     <td width="260" align="center" valign="middle">
       <picture>
@@ -27,7 +39,7 @@
       <a href="https://neurons-me.github.io/.me/docs/Seed.html" target="blank" title="identityHash = keccak256(&quot;this.me/identity:v1::&quot; + seed) — read the SEED doc" style="display:block; margin-top:2px; font-family:monospace; font-size:0.6rem; color:#58a6ff; letter-spacing:0.03em; text-decoration:underline;">keccak-256</a>
       <div id="me-namespace-display" title="Where, not what generates the hash" style="margin-top:10px; font-family:monospace; font-size:0.62rem; color:#58a6ff; opacity:0.85; letter-spacing:0.01em; cursor:default;">.me</div>
     </td>
-    <td valign="middle">
+    <td class="me-hero-right" valign="middle">
       <h2>Hello, I am <input
         id="me-seed-input"
         type="text"
@@ -40,7 +52,7 @@
         onblur="if (!this.value) this.placeholder = this.dataset.ph; updateMeIdentityHash();"
         style="font: inherit; font-weight: 700; font-family: monospace; color: inherit; background: transparent; border: none; border-bottom: 2px solid currentColor; outline: none; width: 4ch; padding: 0 2px;"
       ></h2>
-      <h2><input
+      <h3 style="margin-top: 6px;"><input
         id="me-secret-input"
         type="password"
         placeholder="<secret>"
@@ -48,9 +60,9 @@
         spellcheck="false"
         autocomplete="off"
         oninput="this.style.width = ((this.value.length || this.placeholder.length) + 1) + 'ch'; updateMeIdentityHash();"
-        style="font: inherit; font-weight: 700; font-family: monospace; color: inherit; background: transparent; border: none; border-bottom: 2px solid currentColor; outline: none; width: 9ch; padding: 0 2px;"
-      ></h2>
-      <h2><input
+        style="font: inherit; font-weight: 500; font-family: monospace; color: #8b949e; background: transparent; border: none; border-bottom: 1px solid currentColor; outline: none; width: 9ch; padding: 0 2px;"
+      ></h3>
+      <h3 style="margin-top: 2px;"><input
         id="me-namespace-input"
         type="text"
         placeholder="<namespace>"
@@ -58,12 +70,13 @@
         spellcheck="false"
         autocomplete="off"
         oninput="this.style.width = ((this.value.length || this.placeholder.length) + 1) + 'ch'; updateMeIdentityHash();"
-        style="font: inherit; font-weight: 700; font-family: monospace; color: inherit; background: transparent; border: none; border-bottom: 2px solid currentColor; outline: none; width: 12ch; padding: 0 2px;"
-      ></h2>
+        style="font: inherit; font-weight: 500; font-family: monospace; color: #8b949e; background: transparent; border: none; border-bottom: 1px solid currentColor; outline: none; width: 12ch; padding: 0 2px;"
+      ></h3>
       <h3><a href="https://neurons-me.github.io/.me/docs" target="blank">⌬ Docs</a>   </h3>
     </td>
   </tr>
 </table>
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/js-sha3@0.9.3/build/sha3.min.js"></script>
 <script>
