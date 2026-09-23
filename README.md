@@ -153,7 +153,7 @@ me("robots.surgeon.canProceed")   // -> true
 
 Scale that same reactive rule from one canister to an entire city.
 
-**[Learn more about context-aware robots with .me.](https://neurons-me.github.io/.me/docs/Robots-That-Understand-Context.html)**
+**Learn more about [context-aware robots](https://neurons-me.github.io/.me/docs/Robots-That-Understand-Context.html).**
 
 **[∴ 🏙️ ◉ 📡 ⌬ Smart City](https://neurons-me.github.io/.me/docs/Smart-Cities.html)** — A city reacting as one connected graph.
 
@@ -174,7 +174,7 @@ me("security.alertLevel")          // -> true
 
 Scale that same reactive graph from a handful of districts to a million sensors.
 
-**[Learn more about reactive cities with .me.](https://neurons-me.github.io/.me/docs/Smart-Cities.html)**
+**Learn more about [reactive cities](https://neurons-me.github.io/.me/docs/Smart-Cities.html).**
 
 **[🌐 ⇄ ⌬ 𓇳 ⌬ ⇄ 🌐 Hemisphere Scale](https://neurons-me.github.io/.me/docs/Hemisphere-Scale.html)** — 1 million sensors. One flips. Only 6 recompute. The other 999,994 untouched. That's **[O(k)](https://neurons-me.github.io/.me/docs/Architecture.html).**
 
@@ -193,7 +193,7 @@ me.explain("services.generatorMode").meta.k
 
 Extreme Fan-Out flips it: what if k itself is the huge number?
 
-**[Learn more about hemisphere-scale graphs with .me.](https://neurons-me.github.io/.me/docs/Hemisphere-Scale.html)**
+**Learn more about [hemisphere-scale graphs](https://neurons-me.github.io/.me/docs/Hemisphere-Scale.html).**
 
 **[⚡⚡⚡ ⟶ ⌬⌬⌬⌬ Extreme Fan-Out](https://neurons-me.github.io/.me/docs/Extreme-Fan-Out.html)** — One write updates 100k dependents.
 
@@ -213,7 +213,7 @@ me.explain("dep[100000].out").meta.k
 
 That's O(k) end to end — small or large, only the real dependents ever run.
 
-**[Learn more about extreme fan-out with .me.](https://neurons-me.github.io/.me/docs/Extreme-Fan-Out.html)**
+**Learn more about [extreme fan-out](https://neurons-me.github.io/.me/docs/Extreme-Fan-Out.html).**
 
 **[⌬ ⊚ View all demos →](https://github.com/neurons-me/.me/tree/main/Typescript/tests/Demos)**
 
