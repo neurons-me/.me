@@ -170,6 +170,8 @@ A city's incident board and a hospital's are the same shape, different stakes, s
 
 **<a href="https://neurons-me.github.io/.me/docs/Hemisphere-Scale.html" target="_blank" rel="noopener noreferrer">🌐 ⇄ ⌬ 𓇳 ⌬ ⇄ 🌐 Hemisphere Scale</a>** — 📡 1 million sensors. ⚡ One flips. 🎯 Only 6 recompute. The other 999,994 untouched. That's **<a href="https://neurons-me.github.io/.me/docs/Architecture.html" target="_blank" rel="noopener noreferrer">O(k)</a>.**
 
+`.me` uses true O(K) reactivity — when a value changes, only its actual dependents update, not the whole graph. Local compute makes that an OS primitive; cloud makes it a service.
+
 ```ts
 me.geo[777777]["="]("blackout", "!powerUp")
 me.services["="]("generatorMode", "traffic.emergencyReroute")
@@ -183,7 +185,7 @@ me.explain("services.generatorMode").meta.k
 // -> 6
 ```
 
-Six recomputes, not a million — that gap is the whole argument for running a sensor network this size live at all. Extreme Fan-Out flips the question: what if *k* itself is the huge number? **<a href="https://neurons-me.github.io/.me/docs/Hemisphere-Scale.html" target="_blank" rel="noopener noreferrer">Follow the full Hemisphere Scale walkthrough.</a>**
+Six recomputes, not a million, in **4.346ms** — on a live graph holding 1,000,000 nodes (~533MB heap), K=6, the other 999,994 untouched. Scale the graph to 10 million nodes and a 6-dependent change still takes the same time. That gap is the whole argument for running a sensor network this size live at all. Extreme Fan-Out flips the question: what if *k* itself is the huge number? **<a href="https://neurons-me.github.io/.me/docs/Hemisphere-Scale.html" target="_blank" rel="noopener noreferrer">Follow the full Hemisphere Scale walkthrough.</a>**
 
 **<a href="https://neurons-me.github.io/.me/docs/Extreme-Fan-Out.html" target="_blank" rel="noopener noreferrer">⚡⚡⚡ ⟶ ⌬⌬⌬⌬ Extreme Fan-Out</a>** — ✍️ One write updates 📡 100k dependents.
 
@@ -201,7 +203,9 @@ me.explain("dep[100000].out").meta.k
 // -> 100000
 ```
 
-That's O(k) end to end, small or large — one edit, and whole catalogs reprice or whole dashboards refresh, without anyone re-running anything by hand. **<a href="https://neurons-me.github.io/.me/docs/Extreme-Fan-Out.html" target="_blank" rel="noopener noreferrer">Trace Extreme Fan-Out.</a>**
+That's O(k) end to end, small or large: in the real benchmark, all 100,000 dependents recompute in **21,283ms** — about 213μs each, worst case, because every single one of them genuinely depends on the changed value. One edit, and whole catalogs reprice or whole dashboards refresh, without anyone re-running anything by hand. See **<a href="https://suign.github.io/WhatIsOK.html" target="_blank" rel="noopener noreferrer">What is O(k)?</a>** for the full, verified benchmark table. **<a href="https://neurons-me.github.io/.me/docs/Extreme-Fan-Out.html" target="_blank" rel="noopener noreferrer">Trace Extreme Fan-Out.</a>**
+
+**Data that thinks. Logic that explains itself.**
 
 **<a href="https://github.com/neurons-me/.me/tree/main/Typescript/tests/Demos" target="_blank" rel="noopener noreferrer">⌬ ⊚ View all demos →</a>**
 
@@ -281,25 +285,6 @@ Three languages, three developers, one identical node. **Meaning is structure, n
    And `me["!"].prove()` can cryptographically sign that state.
 
    **Explainability without asking the system to explain itself.**
-
-> **Local compute makes memory an OS primitive.**  
-> Cloud makes it a service.
-
-In the <a href="https://neurons-me.github.io/.me/docs/Extreme-Fan-Out.html" target="_blank" rel="noopener noreferrer">Extreme Fan-Out</a> benchmark, one write propagates to 100,000 dependents in 21,283ms — about 213μs per dependent. Real numbers, worst case: every one of the 100,000 nodes genuinely depends on the changed value, so all 100,000 recompute — see <a href="https://suign.github.io/WhatIsOK.html" target="_blank" rel="noopener noreferrer">What is O(k)?</a> for the full, verified benchmark table.
-
-### Real Performance
-
-**.me** uses **true O(K) reactivity** — when a value changes, only its actual dependents update. *Not the whole graph.*
-
-More importantly, propagation cost follows K, not total graph size. In the <a href="https://neurons-me.github.io/.me/docs/Hemisphere-Scale.html" target="_blank" rel="noopener noreferrer">Hemisphere</a> benchmark, a graph with 1,000,000 nodes changes one sensor and recomputes exactly 6 dependents in 4.346ms.
-
-- 1 million nodes in memory (~533MB heap)
-- 1 sensor changed → exactly **6 dependent nodes** recomputed
-- Time to propagate: **4.346ms**
-- K=6 out of 1,000,000 — the rest of the graph is untouched
-
-Scale the graph to 10 million nodes — if your change has 6 dependents, it still takes the same time.
-**Data that thinks. Logic that explains itself.**
 
 ---
 
