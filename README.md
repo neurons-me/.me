@@ -248,7 +248,7 @@ me("shared.note")                     // -> "only A can read this"
 me.as("keyB")("shared.note")          // -> undefined — wrong audience, even through the pointer
 ```
 
-`_` draws the audience boundary, `->` crosses branches, and the boundary holds no matter which branch you cross it from. That's 2 of the 5 operators — full breakdown, with the exact handler behind each one: **<a href="https://neurons-me.github.io/.me/Typescript/typedocs/Operators.html" target="_blank" rel="noopener noreferrer">Operators & Logic</a>**.
+`_` draws the audience boundary, `->` crosses branches, and the boundary holds no matter which branch you cross it from — structural, not policy: there's no permission check to bypass, only a key that derives the value or doesn't. And because resolution runs through `.as(...)`, the same graph shows a different reality to `keyA` than to `keyB` — same tree, subjective per agent. That's 2 of the 5 operators — full breakdown, with the exact handler behind each one: **<a href="https://neurons-me.github.io/.me/Typescript/typedocs/Operators.html" target="_blank" rel="noopener noreferrer">Operators & Logic</a>**.
 
 Developers may *recognize the idea* more quickly written like this:
 
@@ -271,12 +271,6 @@ me.店舗.商品[1].価格(100)
 Three languages, three developers, one identical node. **Meaning is structure, not vocabulary** — the same reason a human writing Spanish and an agent writing English can resolve the same graph without translating anything.
 
 **Full spec**: `me --describe syntax` and <a href="https://neurons-me.github.io/.me/docs/Syntax.html" target="_blank" rel="noopener noreferrer">Syntax reference</a>
-
-## **▵** Why.me?
-
-**Structural Privacy** — Private data is structurally invisible (not just hidden by rules). Every secret branch is its own <a href="https://suign.github.io/EncryptedIsland.html" target="_blank" rel="noopener noreferrer">island</a>: its audience is a cryptographic set, not a permission a custodian grants, so a value stays invisible to anyone outside that set — no policy to bypass, because there's nothing to check, only a key that either derives the value or doesn't.
-
-**Subjective Reality** — Same graph, different views per agent.
 
 ## **▵** me.explain(Why Did You Say That?)
 
