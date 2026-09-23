@@ -66,7 +66,9 @@ Full grammar, the operator table, and a how-to: **[me.whatever(what)](https://ne
 
 ## ⚡ Get .me started!
 
-Clone the repo, pick a runtime (🔷 TypeScript, 🦀 Rust, 🐍 Python), build your first kernel. **[Full walkthrough →](https://neurons-me.github.io/Get.me.started.html)**
+Clone the repo, pick a runtime:<br>
+🔷 TypeScript, 🦀 Rust, 🐍 Python<br>
+**[Full walkthrough →](https://neurons-me.github.io/Get.me.started.html)**
 
 ```ts
 me["@"]("abella") // you are Abella
