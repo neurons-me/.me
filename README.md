@@ -89,9 +89,7 @@ me("friends[isAdult == true].name")
 // -> { ana: "Ana", pablo: "Pablo", luisa: "Luisa" }
 ```
 
-The same graph that tracks who trusts whom can track what they owe each other.
-
-**Learn more about [social graphs](https://neurons-me.github.io/.me/docs/Social-Graph.html)** — the same graph that flags who's an adult can gate access, score trust, or decide who inherits what.
+Trust isn't stored, it's computed fresh from whatever's true right now — which is exactly what lets the same graph decide who's on tonight's guest list and, a page later, who owes rent. **[See the full Social Graph demo.](https://neurons-me.github.io/.me/docs/Social-Graph.html)**
 
 **[💳 ⇄ 👥 ⌬ ⚖️ ∴ Splitting your Bill](https://neurons-me.github.io/.me/docs/Splitting-your-Bill.html)** — Shared expenses with automatic settlement.
 
@@ -111,9 +109,7 @@ me("wallets.vancouver.balance_ana")
 // -> -40
 ```
 
-Same trick works on physical objects, not just people.
-
-**Learn more about [splitting bills](https://neurons-me.github.io/.me/docs/Splitting-your-Bill.html)** — the same ledger scales from a dinner split to a shared expense pool with hundreds of members.
+A balance sheet for three friends and a settlement engine for a hundred-person retreat are built from identical arithmetic — only the numbers get bigger. **[Walk through Splitting the Bill.](https://neurons-me.github.io/.me/docs/Splitting-your-Bill.html)**
 
 **[🏪 ⇄ 📦 ⇄ 📈 CoffeeShops](https://neurons-me.github.io/.me/docs/Running-your-CoffeeShops.html)** — Inventory and operations as a graph.
 
@@ -132,9 +128,7 @@ me("shops[menu.isPremium == true].name")
 // -> { 1: "Downtown", 2: "Riverside", 3: "Station" }
 ```
 
-The same rule that prices a latte can gate what a robot's allowed to do.
-
-**Learn more about [running shops](https://neurons-me.github.io/.me/docs/Running-your-CoffeeShops.html)** — the same derived rule can flag any location crossing a margin, stock, or demand threshold.
+Swap "latte" for any SKU and a franchise-wide pricing rule falls out of the exact same three lines — and the next section prices something that isn't a drink at all. **[Explore CoffeeShops end to end.](https://neurons-me.github.io/.me/docs/Running-your-CoffeeShops.html)**
 
 **[⟐🤖 ⇆ 🤖⟐ Robots That Understand Context](https://neurons-me.github.io/.me/docs/Robots-That-Understand-Context.html)** — Same object, different meaning.
 
@@ -151,9 +145,7 @@ me.objects.canister7.sterile(true)
 me("robots.surgeon.canProceed")   // -> true
 ```
 
-Scale that same reactive rule from one canister to an entire city.
-
-**Learn more about [context-aware robots](https://neurons-me.github.io/.me/docs/Robots-That-Understand-Context.html)** — the same interlock gates a warehouse arm, a surgical robot, or an assembly line with one rule, not one per machine.
+A surgical robot checking whether a canister was sterilized is really just a permission check — the same kind that could clear a forklift, a drone, or a locked door, scaled from one canister to an entire city. **[Read Robots That Understand Context.](https://neurons-me.github.io/.me/docs/Robots-That-Understand-Context.html)**
 
 **[∴ 🏙️ ◉ 📡 ⌬ Smart City](https://neurons-me.github.io/.me/docs/Smart-Cities.html)** — A city reacting as one connected graph.
 
@@ -172,9 +164,7 @@ me.as(null)("security.alertLevel") // -> undefined
 me("security.alertLevel")          // -> true
 ```
 
-Scale that same reactive graph from a handful of districts to a million sensors.
-
-**Learn more about [reactive cities](https://neurons-me.github.io/.me/docs/Smart-Cities.html)** — the same alert model can run a power grid or a hospital's incident board, access gated by role.
+A city's incident board and a hospital's are the same shape, different stakes, same rule for who's cleared to see it — and the same shape scales from a handful of districts to a million sensors. **[Dig into Smart Cities.](https://neurons-me.github.io/.me/docs/Smart-Cities.html)**
 
 **[🌐 ⇄ ⌬ 𓇳 ⌬ ⇄ 🌐 Hemisphere Scale](https://neurons-me.github.io/.me/docs/Hemisphere-Scale.html)** — 1 million sensors. One flips. Only 6 recompute. The other 999,994 untouched. That's **[O(k)](https://neurons-me.github.io/.me/docs/Architecture.html).**
 
@@ -191,9 +181,7 @@ me.explain("services.generatorMode").meta.k
 // -> 6
 ```
 
-Extreme Fan-Out flips it: what if k itself is the huge number?
-
-**Learn more about [hemisphere-scale graphs](https://neurons-me.github.io/.me/docs/Hemisphere-Scale.html)** — the same O(k) guarantee is what makes a million-sensor grid affordable to run in real time.
+Six recomputes, not a million — that gap is the whole argument for running a sensor network this size live at all. Extreme Fan-Out flips the question: what if *k* itself is the huge number? **[Follow the full Hemisphere Scale walkthrough.](https://neurons-me.github.io/.me/docs/Hemisphere-Scale.html)**
 
 **[⚡⚡⚡ ⟶ ⌬⌬⌬⌬ Extreme Fan-Out](https://neurons-me.github.io/.me/docs/Extreme-Fan-Out.html)** — One write updates 100k dependents.
 
@@ -211,9 +199,7 @@ me.explain("dep[100000].out").meta.k
 // -> 100000
 ```
 
-That's O(k) end to end — small or large, only the real dependents ever run.
-
-**Learn more about [extreme fan-out](https://neurons-me.github.io/.me/docs/Extreme-Fan-Out.html)** — the same fan-out can reprice a catalog or refresh every dashboard tile from a single edit.
+That's O(k) end to end, small or large — one edit, and whole catalogs reprice or whole dashboards refresh, without anyone re-running anything by hand. **[Trace Extreme Fan-Out.](https://neurons-me.github.io/.me/docs/Extreme-Fan-Out.html)**
 
 **[⌬ ⊚ View all demos →](https://github.com/neurons-me/.me/tree/main/Typescript/tests/Demos)**
 
