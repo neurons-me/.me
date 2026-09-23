@@ -248,7 +248,7 @@ me("shared.note")                     // -> "only A can read this"
 me.as("keyB")("shared.note")          // -> undefined — wrong audience, even through the pointer
 ```
 
-`_` draws the audience boundary, `->` crosses branches, and the boundary holds no matter which branch you cross it from — structural, not policy: there's no permission check to bypass, only a key that derives the value or doesn't. And because resolution runs through `.as(...)`, the same graph shows a different reality to `keyA` than to `keyB` — same tree, subjective per agent. That's 2 of the 5 operators — full breakdown, with the exact handler behind each one: **<a href="https://neurons-me.github.io/.me/Typescript/typedocs/Operators.html" target="_blank" rel="noopener noreferrer">Operators & Logic</a>**.
+`_` = audience, not policy — a key derives the value or it doesn't. `manifest(p | o) ≠ value(p)`: same tree, different reality per `o`. That's 2 of 5 operators — full breakdown: **<a href="https://neurons-me.github.io/.me/Typescript/typedocs/Operators.html" target="_blank" rel="noopener noreferrer">Operators & Logic</a>**.
 
 Developers may *recognize the idea* more quickly written like this:
 
