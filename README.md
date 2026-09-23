@@ -80,7 +80,14 @@ me["@"]("abella") // you are Abella
 me.friends.ana["->"]("users.ana")
 me.users["[i]"]["="]("isAdult", "age >= 18")
 me("friends[isAdult == true].name")
-// -> { ana: "Ana", luisa: "Luisa" }
+// ->
+```
+
+```json
+{
+  "ana": "Ana",
+  "luisa": "Luisa"
+}
 ```
 
 *Pablo turns 18. Who's on the list now?* 🧒 → 🧑
@@ -88,7 +95,15 @@ me("friends[isAdult == true].name")
 ```ts
 me.users.pablo.age(18)
 me("friends[isAdult == true].name")
-// -> { ana: "Ana", pablo: "Pablo", luisa: "Luisa" }
+// ->
+```
+
+```json
+{
+  "ana": "Ana",
+  "pablo": "Pablo",
+  "luisa": "Luisa"
+}
 ```
 
 Trust isn't stored, it's computed fresh from whatever's true right now — which is exactly what lets the same graph decide who's on tonight's guest list and, a page later, who owes rent. **<a href="https://neurons-me.github.io/.me/docs/Social-Graph.html" target="_blank" rel="noopener noreferrer">See the full Social Graph demo.</a>**
@@ -119,7 +134,14 @@ A balance sheet for three friends and a settlement engine for a hundred-person r
 me.shops["[i]"].menu["="]("breakfastDeal", "latte + espresso - 1.5")
 me.shops["[i]"].menu["="]("isPremium", "breakfastDeal > 6.5")
 me("shops[menu.isPremium == true].name")
-// -> { 2: "Riverside", 3: "Station" }
+// ->
+```
+
+```json
+{
+  "2": "Riverside",
+  "3": "Station"
+}
 ```
 
 *Downtown's latte goes to $5.10. Premium now?* 🌆☕ 📈 → ⭐
@@ -127,7 +149,15 @@ me("shops[menu.isPremium == true].name")
 ```ts
 me.shops[1].menu.latte(5.1)
 me("shops[menu.isPremium == true].name")
-// -> { 1: "Downtown", 2: "Riverside", 3: "Station" }
+// ->
+```
+
+```json
+{
+  "1": "Downtown",
+  "2": "Riverside",
+  "3": "Station"
+}
 ```
 
 Swap "latte" for any SKU and a franchise-wide pricing rule falls out of the exact same three lines — and the next section prices something that isn't a drink at all. **<a href="https://neurons-me.github.io/.me/docs/Running-your-CoffeeShops.html" target="_blank" rel="noopener noreferrer">Explore CoffeeShops end to end.</a>**
@@ -154,7 +184,13 @@ A surgical robot checking whether a canister was sterilized is really just a per
 ```ts
 me.districts["[i]"]["="]("overCapacity", "currentLoad > capacity")
 me("districts[overCapacity == true].name")
-// -> { 3: "Veracruz Puerto" }
+// ->
+```
+
+```json
+{
+  "3": "Veracruz Puerto"
+}
 ```
 
 *Security is declared under `_`. What does a guest see?* 🔒 → 🙈
