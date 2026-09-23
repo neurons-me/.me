@@ -248,7 +248,7 @@ me("shared.note")                     // -> "only A can read this"
 me.as("keyB")("shared.note")          // -> undefined — wrong audience, even through the pointer
 ```
 
-`_` = audience, not policy — a key derives the value or it doesn't. `manifest(p | o) ≠ value(p)`: same tree, different reality per `o`. That's 2 of 5 operators — full breakdown: **<a href="https://neurons-me.github.io/.me/Typescript/typedocs/Operators.html" target="_blank" rel="noopener noreferrer">Operators & Logic</a>**.
+`_` = audience, not policy — a key derives the value or it doesn't. `T ⊥ A`: topology and audience are orthogonal, so crossing branches never expands who's allowed to read (<a href="https://suign.github.io/EncryptedIsland.html" target="_blank" rel="noopener noreferrer">The Encrypted Island</a>). `manifest(p | o) ≠ value(p)`: the same read returns a different reality per observer `o` (<a href="https://suign.github.io/SpaceStructure.html" target="_blank" rel="noopener noreferrer">Space Structure</a>). That's 2 of 5 operators — full breakdown: **<a href="https://neurons-me.github.io/.me/Typescript/typedocs/Operators.html" target="_blank" rel="noopener noreferrer">Operators & Logic</a>**.
 
 Developers may *recognize the idea* more quickly written like this:
 
