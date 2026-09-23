@@ -50,7 +50,12 @@ me.profile.name("Abella.e")
 You resolve inside a <a href="https://neurons-me.github.io/Namespace.html" target="_blank" rel="noopener noreferrer">namespace</a> — the name of the place, the place of the name.
 
 ```ts
-me("profile.name") // "Abella.e"
+me("profile.name")
+// ->
+```
+
+```json
+"Abella.e"
 ```
 
 `me.whatever(what)` — every call is Subject-Verb-Object, plus an operator table: <code style="color:#f472b6;font-weight:600;">@</code> identity, <code style="color:#f472b6;font-weight:600;">_</code> secret, <code style="color:#f472b6;font-weight:600;">-&gt;</code> link (not a copy), <code style="color:#f472b6;font-weight:600;">=</code> derived rule. One kernel, real lines:
@@ -64,7 +69,7 @@ me.friends["[i]"]["="]("isAdult", "age >= 18");
 
 Full grammar, the operator table, and a how-to: **<a href="https://neurons-me.github.io/me.whatever.what.html" target="_blank" rel="noopener noreferrer">me.whatever(what)</a>**.
 
-## ⚡ Get .me started!
+# ⚡ Get .me started!
 
 Clone the repo, pick a runtime:<br>
 🔷 TypeScript, 🦀 Rust, 🐍 Python<br>
@@ -114,7 +119,11 @@ Trust isn't stored, it's computed fresh from whatever's true right now — which
 me.wallets.vancouver["="]("per_person", "total / members.count")
 me.wallets.vancouver["="]("balance_ana", "paid.ana - per_person")
 me("wallets.vancouver.balance_ana")
-// -> -100
+// ->
+```
+
+```json
+-100
 ```
 
 *Ana pays $90 for dinner. New balance?* 👩🍽️ → 🪙🪙💵
@@ -123,7 +132,11 @@ me("wallets.vancouver.balance_ana")
 me.wallets.vancouver.paid.ana(90)
 me.wallets.vancouver.total(390)
 me("wallets.vancouver.balance_ana")
-// -> -40
+// ->
+```
+
+```json
+-40
 ```
 
 A balance sheet for three friends and a settlement engine for a hundred-person retreat are built from identical arithmetic — only the numbers get bigger. **<a href="https://neurons-me.github.io/.me/docs/Splitting-your-Bill.html" target="_blank" rel="noopener noreferrer">Walk through Splitting the Bill.</a>**
@@ -167,14 +180,24 @@ Swap "latte" for any SKU and a franchise-wide pricing rule falls out of the exac
 ```ts
 me.robots.surgeon.target["->"]("objects.canister7")
 me.robots["[i]"]["="]("canProceed", "canLift && softGripReady && !needsHumanReview && contextAllowsMotion")
-me("robots.surgeon.canProceed")   // -> false
+me("robots.surgeon.canProceed")
+// ->
+```
+
+```json
+false
 ```
 
 *Sterilize the canister. Does the surgeon clear now?* 🧼 → ✅
 
 ```ts
 me.objects.canister7.sterile(true)
-me("robots.surgeon.canProceed")   // -> true
+me("robots.surgeon.canProceed")
+// ->
+```
+
+```json
+true
 ```
 
 A surgical robot checking whether a canister was sterilized is really just a permission check — the same kind that could clear a forklift, a drone, or a locked door, scaled from one canister to an entire city. **<a href="https://neurons-me.github.io/.me/docs/Robots-That-Understand-Context.html" target="_blank" rel="noopener noreferrer">Read Robots That Understand Context.</a>**
@@ -198,8 +221,13 @@ me("districts[overCapacity == true].name")
 ```ts
 me.security["_"]("city-security-ops-2026")
 me.security["="]("alertLevel", "incidentsToday > 2")
-me.as(null)("security.alertLevel") // -> undefined
-me("security.alertLevel")          // -> true
+me.as(null)("security.alertLevel")   // guest
+me("security.alertLevel")            // owner
+// ->
+```
+
+```ts
+{ guest: undefined, owner: true }
 ```
 
 A city's incident board and a hospital's are the same shape, different stakes, same rule for who's cleared to see it — and the same shape scales from a handful of districts to a million sensors. **<a href="https://neurons-me.github.io/.me/docs/Smart-Cities.html" target="_blank" rel="noopener noreferrer">Dig into Smart Cities.</a>**
@@ -218,7 +246,11 @@ me.services["="]("generatorMode", "traffic.emergencyReroute")
 ```ts
 me.geo[777777].powerUp(false)
 me.explain("services.generatorMode").meta.k
-// -> 6
+// ->
+```
+
+```json
+6
 ```
 
 That gap is the whole argument for running a sensor network this size live. Extreme Fan-Out flips the question: what if *k* itself is the huge number?
@@ -239,7 +271,12 @@ AT 10M      same K, same latency
 ```ts
 me.master.factor(1)
 me.dep[i]["="]("out", "value * master.factor") // 100,000 of these
-me("dep[1].out") // -> 1
+me("dep[1].out")
+// ->
+```
+
+```json
+1
 ```
 
 *Same trick, 100,000 dependents this time. How many recompute now?* 🔁 → 🎯
@@ -247,7 +284,11 @@ me("dep[1].out") // -> 1
 ```ts
 me.master.factor(2)
 me.explain("dep[100000].out").meta.k
-// -> 100000
+// ->
+```
+
+```json
+100000
 ```
 
 One edit, and whole catalogs reprice or whole dashboards refresh, without anyone re-running anything by hand.
@@ -280,8 +321,13 @@ me.islandA.note("only A can read this")
 
 me.shared["->"]("islandA")           // a pointer between branches
 
-me("shared.note")                     // -> "only A can read this"
-me.as("keyB")("shared.note")          // -> undefined — wrong audience, even through the pointer
+me("shared.note")                     // owner
+me.as("keyB")("shared.note")          // wrong audience, even through the pointer
+// ->
+```
+
+```ts
+{ owner: "only A can read this", keyB: undefined }
 ```
 
 `_` = audience, not policy — a key derives the value or it doesn't. `T ⊥ A`: topology and audience are orthogonal, so crossing branches never expands who's allowed to read (<a href="https://suign.github.io/EncryptedIsland.html" target="_blank" rel="noopener noreferrer">The Encrypted Island</a>). `manifest(p | o) ≠ value(p)`: the same read returns a different reality per observer `o` (<a href="https://suign.github.io/SpaceStructure.html" target="_blank" rel="noopener noreferrer">Space Structure</a>). That's 2 of 5 operators — full breakdown: **<a href="https://neurons-me.github.io/.me/Typescript/typedocs/Operators.html" target="_blank" rel="noopener noreferrer">Operators & Logic</a>**.
