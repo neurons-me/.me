@@ -68,56 +68,48 @@ Full grammar, the operator table, and a how-to: **[me.whatever(what)](https://ne
 
 Clone the repo, pick a runtime (🔷 TypeScript, 🦀 Rust, 🐍 Python), build your first kernel.
 
-## Demos
+```ts
+me["@"]("abella") // you are Abella
+```
+
+Subject. Verb. Object — every call, including this one.
+
+- **[𓀠 ⟐👤 ⇄ 👥 ⌬ ∴ 𓀠 Social Graph](https://neurons-me.github.io/.me/docs/Social-Graph.html)** — Identity, trust, and relationships.
+
+```ts
+me.friends.ana["->"]("users.ana")               // pointer, not a copy
+me.friends["[i]"]["="]("is_adult", "age >= 18") // derived rule
+me("friends.ana.is_adult")                      // -> true
+```
+
+One graph declaration replaces migration, derivation, query, trigger, and validation plumbing.
 
 - **[⟐🤖 ⇆ 🤖⟐ Robots That Understand Context](https://neurons-me.github.io/.me/docs/Robots-That-Understand-Context.html)** — Same object, different meaning.
 - **[∴ 🏙️ ◉ 📡 ⌬ Smart City](https://neurons-me.github.io/.me/docs/Smart-Cities.html)** — A city reacting as one connected graph.
-- **[𓀠 ⟐👤 ⇄ 👥 ⌬ ∴ 𓀠 Social Graph](https://neurons-me.github.io/.me/docs/Social-Graph.html)** — Identity, trust, and relationships.
+
+```ts
+me.wallet["_"]("vault") // secret — structurally invisible
+```
+
 - **[🏪 ⇄ 📦 ⇄ 📈 CoffeeShops](https://neurons-me.github.io/.me/docs/Running-your-CoffeeShops.html)** — Inventory and operations as a graph.
 - **[💳 ⇄ 👥 ⌬ ⚖️ ∴ Splitting your Bill](https://neurons-me.github.io/.me/docs/Splitting-your-Bill.html)** — Shared expenses with automatic settlement.
+
+```ts
+me.robots["[i]"]["="]("canProceed", "...") // one write, every member recomputes
+```
+
 - **[🌐 ⇄ ⌬ 𓇳 ⌬ ⇄ 🌐 Hemisphere Scale](https://neurons-me.github.io/.me/docs/Hemisphere-Scale.html)** — 1 million sensors. One flips. Only 6 recompute. The other 999,994 untouched. That's **[O(k)](https://neurons-me.github.io/.me/docs/Architecture.html).**
 - **[⚡⚡⚡ ⟶ ⌬⌬⌬⌬ Extreme Fan-Out](https://neurons-me.github.io/.me/docs/Extreme-Fan-Out.html)** — One write updates 100k dependents.
 
-**[⌬ ⊚ View all demos →](https://github.com/neurons-me/.me/tree/main/Typescript/tests/Demos)**
+**[⌬ ⊚ View all demos →](https://github.com/neurons-me/.me/tree/main/Typescript/tests/Demos)** · Full grammar, the operator table, and a how-to: **[me.whatever(what)](https://neurons-me.github.io/me.whatever.what.html)**.
 
----
-
-# 𓂀 Syntax - me.whatever(what)
+## 𓂀 Syntax
 
 **Subject. Verb. Object**. It reads as a sentence because it is one.
-
-```ts
-import Me from "this.me"
-const me = new Me()
-
-me["@"]("abella") // you are Abella
-
-me.users.ana.name("Ana")
-me.users.ana.age(22)
-
-me.friends.ana["->"]("users.ana") // pointer
-
-// one graph declaration can replace:
-// migration, derivation, query, trigger, validation plumbing
-me.friends["[i]"]["="]("is_adult", "age >= 18")
-
-me("friends.ana.is_adult")  // -> true
-me("friends[age > 18].name") // ->  { ana: "Ana" }
-```
 
 `me` is the subject, `.whatever` is the verb (capability), `(what)` is the object.
 
 Any path you write becomes a node. **No schema. No migrations.** If it changes, everything that depends on it updates automatically.
-
-```ts
-me.users.ana.age(22)
-me.friends.ana["->"]("users.ana")
-me.friends["[i]"]["="]("is_adult", "age >= 18")
-me("friends.ana.is_adult")
-me("friends[age > 18].name")
-```
-
-You can actually see the graph language emerging.
 
 | Op         | What it does                    | Example                                      |
 | :--------- | :------------------------------ | :------------------------------------------- |
@@ -135,9 +127,7 @@ me.city.area = 200
 me.city.density = () => me.city.population / me.city.area
 ```
 
-Same grammar, 4 robots or 100k nodes. `me.robots["[i]"]` in [Robots](https://neurons-me.github.io/Robots-Versi%C3%B3n-Humana.html) and `me.dep[100000]` in Fan-Out operate on the same [graph model.](https://neurons-me.github.io/Inverted-Dependency-Indexing-Beautiful-Viz.html)
-
-##### Language-agnostic: 
+### Language-agnostic
 
 > `me.shop.items[1].price(100)` = `me.tienda.articulos[1].precio(100)` = `me.店舗.商品[1].価格(100)` — **meaning is structure.**
 
