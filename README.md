@@ -49,9 +49,20 @@ me("profile.name") // "Abella.e"
 
 Proxies make it infinite: `me.any.depth.path(...)` always exists as valid syntax — you're never calling a fixed method, you're writing a path into a graph you're inventing as you go. **The API is the [namespace](https://neurons-me.github.io/Namespace.html) itself.**
 
+**`me.whatever(what)`** — every call is Subject-Verb-Object, plus an operator table: `@` identity, `_` secret, `->` link (not a copy), `=` derived rule. One kernel, real lines:
+
+```ts
+me["@"]("jabellae");
+me.wallet["_"]("wallet-key");
+me.friends.ana["->"]("users.ana");
+me.friends["[i]"]["="]("isAdult", "age >= 18");
+```
+
+Full grammar, the operator table, and a how-to: **[me.whatever(what)](https://neurons-me.github.io/me.whatever.what.html)**.
+
 ## **[⚡ Get .me started!](https://neurons-me.github.io/Get.me.started.html)**
 
-Clone the repo, pick a runtime (TypeScript, Rust, or Python — not yet available), build your first kernel.
+Clone the repo, pick a runtime (🔷 TypeScript, 🦀 Rust, 🐍 Python), build your first kernel.
 
 ## Demos
 
