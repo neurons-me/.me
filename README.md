@@ -72,36 +72,81 @@ Clone the repo, pick a runtime (🔷 TypeScript, 🦀 Rust, 🐍 Python), build 
 me["@"]("abella") // you are Abella
 ```
 
-Subject. Verb. Object — every call, including this one.
-
 **[𓀠 ⟐👤 ⇄ 👥 ⌬ ∴ 𓀠 Social Graph](https://neurons-me.github.io/.me/docs/Social-Graph.html)** — Identity, trust, and relationships.
 
 ```ts
-me.friends.ana["->"]("users.ana")               // pointer, not a copy
-me.friends["[i]"]["="]("is_adult", "age >= 18") // derived rule
-me("friends.ana.is_adult")                      // -> true
+me.friends.ana["->"]("users.ana")
+me.users["[i]"]["="]("isAdult", "age >= 18")
+me("friends[isAdult == true].name")
+// -> { ana: "Ana", luisa: "Luisa" }
 ```
 
-One graph declaration replaces migration, derivation, query, trigger, and validation plumbing.
+**[Learn more about social graphs with .me.](https://neurons-me.github.io/.me/docs/Social-Graph.html)**
 
-**[⟐🤖 ⇆ 🤖⟐ Robots That Understand Context](https://neurons-me.github.io/.me/docs/Robots-That-Understand-Context.html)** — Same object, different meaning.  
+**[⟐🤖 ⇆ 🤖⟐ Robots That Understand Context](https://neurons-me.github.io/.me/docs/Robots-That-Understand-Context.html)** — Same object, different meaning.
+
+```ts
+me.robots["[i]"]["="]("canProceed", "canLift && softGripReady && !needsHumanReview && contextAllowsMotion")
+me("robots.surgeon.canProceed")   // -> false — canister isn't sterile yet
+me.objects.canister7.sterile(true)
+me("robots.surgeon.canProceed")   // -> true
+```
+
+**[Learn more about context-aware robots with .me.](https://neurons-me.github.io/.me/docs/Robots-That-Understand-Context.html)**
+
 **[∴ 🏙️ ◉ 📡 ⌬ Smart City](https://neurons-me.github.io/.me/docs/Smart-Cities.html)** — A city reacting as one connected graph.
 
 ```ts
-me.wallet["_"]("vault") // secret — structurally invisible
+me.districts["[i]"]["="]("overCapacity", "currentLoad > capacity")
+me("districts[overCapacity == true].name")
+// -> { 3: "Veracruz Puerto" } — 8,500 riders in an 8,000 capacity district
 ```
 
-**[🏪 ⇄ 📦 ⇄ 📈 CoffeeShops](https://neurons-me.github.io/.me/docs/Running-your-CoffeeShops.html)** — Inventory and operations as a graph.  
+**[Learn more about reactive cities with .me.](https://neurons-me.github.io/.me/docs/Smart-Cities.html)**
+
+**[🏪 ⇄ 📦 ⇄ 📈 CoffeeShops](https://neurons-me.github.io/.me/docs/Running-your-CoffeeShops.html)** — Inventory and operations as a graph.
+
+```ts
+me.shops["[i]"].menu["="]("breakfastDeal", "latte + espresso - 1.5")
+me.shops["[i]"].menu["="]("isPremium", "breakfastDeal > 6.5")
+me("shops[menu.isPremium == true].name")
+// -> { 2: "Riverside", 3: "Station" }
+```
+
+**[Learn more about running shops with .me.](https://neurons-me.github.io/.me/docs/Running-your-CoffeeShops.html)**
+
 **[💳 ⇄ 👥 ⌬ ⚖️ ∴ Splitting your Bill](https://neurons-me.github.io/.me/docs/Splitting-your-Bill.html)** — Shared expenses with automatic settlement.
 
 ```ts
-me.robots["[i]"]["="]("canProceed", "...") // one write, every member recomputes
+me.wallets.vancouver["="]("per_person", "total / members.count")
+me.wallets.vancouver["="]("balance_ana", "paid.ana - per_person")
+me("wallets.vancouver.balance_ana")
+// -> -40 — after the hotel and dinner, split three ways
 ```
 
-**[🌐 ⇄ ⌬ 𓇳 ⌬ ⇄ 🌐 Hemisphere Scale](https://neurons-me.github.io/.me/docs/Hemisphere-Scale.html)** — 1 million sensors. One flips. Only 6 recompute. The other 999,994 untouched. That's **[O(k)](https://neurons-me.github.io/.me/docs/Architecture.html).**  
+**[Learn more about splitting bills with .me.](https://neurons-me.github.io/.me/docs/Splitting-your-Bill.html)**
+
+**[🌐 ⇄ ⌬ 𓇳 ⌬ ⇄ 🌐 Hemisphere Scale](https://neurons-me.github.io/.me/docs/Hemisphere-Scale.html)** — 1 million sensors. One flips. Only 6 recompute. The other 999,994 untouched. That's **[O(k)](https://neurons-me.github.io/.me/docs/Architecture.html).**
+
+```ts
+me.geo[777777].powerUp(false) // 1 of 1,000,000 districts
+me.explain("services.generatorMode").meta.k
+// -> 6 — only 6 nodes recomputed, 999,994 untouched
+```
+
+**[Learn more about hemisphere-scale graphs with .me.](https://neurons-me.github.io/.me/docs/Hemisphere-Scale.html)**
+
 **[⚡⚡⚡ ⟶ ⌬⌬⌬⌬ Extreme Fan-Out](https://neurons-me.github.io/.me/docs/Extreme-Fan-Out.html)** — One write updates 100k dependents.
 
-**[⌬ ⊚ View all demos →](https://github.com/neurons-me/.me/tree/main/Typescript/tests/Demos)** · Full grammar, the operator table, and a how-to: **[me.whatever(what)](https://neurons-me.github.io/me.whatever.what.html)**.
+```ts
+me.master.factor(2) // one write
+me.explain("dep[100000].out").meta.k
+// -> 100000 — every dependent genuinely depends, so all recompute
+```
+
+**[Learn more about extreme fan-out with .me.](https://neurons-me.github.io/.me/docs/Extreme-Fan-Out.html)**
+
+**[⌬ ⊚ View all demos →](https://github.com/neurons-me/.me/tree/main/Typescript/tests/Demos)**
 
 ## 𓂀 Syntax
 
