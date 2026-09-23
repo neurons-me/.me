@@ -233,7 +233,15 @@ me.city.density = () => me.city.population / me.city.area
 
 ### Language-agnostic
 
-> `me.shop.items[1].price(100)` = `me.tienda.articulos[1].precio(100)` = `me.店舗.商品[1].価格(100)` — **meaning is structure.**
+`.me` isn't English underneath — it's structure. Swap the vocabulary and the algebra doesn't change:
+
+```ts
+me.shop.items[1].price(100)
+me.tienda.articulos[1].precio(100)
+me.店舗.商品[1].価格(100)
+```
+
+Three languages, three developers, one identical node. **Meaning is structure, not vocabulary** — the same reason a human writing Spanish and an agent writing English can resolve the same graph without translating anything.
 
 **Full spec**: `me --describe syntax` and [Syntax reference](https://neurons-me.github.io/.me/docs/Syntax.html)
 
