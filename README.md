@@ -89,9 +89,52 @@ me("friends[isAdult == true].name")
 // -> { ana: "Ana", pablo: "Pablo", luisa: "Luisa" }
 ```
 
+The same graph that tracks who trusts whom can track what they owe each other.
+
+**Learn more about [social graphs](https://neurons-me.github.io/.me/docs/Social-Graph.html).**
+
+**[💳 ⇄ 👥 ⌬ ⚖️ ∴ Splitting your Bill](https://neurons-me.github.io/.me/docs/Splitting-your-Bill.html)** — Shared expenses with automatic settlement.
+
+```ts
+me.wallets.vancouver["="]("per_person", "total / members.count")
+me.wallets.vancouver["="]("balance_ana", "paid.ana - per_person")
+me("wallets.vancouver.balance_ana")
+// -> -100
+```
+
+*Ana pays $90 for dinner. New balance?*
+
+```ts
+me.wallets.vancouver.paid.ana(90)
+me.wallets.vancouver.total(390)
+me("wallets.vancouver.balance_ana")
+// -> -40
+```
+
 Same trick works on physical objects, not just people.
 
-**[Learn more about social graphs with .me.](https://neurons-me.github.io/.me/docs/Social-Graph.html)**
+**Learn more about [splitting bills](https://neurons-me.github.io/.me/docs/Splitting-your-Bill.html).**
+
+**[🏪 ⇄ 📦 ⇄ 📈 CoffeeShops](https://neurons-me.github.io/.me/docs/Running-your-CoffeeShops.html)** — Inventory and operations as a graph.
+
+```ts
+me.shops["[i]"].menu["="]("breakfastDeal", "latte + espresso - 1.5")
+me.shops["[i]"].menu["="]("isPremium", "breakfastDeal > 6.5")
+me("shops[menu.isPremium == true].name")
+// -> { 2: "Riverside", 3: "Station" }
+```
+
+*Downtown's latte goes to $5.10. Premium now?*
+
+```ts
+me.shops[1].menu.latte(5.1)
+me("shops[menu.isPremium == true].name")
+// -> { 1: "Downtown", 2: "Riverside", 3: "Station" }
+```
+
+The same rule that prices a latte can gate what a robot's allowed to do.
+
+**Learn more about [running shops](https://neurons-me.github.io/.me/docs/Running-your-CoffeeShops.html).**
 
 **[⟐🤖 ⇆ 🤖⟐ Robots That Understand Context](https://neurons-me.github.io/.me/docs/Robots-That-Understand-Context.html)** — Same object, different meaning.
 
@@ -129,52 +172,9 @@ me.as(null)("security.alertLevel") // -> undefined
 me("security.alertLevel")          // -> true
 ```
 
-The same broadcast pattern prices a menu instead of a district.
+Scale that same reactive graph from a handful of districts to a million sensors.
 
 **[Learn more about reactive cities with .me.](https://neurons-me.github.io/.me/docs/Smart-Cities.html)**
-
-**[🏪 ⇄ 📦 ⇄ 📈 CoffeeShops](https://neurons-me.github.io/.me/docs/Running-your-CoffeeShops.html)** — Inventory and operations as a graph.
-
-```ts
-me.shops["[i]"].menu["="]("breakfastDeal", "latte + espresso - 1.5")
-me.shops["[i]"].menu["="]("isPremium", "breakfastDeal > 6.5")
-me("shops[menu.isPremium == true].name")
-// -> { 2: "Riverside", 3: "Station" }
-```
-
-*Downtown's latte goes to $5.10. Premium now?*
-
-```ts
-me.shops[1].menu.latte(5.1)
-me("shops[menu.isPremium == true].name")
-// -> { 1: "Downtown", 2: "Riverside", 3: "Station" }
-```
-
-Money splits the same way — declared once, settled automatically.
-
-**[Learn more about running shops with .me.](https://neurons-me.github.io/.me/docs/Running-your-CoffeeShops.html)**
-
-**[💳 ⇄ 👥 ⌬ ⚖️ ∴ Splitting your Bill](https://neurons-me.github.io/.me/docs/Splitting-your-Bill.html)** — Shared expenses with automatic settlement.
-
-```ts
-me.wallets.vancouver["="]("per_person", "total / members.count")
-me.wallets.vancouver["="]("balance_ana", "paid.ana - per_person")
-me("wallets.vancouver.balance_ana")
-// -> -100
-```
-
-*Ana pays $90 for dinner. New balance?*
-
-```ts
-me.wallets.vancouver.paid.ana(90)
-me.wallets.vancouver.total(390)
-me("wallets.vancouver.balance_ana")
-// -> -40
-```
-
-Now stretch the same idea from 3 people to a million nodes.
-
-**[Learn more about splitting bills with .me.](https://neurons-me.github.io/.me/docs/Splitting-your-Bill.html)**
 
 **[🌐 ⇄ ⌬ 𓇳 ⌬ ⇄ 🌐 Hemisphere Scale](https://neurons-me.github.io/.me/docs/Hemisphere-Scale.html)** — 1 million sensors. One flips. Only 6 recompute. The other 999,994 untouched. That's **[O(k)](https://neurons-me.github.io/.me/docs/Architecture.html).**
 
