@@ -1,0 +1,22 @@
+<svg width="440" height="220" viewBox="0 0 440 220" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="syntaxVennGradient" x1="20" y1="110" x2="420" y2="110" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#22d3ee"/>
+      <stop offset="50%" stop-color="#a78bfa"/>
+      <stop offset="100%" stop-color="#f472b6"/>
+    </linearGradient>
+    <filter id="syntaxVennGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="6" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  <g filter="url(#syntaxVennGlow)">
+    <circle cx="180" cy="110" r="95" stroke="url(#syntaxVennGradient)" stroke-width="3" stroke-opacity="0.55"/>
+    <circle cx="260" cy="110" r="95" stroke="url(#syntaxVennGradient)" stroke-width="3" stroke-opacity="0.55"/>
+  </g>
+  <circle cx="180" cy="110" r="95" stroke="url(#syntaxVennGradient)" stroke-width="2.25"/>
+  <circle cx="260" cy="110" r="95" stroke="url(#syntaxVennGradient)" stroke-width="2.25"/>
+</svg>

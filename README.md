@@ -203,6 +203,10 @@ That's O(k) end to end, small or large — one edit, and whole catalogs reprice 
 
 **[⌬ ⊚ View all demos →](https://github.com/neurons-me/.me/tree/main/Typescript/tests/Demos)**
 
+<p align="center">
+  <img src="./docs/assets/syntax-venn.svg" alt="" width="320" />
+</p>
+
 ## 𓂀 Syntax
 
 **Subject. Verb. Object**. It reads as a sentence because it is one.
