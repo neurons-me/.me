@@ -25,6 +25,7 @@
       </picture>
       <div id="me-identity-hash" title="ID Hash" style="margin-top:6px; font-family:monospace; font-size:0.65rem; color:#6b7280; opacity:0.75; letter-spacing:0.02em; cursor:default;">…</div>
       <a href="https://neurons-me.github.io/.me/docs/Seed.html" target="blank" title="identityHash = keccak256(&quot;this.me/identity:v1::&quot; + seed) — read the SEED doc" style="display:block; margin-top:2px; font-family:monospace; font-size:0.6rem; color:#58a6ff; letter-spacing:0.03em; text-decoration:underline;">keccak-256</a>
+      <div id="me-namespace-display" title="Where, not what generates the hash" style="margin-top:10px; font-family:monospace; font-size:0.62rem; color:#58a6ff; opacity:0.85; letter-spacing:0.01em; cursor:default;">.me</div>
     </td>
     <td valign="middle">
       <h2>Hello, I am <input
@@ -39,6 +40,28 @@
         onblur="if (!this.value) this.placeholder = this.dataset.ph; updateMeIdentityHash();"
         style="font: inherit; font-weight: 700; font-family: monospace; color: inherit; background: transparent; border: none; border-bottom: 2px solid currentColor; outline: none; width: 4ch; padding: 0 2px;"
       ></h2>
+      <div style="font-family:monospace; font-size:0.68rem; color:#6b7280; margin-top:4px; line-height:1.8;">
+        <div>secret <input
+          id="me-secret-input"
+          type="password"
+          placeholder="(none)"
+          aria-label="Secret — stays local, feeds the hash, never a URL"
+          spellcheck="false"
+          autocomplete="off"
+          oninput="updateMeIdentityHash();"
+          style="font: inherit; color: inherit; background: transparent; border: none; border-bottom: 1px solid currentColor; outline: none; width: 7ch; padding: 0 2px;"
+        > <span style="opacity:.65">— local only, feeds the hash, never a URL</span></div>
+        <div>at <input
+          id="me-namespace-input"
+          type="text"
+          placeholder="cleaker.me"
+          aria-label="Namespace — where, not what generates the hash"
+          spellcheck="false"
+          autocomplete="off"
+          oninput="updateMeIdentityHash();"
+          style="font: inherit; color: inherit; background: transparent; border: none; border-bottom: 1px solid currentColor; outline: none; width: 9ch; padding: 0 2px;"
+        > <span style="opacity:.65">— where, not what generates the hash</span></div>
+      </div>
       <p>
         <h6>
           A Cryptographic Identity.
@@ -51,20 +74,37 @@
 
 <script src="https://cdn.jsdelivr.net/npm/js-sha3@0.9.3/build/sha3.min.js"></script>
 <script>
-  // Mirrors me.ts: identityHash = keccak256("this.me/identity:v1::" + seed)
-  // seed here is the literal text typed (or ".me" by default) — public,
-  // deterministic, no secret involved. See me/Typescript/src/me.ts.
+  // Mirrors me.ts exactly (see me/Typescript/src/me.ts):
+  //   compoundSeed = keccak256("me.seed/compound:v1::" + who + "::" + secret)
+  //   identityHash = keccak256("this.me/identity:v1::" + seed)
+  // Two real inputs feed the hash: who + secret. Namespace is a third,
+  // separate field on purpose — it's cleaker's concern (WHERE this
+  // identity is claimed), not this.me's (WHAT generates the hash). It
+  // composes a display string (who.namespace) but is never hashed in.
+  // Secret stays in this input only — never read into a URL, never sent.
   function updateMeIdentityHash() {
     var input = document.getElementById('me-seed-input');
+    var secretInput = document.getElementById('me-secret-input');
+    var nsInput = document.getElementById('me-namespace-input');
     var img = document.getElementById('me-identity-img');
     var label = document.getElementById('me-identity-hash');
+    var nsLabel = document.getElementById('me-namespace-display');
     if (!input || !img || !label || typeof keccak256 !== 'function') return;
-    var seed = input.value || input.placeholder || '.me';
+    var who = input.value || input.placeholder || '.me';
+    var secret = secretInput ? secretInput.value : '';
+    var seed = secret
+      ? keccak256('me.seed/compound:v1::' + who + '::' + secret)
+      : who;
     var hash = keccak256('this.me/identity:v1::' + seed);
     var tooltip = 'ID Hash: ' + hash;
     img.title = tooltip;
     label.title = tooltip;
     label.textContent = hash.slice(0, 8) + '…' + hash.slice(-6);
+
+    if (nsLabel) {
+      var ns = nsInput ? (nsInput.value || nsInput.placeholder) : '';
+      nsLabel.textContent = ns ? (who + '.' + ns) : who;
+    }
   }
   updateMeIdentityHash();
 </script>
