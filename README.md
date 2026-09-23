@@ -211,19 +211,15 @@ That's O(k) end to end, small or large — one edit, and whole catalogs reprice 
 
 ## 𓂀 Syntax
 
-**Subject. Verb. Object**. It reads as a sentence because it is one.
+**Subject.me Verb.whatever Object.what** — `me.whatever(what)`
 
-`me` is the subject, `.whatever` is the verb (capability), `(what)` is the object.
-
-Any path you write becomes a node. **No schema. No migrations.** If it changes, everything that depends on it updates automatically.
-
-| Operator | Meaning | Example |
-|---|---|---|
-| `->` | Points to another path. | `me.card["->"]("inventory")` |
-| `=` | Derived value. | `me["="]("total", "price * 1.16")` |
-| `_` | Secret — structurally invisible. | `me.wallet["_"]("vault")` |
-| `[i]` | Broadcasts to a family. | `me.robots["[i]"]["="]("canProceed", "...")` |
-| `[filter]` | Queries. | `me("trucks[fuel > 200].fuel")` |
+```ts
+me.card["->"]("inventory")                  // -> points to another path
+me["="]("total", "price * 1.16")             // = derived value
+me.wallet["_"]("vault")                      // _ secret, structurally invisible
+me.robots["[i]"]["="]("canProceed", "...")   // [i] broadcasts to a family
+me("trucks[fuel > 200].fuel")                // [filter] queries
+```
 
 Full breakdown, with the exact handler behind each one: **[Operators & Logic](https://neurons-me.github.io/.me/Typescript/typedocs/Operators.html)**.
 
