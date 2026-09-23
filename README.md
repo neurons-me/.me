@@ -74,6 +74,8 @@ me["@"]("abella") // you are Abella
 
 **[𓀠 ⟐👤 ⇄ 👥 ⌬ ∴ 𓀠 Social Graph](https://neurons-me.github.io/.me/docs/Social-Graph.html)** — Identity, trust, and relationships.
 
+Ana, Pablo, and Luisa live at `users.*`. `friends.ana` doesn't copy Ana's record — it points at it, so anything Ana updates is instantly true for everyone who calls her a friend. "Adult" isn't a field anyone sets either; it's a rule declared once and evaluated per user.
+
 ```ts
 me.friends.ana["->"]("users.ana")
 me.users["[i]"]["="]("isAdult", "age >= 18")
@@ -81,12 +83,29 @@ me("friends[isAdult == true].name")
 // -> { ana: "Ana", luisa: "Luisa" }
 ```
 
+Pablo turns 18 mid-conversation. Nobody re-runs the query — `.me` just re-derives from the new age, and the next read already reflects it.
+
+```ts
+me.users.pablo.age(18)
+me("friends[isAdult == true].name")
+// -> { ana: "Ana", pablo: "Pablo", luisa: "Luisa" }
+```
+
 **[Learn more about social graphs with .me.](https://neurons-me.github.io/.me/docs/Social-Graph.html)**
 
 **[⟐🤖 ⇆ 🤖⟐ Robots That Understand Context](https://neurons-me.github.io/.me/docs/Robots-That-Understand-Context.html)** — Same object, different meaning.
 
+Four robots — a warehouse loader, a hospital nurse, a street courier, an operating-room surgeon — all point at the exact same physical object, `objects.canister7`. Nothing about the canister changes between them; what changes is the context each robot reads it through.
+
 ```ts
+me.robots.surgeon.target["->"]("objects.canister7")
+me.robots.surgeon.context["->"]("contexts.operatingRoom")
 me.robots["[i]"]["="]("canProceed", "canLift && softGripReady && !needsHumanReview && contextAllowsMotion")
+```
+
+SurgeonBot's policy is stricter than the others': it also requires a sterile target. Sterilize the canister and, without touching a single robot's code, the same shared object clears the same shared rule.
+
+```ts
 me("robots.surgeon.canProceed")   // -> false — canister isn't sterile yet
 me.objects.canister7.sterile(true)
 me("robots.surgeon.canProceed")   // -> true
@@ -96,15 +115,28 @@ me("robots.surgeon.canProceed")   // -> true
 
 **[∴ 🏙️ ◉ 📡 ⌬ Smart City](https://neurons-me.github.io/.me/docs/Smart-Cities.html)** — A city reacting as one connected graph.
 
+Four districts, each declaring a `capacity` and a live `currentLoad`. `overCapacity` isn't a field anyone writes — it's derived, so it can never quietly go stale the way a cached flag would.
+
 ```ts
 me.districts["[i]"]["="]("overCapacity", "currentLoad > capacity")
 me("districts[overCapacity == true].name")
 // -> { 3: "Veracruz Puerto" } — 8,500 riders in an 8,000 capacity district
 ```
 
+A parallel security branch tracks the same city's real incident counts, but it's declared under `_` — structurally invisible. The public graph and the private ops layer share one kernel, not two systems bolted together.
+
+```ts
+me.security["_"]("city-security-ops-2026")
+me.security["="]("alertLevel", "incidentsToday > 2")
+me.as(null)("security.alertLevel")   // -> undefined — honest absence, to a guest
+me("security.alertLevel")            // -> true — to the owner
+```
+
 **[Learn more about reactive cities with .me.](https://neurons-me.github.io/.me/docs/Smart-Cities.html)**
 
 **[🏪 ⇄ 📦 ⇄ 📈 CoffeeShops](https://neurons-me.github.io/.me/docs/Running-your-CoffeeShops.html)** — Inventory and operations as a graph.
+
+Three shops, each with its own `latte`/`espresso` price. `breakfastDeal` is declared once as a formula, not computed per shop — every shop inherits the same rule and evaluates it against its own menu.
 
 ```ts
 me.shops["[i]"].menu["="]("breakfastDeal", "latte + espresso - 1.5")
@@ -113,20 +145,49 @@ me("shops[menu.isPremium == true].name")
 // -> { 2: "Riverside", 3: "Station" }
 ```
 
+Raise Downtown's latte price and it crosses the same premium threshold on its own — no shop-by-shop re-check, because `isPremium` was never a snapshot to begin with.
+
+```ts
+me.shops[1].menu.latte(5.1)
+me("shops[menu.isPremium == true].name")
+// -> { 1: "Downtown", 2: "Riverside", 3: "Station" }
+```
+
 **[Learn more about running shops with .me.](https://neurons-me.github.io/.me/docs/Running-your-CoffeeShops.html)**
 
 **[💳 ⇄ 👥 ⌬ ⚖️ ∴ Splitting your Bill](https://neurons-me.github.io/.me/docs/Splitting-your-Bill.html)** — Shared expenses with automatic settlement.
+
+Three friends share one wallet. `per_person` and each person's `balance` are formulas over `total` and what they've individually paid — nobody manually recomputes who owes what after an expense.
 
 ```ts
 me.wallets.vancouver["="]("per_person", "total / members.count")
 me.wallets.vancouver["="]("balance_ana", "paid.ana - per_person")
 me("wallets.vancouver.balance_ana")
-// -> -40 — after the hotel and dinner, split three ways
+// -> -100 — after the $300 hotel, split three ways
+```
+
+Ana pays for dinner next. One write to `paid.ana`, and `total`, `per_person`, and every balance in the wallet shift together — same declared formulas, new numbers.
+
+```ts
+me.wallets.vancouver.paid.ana(90)
+me.wallets.vancouver.total(390)
+me("wallets.vancouver.balance_ana")
+// -> -40 — the split rebalances itself
 ```
 
 **[Learn more about splitting bills with .me.](https://neurons-me.github.io/.me/docs/Splitting-your-Bill.html)**
 
 **[🌐 ⇄ ⌬ 𓇳 ⌬ ⇄ 🌐 Hemisphere Scale](https://neurons-me.github.io/.me/docs/Hemisphere-Scale.html)** — 1 million sensors. One flips. Only 6 recompute. The other 999,994 untouched. That's **[O(k)](https://neurons-me.github.io/.me/docs/Architecture.html).**
+
+A million districts, each just `powerUp(true)`. Buried in that hemisphere is one hot lineage — a single sensor wired through a real chain: blackout → gridlock → zone status → citywide reroute → generator mode.
+
+```ts
+me.geo[777777]["="]("blackout", "!powerUp")
+me.grid[78]["="]("zoneDown", "geo[777777].gridlock || geo[777777].hospitalAlert")
+me.services["="]("generatorMode", "traffic.emergencyReroute")
+```
+
+Flip that one sensor and only its real dependents recompute — not the other 999,994 districts that were never wired into this chain. `explain()` reports exactly which six nodes moved.
 
 ```ts
 me.geo[777777].powerUp(false) // 1 of 1,000,000 districts
@@ -137,6 +198,16 @@ me.explain("services.generatorMode").meta.k
 **[Learn more about hemisphere-scale graphs with .me.](https://neurons-me.github.io/.me/docs/Hemisphere-Scale.html)**
 
 **[⚡⚡⚡ ⟶ ⌬⌬⌬⌬ Extreme Fan-Out](https://neurons-me.github.io/.me/docs/Extreme-Fan-Out.html)** — One write updates 100k dependents.
+
+The opposite shape from Hemisphere: 100,000 nodes that all genuinely depend on the same source. Every `dep[i].out` is declared once as `value * master.factor` — one shared multiplier behind 100,000 independent leaves.
+
+```ts
+me.master.factor(1)
+me.dep[i]["="]("out", "value * master.factor") // 100,000 of these
+me("dep[1].out")   // -> 1
+```
+
+Change the shared factor once and, this time, all 100,000 genuinely have to recompute. O(k) was never a promise that k stays small — it's a promise that only the real dependents ever run, whether k is 6 or 100,000.
 
 ```ts
 me.master.factor(2) // one write
