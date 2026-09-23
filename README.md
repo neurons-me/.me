@@ -74,7 +74,7 @@ Clone the repo, pick a runtime:<br>
 me["@"]("abella") // you are Abella
 ```
 
-**<a href="https://neurons-me.github.io/.me/docs/Social-Graph.html" target="_blank" rel="noopener noreferrer">𓀠 ⟐👤 ⇄ 👥 ⌬ ∴ 𓀠 Social Graph</a>** — 🪪 Identity, 🤝 trust, and 👥 relationships.
+**<a href="https://neurons-me.github.io/.me/docs/Social-Graph.html" target="_blank" rel="noopener noreferrer">𓀠 ⟐👤 ⇄ 👥 ⌬ ∴ 𓀠 Social Graph</a>** — 🪪 Identity, 🤝 trust, and 🧑‍🤝‍🧑 relationships.
 
 ```ts
 me.friends.ana["->"]("users.ana")
@@ -83,7 +83,7 @@ me("friends[isAdult == true].name")
 // -> { ana: "Ana", luisa: "Luisa" }
 ```
 
-*Pablo turns 18. Who's on the list now?* 🎂 → ✅
+*Pablo turns 18. Who's on the list now?* 🧒 → 🧑
 
 ```ts
 me.users.pablo.age(18)
@@ -102,7 +102,7 @@ me("wallets.vancouver.balance_ana")
 // -> -100
 ```
 
-*Ana pays $90 for dinner. New balance?* 🍽️ → 💸
+*Ana pays $90 for dinner. New balance?* 👩🍽️ → 🪙💵
 
 ```ts
 me.wallets.vancouver.paid.ana(90)
