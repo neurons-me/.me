@@ -74,7 +74,7 @@ Clone the repo, pick a runtime:<br>
 me["@"]("abella") // you are Abella
 ```
 
-**<a href="https://neurons-me.github.io/.me/docs/Social-Graph.html" target="_blank" rel="noopener noreferrer">𓀠 ⟐👤 ⇄ 👥 ⌬ ∴ 𓀠 Social Graph</a>** — Identity, trust, and relationships.
+**<a href="https://neurons-me.github.io/.me/docs/Social-Graph.html" target="_blank" rel="noopener noreferrer">𓀠 ⟐👤 ⇄ 👥 ⌬ ∴ 𓀠 Social Graph</a>** — 🪪 Identity, 🤝 trust, and 👥 relationships.
 
 ```ts
 me.friends.ana["->"]("users.ana")
@@ -83,7 +83,7 @@ me("friends[isAdult == true].name")
 // -> { ana: "Ana", luisa: "Luisa" }
 ```
 
-*Pablo turns 18. Who's on the list now?*
+*Pablo turns 18. Who's on the list now?* 🎂 → ✅
 
 ```ts
 me.users.pablo.age(18)
@@ -93,7 +93,7 @@ me("friends[isAdult == true].name")
 
 Trust isn't stored, it's computed fresh from whatever's true right now — which is exactly what lets the same graph decide who's on tonight's guest list and, a page later, who owes rent. **<a href="https://neurons-me.github.io/.me/docs/Social-Graph.html" target="_blank" rel="noopener noreferrer">See the full Social Graph demo.</a>**
 
-**<a href="https://neurons-me.github.io/.me/docs/Splitting-your-Bill.html" target="_blank" rel="noopener noreferrer">💳 ⇄ 👥 ⌬ ⚖️ ∴ Splitting your Bill</a>** — Shared expenses with automatic settlement.
+**<a href="https://neurons-me.github.io/.me/docs/Splitting-your-Bill.html" target="_blank" rel="noopener noreferrer">💳 ⇄ 👥 ⌬ ⚖️ ∴ Splitting your Bill</a>** — 💸 Shared expenses, ➗ split automatically, ✅ settled.
 
 ```ts
 me.wallets.vancouver["="]("per_person", "total / members.count")
@@ -102,7 +102,7 @@ me("wallets.vancouver.balance_ana")
 // -> -100
 ```
 
-*Ana pays $90 for dinner. New balance?*
+*Ana pays $90 for dinner. New balance?* 🍽️ → 💸
 
 ```ts
 me.wallets.vancouver.paid.ana(90)
@@ -113,7 +113,7 @@ me("wallets.vancouver.balance_ana")
 
 A balance sheet for three friends and a settlement engine for a hundred-person retreat are built from identical arithmetic — only the numbers get bigger. **<a href="https://neurons-me.github.io/.me/docs/Splitting-your-Bill.html" target="_blank" rel="noopener noreferrer">Walk through Splitting the Bill.</a>**
 
-**<a href="https://neurons-me.github.io/.me/docs/Running-your-CoffeeShops.html" target="_blank" rel="noopener noreferrer">🏪 ⇄ 📦 ⇄ 📈 CoffeeShops</a>** — Inventory and operations as a graph.
+**<a href="https://neurons-me.github.io/.me/docs/Running-your-CoffeeShops.html" target="_blank" rel="noopener noreferrer">🏪 ⇄ 📦 ⇄ 📈 CoffeeShops</a>** — ☕ Inventory and 📦 operations as a graph.
 
 ```ts
 me.shops["[i]"].menu["="]("breakfastDeal", "latte + espresso - 1.5")
@@ -122,7 +122,7 @@ me("shops[menu.isPremium == true].name")
 // -> { 2: "Riverside", 3: "Station" }
 ```
 
-*Downtown's latte goes to $5.10. Premium now?*
+*Downtown's latte goes to $5.10. Premium now?* 📈 → ⭐
 
 ```ts
 me.shops[1].menu.latte(5.1)
@@ -132,7 +132,7 @@ me("shops[menu.isPremium == true].name")
 
 Swap "latte" for any SKU and a franchise-wide pricing rule falls out of the exact same three lines — and the next section prices something that isn't a drink at all. **<a href="https://neurons-me.github.io/.me/docs/Running-your-CoffeeShops.html" target="_blank" rel="noopener noreferrer">Explore CoffeeShops end to end.</a>**
 
-**<a href="https://neurons-me.github.io/.me/docs/Robots-That-Understand-Context.html" target="_blank" rel="noopener noreferrer">⟐🤖 ⇆ 🤖⟐ Robots That Understand Context</a>** — Same object, different meaning.
+**<a href="https://neurons-me.github.io/.me/docs/Robots-That-Understand-Context.html" target="_blank" rel="noopener noreferrer">⟐🤖 ⇆ 🤖⟐ Robots That Understand Context</a>** — 🤖 Same object, 🧠 different meaning.
 
 ```ts
 me.robots.surgeon.target["->"]("objects.canister7")
@@ -140,7 +140,7 @@ me.robots["[i]"]["="]("canProceed", "canLift && softGripReady && !needsHumanRevi
 me("robots.surgeon.canProceed")   // -> false
 ```
 
-*Sterilize the canister. Does the surgeon clear now?*
+*Sterilize the canister. Does the surgeon clear now?* 🧼 → ✅
 
 ```ts
 me.objects.canister7.sterile(true)
@@ -149,7 +149,7 @@ me("robots.surgeon.canProceed")   // -> true
 
 A surgical robot checking whether a canister was sterilized is really just a permission check — the same kind that could clear a forklift, a drone, or a locked door, scaled from one canister to an entire city. **<a href="https://neurons-me.github.io/.me/docs/Robots-That-Understand-Context.html" target="_blank" rel="noopener noreferrer">Read Robots That Understand Context.</a>**
 
-**<a href="https://neurons-me.github.io/.me/docs/Smart-Cities.html" target="_blank" rel="noopener noreferrer">∴ 🏙️ ◉ 📡 ⌬ Smart City</a>** — A city reacting as one connected graph.
+**<a href="https://neurons-me.github.io/.me/docs/Smart-Cities.html" target="_blank" rel="noopener noreferrer">∴ 🏙️ ◉ 📡 ⌬ Smart City</a>** — 🏙️ A city reacting as one 🔗 connected graph.
 
 ```ts
 me.districts["[i]"]["="]("overCapacity", "currentLoad > capacity")
@@ -157,7 +157,7 @@ me("districts[overCapacity == true].name")
 // -> { 3: "Veracruz Puerto" }
 ```
 
-*Security is declared under `_`. What does a guest see?*
+*Security is declared under `_`. What does a guest see?* 🔒 → 🙈
 
 ```ts
 me.security["_"]("city-security-ops-2026")
@@ -168,14 +168,14 @@ me("security.alertLevel")          // -> true
 
 A city's incident board and a hospital's are the same shape, different stakes, same rule for who's cleared to see it — and the same shape scales from a handful of districts to a million sensors. **<a href="https://neurons-me.github.io/.me/docs/Smart-Cities.html" target="_blank" rel="noopener noreferrer">Dig into Smart Cities.</a>**
 
-**<a href="https://neurons-me.github.io/.me/docs/Hemisphere-Scale.html" target="_blank" rel="noopener noreferrer">🌐 ⇄ ⌬ 𓇳 ⌬ ⇄ 🌐 Hemisphere Scale</a>** — 1 million sensors. One flips. Only 6 recompute. The other 999,994 untouched. That's **<a href="https://neurons-me.github.io/.me/docs/Architecture.html" target="_blank" rel="noopener noreferrer">O(k)</a>.**
+**<a href="https://neurons-me.github.io/.me/docs/Hemisphere-Scale.html" target="_blank" rel="noopener noreferrer">🌐 ⇄ ⌬ 𓇳 ⌬ ⇄ 🌐 Hemisphere Scale</a>** — 📡 1 million sensors. ⚡ One flips. 🎯 Only 6 recompute. The other 999,994 untouched. That's **<a href="https://neurons-me.github.io/.me/docs/Architecture.html" target="_blank" rel="noopener noreferrer">O(k)</a>.**
 
 ```ts
 me.geo[777777]["="]("blackout", "!powerUp")
 me.services["="]("generatorMode", "traffic.emergencyReroute")
 ```
 
-*One sensor flips, out of 1,000,000. How many recompute?*
+*One sensor flips, out of 1,000,000. How many recompute?* ⚡ → 🎯
 
 ```ts
 me.geo[777777].powerUp(false)
@@ -185,7 +185,7 @@ me.explain("services.generatorMode").meta.k
 
 Six recomputes, not a million — that gap is the whole argument for running a sensor network this size live at all. Extreme Fan-Out flips the question: what if *k* itself is the huge number? **<a href="https://neurons-me.github.io/.me/docs/Hemisphere-Scale.html" target="_blank" rel="noopener noreferrer">Follow the full Hemisphere Scale walkthrough.</a>**
 
-**<a href="https://neurons-me.github.io/.me/docs/Extreme-Fan-Out.html" target="_blank" rel="noopener noreferrer">⚡⚡⚡ ⟶ ⌬⌬⌬⌬ Extreme Fan-Out</a>** — One write updates 100k dependents.
+**<a href="https://neurons-me.github.io/.me/docs/Extreme-Fan-Out.html" target="_blank" rel="noopener noreferrer">⚡⚡⚡ ⟶ ⌬⌬⌬⌬ Extreme Fan-Out</a>** — ✍️ One write updates 📡 100k dependents.
 
 ```ts
 me.master.factor(1)
@@ -193,7 +193,7 @@ me.dep[i]["="]("out", "value * master.factor") // 100,000 of these
 me("dep[1].out") // -> 1
 ```
 
-*Same trick, 100,000 dependents this time. How many recompute now?*
+*Same trick, 100,000 dependents this time. How many recompute now?* 🔁 → 🎯
 
 ```ts
 me.master.factor(2)
