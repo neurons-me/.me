@@ -16,7 +16,7 @@
         <img src="./docs/assets/this.me.png" alt=".me as a coordinate" width="200" title="ID Hash" />
       </picture>
       <div title="ID Hash: keccak256(&quot;this.me/identity:v1::.me&quot;)" style="margin-top:6px; font-family:monospace; font-size:0.65rem; color:#6b7280; opacity:0.75; letter-spacing:0.02em;">0dec8214…a292d7</div>
-      <a href="https://neurons-me.github.io/.me/docs/Seed.html" target="blank" title="identityHash = keccak256(&quot;this.me/identity:v1::&quot; + seed) — read the SEED doc" style="display:block; margin-top:2px; font-family:monospace; font-size:0.6rem; color:#58a6ff; letter-spacing:0.03em; text-decoration:underline;">keccak-256</a>
+      <a href="https://neurons-me.github.io/.me/docs/Seed.html" target="_blank" title="identityHash = keccak256(&quot;this.me/identity:v1::&quot; + seed) — read the SEED doc" style="display:block; margin-top:2px; font-family:monospace; font-size:0.6rem; color:#58a6ff; letter-spacing:0.03em; text-decoration:underline;" rel="noopener noreferrer">keccak-256</a>
     </td>
     <td valign="middle">
       <h2>Hello, I am .me</h2>
@@ -25,8 +25,8 @@
           A Cryptographic Identity.
       </h6>
       </p>
-      <h3><a href="https://neurons-me.github.io/.me/docs" target="blank">⌬ Docs</a>   </h3>
-      <p style="font-family:monospace; font-size:0.7rem; color:#8b949e;">→ Watch the hash: <a href="https://neurons-me.github.io/.me/">neurons-me.github.io/.me</a></p>
+      <h3><a href="https://neurons-me.github.io/.me/docs" target="_blank" rel="noopener noreferrer">⌬ Docs</a>   </h3>
+      <p style="font-family:monospace; font-size:0.7rem; color:#8b949e;">→ Watch the hash: <a href="https://neurons-me.github.io/.me/" target="_blank" rel="noopener noreferrer">neurons-me.github.io/.me</a></p>
     </td>
   </tr>
 </table>
@@ -47,7 +47,7 @@ me.profile.name("Abella.e")
 
 ### Resolve meaning
 
-You resolve inside a [namespace](https://neurons-me.github.io/Namespace.html) — the name of the place, the place of the name.
+You resolve inside a <a href="https://neurons-me.github.io/Namespace.html" target="_blank" rel="noopener noreferrer">namespace</a> — the name of the place, the place of the name.
 
 ```ts
 me("profile.name") // "Abella.e"
@@ -62,19 +62,19 @@ me.friends.ana["->"]("users.ana");
 me.friends["[i]"]["="]("isAdult", "age >= 18");
 ```
 
-Full grammar, the operator table, and a how-to: **[me.whatever(what)](https://neurons-me.github.io/me.whatever.what.html)**.
+Full grammar, the operator table, and a how-to: **<a href="https://neurons-me.github.io/me.whatever.what.html" target="_blank" rel="noopener noreferrer">me.whatever(what)</a>**.
 
 ## ⚡ Get .me started!
 
 Clone the repo, pick a runtime:<br>
 🔷 TypeScript, 🦀 Rust, 🐍 Python<br>
-**[Full walkthrough →](https://neurons-me.github.io/Get.me.started.html)**
+**<a href="https://neurons-me.github.io/Get.me.started.html" target="_blank" rel="noopener noreferrer">Full walkthrough →</a>**
 
 ```ts
 me["@"]("abella") // you are Abella
 ```
 
-**[𓀠 ⟐👤 ⇄ 👥 ⌬ ∴ 𓀠 Social Graph](https://neurons-me.github.io/.me/docs/Social-Graph.html)** — Identity, trust, and relationships.
+**<a href="https://neurons-me.github.io/.me/docs/Social-Graph.html" target="_blank" rel="noopener noreferrer">𓀠 ⟐👤 ⇄ 👥 ⌬ ∴ 𓀠 Social Graph</a>** — Identity, trust, and relationships.
 
 ```ts
 me.friends.ana["->"]("users.ana")
@@ -91,9 +91,9 @@ me("friends[isAdult == true].name")
 // -> { ana: "Ana", pablo: "Pablo", luisa: "Luisa" }
 ```
 
-Trust isn't stored, it's computed fresh from whatever's true right now — which is exactly what lets the same graph decide who's on tonight's guest list and, a page later, who owes rent. **[See the full Social Graph demo.](https://neurons-me.github.io/.me/docs/Social-Graph.html)**
+Trust isn't stored, it's computed fresh from whatever's true right now — which is exactly what lets the same graph decide who's on tonight's guest list and, a page later, who owes rent. **<a href="https://neurons-me.github.io/.me/docs/Social-Graph.html" target="_blank" rel="noopener noreferrer">See the full Social Graph demo.</a>**
 
-**[💳 ⇄ 👥 ⌬ ⚖️ ∴ Splitting your Bill](https://neurons-me.github.io/.me/docs/Splitting-your-Bill.html)** — Shared expenses with automatic settlement.
+**<a href="https://neurons-me.github.io/.me/docs/Splitting-your-Bill.html" target="_blank" rel="noopener noreferrer">💳 ⇄ 👥 ⌬ ⚖️ ∴ Splitting your Bill</a>** — Shared expenses with automatic settlement.
 
 ```ts
 me.wallets.vancouver["="]("per_person", "total / members.count")
@@ -111,9 +111,9 @@ me("wallets.vancouver.balance_ana")
 // -> -40
 ```
 
-A balance sheet for three friends and a settlement engine for a hundred-person retreat are built from identical arithmetic — only the numbers get bigger. **[Walk through Splitting the Bill.](https://neurons-me.github.io/.me/docs/Splitting-your-Bill.html)**
+A balance sheet for three friends and a settlement engine for a hundred-person retreat are built from identical arithmetic — only the numbers get bigger. **<a href="https://neurons-me.github.io/.me/docs/Splitting-your-Bill.html" target="_blank" rel="noopener noreferrer">Walk through Splitting the Bill.</a>**
 
-**[🏪 ⇄ 📦 ⇄ 📈 CoffeeShops](https://neurons-me.github.io/.me/docs/Running-your-CoffeeShops.html)** — Inventory and operations as a graph.
+**<a href="https://neurons-me.github.io/.me/docs/Running-your-CoffeeShops.html" target="_blank" rel="noopener noreferrer">🏪 ⇄ 📦 ⇄ 📈 CoffeeShops</a>** — Inventory and operations as a graph.
 
 ```ts
 me.shops["[i]"].menu["="]("breakfastDeal", "latte + espresso - 1.5")
@@ -130,9 +130,9 @@ me("shops[menu.isPremium == true].name")
 // -> { 1: "Downtown", 2: "Riverside", 3: "Station" }
 ```
 
-Swap "latte" for any SKU and a franchise-wide pricing rule falls out of the exact same three lines — and the next section prices something that isn't a drink at all. **[Explore CoffeeShops end to end.](https://neurons-me.github.io/.me/docs/Running-your-CoffeeShops.html)**
+Swap "latte" for any SKU and a franchise-wide pricing rule falls out of the exact same three lines — and the next section prices something that isn't a drink at all. **<a href="https://neurons-me.github.io/.me/docs/Running-your-CoffeeShops.html" target="_blank" rel="noopener noreferrer">Explore CoffeeShops end to end.</a>**
 
-**[⟐🤖 ⇆ 🤖⟐ Robots That Understand Context](https://neurons-me.github.io/.me/docs/Robots-That-Understand-Context.html)** — Same object, different meaning.
+**<a href="https://neurons-me.github.io/.me/docs/Robots-That-Understand-Context.html" target="_blank" rel="noopener noreferrer">⟐🤖 ⇆ 🤖⟐ Robots That Understand Context</a>** — Same object, different meaning.
 
 ```ts
 me.robots.surgeon.target["->"]("objects.canister7")
@@ -147,9 +147,9 @@ me.objects.canister7.sterile(true)
 me("robots.surgeon.canProceed")   // -> true
 ```
 
-A surgical robot checking whether a canister was sterilized is really just a permission check — the same kind that could clear a forklift, a drone, or a locked door, scaled from one canister to an entire city. **[Read Robots That Understand Context.](https://neurons-me.github.io/.me/docs/Robots-That-Understand-Context.html)**
+A surgical robot checking whether a canister was sterilized is really just a permission check — the same kind that could clear a forklift, a drone, or a locked door, scaled from one canister to an entire city. **<a href="https://neurons-me.github.io/.me/docs/Robots-That-Understand-Context.html" target="_blank" rel="noopener noreferrer">Read Robots That Understand Context.</a>**
 
-**[∴ 🏙️ ◉ 📡 ⌬ Smart City](https://neurons-me.github.io/.me/docs/Smart-Cities.html)** — A city reacting as one connected graph.
+**<a href="https://neurons-me.github.io/.me/docs/Smart-Cities.html" target="_blank" rel="noopener noreferrer">∴ 🏙️ ◉ 📡 ⌬ Smart City</a>** — A city reacting as one connected graph.
 
 ```ts
 me.districts["[i]"]["="]("overCapacity", "currentLoad > capacity")
@@ -166,9 +166,9 @@ me.as(null)("security.alertLevel") // -> undefined
 me("security.alertLevel")          // -> true
 ```
 
-A city's incident board and a hospital's are the same shape, different stakes, same rule for who's cleared to see it — and the same shape scales from a handful of districts to a million sensors. **[Dig into Smart Cities.](https://neurons-me.github.io/.me/docs/Smart-Cities.html)**
+A city's incident board and a hospital's are the same shape, different stakes, same rule for who's cleared to see it — and the same shape scales from a handful of districts to a million sensors. **<a href="https://neurons-me.github.io/.me/docs/Smart-Cities.html" target="_blank" rel="noopener noreferrer">Dig into Smart Cities.</a>**
 
-**[🌐 ⇄ ⌬ 𓇳 ⌬ ⇄ 🌐 Hemisphere Scale](https://neurons-me.github.io/.me/docs/Hemisphere-Scale.html)** — 1 million sensors. One flips. Only 6 recompute. The other 999,994 untouched. That's **[O(k)](https://neurons-me.github.io/.me/docs/Architecture.html).**
+**<a href="https://neurons-me.github.io/.me/docs/Hemisphere-Scale.html" target="_blank" rel="noopener noreferrer">🌐 ⇄ ⌬ 𓇳 ⌬ ⇄ 🌐 Hemisphere Scale</a>** — 1 million sensors. One flips. Only 6 recompute. The other 999,994 untouched. That's **<a href="https://neurons-me.github.io/.me/docs/Architecture.html" target="_blank" rel="noopener noreferrer">O(k)</a>.**
 
 ```ts
 me.geo[777777]["="]("blackout", "!powerUp")
@@ -183,9 +183,9 @@ me.explain("services.generatorMode").meta.k
 // -> 6
 ```
 
-Six recomputes, not a million — that gap is the whole argument for running a sensor network this size live at all. Extreme Fan-Out flips the question: what if *k* itself is the huge number? **[Follow the full Hemisphere Scale walkthrough.](https://neurons-me.github.io/.me/docs/Hemisphere-Scale.html)**
+Six recomputes, not a million — that gap is the whole argument for running a sensor network this size live at all. Extreme Fan-Out flips the question: what if *k* itself is the huge number? **<a href="https://neurons-me.github.io/.me/docs/Hemisphere-Scale.html" target="_blank" rel="noopener noreferrer">Follow the full Hemisphere Scale walkthrough.</a>**
 
-**[⚡⚡⚡ ⟶ ⌬⌬⌬⌬ Extreme Fan-Out](https://neurons-me.github.io/.me/docs/Extreme-Fan-Out.html)** — One write updates 100k dependents.
+**<a href="https://neurons-me.github.io/.me/docs/Extreme-Fan-Out.html" target="_blank" rel="noopener noreferrer">⚡⚡⚡ ⟶ ⌬⌬⌬⌬ Extreme Fan-Out</a>** — One write updates 100k dependents.
 
 ```ts
 me.master.factor(1)
@@ -201,9 +201,9 @@ me.explain("dep[100000].out").meta.k
 // -> 100000
 ```
 
-That's O(k) end to end, small or large — one edit, and whole catalogs reprice or whole dashboards refresh, without anyone re-running anything by hand. **[Trace Extreme Fan-Out.](https://neurons-me.github.io/.me/docs/Extreme-Fan-Out.html)**
+That's O(k) end to end, small or large — one edit, and whole catalogs reprice or whole dashboards refresh, without anyone re-running anything by hand. **<a href="https://neurons-me.github.io/.me/docs/Extreme-Fan-Out.html" target="_blank" rel="noopener noreferrer">Trace Extreme Fan-Out.</a>**
 
-**[⌬ ⊚ View all demos →](https://github.com/neurons-me/.me/tree/main/Typescript/tests/Demos)**
+**<a href="https://github.com/neurons-me/.me/tree/main/Typescript/tests/Demos" target="_blank" rel="noopener noreferrer">⌬ ⊚ View all demos →</a>**
 
 <p align="center">
   <img src="./docs/assets/syntax-venn.svg" alt="" width="320" />
@@ -213,7 +213,7 @@ That's O(k) end to end, small or large — one edit, and whole catalogs reprice 
 
 **Subject.me Verb.whatever Object.what** — `me.whatever(what)`
 
-`me://` sits on a namespace — which tree of meaning you're addressing, resolved over [NRP](https://neurons-me.github.io/NRP/) from identity. Who's allowed to read what inside that tree: two [islands](https://suign.github.io/EncryptedIsland.html) share only the exact [space](https://suign.github.io/DigitalSpaceAlgebra.html) where they overlap, cryptographically, per the [set-chemistry](https://suign.github.io/SetChemistry.html).
+`me://` sits on a namespace — which tree of meaning you're addressing, resolved over <a href="https://neurons-me.github.io/NRP/" target="_blank" rel="noopener noreferrer">NRP</a> from identity. Who's allowed to read what inside that tree: two <a href="https://suign.github.io/EncryptedIsland.html" target="_blank" rel="noopener noreferrer">islands</a> share only the exact <a href="https://suign.github.io/DigitalSpaceAlgebra.html" target="_blank" rel="noopener noreferrer">space</a> where they overlap, cryptographically, per the <a href="https://suign.github.io/SetChemistry.html" target="_blank" rel="noopener noreferrer">set-chemistry</a>.
 
 ```ts
 me.islandA["_"]("keyA")
@@ -225,7 +225,7 @@ me("shared.note")                     // -> "only A can read this"
 me.as("keyB")("shared.note")          // -> undefined — wrong audience, even through the pointer
 ```
 
-`_` draws the audience boundary, `->` crosses branches, and the boundary holds no matter which branch you cross it from. That's 2 of the 5 operators — full breakdown, with the exact handler behind each one: **[Operators & Logic](https://neurons-me.github.io/.me/Typescript/typedocs/Operators.html)**.
+`_` draws the audience boundary, `->` crosses branches, and the boundary holds no matter which branch you cross it from. That's 2 of the 5 operators — full breakdown, with the exact handler behind each one: **<a href="https://neurons-me.github.io/.me/Typescript/typedocs/Operators.html" target="_blank" rel="noopener noreferrer">Operators & Logic</a>**.
 
 Developers may *recognize the idea* more quickly written like this:
 
@@ -247,7 +247,7 @@ me.店舗.商品[1].価格(100)
 
 Three languages, three developers, one identical node. **Meaning is structure, not vocabulary** — the same reason a human writing Spanish and an agent writing English can resolve the same graph without translating anything.
 
-**Full spec**: `me --describe syntax` and [Syntax reference](https://neurons-me.github.io/.me/docs/Syntax.html)
+**Full spec**: `me --describe syntax` and <a href="https://neurons-me.github.io/.me/docs/Syntax.html" target="_blank" rel="noopener noreferrer">Syntax reference</a>
 
 ## **▵** Why.me?
 
@@ -285,13 +285,13 @@ Three languages, three developers, one identical node. **Meaning is structure, n
 > **Local compute makes memory an OS primitive.**  
 > Cloud makes it a service.
 
-In the [Extreme Fan-Out](https://neurons-me.github.io/.me/docs/Extreme-Fan-Out.html) benchmark, one write propagates to 100,000 dependents in 21,283ms — about 213μs per dependent. Real numbers, worst case: every one of the 100,000 nodes genuinely depends on the changed value, so all 100,000 recompute — see [What is O(k)?](https://suign.github.io/WhatIsOK.html) for the full, verified benchmark table.
+In the <a href="https://neurons-me.github.io/.me/docs/Extreme-Fan-Out.html" target="_blank" rel="noopener noreferrer">Extreme Fan-Out</a> benchmark, one write propagates to 100,000 dependents in 21,283ms — about 213μs per dependent. Real numbers, worst case: every one of the 100,000 nodes genuinely depends on the changed value, so all 100,000 recompute — see <a href="https://suign.github.io/WhatIsOK.html" target="_blank" rel="noopener noreferrer">What is O(k)?</a> for the full, verified benchmark table.
 
 ### Real Performance
 
 **.me** uses **true O(K) reactivity** — when a value changes, only its actual dependents update. *Not the whole graph.*
 
-More importantly, propagation cost follows K, not total graph size. In the [Hemisphere](https://neurons-me.github.io/.me/docs/Hemisphere-Scale.html) benchmark, a graph with 1,000,000 nodes changes one sensor and recomputes exactly 6 dependents in 4.346ms.
+More importantly, propagation cost follows K, not total graph size. In the <a href="https://neurons-me.github.io/.me/docs/Hemisphere-Scale.html" target="_blank" rel="noopener noreferrer">Hemisphere</a> benchmark, a graph with 1,000,000 nodes changes one sensor and recomputes exactly 6 dependents in 4.346ms.
 
 - 1 million nodes in memory (~533MB heap)
 - 1 sensor changed → exactly **6 dependent nodes** recomputed
@@ -306,10 +306,10 @@ Scale the graph to 10 million nodes — if your change has 6 dependents, it stil
 **𓅓 Own your intelligence.**
 
 **suiGn**
-MIT License © 2025 · [neurons.me](https://neurons.me)
+MIT License © 2025 · <a href="https://neurons.me" target="_blank" rel="noopener noreferrer">neurons.me</a>
 
 <p align="center">
-  <a href="https://neurons.me/">
+  <a href="https://neurons.me/" target="_blank" rel="noopener noreferrer">
     <img src="https://res.cloudinary.com/dkwnxf6gm/image/upload/v1760629064/neurons.me_b50f6a.png" alt="neurons.me" width="89" />
   </a>
 </p>
