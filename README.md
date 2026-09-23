@@ -89,6 +89,8 @@ me("friends[isAdult == true].name")
 // -> { ana: "Ana", pablo: "Pablo", luisa: "Luisa" }
 ```
 
+Same trick works on physical objects, not just people.
+
 **[Learn more about social graphs with .me.](https://neurons-me.github.io/.me/docs/Social-Graph.html)**
 
 **[⟐🤖 ⇆ 🤖⟐ Robots That Understand Context](https://neurons-me.github.io/.me/docs/Robots-That-Understand-Context.html)** — Same object, different meaning.
@@ -105,6 +107,8 @@ me("robots.surgeon.canProceed")   // -> false
 me.objects.canister7.sterile(true)
 me("robots.surgeon.canProceed")   // -> true
 ```
+
+Scale that same reactive rule from one canister to an entire city.
 
 **[Learn more about context-aware robots with .me.](https://neurons-me.github.io/.me/docs/Robots-That-Understand-Context.html)**
 
@@ -125,6 +129,8 @@ me.as(null)("security.alertLevel") // -> undefined
 me("security.alertLevel")          // -> true
 ```
 
+The same broadcast pattern prices a menu instead of a district.
+
 **[Learn more about reactive cities with .me.](https://neurons-me.github.io/.me/docs/Smart-Cities.html)**
 
 **[🏪 ⇄ 📦 ⇄ 📈 CoffeeShops](https://neurons-me.github.io/.me/docs/Running-your-CoffeeShops.html)** — Inventory and operations as a graph.
@@ -143,6 +149,8 @@ me.shops[1].menu.latte(5.1)
 me("shops[menu.isPremium == true].name")
 // -> { 1: "Downtown", 2: "Riverside", 3: "Station" }
 ```
+
+Money splits the same way — declared once, settled automatically.
 
 **[Learn more about running shops with .me.](https://neurons-me.github.io/.me/docs/Running-your-CoffeeShops.html)**
 
@@ -164,6 +172,8 @@ me("wallets.vancouver.balance_ana")
 // -> -40
 ```
 
+Now stretch the same idea from 3 people to a million nodes.
+
 **[Learn more about splitting bills with .me.](https://neurons-me.github.io/.me/docs/Splitting-your-Bill.html)**
 
 **[🌐 ⇄ ⌬ 𓇳 ⌬ ⇄ 🌐 Hemisphere Scale](https://neurons-me.github.io/.me/docs/Hemisphere-Scale.html)** — 1 million sensors. One flips. Only 6 recompute. The other 999,994 untouched. That's **[O(k)](https://neurons-me.github.io/.me/docs/Architecture.html).**
@@ -180,6 +190,8 @@ me.geo[777777].powerUp(false)
 me.explain("services.generatorMode").meta.k
 // -> 6
 ```
+
+Extreme Fan-Out flips it: what if k itself is the huge number?
 
 **[Learn more about hemisphere-scale graphs with .me.](https://neurons-me.github.io/.me/docs/Hemisphere-Scale.html)**
 
@@ -199,6 +211,8 @@ me.explain("dep[100000].out").meta.k
 // -> 100000
 ```
 
+That's O(k) end to end — small or large, only the real dependents ever run.
+
 **[Learn more about extreme fan-out with .me.](https://neurons-me.github.io/.me/docs/Extreme-Fan-Out.html)**
 
 **[⌬ ⊚ View all demos →](https://github.com/neurons-me/.me/tree/main/Typescript/tests/Demos)**
@@ -211,13 +225,35 @@ me.explain("dep[100000].out").meta.k
 
 Any path you write becomes a node. **No schema. No migrations.** If it changes, everything that depends on it updates automatically.
 
-| Op         | What it does                    | Example                                      |
-| :--------- | :------------------------------ | :------------------------------------------- |
-| `->`       | Points to another path          | `me.card["->"]("inventory")`                 |
-| `=`        | Derived value                   | `me["="]("total", "price * 1.16")`           |
-| `_`        | Secret — structurally invisible | `me.wallet["_"]("vault")`                    |
-| `[i]`      | Broadcast to a family           | `me.robots["[i]"]["="]("canProceed", "...")` |
-| `[filter]` | Query                           | `me("trucks[fuel > 200].fuel")`              |
+`->` points to another path.
+
+```ts
+me.card["->"]("inventory")
+```
+
+`=` is a derived value.
+
+```ts
+me["="]("total", "price * 1.16")
+```
+
+`_` is secret — structurally invisible.
+
+```ts
+me.wallet["_"]("vault")
+```
+
+`[i]` broadcasts to a family.
+
+```ts
+me.robots["[i]"]["="]("canProceed", "...")
+```
+
+`[filter]` queries.
+
+```ts
+me("trucks[fuel > 200].fuel")
+```
 
 Developers may *recognize the idea* more quickly written like this:
 
