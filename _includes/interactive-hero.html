@@ -17,8 +17,13 @@
 -->
 <style>
   .static-hero, .readme-intro { display: none; }
-  .me-hero-wrap { position: relative; }
-  .me-hero-table { width: 100%; max-width: 560px; }
+  /* Same max-width as the table below on purpose: .me-hero-tag positions
+     itself (right:10px) relative to THIS element, not the table -- if the
+     wrap were left unconstrained it spans the full content column, and on
+     a wide screen the tag ends up floating far past the card's own right
+     edge instead of sitting on it. */
+  .me-hero-wrap { position: relative; max-width: 560px; }
+  .me-hero-table { width: 100%; }
   /* min-width only above ~640px: 260px (left, fixed) + 300px (right, min)
      overflows a phone viewport, so mobile keeps the old content-based
      sizing and only wider screens get the deliberately roomier card. */
