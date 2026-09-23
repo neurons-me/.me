@@ -102,7 +102,7 @@ me("wallets.vancouver.balance_ana")
 // -> -100
 ```
 
-*Ana pays $90 for dinner. New balance?* 👩🍽️ → 🪙💵
+*Ana pays $90 for dinner. New balance?* 👩🍽️ → 🪙🪙💵
 
 ```ts
 me.wallets.vancouver.paid.ana(90)
@@ -122,7 +122,7 @@ me("shops[menu.isPremium == true].name")
 // -> { 2: "Riverside", 3: "Station" }
 ```
 
-*Downtown's latte goes to $5.10. Premium now?* 📈 → ⭐
+*Downtown's latte goes to $5.10. Premium now?* 🌆☕ 📈 → ⭐
 
 ```ts
 me.shops[1].menu.latte(5.1)
