@@ -216,14 +216,16 @@ That's O(k) end to end, small or large — one edit, and whole catalogs reprice 
 `me://` sits on a namespace — which tree of meaning you're addressing, resolved over [NRP](https://neurons-me.github.io/NRP/) from identity. Who's allowed to read what inside that tree: two [islands](https://suign.github.io/EncryptedIsland.html) share only the exact [space](https://suign.github.io/DigitalSpaceAlgebra.html) where they overlap, cryptographically, per the [set-chemistry](https://suign.github.io/SetChemistry.html).
 
 ```ts
-me.card["->"]("inventory")                  // -> points to another path
-me["="]("total", "price * 1.16")             // = derived value
-me.wallet["_"]("vault")                      // _ secret, structurally invisible
-me.robots["[i]"]["="]("canProceed", "...")   // [i] broadcasts to a family
-me("trucks[fuel > 200].fuel")                // [filter] queries
+me.islandA["_"]("keyA")
+me.islandA.note("only A can read this")
+
+me.shared["->"]("islandA")           // a pointer between branches
+
+me("shared.note")                     // -> "only A can read this"
+me.as("keyB")("shared.note")          // -> undefined — wrong audience, even through the pointer
 ```
 
-Full breakdown, with the exact handler behind each one: **[Operators & Logic](https://neurons-me.github.io/.me/Typescript/typedocs/Operators.html)**.
+`_` draws the audience boundary, `->` crosses branches, and the boundary holds no matter which branch you cross it from. That's 2 of the 5 operators — full breakdown, with the exact handler behind each one: **[Operators & Logic](https://neurons-me.github.io/.me/Typescript/typedocs/Operators.html)**.
 
 Developers may *recognize the idea* more quickly written like this:
 
