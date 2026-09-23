@@ -185,7 +185,18 @@ me.explain("services.generatorMode").meta.k
 // -> 6
 ```
 
-Six recomputes, not a million, in **4.346ms** — on a live graph holding 1,000,000 nodes (~533MB heap), K=6, the other 999,994 untouched. Scale the graph to 10 million nodes and a 6-dependent change still takes the same time. That gap is the whole argument for running a sensor network this size live at all. Extreme Fan-Out flips the question: what if *k* itself is the huge number? **<a href="https://neurons-me.github.io/.me/docs/Hemisphere-Scale.html" target="_blank" rel="noopener noreferrer">Follow the full Hemisphere Scale walkthrough.</a>**
+That gap is the whole argument for running a sensor network this size live. Extreme Fan-Out flips the question: what if *k* itself is the huge number?
+
+```
+GRAPH       1,000,000 nodes   (~533MB heap)
+TRIGGER     1 sensor flips
+RECOMPUTE   6 nodes           K = 6
+UNTOUCHED   999,994 nodes
+LATENCY     4.346ms
+AT 10M      same K, same latency
+```
+
+**<a href="https://neurons-me.github.io/.me/docs/Hemisphere-Scale.html" target="_blank" rel="noopener noreferrer">Follow the full Hemisphere Scale walkthrough.</a>**
 
 **<a href="https://neurons-me.github.io/.me/docs/Extreme-Fan-Out.html" target="_blank" rel="noopener noreferrer">⚡⚡⚡ ⟶ ⌬⌬⌬⌬ Extreme Fan-Out</a>** — ✍️ One write updates 📡 100k dependents.
 
@@ -203,7 +214,15 @@ me.explain("dep[100000].out").meta.k
 // -> 100000
 ```
 
-That's O(k) end to end, small or large: in the real benchmark, all 100,000 dependents recompute in **21,283ms** — about 213μs each, worst case, because every single one of them genuinely depends on the changed value. One edit, and whole catalogs reprice or whole dashboards refresh, without anyone re-running anything by hand. See **<a href="https://suign.github.io/WhatIsOK.html" target="_blank" rel="noopener noreferrer">What is O(k)?</a>** for the full, verified benchmark table. **<a href="https://neurons-me.github.io/.me/docs/Extreme-Fan-Out.html" target="_blank" rel="noopener noreferrer">Trace Extreme Fan-Out.</a>**
+One edit, and whole catalogs reprice or whole dashboards refresh, without anyone re-running anything by hand.
+
+```
+DEPENDENTS  100,000          worst case, all genuine
+LATENCY     21,283ms total
+PER-NODE    ~213μs
+```
+
+See **<a href="https://suign.github.io/WhatIsOK.html" target="_blank" rel="noopener noreferrer">What is O(k)?</a>** for the full, verified benchmark table. **<a href="https://neurons-me.github.io/.me/docs/Extreme-Fan-Out.html" target="_blank" rel="noopener noreferrer">Trace Extreme Fan-Out.</a>**
 
 **Data that thinks. Logic that explains itself.**
 
