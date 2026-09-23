@@ -19,7 +19,12 @@
   .static-hero, .readme-intro { display: none; }
   .me-hero-wrap { position: relative; }
   .me-hero-table { width: 100%; max-width: 560px; }
-  .me-hero-right { min-width: 300px; }
+  /* min-width only above ~640px: 260px (left, fixed) + 300px (right, min)
+     overflows a phone viewport, so mobile keeps the old content-based
+     sizing and only wider screens get the deliberately roomier card. */
+  @media (min-width: 640px) {
+    .me-hero-right { min-width: 300px; }
+  }
   .me-hero-tag {
     position: absolute; top: 6px; right: 10px;
     font-family: monospace; font-size: 0.62rem; text-transform: uppercase;
@@ -55,7 +60,7 @@
       <h3 style="margin-top: 6px;"><input
         id="me-secret-input"
         type="password"
-        placeholder="<secret>"
+        placeholder="&lt;secret&gt;"
         aria-label="Secret — feeds the hash, stays local, never a URL"
         spellcheck="false"
         autocomplete="off"
@@ -65,7 +70,7 @@
       <h3 style="margin-top: 2px;"><input
         id="me-namespace-input"
         type="text"
-        placeholder="<namespace>"
+        placeholder="&lt;namespace&gt;"
         aria-label="Namespace — where, not what generates the hash"
         spellcheck="false"
         autocomplete="off"
