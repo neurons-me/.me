@@ -49,26 +49,9 @@ me("profile.name") // "Abella.e"
 
 Proxies make it infinite: `me.any.depth.path(...)` always exists as valid syntax — you're never calling a fixed method, you're writing a path into a graph you're inventing as you go. **The API is the [namespace](https://neurons-me.github.io/Namespace.html) itself.**
 
-## Getting Started
-Install .me. Open your terminal and run:
+## **[⚡ Get .me started!](https://neurons-me.github.io/Get.me.started.html)**
 
-```bash
-git clone https://github.com/neurons-me/.me.git
-cd .me
-```
-
-##### Choose
-
-**🔷 [Typescript](https://neurons-me.github.io/.me/Typescript/)**
-
-```bash
-cd Typescript
-npm install
-npm run build
-```
-
-🦀 [Rust](https://neurons-me.github.io/.me/Rust/) — [crates.io](https://crates.io/crates/this-me) · [docs.rs](https://docs.rs/this-me)  
-🐍 [Python](https://neurons-me.github.io/.me/Python/) — Not Available Yet.
+Clone the repo, pick a runtime (TypeScript, Rust, or Python — not yet available), build your first kernel.
 
 ## Demos
 
