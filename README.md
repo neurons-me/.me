@@ -213,7 +213,7 @@ That's O(k) end to end, small or large — one edit, and whole catalogs reprice 
 
 **Subject.me Verb.whatever Object.what** — `me.whatever(what)`
 
-Underneath the dot-path sits a [namespace](https://neurons-me.github.io/Namespace.html) — which tree of meaning you're addressing, resolved over [NRP](https://neurons-me.github.io/NRP/) from identity, never from the door (URL) you walked in through. Who's allowed to read what inside that tree isn't a permissions table, it's an [encrypted-audience intersection](https://neurons-me.github.io/algebra_of_encrypted_audiences.html): two islands share only the exact space where they overlap, cryptographically, per the [set-chemistry](https://suign.github.io/SetChemistry.html) underneath the whole [digital-space algebra](https://suign.github.io/DigitalSpaceAlgebra.html) this syntax sits on.
+`me://` sits on a namespace — which tree of meaning you're addressing, resolved over [NRP](https://neurons-me.github.io/NRP/) from identity. Who's allowed to read what inside that tree: two [islands](https://suign.github.io/EncryptedIsland.html) share only the exact [space](https://suign.github.io/DigitalSpaceAlgebra.html) where they overlap, cryptographically, per the [set-chemistry](https://suign.github.io/SetChemistry.html).
 
 ```ts
 me.card["->"]("inventory")                  // -> points to another path
