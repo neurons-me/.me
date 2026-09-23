@@ -4,7 +4,7 @@
 **Own your knowledge.**
 
 <div class="static-hero">
-<table border="0" cellspacing="0" cellpadding="0" style="border:none;">
+<table border="0" cellspacing="0" cellpadding="0" style="border:none; margin:0;">
   <tr>
     <td width="260" align="center" valign="middle">
       <picture>
