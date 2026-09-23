@@ -39,7 +39,7 @@
 
 ### Declare meaning
 
-Proxies make it infinite: `me.any.depth.path(...)` always exists as valid syntax — you're never calling a fixed method, you're writing a path into a graph you're inventing as you go.
+Any path is valid — `me.any.depth.path(...)` — because you invent the graph as you write it.
 
 ```ts
 me.profile.name("Abella.e")
@@ -47,7 +47,7 @@ me.profile.name("Abella.e")
 
 ### Resolve meaning
 
-The API is the [namespace](https://neurons-me.github.io/Namespace.html) itself.
+You resolve inside a [namespace](https://neurons-me.github.io/Namespace.html) — the name of the place, the place of the name.
 
 ```ts
 me("profile.name") // "Abella.e"
