@@ -29,6 +29,22 @@
 </div>
 
 
+## What is .me
+
+`.me` is a declarative language for building an infinite semantic tree — a universe of meaning — and querying it by path.
+
+**Declare meaning:**
+```ts
+me.profile.name("Abella.e")
+```
+
+**Resolve meaning:**
+```ts
+me("profile.name") // "Abella.e"
+```
+
+Proxies make it infinite: `me.any.depth.path(...)` always exists as valid syntax — you're never calling a fixed method, you're writing a path into a graph you're inventing as you go. **The API is the [namespace](https://neurons-me.github.io/Namespace.html) itself.**
+
 ## Getting Started
 Install .me. Open your terminal and run:
 
@@ -195,17 +211,17 @@ Same grammar, 4 robots or 100k nodes. `me.robots["[i]"]` in [Robots](https://neu
 > **Local compute makes memory an OS primitive.**  
 > Cloud makes it a service.
 
-In the [Extreme Fan-Out](https://neurons-me.github.io/.me/docs/Extreme-Fan-Out.html) benchmark, one write propagates to 100,000 dependents in 6252ms — about 62μs per dependent.
+In the [Extreme Fan-Out](https://neurons-me.github.io/.me/docs/Extreme-Fan-Out.html) benchmark, one write propagates to 100,000 dependents in 21,283ms — about 213μs per dependent. Real numbers, worst case: every one of the 100,000 nodes genuinely depends on the changed value, so all 100,000 recompute — see [What is O(k)?](https://suign.github.io/WhatIsOK.html) for the full, verified benchmark table.
 
 ### Real Performance
 
 **.me** uses **true O(K) reactivity** — when a value changes, only its actual dependents update. *Not the whole graph.*
 
-More importantly, propagation cost follows K, not total graph size. In the [Hemisphere](https://neurons-me.github.io/.me/docs/Hemisphere-Scale.html) benchmark, a graph with 1,000,000 nodes changes one sensor and recomputes exactly 6 dependents in 0.256ms.
+More importantly, propagation cost follows K, not total graph size. In the [Hemisphere](https://neurons-me.github.io/.me/docs/Hemisphere-Scale.html) benchmark, a graph with 1,000,000 nodes changes one sensor and recomputes exactly 6 dependents in 4.346ms.
 
-- 1 million nodes in memory
+- 1 million nodes in memory (~533MB heap)
 - 1 sensor changed → exactly **6 dependent nodes** recomputed
-- Time to propagate: **0.256ms**
+- Time to propagate: **4.346ms**
 - K=6 out of 1,000,000 — the rest of the graph is untouched
 
 Scale the graph to 10 million nodes — if your change has 6 dependents, it still takes the same time.
