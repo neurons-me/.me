@@ -37,19 +37,23 @@
 
 `.me` is a declarative language for building an infinite semantic tree — a universe of meaning — and querying it by path.
 
-**Declare meaning:**
+### Declare meaning
+
+Proxies make it infinite: `me.any.depth.path(...)` always exists as valid syntax — you're never calling a fixed method, you're writing a path into a graph you're inventing as you go.
+
 ```ts
 me.profile.name("Abella.e")
 ```
 
-**Resolve meaning:**
+### Resolve meaning
+
+The API is the [namespace](https://neurons-me.github.io/Namespace.html) itself.
+
 ```ts
 me("profile.name") // "Abella.e"
 ```
 
-Proxies make it infinite: `me.any.depth.path(...)` always exists as valid syntax — you're never calling a fixed method, you're writing a path into a graph you're inventing as you go. **The API is the [namespace](https://neurons-me.github.io/Namespace.html) itself.**
-
-**`me.whatever(what)`** — every call is Subject-Verb-Object, plus an operator table: `@` identity, `_` secret, `->` link (not a copy), `=` derived rule. One kernel, real lines:
+`me.whatever(what)` — every call is Subject-Verb-Object, plus an operator table: <code style="color:#f472b6;font-weight:600;">@</code> identity, <code style="color:#f472b6;font-weight:600;">_</code> secret, <code style="color:#f472b6;font-weight:600;">-&gt;</code> link (not a copy), <code style="color:#f472b6;font-weight:600;">=</code> derived rule. One kernel, real lines:
 
 ```ts
 me["@"]("jabellae");
