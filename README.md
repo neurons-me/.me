@@ -211,35 +211,15 @@ That's O(k) end to end, small or large — one edit, and whole catalogs reprice 
 
 Any path you write becomes a node. **No schema. No migrations.** If it changes, everything that depends on it updates automatically.
 
-`->` points to another path.
+| Operator | Meaning | Example |
+|---|---|---|
+| `->` | Points to another path. | `me.card["->"]("inventory")` |
+| `=` | Derived value. | `me["="]("total", "price * 1.16")` |
+| `_` | Secret — structurally invisible. | `me.wallet["_"]("vault")` |
+| `[i]` | Broadcasts to a family. | `me.robots["[i]"]["="]("canProceed", "...")` |
+| `[filter]` | Queries. | `me("trucks[fuel > 200].fuel")` |
 
-```ts
-me.card["->"]("inventory")
-```
-
-`=` is a derived value.
-
-```ts
-me["="]("total", "price * 1.16")
-```
-
-`_` is secret — structurally invisible.
-
-```ts
-me.wallet["_"]("vault")
-```
-
-`[i]` broadcasts to a family.
-
-```ts
-me.robots["[i]"]["="]("canProceed", "...")
-```
-
-`[filter]` queries.
-
-```ts
-me("trucks[fuel > 200].fuel")
-```
+Full breakdown, with the exact handler behind each one: **[Operators & Logic](https://neurons-me.github.io/.me/Typescript/typedocs/Operators.html)**.
 
 Developers may *recognize the idea* more quickly written like this:
 
