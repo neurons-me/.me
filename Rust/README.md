@@ -12,6 +12,14 @@ meaning into a smaller, stricter runtime that can eventually live closer to
 hardware: a daemon, a local gateway, a Raspberry Pi, a vehicle computer, an
 embedded agent, or a future `monad.ai` host.
 
+## Compatibility tracking
+
+TypeScript defines the reference behavior. Rust package versions remain independent;
+[the compatibility tracker](../compatibility/README.md) records the TypeScript
+source baseline, contract revision, and known open contracts. Rust now includes
+the v4 identity-bound key derivation primitive, but its Kernel encryption remains
+v3 until the v4 lifecycle and persistence contracts are ported.
+
 ## What Exists
 
 The Rust kernel currently includes:

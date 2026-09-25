@@ -1,0 +1,1 @@
+{"private":true,"type":"module","scripts":{"status":"node check.mjs","check":"node check.mjs --check","test":"node check.mjs --test"}}

@@ -14,6 +14,17 @@ contracts.
 
 It is not allowed to change `.me` meaning.
 
+## Tracked reference and gaps
+
+TypeScript is the reference; Rust optimizes implementation without redefining
+semantics. See [the executable compatibility inventory](../../compatibility/README.md)
+for the pinned source fingerprint, contract revision and open-contract counter.
+Run `node compatibility/check.mjs --test` from the `.me` repository root.
+
+The v4 identity-bound KDF has cross-language fixture coverage. Full v4 encrypted
+branches, identity-root lifecycle and snapshot migration are still pending in Rust.
+The existing kernel encryption path remains v3.
+
 ## Current Parity Surface
 
 The Rust port currently covers:
@@ -53,4 +64,5 @@ The Rust port currently covers:
 Rust is not yet a drop-in replacement for the TypeScript kernel inside
 `monad.ai`.
 
-That requires an integration layer and host decision, not more kernel semantics.
+That requires closing the recorded v4 gaps as well as an integration layer and
+host decision. Existing public replay fixtures do not prove full snapshot parity.

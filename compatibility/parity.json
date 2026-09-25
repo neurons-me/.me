@@ -1,0 +1,93 @@
+{
+  "schemaVersion": 1,
+  "contractRevision": 1,
+  "reference": {
+    "implementation": "Typescript",
+    "version": "4.0.1",
+    "sourceSha256": "0d6adb064fcac34cd91931cc0ae264069c63565b66d918c7ef774a1265bb727c"
+  },
+  "rustRole": "Compatible kernel optimized independently; performance claims require measurements.",
+  "contracts": [
+    {
+      "id": "public-replay",
+      "status": "contract-covered",
+      "tests": [
+        "typescript_fixture_contract"
+      ],
+      "note": "Supported public replay shapes only."
+    },
+    {
+      "id": "axioms-selectors",
+      "status": "contract-covered",
+      "tests": [
+        "axioms_contract",
+        "path_contract"
+      ],
+      "note": "Rust contracts; not an exhaustive differential test."
+    },
+    {
+      "id": "proofs",
+      "status": "contract-covered",
+      "tests": [
+        "proof_contract"
+      ],
+      "note": "Existing proof contracts."
+    },
+    {
+      "id": "wrapped-keys",
+      "status": "contract-covered",
+      "tests": [
+        "wrapped_secret_contract",
+        "keyspace_contract"
+      ],
+      "note": "Recipient envelopes and keyspace."
+    },
+    {
+      "id": "runtime-persistence",
+      "status": "contract-covered",
+      "tests": [
+        "runtime_contract",
+        "storage_contract"
+      ],
+      "note": "Rust host contracts; no monad drop-in guarantee."
+    },
+    {
+      "id": "v4-kdf",
+      "status": "contract-covered",
+      "tests": [
+        "v4_derivation_contract"
+      ],
+      "note": "Ten vectors generated from TypeScript source; primitive only."
+    },
+    {
+      "id": "v4-blob-codec",
+      "status": "pending",
+      "tests": [],
+      "note": "Port encryption/decryption and authenticated failure cases."
+    },
+    {
+      "id": "identity-root-lifecycle",
+      "status": "pending",
+      "tests": [],
+      "note": "Create, unlock, lock, password rewrap, backup and restore."
+    },
+    {
+      "id": "v4-kernel-integration",
+      "status": "pending",
+      "tests": [],
+      "note": "Connect identity root to scopes, cache invalidation and secret reads/writes."
+    },
+    {
+      "id": "v4-snapshot-migration",
+      "status": "pending",
+      "tests": [],
+      "note": "TypeScript snapshot interoperability and resumable v3-to-v4 migration."
+    },
+    {
+      "id": "monad-host-integration",
+      "status": "pending",
+      "tests": [],
+      "note": "Rust is not a drop-in backend for monad.ai."
+    }
+  ]
+}

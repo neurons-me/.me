@@ -29,7 +29,9 @@ use secret_material::{
     decrypt_blob_v3_cleartext, derive_blob_v3_keys, derive_secret_material_v3,
     encrypt_blob_v3_cleartext, lineage_segment, random_blob_v3_nonce,
 };
-pub use secret_material::{BlobV3DerivedKeys, SecretMaterialPurpose};
+pub use secret_material::{
+    derive_blob_v4_keys, BlobV3DerivedKeys, BlobV4DerivedKeys, BlobV4Mode, SecretMaterialPurpose,
+};
 pub use wrapped_secret::{
     export_p256_public_key_from_private, generate_p256_key_pair, unwrap_secret_v1, wrap_secret_v1,
     P256KeyPair, P256PrivateKey, P256PublicKeyCoordinates, WrappedSecretCleartext,

@@ -85,6 +85,54 @@ pub fn derive_blob_v3_keys(
     })
 }
 
+/// Identity-bound v4 KDF, matching the TypeScript reference byte-for-byte.
+/// This primitive does not enable v4 snapshots or identity lifecycle in Kernel.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BlobV4Mode {
+    Branch,
+    Value,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BlobV4DerivedKeys {
+    pub enc_key: [u8; 32],
+    pub mac_key: [u8; 32],
+    pub path_context: Vec<u8>,
+}
+
+pub fn derive_blob_v4_keys(
+    chain: &[Vec<u8>],
+    mode: BlobV4Mode,
+    path: &[String],
+    identity_root: &[u8],
+) -> Option<BlobV4DerivedKeys> {
+    if identity_root.is_empty() || chain.len() < 5 {
+        return None;
+    }
+    let purpose = match mode {
+        BlobV4Mode::Branch => "this.me/blob/v4/branch",
+        BlobV4Mode::Value => "this.me/blob/v4/value",
+    };
+    let mut transcript = b"this.me/blob/v4/kdf".to_vec();
+    transcript.extend_from_slice(&length_prefixed(purpose.as_bytes()));
+    for segment in chain {
+        transcript.extend_from_slice(&length_prefixed(segment));
+    }
+    let base_key = hmac_keccak256(identity_root, &[&transcript]);
+    let path_context = path.join(".").into_bytes();
+    Some(BlobV4DerivedKeys {
+        enc_key: hmac_keccak256(
+            &base_key,
+            &[b"this.me/blob/v4/enc", &length_prefixed(&path_context)],
+        ),
+        mac_key: hmac_keccak256(
+            &base_key,
+            &[b"this.me/blob/v4/mac", &length_prefixed(&path_context)],
+        ),
+        path_context,
+    })
+}
+
 pub fn encrypt_blob_v3_cleartext(
     cleartext: &[u8],
     keys: &BlobV3DerivedKeys,
