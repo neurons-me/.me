@@ -33,13 +33,13 @@
 </div>
 
 
-## What is .me
+## READ.me
 
-`.me` is a declarative language for building an infinite semantic tree — a universe of meaning — and querying it by path.
+A declarative language for building an infinite semantic tree — a universe of meaning — and querying it by path.
 
 ### Declare meaning
 
-Any path is valid — `me.any.depth.path(...)` — because you invent the graph as you write it.
+Any path is valid — `me.any.path(...)` — because you invent the graph as you write it.
 
 ```ts
 me.profile.name("Abella.e")

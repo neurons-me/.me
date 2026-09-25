@@ -24,6 +24,11 @@
      edge instead of sitting on it. */
   .me-hero-wrap { position: relative; max-width: 560px; }
   .me-hero-table { width: 100%; }
+  /* The site theme draws borders on every table/td (and GitHub-style zebra
+     backgrounds on rows); this table is only layout, so drop the frame. */
+  .me-hero-table, .me-hero-table tr, .me-hero-table td {
+    border: none !important; background: transparent !important;
+  }
   /* min-width only above ~640px: 260px (left, fixed) + 300px (right, min)
      overflows a phone viewport, so mobile keeps the old content-based
      sizing and only wider screens get the deliberately roomier card. */
