@@ -29,6 +29,7 @@ const sections = [
   "migration.test.ts",
   "generative.test.ts",
   "seed-persistence.test.ts",
+  "derived-from-secret.test.ts",
 ];
 
 let anyFailed = false;
