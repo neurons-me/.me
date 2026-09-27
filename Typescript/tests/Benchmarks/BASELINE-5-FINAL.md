@@ -1,5 +1,7 @@
 # BASELINE-5-FINAL
 
+> **Historical record.** Rows for benchmarks 5–11 on public (non-secret) paths, and secret/public ratios derived from them, measured writes that recomputed nothing: a reference-resolution bug fixed on 2026-09-26 left those derivations unsubscribed from the input being written. Current numbers: `docs/Benchmarks/benchmarks.md`.
+
 Date: 2026-04-08
 
 Commands:

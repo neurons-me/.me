@@ -374,9 +374,10 @@ From [.me/Typescript/](https://github.com/neurons-me/.me/tree/main/Typescript)
 
 |               |                                                   |
 | ------------- | ------------------------------------------------- |
-| `0.001ms p50` | write enqueue                                     |
-| `0.003ms p50` | cascadeLazy 10-dep flush                          |
-| `0.137ms p99` | cascadeLazy 10-dep flush                          |
+| `~13µs`       | per recomputed dependent, `ME` eager (linear in k) |
+| `0.001ms p50` | write enqueue (standalone `kernel/cascade` engine) |
+| `0.003ms p50` | cascadeLazy 10-dep flush (standalone `kernel/cascade` engine, not `ME`) |
+| `0.137ms p99` | cascadeLazy 10-dep flush (standalone `kernel/cascade` engine, not `ME`) |
 | `~700 vps`    | sustained write with 1536-dim vectors             |
 | `1M nodes`    | in-memory with sub-ms propagation                 |
 | `23.2x`       | IVF search speedup over exact scan on 100k corpus |

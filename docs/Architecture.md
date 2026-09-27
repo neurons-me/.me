@@ -20,7 +20,9 @@ Full grammar, formally: **[`me.whatever(what)`](https://suign.github.io/MeWhatev
 
 **Proxy-based path resolution.** Reading or writing `me.some.path` never builds or copies an object tree to answer it — [`proxy.ts`](https://github.com/neurons-me/.me/blob/main/Typescript/src/proxy.ts) intercepts the access with a real `Proxy` trap and resolves it directly against the kernel's path algebra, on demand.
 
-**Dependency graph.** [`kernel/cascade.ts`](https://github.com/neurons-me/.me/blob/main/Typescript/src/kernel/cascade.ts) keeps two adjacency maps, both `Set`-backed: `deps` (what a node reads from) and `dependents` (who reads a node). A write marks the affected node dirty; propagation walks `dependents` outward from there, touching only the nodes that actually depend on what changed — never the whole graph.
+**Dependency graph.** [`derivation.ts`](https://github.com/neurons-me/.me/blob/main/Typescript/src/derivation.ts) keeps `refSubscribers`: for every path, the `Set` of derived targets that read it. When a derivation is declared, each identifier in its expression subscribes the paths the evaluator may read for it (relative to the formula's scope, then the root). A write walks the subscribers of the written path outward, recomputing only targets whose effective input actually changed — never the whole graph. Measured cost is linear in `k`, the number of targets recomputed (see [`docs/Benchmarks/benchmarks.md`](https://github.com/neurons-me/.me/blob/main/docs/Benchmarks/benchmarks.md)).
+
+[`kernel/cascade.ts`](https://github.com/neurons-me/.me/blob/main/Typescript/src/kernel/cascade.ts) is a separate, standalone dependency engine exported as `createMe`/`define`/`write`/`subscribe`; the `ME` class does not use it.
 
 ### Historical: Array → Set
 

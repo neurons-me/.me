@@ -1,11 +1,11 @@
 # Contributing to.me
 
-We ship `0.003ms` p50. PRs must keep it fast or make it faster.
+`ME` recomputes only what depends on a write: cost is linear in `k`, the number of dependents recomputed (~12–14 µs each on an Apple M2, see `docs/Benchmarks/benchmarks.md`). PRs must keep it that way or make each step cheaper.
 
 ## Requirements
 1. Fork → branch `feat/your-change` or `xai/nrp-integration`
-2. Run `npm run bench:phase3:cascade` before/after. Paste trace in PR description.
-3. Performance target: p50 ≤ `0.005ms`. Regressions need written explanation.
+2. Run `node tests/Benchmarks/benchmark.regression-gate.test.ts` before/after; it must pass. Paste its output in the PR description.
+3. Regressions in per-dependent cost need a written explanation. (`npm run bench:phase3:cascade` measures the standalone `kernel/cascade.ts` engine, not `ME`; its `0.003ms` p50 target applies only to that engine.)
 4. Sign commits with DCO: `git commit -s`
 5. Keep core generic. NRP/xAI-specific code goes to `packages/xai/` or separate plugin.
 
