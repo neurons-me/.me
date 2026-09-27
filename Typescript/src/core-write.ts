@@ -5,12 +5,13 @@ import {
 } from "./crypto.ts";
 import {
   clearDerivationsByPrefix,
+  computeDerivation,
   getIteratorRuleIndex,
   invalidateFromPath,
+  invalidateFromPaths,
   registerDerivation,
   setIteratorRule,
 } from "./derivation.ts";
-import { tryEvaluateAssignExpression } from "./evaluator.ts";
 import { normalizeCall } from "./normalizeCall.ts";
 import { ME_SET_ACTIVE_EXPRESSION_SYMBOL } from "./kernel-symbols.ts";
 import {
@@ -1055,21 +1056,14 @@ export function postulate(
       for (const rawScope of scopes) {
         const targetScope = normalizeSelectorPath(rawScope);
         const assignTarget = normalizeSelectorPath([...targetScope, ev.name]);
-        registerDerivation(self, assignTarget, targetScope, ev.expr);
-        const evaluated = tryEvaluateAssignExpression(self, targetScope, ev.expr);
-        out = postulate(self, assignTarget, evaluated.ok ? evaluated.value : ev.expr, "=");
+        out = declareDerivation(self, assignTarget, targetScope, ev.expr);
       }
       return out;
     }
 
     const assignTarget = normalizeSelectorPath([...ev.targetPath, ev.name]);
     const evalScope = normalizeSelectorPath(ev.targetPath);
-    registerDerivation(self, assignTarget, evalScope, ev.expr);
-    const evaluated = tryEvaluateAssignExpression(self, evalScope, ev.expr);
-    if (evaluated.ok) {
-      return postulate(self, assignTarget, evaluated.value, "=");
-    }
-    return postulate(self, assignTarget, ev.expr, "=");
+    return declareDerivation(self, assignTarget, evalScope, ev.expr);
   }
 
   const q = isQueryCall(self.operators as OperatorRegistry, targetPath, expression);
@@ -1123,9 +1117,20 @@ function instantiateIteratorRule(self: MEKernelLike, rule: MEIteratorRule, idx: 
   const targetScope = normalizeSelectorPath(substituteIteratorInPath(rule.targetPath, idx));
   const assignTarget = normalizeSelectorPath([...targetScope, rule.name]);
   const expr = substituteIteratorInExpression(rule.expr, idx);
-  registerDerivation(self, assignTarget, targetScope, expr);
-  const evaluated = tryEvaluateAssignExpression(self, targetScope, expr);
-  return postulate(self, assignTarget, evaluated.ok ? evaluated.value : expr, "=");
+  return declareDerivation(self, assignTarget, targetScope, expr);
+}
+
+// Register a formula and write its first value. With no correct value (a
+// missing input, a cycle, a failed evaluation) the value is `undefined` and the
+// reason is kept for explain().
+function declareDerivation(self: MEKernelLike, assignTarget: SemanticPath, evalScope: SemanticPath, expr: string): any {
+  registerDerivation(self, assignTarget, evalScope, expr);
+  const d = self.derivations[assignTarget.join(".")];
+  const { value, unresolved } = computeDerivation(self, d);
+  d.unresolved = unresolved;
+  const out = postulate(self, assignTarget, value, "=");
+  d.lastValue = value;
+  return out;
 }
 
 function ensureRuleInstance(self: MEKernelLike, rule: MEIteratorRule, idx: string): void {
@@ -1255,4 +1260,10 @@ export function removeSubtree(self: MEKernelLike, targetPath: SemanticPath) {
   };
   self._memories.push(memory);
   self.applyMemoryToIndex(memory);
+
+  // Anything that read a removed path now has a missing input.
+  const removedRoots = Object.keys(self.refSubscribers).filter(
+    (key) => pathStr === "" || key === pathStr || key.startsWith(pathStr + "."),
+  );
+  invalidateFromPaths(self, removedRoots);
 }

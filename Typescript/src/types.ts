@@ -610,12 +610,23 @@ export interface OperatorSystemSpec {
 
 export type MERecomputeMode = "eager" | "lazy";
 
+/** Why a derivation currently has no value (it reads back as `undefined`). */
+export type MEDerivationUnresolved =
+  | { reason: "missing-input"; inputs: string[] }
+  | { reason: "cycle"; cycle: string[] }
+  | { reason: "evaluation-failed" };
+
 export interface MEDerivationRecord {
   expression: string;
   evalScope: SemanticPath;
   /** Each identifier in the expression and every path the evaluator may read for it (relative first, then root). */
   refs: Array<{ label: string; candidates: string[] }>;
   lastComputedAt: number;
+  unresolved?: MEDerivationUnresolved;
+  /** Every candidate path of every ref, deduplicated (cached). */
+  refPaths?: string[];
+  /** Value this derivation last wrote itself; absent when unknown (then the stored value is read). */
+  lastValue?: any;
 }
 
 /** A `[i]` derivation kept as a template so children added later get it too. */
@@ -684,16 +695,22 @@ export interface MEExplainResult {
   meta: {
     dependsOn: string[];
     lastComputedAt?: number;
+    /** Derivations evaluated by the last wave that touched this path. */
     k?: number;
     recomputed?: string[];
+    /** Subset of `recomputed` whose value changed and was written. */
+    changed?: string[];
     sourcePath?: string;
     recomputedAt?: number;
+    /** Present when the derivation has no value, with the reason. */
+    unresolved?: MEDerivationUnresolved;
   };
 }
 
 export interface MERecomputeWave {
   sourcePath: string;
   recomputed: Set<string>;
+  changed: Set<string>;
   at: number;
 }
 
@@ -866,7 +883,7 @@ export interface MEKernelLike extends Record<string, any> {
   getDecryptedChunk(scope: SemanticPath, scopeSecret: string, chunkId: string): any | undefined;
   setChunkBlob(scope: SemanticPath, chunkId: string, blob: EncryptedBlob, scopeSecret: string): void;
   clearScopeChunkCache(scopeKey: string): void;
-  ensureTargetFresh(targetKey: string, visiting?: Set<string>): boolean;
+  ensureTargetFresh(targetKey: string): boolean;
   tryEvaluateAssignExpression(evalScopePath: SemanticPath, expr: string): { ok: true; value: number | boolean } | { ok: false };
   registerDerivation(targetPath: SemanticPath, evalScope: SemanticPath, expr: string): void;
   clearDerivationsByPrefix(prefixPath: SemanticPath): void;

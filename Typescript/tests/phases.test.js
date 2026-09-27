@@ -324,8 +324,10 @@ runPhase(
     assert.equal(secretInput.value, "●●●●");
 
     // Security: mini evaluator must reject executable JS payloads.
+    // Not executed: no value, and explain() says why (no correct value -> undefined).
     me8.fleet.trucks[2]["="]("unsafe_expr", "1 + console.log(1)");
-    assert.equal(me8("fleet.trucks[2].unsafe_expr"), "1 + console.log(1)");
+    assert.equal(me8("fleet.trucks[2].unsafe_expr"), undefined);
+    assert.ok(me8.explain("fleet.trucks[2].unsafe_expr").meta.unresolved);
     console.log(`   ✅ Phase 8 total runtime: ${Date.now() - t0}ms`);
   }
 );

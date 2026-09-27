@@ -2,6 +2,60 @@
 
 ## Unreleased
 
+### Fix: eager recompute order, early cutoff, removals, cycles
+
+Eager mode (the default) walked a write's dependents breadth-first and
+evaluated each once, so a derivation that read the written path directly
+*and* through a longer chain was computed with a stale intermediate value:
+
+```ts
+me.order.price(100)
+me.order["="]("discount", "price * 0.1")
+me.order["="]("net", "price - discount")
+me.order["="]("tax", "net * 0.16")
+me.order["="]("total", "price + tax")
+me.order.price(200) // total was 214.4 (stale tax); now 228.8
+```
+
+A wave now collects the affected derivations and evaluates them in
+topological order, each once, and only if one of its inputs changed in that
+wave. A flat fan-out (no affected derivation reads another) skips the
+ordering step.
+
+- **Early cutoff.** A recomputed primitive value that is `Object.is`-equal to
+  the previous one is not written and does not propagate. Objects and arrays
+  are always treated as changed. `explain().meta.k` still counts derivations
+  *evaluated*; the new `meta.changed` lists those whose value changed and was
+  written.
+- **Removals recompute.** Removing a path (`me.r.a["-"]()`) now updates every
+  derivation that read it or anything below it.
+- **Cycles fail closed.** Derivations that read each other (or themselves) no
+  longer overflow the stack in lazy mode; in both modes the cycle members are
+  `undefined`, derivations reading them are `undefined` (missing input), and
+  the rest of the wave updates normally.
+
+### Behavior change: a derivation with no correct value is `undefined`
+
+When a formula could not be evaluated, its value used to be the formula text
+(`me("p.y") === "x + later"`). It is now `undefined`, both at declaration and
+after an input is removed, and `explain(path).meta.unresolved` says why:
+`{ reason: "missing-input", inputs: [...] }`, `{ reason: "cycle", cycle: [...] }`
+or `{ reason: "evaluation-failed" }` (an expression the mini evaluator
+rejects, e.g. `"true + 1"`). A payload like `"1 + console.log(1)"` is still
+never executed; it now reads `undefined` (missing input `console.log`) instead
+of its own text. The value is computed normally once a missing input arrives.
+
+Performance: ~4% per recomputed dependent on a flat fan-out versus the
+previous release (A/B, 5 alternating runs, Apple M2), the cost of the cutoff
+comparison.
+
+Known limit, unchanged by this release: a formula that reads through a
+pointer (`me.pick["->"]("users.ana")`, `"pick.age >= 18"`) is not recomputed
+when the pointer is retargeted or when the pointed-to value is written; it
+subscribes to `pick.age`, not to `users.ana.age`.
+
+Covered by `tests/derivation-wave.test.ts`.
+
 ### Semantics change: `[i]` derivations apply to children added later
 
 `me.users["[i]"]["="]("isAdult", "age >= 18")` used to expand once over the

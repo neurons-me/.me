@@ -991,8 +991,8 @@ export class ME {
     return Derivation.isDerivationVersionStale(this as unknown as MEKernelLike, targetKey);
   }
 
-  private ensureTargetFresh(targetKey: string, visiting: Set<string> = new Set()): boolean {
-    return Derivation.ensureTargetFresh(this as unknown as MEKernelLike, targetKey, visiting);
+  private ensureTargetFresh(targetKey: string): boolean {
+    return Derivation.ensureTargetFresh(this as unknown as MEKernelLike, targetKey);
   }
 
   private invalidateFromPath(path: SemanticPath): void {

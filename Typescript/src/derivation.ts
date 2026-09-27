@@ -2,6 +2,7 @@ import { pathStartsWith } from "./operators.ts";
 import { resolveBranchScope } from "./secret.ts";
 import type {
   MEDerivationRecord,
+  MEDerivationUnresolved,
   MEIteratorRule,
   MEExplainResult,
   MEKernelLike,
@@ -29,6 +30,7 @@ export function explain(self: MEKernelLike, path: string): MEExplainResult {
           ? {
               k: wave.recomputed.size,
               recomputed: [...wave.recomputed],
+              changed: [...wave.changed],
               sourcePath: wave.sourcePath,
               recomputedAt: wave.at,
             }
@@ -66,10 +68,12 @@ export function explain(self: MEKernelLike, path: string): MEExplainResult {
     meta: {
       dependsOn: [...new Set(effectiveRefs.map((r) => r.path))],
       lastComputedAt: d.lastComputedAt,
+      ...(d.unresolved ? { unresolved: d.unresolved } : {}),
       ...(wave
         ? {
             k: wave.recomputed.size,
             recomputed: [...wave.recomputed],
+            changed: [...wave.changed],
             sourcePath: wave.sourcePath,
             recomputedAt: wave.at,
           }
@@ -83,15 +87,19 @@ function beginRecomputeWave(self: MEKernelLike, sourcePath: string): boolean {
   self.activeRecomputeWave = {
     sourcePath,
     recomputed: new Set<string>(),
+    changed: new Set<string>(),
     at: Date.now(),
   };
   return true;
 }
 
-function recordRecomputedTarget(self: MEKernelLike, targetKey: string): void {
+// k counts what was evaluated; `changed` is the subset whose value changed and
+// was written.
+function recordRecomputedTarget(self: MEKernelLike, targetKey: string, changed: boolean): void {
   const wave = self.activeRecomputeWave;
   if (!wave) return;
   wave.recomputed.add(targetKey);
+  if (changed) wave.changed.add(targetKey);
 }
 
 function finalizeRecomputeWave(self: MEKernelLike): void {
@@ -102,6 +110,7 @@ function finalizeRecomputeWave(self: MEKernelLike): void {
   const committedWave = {
     sourcePath: wave.sourcePath,
     recomputed: new Set(wave.recomputed),
+    changed: new Set(wave.changed),
     at: Date.now(),
   };
   for (const targetKey of committedWave.recomputed) {
@@ -172,9 +181,10 @@ function derivationReadsChange(self: MEKernelLike, d: MEDerivationRecord, change
 }
 
 function derivationRefPaths(d: MEDerivationRecord): string[] {
+  if (d.refPaths) return d.refPaths;
   const out = new Set<string>();
   for (const ref of d.refs) for (const p of ref.candidates) out.add(p);
-  return [...out];
+  return (d.refPaths = [...out]);
 }
 
 export function unregisterDerivation(self: MEKernelLike, targetKey: string): void {
@@ -240,18 +250,71 @@ export function registerDerivation(
   self.staleDerivations.delete(targetKey);
 }
 
+// Evaluate a derivation. A derivation with no correct value has no value:
+// `undefined`, with the reason kept on the record for explain(). Evaluation
+// runs first; missing inputs are only diagnosed when it fails, because the ref
+// extractor also sees words inside string literals.
+export function computeDerivation(
+  self: MEKernelLike,
+  d: MEDerivationRecord,
+): { value: any; unresolved?: MEDerivationUnresolved } {
+  const evaluated = tryEvaluateAssignExpression(self, d.evalScope, d.expression);
+  if (evaluated.ok) return { value: evaluated.value };
+  const missing: string[] = [];
+  for (const ref of d.refs) {
+    if (ref.candidates.some((p) => hasValue(self, p))) continue;
+    missing.push(ref.candidates[0]);
+  }
+  if (missing.length > 0) return { value: undefined, unresolved: { reason: "missing-input", inputs: missing } };
+  return { value: undefined, unresolved: { reason: "evaluation-failed" } };
+}
+
+// Primitive values that are Object.is-equal need no write. Objects and arrays
+// are always treated as changed (no deep comparison).
+function sameValue(a: any, b: any): boolean {
+  if (!Object.is(a, b)) return false;
+  return a === null || typeof a !== "object";
+}
+
+function commitDerivedValue(
+  self: MEKernelLike,
+  targetKey: string,
+  value: any,
+  unresolved: MEDerivationUnresolved | undefined,
+): boolean {
+  const d = self.derivations[targetKey];
+  if (!d) return false;
+  d.unresolved = unresolved;
+  d.lastComputedAt = Date.now();
+  const targetPath = normalizeSelectorPath(targetKey.split(".").filter(Boolean));
+  const previous = "lastValue" in d ? d.lastValue : readPreviousValue(self, targetKey, targetPath);
+  const changed = !sameValue(previous, value);
+  recordRecomputedTarget(self, targetKey, changed);
+  if (changed) {
+    self.commitValueMapping(targetPath, value, "=");
+    bumpRefVersion(self, targetKey);
+  }
+  d.lastValue = value;
+  snapshotDerivationRefVersions(self, targetKey);
+  self.staleDerivations.delete(targetKey);
+  return changed;
+}
+
+/** Recompute one derivation. Returns whether its value changed (early cutoff). */
 export function recomputeTarget(self: MEKernelLike, targetKey: string): boolean {
   const d = self.derivations[targetKey];
   if (!d) return false;
-  const targetPath = normalizeSelectorPath(targetKey.split(".").filter(Boolean));
-  const evaluated = tryEvaluateAssignExpression(self, d.evalScope, d.expression);
-  recordRecomputedTarget(self, targetKey);
-  self.commitValueMapping(targetPath, evaluated.ok ? evaluated.value : d.expression, "=");
-  bumpRefVersion(self, targetKey);
-  d.lastComputedAt = Date.now();
-  snapshotDerivationRefVersions(self, targetKey);
-  self.staleDerivations.delete(targetKey);
-  return true;
+  const { value, unresolved } = computeDerivation(self, d);
+  return commitDerivedValue(self, targetKey, value, unresolved);
+}
+
+function failCycle(self: MEKernelLike, members: string[]): Set<string> {
+  const cycle = [...members].sort();
+  const changed = new Set<string>();
+  for (const key of cycle) {
+    if (commitDerivedValue(self, key, undefined, { reason: "cycle", cycle })) changed.add(key);
+  }
+  return changed;
 }
 
 export function isDerivationVersionStale(self: MEKernelLike, targetKey: string): boolean {
@@ -264,66 +327,249 @@ export function isDerivationVersionStale(self: MEKernelLike, targetKey: string):
   return false;
 }
 
+type FreshContext = { stack: string[]; resolvedAsCycle: Set<string> };
+
+// readPath() pulls a lazy derivation before returning it. Two re-entries into
+// a target that is being refreshed are possible, and they must not be treated
+// alike:
+// - the early-cutoff comparison reading the target's own previous value: that
+//   read is marked here and returns the stored value, which is what it wants;
+// - anything else is the target depending on itself (a cycle the ref walk did
+//   not see): it fails closed instead of computing from a stale value.
+const readingPrevious = new WeakMap<MEKernelLike, Set<string>>();
+const refreshing = new WeakMap<MEKernelLike, Map<string, { reentered: boolean }>>();
+
+function readPreviousValue(self: MEKernelLike, targetKey: string, targetPath: SemanticPath): any {
+  let marked = readingPrevious.get(self);
+  if (!marked) readingPrevious.set(self, (marked = new Set()));
+  marked.add(targetKey);
+  try {
+    return self.readPath(targetPath);
+  } finally {
+    marked.delete(targetKey);
+  }
+}
+
+// Lazy pull: refresh inputs depth-first, then this target only if an input's
+// version moved. A target met again on its own stack is a cycle: every member
+// fails closed and is not re-evaluated on the way back up.
 export function ensureTargetFresh(
   self: MEKernelLike,
   targetKey: string,
-  visiting: Set<string> = new Set(),
+  ctx: FreshContext = { stack: [], resolvedAsCycle: new Set() },
 ): boolean {
   if (self.recomputeMode !== "lazy") return false;
-  const startedWave = beginRecomputeWave(self, targetKey);
   const d = self.derivations[targetKey];
-  if (!d) {
-    if (startedWave) finalizeRecomputeWave(self);
+  if (!d) return false;
+  const onStack = ctx.stack.indexOf(targetKey);
+  if (onStack >= 0) {
+    const members = ctx.stack.slice(onStack);
+    failCycle(self, members);
+    for (const key of members) ctx.resolvedAsCycle.add(key);
     return false;
   }
-  if (visiting.has(targetKey)) {
-    if (startedWave) finalizeRecomputeWave(self);
+  if (ctx.resolvedAsCycle.has(targetKey)) return false;
+  if (readingPrevious.get(self)?.has(targetKey)) return false;
+  let inFlight = refreshing.get(self);
+  if (!inFlight) refreshing.set(self, (inFlight = new Map()));
+  const running = inFlight.get(targetKey);
+  if (running) {
+    running.reentered = true; // fails closed once its evaluation returns
     return false;
   }
-  visiting.add(targetKey);
+  const entry = { reentered: false };
+  inFlight.set(targetKey, entry);
+  const startedWave = beginRecomputeWave(self, targetKey);
 
-  for (const path of derivationRefPaths(d)) {
-    if (self.derivations[path]) ensureTargetFresh(self, path, visiting);
-  }
-
-  const needsRefresh =
-    self.staleDerivations.has(targetKey) || isDerivationVersionStale(self, targetKey);
   let changed = false;
-  if (needsRefresh) changed = recomputeTarget(self, targetKey);
+  try {
+    ctx.stack.push(targetKey);
+    for (const path of derivationRefPaths(d)) {
+      if (self.derivations[path]) ensureTargetFresh(self, path, ctx);
+    }
+    ctx.stack.pop();
 
-  visiting.delete(targetKey);
-  if (startedWave) finalizeRecomputeWave(self);
+    const needsRefresh =
+      !ctx.resolvedAsCycle.has(targetKey) &&
+      (self.staleDerivations.has(targetKey) || isDerivationVersionStale(self, targetKey));
+    if (needsRefresh) {
+      const { value, unresolved } = computeDerivation(self, d);
+      changed = entry.reentered
+        ? failCycle(self, [targetKey]).size > 0
+        : commitDerivedValue(self, targetKey, value, unresolved);
+    }
+  } finally {
+    inFlight.delete(targetKey);
+    if (startedWave) finalizeRecomputeWave(self);
+  }
   return changed;
 }
 
 export function invalidateFromPath(self: MEKernelLike, path: SemanticPath): void {
-  const root = normalizeSelectorPath(path).join(".");
-  if (!root) return;
-  const startedWave = beginRecomputeWave(self, root);
-  bumpRefVersion(self, root);
+  invalidateFromPaths(self, [normalizeSelectorPath(path).join(".")]);
+}
+
+// Eager push. Phase 1 collects every derivation reachable from the written
+// paths. Phase 2 evaluates them in topological order (Kahn), each at most once
+// and only if one of its inputs changed in this wave, so a derivation never
+// sees a stale input and an unchanged value stops propagation. Nodes Kahn
+// cannot order are cycles (and whatever sits behind them): cycle members fail
+// closed, and ordering resumes for the rest.
+export function invalidateFromPaths(self: MEKernelLike, roots: string[]): void {
+  const sources = roots.filter(Boolean);
+  if (sources.length === 0) return;
+  const startedWave = beginRecomputeWave(self, sources[0]);
+  for (const root of sources) {
+    bumpRefVersion(self, root);
+    // A write that did not come from the derivation itself (declaration, or a
+    // direct write to a derived path): its cached value is no longer known.
+    const own = self.derivations[root];
+    if (own) delete own.lastValue;
+  }
 
   if (self.recomputeMode === "lazy") {
     if (startedWave) finalizeRecomputeWave(self);
     return;
   }
 
-  const queue: string[] = [root];
-  const seenTargets = new Set<string>();
-
-  while (queue.length > 0) {
-    const changed = queue.shift()!;
-    const subs = self.refSubscribers[changed] || new Set<string>();
-    for (const target of subs) {
-      if (seenTargets.has(target)) continue;
+  // Phase 1: affected set and the edges between its members.
+  const affected = new Set<string>();
+  const dependentsOf = new Map<string, string[]>();
+  const pending = [...sources];
+  while (pending.length > 0) {
+    const changedPath = pending.pop()!;
+    for (const target of self.refSubscribers[changedPath] || []) {
       const d = self.derivations[target];
-      if (d && !derivationReadsChange(self, d, changed)) continue;
-      seenTargets.add(target);
-      const updated = recomputeTarget(self, target);
-      if (updated) queue.push(target);
+      if (!d || !derivationReadsChange(self, d, changedPath)) continue;
+      const list = dependentsOf.get(changedPath);
+      if (list) list.push(target);
+      else dependentsOf.set(changedPath, [target]);
+      if (affected.has(target)) continue;
+      affected.add(target);
+      pending.push(target);
+    }
+  }
+  if (affected.size === 0) {
+    if (startedWave) finalizeRecomputeWave(self);
+    return;
+  }
+
+  // Flat fan-out (no affected derivation reads another affected one): every
+  // target reads only the written paths, so order is irrelevant and Kahn is
+  // skipped. This is the common "one input, many dependents" shape.
+  let layered = false;
+  for (const from of dependentsOf.keys()) {
+    if (affected.has(from)) {
+      layered = true;
+      break;
+    }
+  }
+  if (!layered) {
+    for (const target of affected) recomputeTarget(self, target);
+    if (startedWave) finalizeRecomputeWave(self);
+    return;
+  }
+
+  const indegree = new Map<string, number>();
+  for (const target of affected) indegree.set(target, 0);
+  for (const [from, targets] of dependentsOf) {
+    if (!affected.has(from)) continue;
+    for (const target of targets) indegree.set(target, indegree.get(target)! + 1);
+  }
+
+  // Phase 2: topological evaluation with early cutoff.
+  const changedPaths = new Set<string>(sources);
+  const done = new Set<string>();
+  const ready: string[] = [];
+  for (const [target, deg] of indegree) if (deg === 0) ready.push(target);
+
+  const release = (from: string) => {
+    for (const target of dependentsOf.get(from) || []) {
+      if (done.has(target) || !affected.has(target)) continue;
+      const deg = indegree.get(target)! - 1;
+      indegree.set(target, deg);
+      if (deg === 0) ready.push(target);
+    }
+  };
+
+  while (done.size < affected.size) {
+    while (ready.length > 0) {
+      const target = ready.shift()!;
+      if (done.has(target)) continue;
+      done.add(target);
+      const d = self.derivations[target];
+      const inputChanged = !!d && derivationRefPaths(d).some((p) => changedPaths.has(p));
+      if (inputChanged && recomputeTarget(self, target)) changedPaths.add(target);
+      release(target);
+    }
+    if (done.size >= affected.size) break;
+
+    const remaining = [...affected].filter((t) => !done.has(t));
+    const cycles = findCycles(remaining, dependentsOf);
+    if (cycles.length === 0) break; // cannot happen: a stalled Kahn implies a cycle
+    for (const members of cycles) {
+      for (const key of failCycle(self, members)) changedPaths.add(key);
+      for (const key of members) done.add(key);
+      for (const key of members) release(key);
     }
   }
 
   if (startedWave) finalizeRecomputeWave(self);
+}
+
+// Strongly connected components (Tarjan, iterative) of `nodes` under
+// `dependentsOf`; returns those that are cycles (size > 1 or a self-edge).
+function findCycles(nodes: string[], dependentsOf: Map<string, string[]>): string[][] {
+  const inSet = new Set(nodes);
+  const index = new Map<string, number>();
+  const low = new Map<string, number>();
+  const onStack = new Set<string>();
+  const stack: string[] = [];
+  const out: string[][] = [];
+  let counter = 0;
+
+  for (const start of nodes) {
+    if (index.has(start)) continue;
+    const work: Array<{ node: string; i: number }> = [{ node: start, i: 0 }];
+    index.set(start, counter);
+    low.set(start, counter++);
+    stack.push(start);
+    onStack.add(start);
+    while (work.length > 0) {
+      const frame = work[work.length - 1];
+      const next = (dependentsOf.get(frame.node) || []).filter((n) => inSet.has(n));
+      if (frame.i < next.length) {
+        const w = next[frame.i++];
+        if (!index.has(w)) {
+          index.set(w, counter);
+          low.set(w, counter++);
+          stack.push(w);
+          onStack.add(w);
+          work.push({ node: w, i: 0 });
+        } else if (onStack.has(w)) {
+          low.set(frame.node, Math.min(low.get(frame.node)!, index.get(w)!));
+        }
+        continue;
+      }
+      work.pop();
+      if (work.length > 0) {
+        const parent = work[work.length - 1].node;
+        low.set(parent, Math.min(low.get(parent)!, low.get(frame.node)!));
+      }
+      if (low.get(frame.node) === index.get(frame.node)) {
+        const component: string[] = [];
+        let w: string;
+        do {
+          w = stack.pop()!;
+          onStack.delete(w);
+          component.push(w);
+        } while (w !== frame.node);
+        const selfEdge = (dependentsOf.get(frame.node) || []).includes(frame.node);
+        if (component.length > 1 || selfEdge) out.push(component);
+      }
+    }
+  }
+  return out;
 }
 
 // ─── [i] rule index ──────────────────────────────────────────────────────────
