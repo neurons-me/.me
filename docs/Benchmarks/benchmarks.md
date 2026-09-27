@@ -3,7 +3,13 @@
 Run with: `node tests/fire.test.ts` (benchmarks section)
 
 All benchmarks measure the kernel's reactive recompute engine under realistic conditions.
-Hardware-agnostic: times will vary per machine — what matters is the **shape** (flatness, ratios).
+Hardware-agnostic: times will vary per machine — what matters is the **shape** (growth with `k`, ratios).
+
+### Measurement correction (2026-09-26)
+
+Benchmarks 5–11 and the regression gate previously measured writes that recomputed nothing. Their formulas read a root-level name without a dot (`"value * master"`, `"value * factor"`, `"base * rate"`), and a reference-resolution bug subscribed those derivations to the wrong path, so writing the input never triggered a recompute. Latency therefore did not grow with fan-out, and several tables showed it *falling* as fan-out grew. The bug is fixed (see `Typescript/CHANGELOG.md`) and the numbers below for 5–11 are re-measured. Benchmarks 1–4 write each node's own relative `value`, were not affected, and are unchanged.
+
+Methodology for the re-measured benchmarks: 5 rounds on the same machine, alternating the pre-fix and post-fix builds within each round; each value is the median across the 5 rounds. Machine: Apple M2, 8 GB RAM, macOS (Darwin 25.5), Node v24.13.1.
 
 ---
 
@@ -110,187 +116,184 @@ A 500-level deep chain still triggers only k=2 recomputations. The path length d
 
 ## Benchmark 5 — Throughput Under Sustained Mutation
 
-2,000 consecutive mutations, percentile latency tracking.
+2,000 consecutive writes to `factor`, each recomputing 4,000 dependents (eager), percentile latency per write. Median of 5 runs.
+
+| p50 (ms) | p95 (ms) | max (ms), range over runs |
+|---------:|---------:|--------------------------:|
+| 65.7     | 103.2    | 1,150 – 4,400             |
+
+Windowed p50 (median of 5 runs):
 
 ```
-┌─────────┬──────────────────────┬─────────────────────┬─────────────────────┬─────────────────────┐
-│         │ p50                  │ p95                 │ p99                 │ max                 │
-├─────────┼──────────────────────┼─────────────────────┼─────────────────────┼─────────────────────┤
-│ 0       │ 0.007ms              │ 0.011ms             │ 0.018ms             │ 0.331ms             │
-└─────────┴──────────────────────┴─────────────────────┴─────────────────────┴─────────────────────┘
+┌──────────────┬──────────┐
+│ window       │ p50_ms   │
+├──────────────┼──────────┤
+│ 1-200        │ 58.1     │
+│ 401-600      │ 60.2     │
+│ 801-1000     │ 61.1     │
+│ 1201-1400    │ 65.2     │
+│ 1601-1800    │ 69.1     │
+│ 1801-2000    │ 75.8     │
+└──────────────┴──────────┘
 ```
 
-Windowed p95 drift (no degradation over time):
+**Per-write cost grows with history.** Each write recomputes the same 4,000 dependents (k is constant), yet p50 rises ~30% from the first to the last window, and the windowed p95 drift ranges from −18% to +273% across runs (median +123%), with GC pauses up to several seconds. The cause is the log itself: every recompute appends a memory, so this run grows the history to ~8 million entries. Recompute is O(k), but the cost of each write is not fully independent of log size. The next measurable optimizations are skipping the write when a recomputed value did not change, and compacting or snapshotting the log.
 
-```
-┌──────────────┬──────────┬──────────┬──────────┐
-│ window       │ p50_ms   │ p95_ms   │ p99_ms   │
-├──────────────┼──────────┼──────────┼──────────┤
-│ 1-200        │ '0.0088' │ '0.0157' │ '0.0218' │
-│ 201-400      │ '0.0074' │ '0.0112' │ '0.0150' │
-│ 401-600      │ '0.0071' │ '0.0128' │ '0.0210' │
-│ 601-800      │ '0.0070' │ '0.0097' │ '0.0140' │
-│ 801-1000     │ '0.0068' │ '0.0099' │ '0.0307' │
-│ 1001-1200    │ '0.0068' │ '0.0089' │ '0.0142' │
-│ 1201-1400    │ '0.0068' │ '0.0083' │ '0.0115' │
-│ 1401-1600    │ '0.0071' │ '0.0101' │ '0.0164' │
-│ 1601-1800    │ '0.0067' │ '0.0079' │ '0.0115' │
-│ 1801-2000    │ '0.0070' │ '0.0110' │ '0.0148' │
-└──────────────┴──────────┴──────────┴──────────┘
-p95 drift: -30.16%  (gets faster, not slower)
-```
-
-✅ completed in 191.92ms
+> Previously published: ~0.007 ms p50 and "p95 drift −30% (gets faster, not slower)". That run recomputed nothing and appended nothing beyond the write itself.
 
 ---
 
 ## Benchmark 6 — Fan-Out Sensitivity Curves
 
-Measures how latency changes as the number of nodes sharing a derivation rule grows.
+One write to `master` with `fanout` dependents (`dep[i].result = value * master`, eager mode). Median of 5 runs.
 
 ```
-┌────────┬───┬──────────┬──────────┬──────────┬──────────┐
-│ fanout │ k │ p50_ms   │ p95_ms   │ p99_ms   │ max_ms   │
-├────────┼───┼──────────┼──────────┼──────────┼──────────┤
-│ 10     │ 2 │ '0.0124' │ '0.0189' │ '0.0253' │ '0.0934' │
-│ 100    │ 2 │ '0.0082' │ '0.0160' │ '0.0201' │ '0.0230' │
-│ 500    │ 2 │ '0.0074' │ '0.0105' │ '0.0161' │ '0.0184' │
-│ 1000   │ 2 │ '0.0062' │ '0.0078' │ '0.0102' │ '0.0193' │
-│ 2500   │ 2 │ '0.0061' │ '0.0083' │ '0.0120' │ '0.0134' │
-│ 5000   │ 2 │ '0.0057' │ '0.0067' │ '0.0089' │ '0.0105' │
-└────────┴───┴──────────┴──────────┴──────────┴──────────┘
+┌────────┬──────┬────────┬─────────┬─────────┐
+│ fanout │ k    │ inputs │ p50_ms  │ p95_ms  │
+├────────┼──────┼────────┼─────────┼─────────┤
+│ 10     │ 10   │ 2      │ 0.129   │ 0.268   │
+│ 100    │ 100  │ 2      │ 1.19    │ 1.43    │
+│ 500    │ 500  │ 2      │ 5.92    │ 6.72    │
+│ 1000   │ 1000 │ 2      │ 11.97   │ 14.02   │
+│ 2500   │ 2500 │ 2      │ 32.97   │ 38.58   │
+│ 5000   │ 5000 │ 2      │ 69.87   │ 79.55   │
+└────────┴──────┴────────┴─────────┴─────────┘
 ```
 
-Latency decreases as fanout increases — larger datasets benefit from amortized index lookup. k remains 2.
+Latency grows linearly with the number of dependents that actually recompute — about **12–14 µs per dependent** on the reference machine. That is O(k) with k = fan-out: the write touches exactly the dependents of `master`, nothing else. `k` is `explain().meta.k` (dependents recomputed by the wave); `inputs` is the formula's own reference count.
 
-✅ completed in 277.66ms
+> Previously published: flat ~0.006 ms at every fan-out, falling as fan-out grew, with `k = 2`. That run measured a write that recomputed nothing (reference-resolution bug, see top of page), and its `k` column was the formula's input count, not the recompute wave.
 
 ---
 
 ## Benchmark 7 — Cold vs Warm Runtime Profiles
 
-First mutation on a fresh kernel (cold) vs subsequent mutations (warm/steady).
+`cold` = first read of an already-computed output on a fresh kernel (no write). `warm` = first write to `rate` plus a read. `steady` = 80 further write+read cycles. Eager mode, median of 5 runs.
 
 ```
-┌───────┬──────────┬──────────┬───────────────┬───────────────┬───────────────┐
-│ nodes │ cold_ms  │ warm_ms  │ steady_avg_ms │ steady_min_ms │ steady_max_ms │
-├───────┼──────────┼──────────┼───────────────┼───────────────┼───────────────┤
-│ 100   │ '0.1735' │ '0.0865' │ '0.0142'      │ '0.0101'      │ '0.0898'      │
-│ 1000  │ '0.0097' │ '0.0113' │ '0.0081'      │ '0.0056'      │ '0.1277'      │
-│ 5000  │ '0.0149' │ '0.0113' │ '0.0067'      │ '0.0054'      │ '0.0177'      │
-└───────┴──────────┴──────────┴───────────────┴───────────────┴───────────────┘
+┌───────┬──────────┬──────────┬───────────────┬───────────────┐
+│ nodes │ cold_ms  │ warm_ms  │ steady_avg_ms │ steady_min_ms │
+├───────┼──────────┼──────────┼───────────────┼───────────────┤
+│ 100   │ 0.175    │ 3.96     │ 2.14          │ 1.36          │
+│ 1000  │ 0.012    │ 17.4     │ 17.9          │ 15.2          │
+│ 5000  │ 0.022    │ 103.9    │ 103.1         │ 83.7          │
+└───────┴──────────┴──────────┴───────────────┴───────────────┘
 ```
 
-Cold start overhead is sub-millisecond and absorbed after the first mutation.
+Reads of computed values are sub-millisecond at every size. Writes cost in proportion to the dependents they recompute, and warm ≈ steady: there is no separate warm-up penalty to absorb.
 
-✅ completed in 239.26ms
+> Previously published: warm/steady ~0.007–0.014 ms at every size. Those writes recomputed nothing.
 
 ---
 
 ## Benchmark 8 — Explain Overhead Budget
 
-Cost of calling `explain(path)` on top of a normal mutation cycle.
+Cost of calling `explain(path)` on top of a write+read cycle with 3,000 dependents (eager). Median of 5 runs.
 
 ```
-┌────────────────┬──────────┬──────────┬──────────┐
-│ mode           │ p50_ms   │ p95_ms   │ p99_ms   │
-├────────────────┼──────────┼──────────┼──────────┤
-│ 'baseline'     │ '0.0077' │ '0.0122' │ '0.0199' │
-│ 'with_explain' │ '0.0129' │ '0.0189' │ '0.0250' │
-└────────────────┴──────────┴──────────┴──────────┘
-p95 overhead: 55.15%
+┌────────────────┬──────────┬──────────┐
+│ mode           │ p50_ms   │ p95_ms   │
+├────────────────┼──────────┼──────────┤
+│ 'baseline'     │ 42.85    │ 49.91    │
+│ 'with_explain' │ 43.94    │ 58.73    │
+└────────────────┴──────────┴──────────┘
+p95 overhead: median +4% (range −5% to +19% across runs)
 ```
 
-`explain()` adds ~0.007ms at p95. Auditable derivation traces at negligible cost.
+Against a real recompute, `explain()` is within run-to-run noise. Auditable derivation traces at negligible relative cost.
 
-✅ completed in 223.64ms
+> Previously published: +55% p95 overhead. That was `explain()` measured against a write that did no work.
 
 ---
 
 ## Benchmark 9 — Secret-Scope Performance Impact
 
-Public vs encrypted branch: mutation and read latency.
+Same workload on a public branch and a secret branch (600 nodes, lazy mode, write the shared factor then read one output). Median of 5 runs.
 
 ```
-┌──────────┬──────────┬──────────┬──────────┐
-│ scope    │ p50_ms   │ p95_ms   │ p99_ms   │
-├──────────┼──────────┼──────────┼──────────┤
-│ 'public' │ '0.0109' │ '0.0206' │ '0.0594' │
-│ 'secret' │ '0.4951' │ '0.5592' │ '0.7615' │
-└──────────┴──────────┴──────────┴──────────┘
-secret-scope p95 slowdown: 2616.51%
+┌──────────┬──────────┬──────────┐
+│ scope    │ p50_ms   │ p95_ms   │
+├──────────┼──────────┼──────────┤
+│ 'public' │ 0.026    │ 0.044    │
+│ 'secret' │ 0.532    │ 0.604    │
+└──────────┴──────────┴──────────┘
+secret-scope p95 slowdown: ~14×
 ```
 
-Secret branches pay a ~27× overhead at p95 — expected cost of AES-GCM encryption/decryption per node. Design accordingly: keep hot-path reads on public branches; use secret scopes for data at rest.
+Secret branches pay roughly 14× at p95 on this workload. The cost is the secret path itself — branch key derivation and cache, sealing and opening values, stealth-boundary checks — not AES-GCM: branch values are sealed as v3 blobs (Keccak-256 counter-mode keystream + HMAC-Keccak256 tag, `encryptBlobV3WithDerivedKeys` in `src/crypto.ts`). AES-GCM is only used by wrapped-secret envelopes, which this benchmark does not exercise. Design accordingly: keep hot-path reads on public branches; use secret scopes for data at rest.
 
-✅ completed in 631.34ms
+> Previously published: 27× (2616%). The public side of that comparison did no recompute work (reference-resolution bug), while the secret side did, which inflated the ratio.
 
 ---
 
 ## Benchmark 10 — Push (Write) vs Pull (First Read)
 
-Eager vs lazy recompute mode across fanout sizes.
+Eager vs lazy recompute across fan-out sizes: time of the write alone (push) and of the first read after it (pull). Median of 5 runs.
 
 ```
-┌─────────┬────────┬───┬─────────────────┬─────────────────┬─────────────────┬─────────────┬─────────────┬─────────────┐
-│ mode    │ fanout │ k │ mutation_p50_ms │ mutation_p95_ms │ mutation_p99_ms │ read_p50_ms │ read_p95_ms │ read_p99_ms │
-├─────────┼────────┼───┼─────────────────┼─────────────────┼─────────────────┼─────────────┼─────────────┼─────────────┤
-│ 'eager' │ 10     │ 2 │ '0.0058'        │ '0.0132'        │ '0.0201'        │ '0.0065'    │ '0.0114'    │ '0.0702'    │
-│ 'eager' │ 5000   │ 2 │ '0.0028'        │ '0.0036'        │ '0.0049'        │ '0.0027'    │ '0.0030'    │ '0.0054'    │
-│ 'lazy'  │ 10     │ 2 │ '0.0023'        │ '0.0027'        │ '0.0038'        │ '0.0033'    │ '0.0047'    │ '0.0118'    │
-│ 'lazy'  │ 5000   │ 2 │ '0.0028'        │ '0.0037'        │ '0.0051'        │ '0.0035'    │ '0.0039'    │ '0.0056'    │
-└─────────┴────────┴───┴─────────────────┴─────────────────┴─────────────────┴─────────────┴─────────────┴─────────────┘
+┌─────────┬────────┬──────┬─────────────────┬─────────────────┬─────────────┬─────────────┐
+│ mode    │ fanout │ k    │ mutation_p50_ms │ mutation_p95_ms │ read_p50_ms │ read_p95_ms │
+├─────────┼────────┼──────┼─────────────────┼─────────────────┼─────────────┼─────────────┤
+│ 'eager' │ 10     │ 10   │ 0.115           │ 0.248           │ 0.0043      │ 0.0116      │
+│ 'eager' │ 100    │ 100  │ 1.15            │ 1.40            │ 0.0040      │ 0.0072      │
+│ 'eager' │ 1000   │ 1000 │ 11.76           │ 13.89           │ 0.0078      │ 0.0147      │
+│ 'eager' │ 5000   │ 5000 │ 69.77           │ 79.91           │ 0.0196      │ 0.0274      │
+│ 'lazy'  │ 10     │ 1    │ 0.0025          │ 0.0035          │ 0.0148      │ 0.0249      │
+│ 'lazy'  │ 100    │ 1    │ 0.0030          │ 0.0043          │ 0.0147      │ 0.0190      │
+│ 'lazy'  │ 1000   │ 1    │ 0.0030          │ 0.0045          │ 0.0153      │ 0.0227      │
+│ 'lazy'  │ 5000   │ 1    │ 0.0030          │ 0.0040          │ 0.0168      │ 0.0265      │
+└─────────┴────────┴──────┴─────────────────┴─────────────────┴─────────────┴─────────────┘
 ```
 
-Full table: see fire.test.ts output. Both modes converge at scale; lazy has lower mutation cost, eager has lower first-read cost.
+The trade-off is now visible. Eager pays the whole fan-out at write time (k = fan-out, linear in k) and reads are near-free. Lazy writes stay flat (~3 µs, they only mark versions) and each read recomputes just the value it asks for (k = 1). Full table (500 and 2500 rows): run the benchmark.
 
-✅ completed in 474.46ms
+> Previously published: both modes flat at ~0.003 ms with `k = 2`. Neither mode was recomputing anything (reference-resolution bug).
 
 ---
 
 ## Benchmark 11 — Secret Push vs Pull
 
-Isolates mutation cost (push) vs first read cost (pull) inside encrypted branches.
+Isolates mutation cost (push) vs first read cost (pull) for public and secret branches, lazy mode. Median of 5 runs.
 
 ```
 ┌────────┬──────────┬───────┬─────────────────┬─────────────────┬─────────────┬─────────────┐
 │ mode   │ plane    │ nodes │ mutation_p50_ms │ mutation_p95_ms │ read_p50_ms │ read_p95_ms │
 ├────────┼──────────┼───────┼─────────────────┼─────────────────┼─────────────┼─────────────┤
-│ 'lazy' │ 'public' │ 100   │ '0.0058'        │ '0.0136'        │ '0.0070'    │ '0.0183'    │
-│ 'lazy' │ 'secret' │ 100   │ '0.0293'        │ '0.0409'        │ '0.2940'    │ '0.3675'    │
-│ 'lazy' │ 'public' │ 300   │ '0.0043'        │ '0.0108'        │ '0.0048'    │ '0.0123'    │
-│ 'lazy' │ 'secret' │ 300   │ '0.0254'        │ '0.0313'        │ '0.2545'    │ '0.2864'    │
-│ 'lazy' │ 'public' │ 600   │ '0.0032'        │ '0.0045'        │ '0.0036'    │ '0.0041'    │
-│ 'lazy' │ 'secret' │ 600   │ '0.0267'        │ '0.0344'        │ '0.4972'    │ '0.5805'    │
+│ 'lazy' │ 'public' │ 100   │ 0.0055          │ 0.0126          │ 0.0248      │ 0.0499      │
+│ 'lazy' │ 'secret' │ 100   │ 0.0304          │ 0.0464          │ 0.312       │ 0.392       │
+│ 'lazy' │ 'public' │ 300   │ 0.0034          │ 0.0045          │ 0.0169      │ 0.0275      │
+│ 'lazy' │ 'secret' │ 300   │ 0.0260          │ 0.0327          │ 0.259       │ 0.311       │
+│ 'lazy' │ 'public' │ 600   │ 0.0032          │ 0.0041          │ 0.0168      │ 0.0247      │
+│ 'lazy' │ 'secret' │ 600   │ 0.0257          │ 0.0355          │ 0.479       │ 0.550       │
 └────────┴──────────┴───────┴─────────────────┴─────────────────┴─────────────┴─────────────┘
 ```
 
-**Secret/Public slowdown ratios:**
+**Secret/Public p95 slowdown ratios (median of 5 runs):**
 
-| nodes | mutation p95 | read p95    |
-|-------|-------------|-------------|
-| 100   | 3.01×       | 20.08×      |
-| 300   | 2.90×       | 23.28×      |
-| 600   | 7.64×       | 141.59×     |
+| nodes | mutation p95 | read p95 | read p95, previously published |
+|-------|--------------|----------|--------------------------------|
+| 100   | 3.9×         | 7.7×     | 20×                            |
+| 300   | 7.3×         | 11.1×    | 23×                            |
+| 600   | 7.8×         | 22.6×    | 142×                           |
 
-Secret read cost grows with node count because each read decrypts independently. Writes are cheaper than reads in the encrypted plane — the key derivation happens once at write, but each cold read re-derives.
-
-✅ completed in 982.44ms
+Secret reads cost more than public ones and grow with node count; writes stay cheap in both planes. The earlier ratios (up to 142×) compared a public read that recomputed nothing (reference-resolution bug) against a secret read that did the work.
 
 ---
 
 ## Summary Table
 
-| Benchmark | What it proves                                | Time       |
-|-----------|-----------------------------------------------|------------|
-| 1         | O(k) flat recompute (10 → 5,000 nodes)        | 341.71ms   |
-| 2         | Flat scaling to 10,000 nodes                  | 1193.38ms  |
-| 3         | Incremental processing stability              | 754.39ms   |
-| 4         | Multi-shape stress (deep / wide / financial)  | 386.57ms   |
-| 5         | Sustained throughput, no p95 drift            | 191.92ms   |
-| 6         | Fan-out sensitivity (latency improves at scale)| 277.66ms  |
-| 7         | Cold vs warm startup cost                     | 239.26ms   |
-| 8         | explain() overhead (~0.007ms at p95)          | 223.64ms   |
-| 9         | Secret scope cost (~27× vs public at p95)     | 631.34ms   |
-| 10        | Eager vs lazy push/pull tradeoff              | 474.46ms   |
-| 11        | Secret push vs pull at scale                  | 982.44ms   |
+| Benchmark | What it proves                                              |
+|-----------|-------------------------------------------------------------|
+| 1         | Recompute touches only the written node's dependents (k=2) |
+| 2         | Same, extended to 10,000 nodes                             |
+| 3         | Incremental processing stability                            |
+| 4         | Multi-shape stress (deep / wide / financial)                |
+| 5         | Sustained writes: O(k) recompute, but cost drifts up as the log grows |
+| 6         | Latency linear in k (~12–14 µs per recomputed dependent)    |
+| 7         | Reads sub-ms; writes cost ∝ dependents, no warm-up penalty  |
+| 8         | explain() overhead within noise vs. real recompute          |
+| 9         | Secret scope cost (~14× public at p95, sub-ms)              |
+| 10        | Eager pays k at write; lazy writes flat, reads pull k=1     |
+| 11        | Secret push vs pull (read p95 7.7×–22.6× public)            |
+
+Regression gate (`tests/Benchmarks/benchmark.regression-gate.test.ts`): exact `meta.k` per write, zero recompute on shadowed inputs, `t(5000)/t(500)` within 5–15, stealth masking. It fails on the pre-fix kernel.

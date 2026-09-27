@@ -50,7 +50,10 @@ function runDualAnalysis(fanout: number, iterations: number, mode: KernelMode) {
   return {
     mode,
     fanout,
-    k: trace.meta.dependsOn.length,
+    // k = dependents recomputed by the last wave touching this target (eager:
+    // the write's fan-out; lazy: the read's own pull). inputs = the formula's refs.
+    k: trace.meta.k,
+    inputs: trace.meta.dependsOn.length,
     mutation_p50: percentile(mutationOnly, 50),
     mutation_p95: percentile(mutationOnly, 95),
     mutation_p99: percentile(mutationOnly, 99),
@@ -79,6 +82,7 @@ async function start() {
         mode: r.mode,
         fanout: r.fanout,
         k: r.k,
+        inputs: r.inputs,
         mutation_p50_ms: r.mutation_p50.toFixed(4),
         mutation_p95_ms: r.mutation_p95.toFixed(4),
         mutation_p99_ms: r.mutation_p99.toFixed(4),

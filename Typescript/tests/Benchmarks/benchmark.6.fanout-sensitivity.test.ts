@@ -32,7 +32,9 @@ async function runFanout(fanout: number, iterations: number) {
   return {
     fanout,
     iterations,
-    k: trace.meta.dependsOn.length,
+    // k = dependents recomputed by the last wave; inputs = the formula's own refs.
+    k: trace.meta.k,
+    inputs: trace.meta.dependsOn.length,
     p50: percentile(latencies, 50),
     p95: percentile(latencies, 95),
     p99: percentile(latencies, 99),
@@ -53,6 +55,7 @@ async function start() {
     rows.push({
       fanout: r.fanout,
       k: r.k,
+      inputs: r.inputs,
       p50_ms: r.p50.toFixed(4),
       p95_ms: r.p95.toFixed(4),
       p99_ms: r.p99.toFixed(4),

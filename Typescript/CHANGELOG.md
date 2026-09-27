@@ -49,7 +49,13 @@ Visible changes:
   (`tests/storage.instance-store.test.ts` updated accordingly).
 - `MEDerivationRecord.refs` entries are `{ label, candidates }` instead of
   `{ label, path }`.
-- Benchmarks whose formulas use these ref shapes report different numbers
-  with this fix.
+- Benchmarks 5–11 and the regression gate used these ref shapes and were
+  measuring writes that recomputed nothing. They are re-measured in
+  `docs/Benchmarks/benchmarks.md` and `typedocs/kernel/Benchmarks.md`
+  (eager recompute is linear in `k`, ~12–14 µs per dependent on an M2).
+  The gate's absolute `latency_p95 <= 20ms` and `complexity_k` (which read
+  the formula's input count) are replaced by exact `meta.k` checks and a
+  machine-independent scaling ratio. Benchmarks 6 and 10 now report `k` as
+  `meta.k` and the input count as a separate `inputs` column.
 
 Covered by `tests/derivation-refs.test.ts`.
