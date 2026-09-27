@@ -613,7 +613,8 @@ export type MERecomputeMode = "eager" | "lazy";
 export interface MEDerivationRecord {
   expression: string;
   evalScope: SemanticPath;
-  refs: Array<{ label: string; path: string }>;
+  /** Each identifier in the expression and every path the evaluator may read for it (relative first, then root). */
+  refs: Array<{ label: string; candidates: string[] }>;
   lastComputedAt: number;
 }
 

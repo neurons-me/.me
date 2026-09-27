@@ -152,7 +152,7 @@ test("ME: DiskStore preserves secret reads, stealth roots, snapshots, and explai
 
     const explanation = me.explain("wallet.net");
     assert.equal(explanation.value, 600);
-    assert.deepEqual(explanation.meta.dependsOn.sort(), ["expenses.rent", "wallet.income"]);
+    assert.deepEqual(explanation.meta.dependsOn.sort(), ["wallet.expenses.rent", "wallet.income"]);
 
     const snapshot = me.exportSnapshot();
     assert.ok(snapshot.encryptedBranches.wallet);

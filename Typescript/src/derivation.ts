@@ -1,6 +1,7 @@
 import { pathStartsWith } from "./operators.ts";
 import { resolveBranchScope } from "./secret.ts";
 import type {
+  MEDerivationRecord,
   MEExplainResult,
   MEKernelLike,
   SemanticPath,
@@ -35,7 +36,11 @@ export function explain(self: MEKernelLike, path: string): MEExplainResult {
     };
   }
 
-  const inputs = d.refs.map((r) => {
+  const effectiveRefs = d.refs.map((r) => ({
+    label: r.label,
+    path: resolveRefPath(self, r.label, d.evalScope) ?? r.candidates[0],
+  }));
+  const inputs = effectiveRefs.map((r) => {
     const refParts = normalizeSelectorPath(r.path.split(".").filter(Boolean));
     const refScope = resolveBranchScope(self, refParts);
     const isStealth = !!(refScope && refScope.length > 0 && pathStartsWith(refParts, refScope));
@@ -58,7 +63,7 @@ export function explain(self: MEKernelLike, path: string): MEExplainResult {
       inputs,
     },
     meta: {
-      dependsOn: d.refs.map((r) => r.path),
+      dependsOn: [...new Set(effectiveRefs.map((r) => r.path))],
       lastComputedAt: d.lastComputedAt,
       ...(wave
         ? {
@@ -118,24 +123,67 @@ export function extractExpressionRefs(expr: string): string[] {
   return Array.from(refs);
 }
 
-export function resolveRefPath(self: MEKernelLike, label: string, evalScope: SemanticPath): string | null {
-  if (!label || label.startsWith("__ptr.")) return null;
+// Every path the evaluator may read for `label`: relative to evalScope first,
+// then from the root (see tryResolveEvalTokenValue). A derivation subscribes to
+// all of them so a write to whichever one is (or becomes) effective recomputes it.
+export function refCandidatePaths(label: string, evalScope: SemanticPath): string[] {
+  if (!label || label.startsWith("__ptr.")) return [];
   const parts = normalizeSelectorPath(label.split(".").filter(Boolean));
-  if (parts.length === 0) return null;
+  if (parts.length === 0) return [];
   const rel = normalizeSelectorPath([...evalScope, ...parts]).join(".");
   const abs = normalizeSelectorPath(parts).join(".");
-  if (!label.includes(".")) return rel;
-  return abs;
+  return rel === abs ? [rel] : [rel, abs];
+}
+
+// The path the evaluator reads for `label` right now: relative if it holds a
+// value, otherwise root. Mirrors tryResolveEvalTokenValue.
+export function resolveRefPath(self: MEKernelLike, label: string, evalScope: SemanticPath): string | null {
+  const candidates = refCandidatePaths(label, evalScope);
+  if (candidates.length === 0) return null;
+  const [rel, abs] = candidates;
+  if (!abs) return rel;
+  const relValue = self.readPath(rel.split(".").filter(Boolean));
+  return relValue === undefined || relValue === null ? abs : rel;
+}
+
+function hasValue(self: MEKernelLike, path: string): boolean {
+  const v = self.readPath(path.split(".").filter(Boolean));
+  return v !== undefined && v !== null;
+}
+
+// Whether a change at `changedPath` can alter what the evaluator reads for this
+// ref. A change to the relative candidate always can (it either now shadows the
+// root, or just emptied and the root shows through). A change to the root
+// candidate only can while the relative one holds no value.
+function refChangeMatters(
+  self: MEKernelLike,
+  ref: MEDerivationRecord["refs"][number],
+  changedPath: string,
+): boolean {
+  const [rel, abs] = ref.candidates;
+  if (changedPath === rel) return true;
+  if (abs !== undefined && changedPath === abs) return !hasValue(self, rel);
+  return false;
+}
+
+function derivationReadsChange(self: MEKernelLike, d: MEDerivationRecord, changedPath: string): boolean {
+  return d.refs.some((ref) => refChangeMatters(self, ref, changedPath));
+}
+
+function derivationRefPaths(d: MEDerivationRecord): string[] {
+  const out = new Set<string>();
+  for (const ref of d.refs) for (const p of ref.candidates) out.add(p);
+  return [...out];
 }
 
 export function unregisterDerivation(self: MEKernelLike, targetKey: string): void {
   const old = self.derivations[targetKey];
   if (!old) return;
-  for (const ref of old.refs) {
-    const s = self.refSubscribers[ref.path];
+  for (const path of derivationRefPaths(old)) {
+    const s = self.refSubscribers[path];
     if (s) {
       s.delete(targetKey);
-      if (s.size === 0) delete self.refSubscribers[ref.path];
+      if (s.size === 0) delete self.refSubscribers[path];
     }
   }
   delete self.derivations[targetKey];
@@ -156,7 +204,7 @@ export function snapshotDerivationRefVersions(self: MEKernelLike, targetKey: str
   const d = self.derivations[targetKey];
   if (!d) return;
   const snap: Record<string, number> = {};
-  for (const ref of d.refs) snap[ref.path] = getRefVersion(self, ref.path);
+  for (const path of derivationRefPaths(d)) snap[path] = getRefVersion(self, path);
   self.derivationRefVersions[targetKey] = snap;
 }
 
@@ -170,16 +218,15 @@ export function registerDerivation(
   unregisterDerivation(self, targetKey);
 
   const labels = extractExpressionRefs(expr);
-  const refs: Array<{ label: string; path: string }> = [];
-  const seen = new Set<string>();
+  const refs: MEDerivationRecord["refs"] = [];
   for (const label of labels) {
-    const resolved = resolveRefPath(self, label, evalScope);
-    if (!resolved) continue;
-    if (seen.has(resolved)) continue;
-    seen.add(resolved);
-    refs.push({ label, path: resolved });
-    const s = self.refSubscribers[resolved] || (self.refSubscribers[resolved] = new Set());
-    s.add(targetKey);
+    const candidates = refCandidatePaths(label, evalScope);
+    if (candidates.length === 0) continue;
+    refs.push({ label, candidates });
+    for (const path of candidates) {
+      const s = self.refSubscribers[path] || (self.refSubscribers[path] = new Set());
+      s.add(targetKey);
+    }
   }
 
   self.derivations[targetKey] = {
@@ -210,8 +257,8 @@ export function isDerivationVersionStale(self: MEKernelLike, targetKey: string):
   const d = self.derivations[targetKey];
   if (!d) return false;
   const snap = self.derivationRefVersions[targetKey] || {};
-  for (const ref of d.refs) {
-    if ((snap[ref.path] ?? 0) !== getRefVersion(self, ref.path)) return true;
+  for (const path of derivationRefPaths(d)) {
+    if ((snap[path] ?? 0) !== getRefVersion(self, path) && derivationReadsChange(self, d, path)) return true;
   }
   return false;
 }
@@ -234,8 +281,8 @@ export function ensureTargetFresh(
   }
   visiting.add(targetKey);
 
-  for (const ref of d.refs) {
-    if (self.derivations[ref.path]) ensureTargetFresh(self, ref.path, visiting);
+  for (const path of derivationRefPaths(d)) {
+    if (self.derivations[path]) ensureTargetFresh(self, path, visiting);
   }
 
   const needsRefresh =
@@ -267,6 +314,8 @@ export function invalidateFromPath(self: MEKernelLike, path: SemanticPath): void
     const subs = self.refSubscribers[changed] || new Set<string>();
     for (const target of subs) {
       if (seenTargets.has(target)) continue;
+      const d = self.derivations[target];
+      if (d && !derivationReadsChange(self, d, changed)) continue;
       seenTargets.add(target);
       const updated = recomputeTarget(self, target);
       if (updated) queue.push(target);
