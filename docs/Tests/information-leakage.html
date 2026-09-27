@@ -1,0 +1,792 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>.me — Information Leakage</title>
+  <meta name="description" content="Protected values, scope secrets and passwords never appear in snapshots, memory logs or error messages. Runs the .me kernel live in your browser." />
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content=".me — Information Leakage" />
+  <meta property="og:description" content="Protected values, scope secrets and passwords never appear in snapshots, memory logs or error messages. Runs the .me kernel live in your browser." />
+  <meta property="og:image" content="https://neurons-me.github.io/docs/assets/img/me.png" />
+  <meta property="og:image:secure_url" content="https://neurons-me.github.io/docs/assets/img/me.png" />
+  <meta property="og:image:type" content="image/png" />
+  <meta property="og:image:alt" content=".me social graph" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content=".me — Information Leakage" />
+  <meta name="twitter:description" content="Protected values, scope secrets and passwords never appear in snapshots, memory logs or error messages. Runs the .me kernel live in your browser." />
+  <meta name="twitter:image" content="https://neurons-me.github.io/docs/assets/img/me.png" />
+  <meta name="twitter:image:alt" content=".me social graph" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/this.gui@1.4.6/dist/styles.css" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: "Inter", "Helvetica Neue", Helvetica, Arial, sans-serif; background: #f4f7f8; color: #0f1720; min-height: 100vh; -webkit-font-smoothing: antialiased; }
+    .page { max-width: 1040px; margin: 0 auto; padding: 72px 32px 80px; }
+    .breadcrumb { font-size: 0.8rem; color: #51606d; margin-bottom: 24px; display: flex; gap: 8px; }
+    .breadcrumb a { color: #0f6a78; text-decoration: none; }
+    .breadcrumb a:hover { text-decoration: underline; }
+    .breadcrumb span { color: #51606d; }
+    .kicker { font-size: 0.75rem; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; color: #51606d; margin-bottom: 12px; }
+    h1 { font-size: 2.25rem; font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; margin-bottom: 16px; }
+    .rule { font-size: 1.02rem; line-height: 1.6; color: #1f2d38; max-width: 760px; margin-bottom: 20px; }
+    .rule code, p code, li code, td code, th code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.86em; background: rgba(15,23,32,0.06); padding: 1px 5px; border-radius: 4px; }
+    .meta { font-size: 0.85rem; color: #51606d; line-height: 1.7; margin-bottom: 8px; }
+    .meta a { color: #0f6a78; }
+    h2 { font-size: 1.15rem; font-weight: 700; margin: 44px 0 8px; padding-bottom: 8px; border-bottom: 1px solid rgba(15,23,32,0.10); }
+    .h2-note { font-size: 0.875rem; color: #51606d; margin-bottom: 16px; line-height: 1.55; max-width: 760px; }
+
+    .status { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; background: #fff; border: 1px solid rgba(15,23,32,0.10); border-radius: 12px; padding: 14px 18px; margin: 20px 0 8px; font-size: 0.875rem; }
+    .status .big { font-weight: 800; font-size: 1rem; }
+    .status .kernel { color: #51606d; font-size: 0.8rem; flex-basis: 100%; line-height: 1.6; }
+    .status .kernel code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.95em; }
+    .status.ok { border-color: rgba(16,185,129,0.35); }
+    .status.bad { border-color: rgba(220,38,38,0.45); }
+
+    .pass-badge, .fail-badge, .run-badge { font-size: 0.72rem; font-weight: 700; padding: 2px 9px; border-radius: 20px; letter-spacing: 0.04em; white-space: nowrap; }
+    .pass-badge { background: rgba(16,185,129,0.12); color: #047857; }
+    .fail-badge { background: rgba(220,38,38,0.12); color: #b91c1c; }
+    .run-badge { background: rgba(15,23,32,0.06); color: #51606d; }
+    .tag { font-size: 0.66rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; padding: 2px 7px; border-radius: 4px; white-space: nowrap; }
+    .tag.guarantee { background: rgba(15,106,120,0.12); color: #0f6a78; }
+    .tag.design { background: rgba(217,119,6,0.12); color: #a16207; }
+
+    pre.code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.78rem; line-height: 1.55; background: #0f1720; color: #e2e8f0; border-radius: 8px; padding: 12px 14px; white-space: pre-wrap; overflow-wrap: anywhere; }
+    .setup pre.code { margin-top: 8px; }
+    details.setup { background: #fff; border: 1px solid rgba(15,23,32,0.10); border-radius: 12px; padding: 12px 16px; }
+    details.setup summary { cursor: pointer; font-size: 0.875rem; font-weight: 600; }
+
+    /* matrix */
+    .matrix-wrap { overflow-x: auto; }
+    table.matrix { width: 100%; border-collapse: separate; border-spacing: 6px; font-size: 0.82rem; margin: 0 -6px; }
+    table.matrix th { text-align: left; font-weight: 600; font-size: 0.78rem; color: #51606d; padding: 4px 8px; vertical-align: bottom; }
+    table.matrix th code { color: #0f1720; white-space: nowrap; }
+    table.matrix td { border-radius: 8px; padding: 10px 12px; vertical-align: top; }
+    table.matrix td.party { background: transparent; padding-left: 4px; width: 170px; }
+    table.matrix .val { word-break: normal; overflow-wrap: normal; }
+    .party-name { font-weight: 700; font-size: 0.85rem; }
+    .party-how { font-size: 0.72rem; color: #51606d; margin-top: 3px; line-height: 1.45; }
+    .party-how code { font-size: 0.95em; }
+    .val { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.76rem; word-break: break-word; }
+    .cap { font-size: 0.68rem; margin-top: 5px; letter-spacing: 0.02em; }
+    td.notderived { background: rgba(15,106,120,0.07); border: 1px solid rgba(15,106,120,0.22); }
+    td.notderived .cap { color: #0f6a78; }
+    td.leak { background: rgba(220,38,38,0.10); border: 1px solid rgba(220,38,38,0.45); }
+    td.leak .cap { color: #b91c1c; font-weight: 700; }
+    td.disclosed { background: rgba(217,119,6,0.10); border: 1px solid rgba(217,119,6,0.35); }
+    td.disclosed .cap { color: #a16207; }
+    td.clean { background: rgba(16,185,129,0.07); border: 1px solid rgba(16,185,129,0.25); }
+    td.clean .cap { color: #047857; }
+    td.pending { background: rgba(15,23,32,0.04); color: #51606d; }
+    tr.owner td.party { border-top: 1px dashed rgba(15,23,32,0.18); border-radius: 0; }
+    .legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 0.75rem; color: #51606d; margin-top: 10px; }
+    .legend span::before { content: ""; display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+    .legend .l-nd::before { background: rgba(15,106,120,0.25); }
+    .legend .l-ds::before { background: rgba(217,119,6,0.35); }
+    .legend .l-lk::before { background: rgba(220,38,38,0.45); }
+
+    /* cards */
+    .cards { display: flex; flex-direction: column; gap: 14px; }
+    .card { background: #fff; border: 1px solid rgba(15,23,32,0.10); border-radius: 12px; padding: 16px 18px; }
+    .card.failed { border-color: rgba(220,38,38,0.45); }
+    .card-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 6px; }
+    .card-id { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-weight: 700; font-size: 0.85rem; color: #0f6a78; }
+    .card-title { font-weight: 700; font-size: 0.92rem; flex: 1; min-width: 240px; }
+    .card-claim { font-size: 0.875rem; color: #374151; margin-bottom: 10px; line-height: 1.55; }
+    .io { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
+    .io-label { font-size: 0.66rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: #51606d; margin-bottom: 5px; }
+    .out { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.76rem; line-height: 1.5; background: rgba(15,23,32,0.035); border: 1px solid rgba(15,23,32,0.08); border-radius: 8px; padding: 10px 12px; }
+    .out .ln { display: grid; grid-template-columns: 16px 1fr; gap: 6px; padding: 2px 0; }
+    .out .ln .m { color: #51606d; }
+    .out .ln .v { color: #0f1720; word-break: break-word; }
+    .out .ln.show .m::after { content: " →"; }
+    .out .ln.bad .v, .out .ln.bad .i { color: #b91c1c; font-weight: 700; }
+    .out .i { color: #047857; }
+    .out details summary { cursor: pointer; color: #51606d; font-family: "Inter", sans-serif; font-size: 0.78rem; margin-top: 4px; }
+    .out .err { color: #b91c1c; white-space: pre-wrap; }
+
+    .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 4px 0 12px; }
+    @media (max-width: 720px) { .steps { grid-template-columns: 1fr; } }
+    .step { border-radius: 10px; padding: 12px 14px; }
+    .step-label { font-size: 0.75rem; color: #51606d; margin-bottom: 6px; line-height: 1.4; }
+    .step .val { font-size: 0.9rem; font-weight: 600; }
+    .step .cap { font-size: 0.7rem; }
+    .step.notderived { background: rgba(15,106,120,0.07); border: 1px solid rgba(15,106,120,0.22); } .step.notderived .cap { color: #0f6a78; }
+    .step.disclosed { background: rgba(217,119,6,0.10); border: 1px solid rgba(217,119,6,0.35); } .step.disclosed .cap { color: #a16207; }
+    .step.leak { background: rgba(220,38,38,0.10); border: 1px solid rgba(220,38,38,0.45); } .step.leak .cap { color: #b91c1c; font-weight: 700; }
+
+    .fatal { background: rgba(220,38,38,0.08); border: 1px solid rgba(220,38,38,0.35); color: #b91c1c; border-radius: 12px; padding: 14px 18px; font-size: 0.875rem; white-space: pre-wrap; margin-top: 16px; }
+    .foot { margin-top: 40px; font-size: 0.8rem; color: #51606d; line-height: 1.7; }
+    .foot a { color: #0f6a78; }
+
+    .topnav { position:fixed; top:0; left:0; right:0; z-index:100; display:flex; align-items:center; gap:4px; padding:8px 20px; background:rgba(244,247,248,0.92); backdrop-filter:blur(8px); border-bottom:1px solid rgba(15,23,32,0.08); font-size:0.82rem; font-weight:600; }
+    .topnav button { background:none; border:none; cursor:pointer; font:inherit; padding:4px 8px; border-radius:6px; color:inherit; transition:background 120ms; }
+    .topnav button:hover, .topnav a:hover { background:rgba(15,106,120,0.1); }
+    .topnav a { text-decoration:none; color:inherit; padding:4px 10px; border-radius:6px; transition:background 120ms; }
+    .topnav .spacer { flex:1; }
+
+    @media (prefers-color-scheme: dark) {
+      body { background: #0b1114; color: #e8eded; }
+      .kicker, .breadcrumb, .meta, .h2-note, .status .kernel, .foot, .party-how, table.matrix th, .io-label, .step-label, .legend { color: #98a7b3; }
+      .rule { color: #d5dde2; }
+      .breadcrumb a, .meta a, .foot a, .card-id { color: #4fd1c5; }
+      h2 { border-color: rgba(232,237,237,0.08); }
+      .rule code, p code, li code, td code, th code { background: rgba(232,237,237,0.08); }
+      table.matrix th code { color: #e8eded; }
+      .status, .card, details.setup { background: #111a1f; border-color: rgba(232,237,237,0.08); }
+      .card-claim { color: #cbd5e1; }
+      .out { background: rgba(255,255,255,0.03); border-color: rgba(232,237,237,0.08); }
+      .out .ln .m { color: #98a7b3; } .out .ln .v { color: #e8eded; }
+      .out .i { color: #34d399; }
+      td.notderived .cap, .step.notderived .cap, .tag.guarantee { color: #4fd1c5; }
+      .pass-badge { color: #34d399; }
+      .topnav { background:rgba(11,17,20,0.92); border-bottom-color:rgba(232,237,237,0.08); }
+      .topnav button:hover, .topnav a:hover { background:rgba(79,209,197,0.1); }
+    }
+  
+    .note { font-size: 0.8rem; line-height: 1.5; color: #51606d; background: rgba(15,23,32,0.04); border-left: 3px solid rgba(15,106,120,0.45); padding: 6px 10px; border-radius: 4px; margin-bottom: 10px; }
+    .note.warn { border-left-color: rgba(217,119,6,0.7); background: rgba(217,119,6,0.07); color: #6b4d0a; }
+    .card.nodeonly { border-style: dashed; }
+    .legend .l-cl::before { background: rgba(16,185,129,0.35); }
+    .tag.control { background: rgba(16,185,129,0.12); color: #047857; }
+    .tag.documented, .tag.setup, .tag.contract { background: rgba(15,23,32,0.07); color: #51606d; }
+    table.matrix td.txt { font-size: 0.78rem; line-height: 1.45; background: rgba(15,23,32,0.03); }
+    table.matrix td.party { font-weight: 600; font-size: 0.8rem; background: transparent; }
+    table.matrix code.marker { display: inline-block; margin: 2px 6px 2px 0; font-size: 0.72rem; word-break: break-all; }
+    table.matrix td .val { word-break: break-word; overflow-wrap: anywhere; }
+    .np { background: #fff; border: 1px solid rgba(15,23,32,0.10); border-radius: 12px; padding: 14px 18px; margin-bottom: 12px; }
+    .np blockquote { font-size: 0.875rem; line-height: 1.6; color: #374151; border-left: 3px solid rgba(15,23,32,0.18); padding-left: 12px; }
+    .np .src { font-size: 0.75rem; color: #51606d; margin-top: 8px; }
+    .np .src a { color: #0f6a78; }
+    @media (prefers-color-scheme: dark) {
+      .note { background: rgba(255,255,255,0.03); color: #98a7b3; }
+      .note.warn { color: #f5c26b; }
+      table.matrix td.txt { background: rgba(255,255,255,0.03); }
+      .np { background: #111a1f; border-color: rgba(232,237,237,0.08); }
+      .np blockquote { color: #cbd5e1; border-color: rgba(232,237,237,0.18); }
+      .np .src, .np .src a { color: #98a7b3; }
+    }
+  </style>
+  <link rel="icon" type="image/png" href="https://res.cloudinary.com/dkwnxf6gm/image/upload/v1769890772/this.me.png">
+</head>
+<body>
+  <nav class="topnav">
+    <button onclick="history.back()" title="Back">←</button>
+    <a href="https://neurons-me.github.io">⌂ Home</a>
+    <span class="spacer"></span>
+    <a href="https://github.com/neurons-me/.me" target="_blank" rel="noopener"><svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" style="vertical-align:middle;margin-right:4px"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg> GitHub</a>
+  </nav>
+  <div class="page">
+    <div class="breadcrumb">
+      <a href="../">← .me Docs</a>
+      <span>/</span>
+      <a href="./">Tests</a>
+    </div>
+    <p class="kicker">this.me / Tests / Security</p>
+    <h1>Information Leakage</h1>
+    <p class="rule">Protected values, scope secrets and passwords don't show up in anything that leaves the kernel: the snapshot, the memory log, error messages. Each case writes unique marker strings into a protected scope, then scans those surfaces for them.</p>
+    <p class="meta">
+      Every value below is computed right now, in this page, by the <code>.me</code> kernel.
+      Nothing is pasted in. The cases are the ones in <a href="https://github.com/neurons-me/.me/blob/main/Typescript/tests/Security/leakage.test.ts" target="_blank" rel="noopener"><code>Typescript/tests/Security/leakage.test.ts</code></a>, which runs with <code>npm test</code> (via <code>npm run test:security</code>).
+    </p>
+
+    <div id="status" class="status"><span class="run-badge">RUNNING</span><span class="big">Loading kernel…</span></div>
+    <div id="fatal"></div>
+
+    <div id="setup-wrap">
+    <h2>Setup and helpers</h2>
+    <p class="h2-note">The scan helper from <code>tests/Security/helpers.ts</code>.</p>
+    <details class="setup" id="setup"><summary>Show code</summary></details>
+    </div>
+
+    <h2>Where the markers were looked for</h2>
+    <p class="h2-note">Every scan made by the cases below. Cases are numbered in file order.</p>
+    
+    <div class="matrix-wrap"><table class="matrix" id="scans"></table></div>
+    <div class="cards" id="cards-cases" style="margin-top:18px"></div>
+
+    <h2>What this does not promise</h2>
+    <div class="np"><blockquote><strong>Metadata/traffic-analysis privacy.</strong> Scope-path keys, chunk counts, and ciphertext sizes are plaintext on disk by design (§3.6 of the doc). Nothing here tries to hide that a path exists, only its content and its <code>_()</code>/<code>~()</code> declaration value.</blockquote><p class="src">README §1, attack model and its limits · <a href="https://github.com/neurons-me/.me/blob/main/Typescript/tests/Security/README.md" target="_blank" rel="noopener">tests/Security/README.md</a></p></div>
+
+    <p class="foot" id="foot"></p>
+  </div>
+  <footer style="margin-top:64px;padding:40px 0;text-align:center;border-top:1px solid rgba(15,23,32,0.08);">
+    <a href="https://neurons-me.github.io/" style="display:inline-flex;align-items:center;justify-content:center;text-decoration:none;">
+      <img src="https://res.cloudinary.com/dkwnxf6gm/image/upload/v1760629056/neurons-grey_hxjcom.png" alt="neurons.me" style="width:36px;height:36px;object-fit:contain;opacity:0.5;transition:opacity 140ms ease;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.5" />
+    </a>
+  </footer>
+
+<script type="module">
+// ── Page harness ─────────────────────────────────────────────────────
+// Each case below mirrors one test in the linked file. The code shown on
+// the page is this file's own source (Function.toString), so what you read
+// is exactly what ran. Assertions keep the test's own wording; lines that
+// only capture a value for display (show / seen) are page additions.
+
+let ME, M;
+let current = null;
+const clone = (v) => structuredClone(v);
+
+// Kernel: the published this.me@4.0.2, pinned by version and sha256
+// (the same check Subresource Integrity would do for a classic <script>).
+const KERNEL = {
+  version: "4.0.2",
+  sha256: "63694487d59f610d55528758d40ca29156037c71b1966030cb73288632492863",
+  urls: [
+    "https://cdn.jsdelivr.net/npm/this.me@4.0.2/dist/me.es.js",
+    "https://unpkg.com/this.me@4.0.2/dist/me.es.js",
+  ],
+};
+
+function errMsg(e) {
+  if (e instanceof Error) return `${e.name}: ${e.message}`;
+  return String(e);
+}
+function fmt(v) {
+  if (v === undefined) return "undefined";
+  if (v instanceof Error) return errMsg(v);
+  if (typeof v === "string") return JSON.stringify(v);
+  if (typeof v === "number" || typeof v === "boolean" || v === null) return String(v);
+  if (Array.isArray(v)) return "[" + v.map(fmt).join(", ") + "]";
+  try { return JSON.stringify(v); } catch { return String(v); }
+}
+function record(pass, msg, detail, extra = {}) {
+  current.lines.push({ kind: "check", pass, msg, detail, ...extra });
+  if (!pass) current.failed = true;
+}
+function deepEq(a, b) {
+  if (Object.is(a, b)) return true;
+  if (typeof a !== "object" || typeof b !== "object" || a === null || b === null) return false;
+  if (Array.isArray(a) !== Array.isArray(b)) return false;
+  const ka = Object.keys(a), kb = Object.keys(b);
+  if (ka.length !== kb.length) return false;
+  return ka.every((k) => deepEq(a[k], b[k]));
+}
+// Same semantics as node:assert/strict for the calls these tests make.
+const assert = {
+  equal(actual, expected, msg) {
+    const pass = Object.is(actual, expected);
+    record(pass, msg ?? "assert.equal", pass ? fmt(actual) : `${fmt(actual)}  (expected ${fmt(expected)})`, { value: actual });
+  },
+  notEqual(actual, expected, msg) {
+    record(!Object.is(actual, expected), msg ?? "assert.notEqual", fmt(actual), { value: actual });
+  },
+  ok(value, msg) {
+    record(Boolean(value), msg ?? "assert.ok", fmt(value), { value });
+  },
+  deepEqual(actual, expected, msg) {
+    const pass = deepEq(actual, expected);
+    record(pass, msg ?? "assert.deepEqual", pass ? fmt(actual) : `${fmt(actual)}  (expected ${fmt(expected)})`, { value: actual });
+  },
+  async rejects(fn, msg) {
+    try {
+      const v = await fn();
+      record(false, msg ?? "assert.rejects", `resolved with ${fmt(v)} (expected a rejection)`, { value: v });
+    } catch (e) {
+      record(true, msg ?? "assert.rejects", `rejected: ${errMsg(e)}`, { value: e, rejected: true });
+    }
+  },
+  throws(fn, expected, msg) {
+    if (typeof expected === "string") { msg = expected; expected = undefined; }
+    try {
+      const v = fn();
+      record(false, msg ?? "assert.throws", `returned ${fmt(v)} (expected a throw)`, { value: v });
+    } catch (e) {
+      const pass = expected instanceof RegExp ? expected.test(String(e)) : true;
+      record(pass, msg ?? (expected ? `assert.throws(${expected})` : "assert.throws"), `threw: ${errMsg(e)}`, { value: e, rejected: true });
+    }
+  },
+};
+function show(label, value) {
+  current.lines.push({ kind: "show", msg: label, detail: fmt(value), value });
+  current.shown.push({ label, value });
+}
+// seen(table, row, value): adds a row to a table on this page. With no
+// value, it takes the outcome of the last assertion (e.g. a rejection).
+function seen(table, row, ...rest) {
+  let value, rejected = false;
+  if (rest.length) value = rest[0];
+  else {
+    const last = [...current.lines].reverse().find((l) => l.kind === "check");
+    value = last?.value; rejected = Boolean(last?.rejected);
+  }
+  if (value instanceof Error) rejected = true;
+  current.rows.push({ table, row, value, rejected, caseId: current.id });
+}
+
+// ── helpers.ts, ported to the browser (Buffer -> atob/btoa) ───────────
+function base64UrlToBytes(input) {
+  const normalized = input.replace(/-/g, "+").replace(/_/g, "/").padEnd(Math.ceil(input.length / 4) * 4, "=");
+  const bin = atob(normalized);
+  return Uint8Array.from(bin, (c) => c.charCodeAt(0));
+}
+function bytesToBase64Url(bytes) {
+  let bin = "";
+  for (const b of bytes) bin += String.fromCharCode(b);
+  return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+}
+/** Flips the last decoded byte of a `b64u:`-prefixed or bare base64url blob. */
+function tamperB64u(blob) {
+  const prefix = blob.startsWith("b64u:") ? "b64u:" : "";
+  const payload = prefix ? blob.slice(prefix.length) : blob;
+  const bytes = base64UrlToBytes(payload);
+  bytes[bytes.length - 1] = bytes[bytes.length - 1] ^ 0xff;
+  return prefix + bytesToBase64Url(bytes);
+}
+/** Flips one byte at a given offset (from the start of the decoded payload). */
+function tamperB64uAt(blob, offsetFromStart) {
+  const prefix = blob.startsWith("b64u:") ? "b64u:" : "";
+  const payload = prefix ? blob.slice(prefix.length) : blob;
+  const bytes = base64UrlToBytes(payload);
+  const idx = ((offsetFromStart % bytes.length) + bytes.length) % bytes.length;
+  bytes[idx] = bytes[idx] ^ 0xff;
+  return prefix + bytesToBase64Url(bytes);
+}
+function truncateB64u(blob, keepBytes) {
+  const prefix = blob.startsWith("b64u:") ? "b64u:" : "";
+  const payload = prefix ? blob.slice(prefix.length) : blob;
+  const bytes = base64UrlToBytes(payload);
+  return prefix + bytesToBase64Url(bytes.subarray(0, Math.max(0, Math.min(keepBytes, bytes.length))));
+}
+/** Asserts none of `markers` appear anywhere in `haystack`. */
+function assertNoMarkers(haystack, markers, context) {
+  for (const marker of markers) {
+    assert.ok(!haystack.includes(marker), `${context} must not contain marker "${marker}"`);
+    current.rows.push({ table: "scans", row: { surface: context, marker }, value: haystack.includes(marker), caseId: current.id });
+  }
+}
+
+/** Page-only: records a scan row for the table without asserting anything. */
+function noteScan(surface, haystack, marker) {
+  current.rows.push({ table: "scans", row: { surface, marker }, value: haystack.includes(marker), caseId: current.id });
+}
+
+// ── Rendering ────────────────────────────────────────────────────────
+const $ = (id) => document.getElementById(id);
+function el(tag, cls, text) {
+  const n = document.createElement(tag);
+  if (cls) n.className = cls;
+  if (text !== undefined) n.textContent = text;
+  return n;
+}
+function dedent(lines) {
+  const ind = Math.min(...lines.filter((l) => l.trim()).map((l) => l.match(/^ */)[0].length));
+  return lines.map((l) => l.slice(ind)).join("\n");
+}
+function bodyOf(fn) {
+  const s = fn.toString();
+  const lines = s.slice(s.indexOf("{") + 1, s.lastIndexOf("}")).split("\n");
+  while (lines.length && !lines[0].trim()) lines.shift();
+  while (lines.length && !lines.at(-1).trim()) lines.pop();
+  return dedent(lines);
+}
+function sourceOf(fn) {
+  const lines = fn.toString().split("\n");
+  return lines[0] + "\n" + dedent(lines.slice(1));
+}
+function codeBlock(text) { return el("pre", "code", text); }
+
+function renderSetup() {
+  if (typeof SETUP_SOURCES === "undefined" || !SETUP_SOURCES.length) { $("setup-wrap")?.remove(); return; }
+  const text = SETUP_SOURCES.map((s) => (typeof s === "function" ? sourceOf(s) : s)).join("\n\n");
+  $("setup").appendChild(codeBlock(text));
+}
+
+function renderOut(c) {
+  const box = el("div", "out");
+  const checks = c.lines.filter((l) => l.kind === "check");
+  const addLine = (parent, l) => {
+    const row = el("div", "ln " + (l.kind === "show" ? "show" : l.pass ? "good" : "bad"));
+    row.appendChild(el("span", "i", l.kind === "show" ? "·" : l.pass ? "✓" : "✗"));
+    const t = el("span");
+    t.appendChild(el("span", "m", l.msg));
+    t.appendChild(document.createTextNode(l.kind === "show" ? " " : ": "));
+    t.appendChild(el("span", "v", l.detail));
+    row.appendChild(t);
+    parent.appendChild(row);
+  };
+  if (c.lines.length > 10) {
+    const passed = checks.filter((l) => l.pass).length;
+    c.lines.filter((l) => l.kind === "show").forEach((l) => addLine(box, l));
+    box.appendChild(el("div", "", `${passed}/${checks.length} checks passed`));
+    const d = el("details");
+    if (c.failed) d.open = true;
+    d.appendChild(el("summary", "", "all checks with the values seen"));
+    checks.forEach((l) => addLine(d, l));
+    box.appendChild(d);
+  } else {
+    c.lines.forEach((l) => addLine(box, l));
+  }
+  if (!c.lines.length && !c.error) box.appendChild(el("div", "", "no output"));
+  if (c.error) box.appendChild(el("div", "err", "threw: " + (c.error?.stack || c.error)));
+  return box;
+}
+
+function renderCard(c) {
+  const card = el("div", "card" + (c.failed ? " failed" : "") + (c.nodeOnly ? " nodeonly" : ""));
+  card.id = "case-" + c.id;
+  const head = el("div", "card-head");
+  head.appendChild(el("span", "card-id", c.id));
+  if (c.tag) head.appendChild(el("span", "tag " + c.tag.toLowerCase().replace(/[^a-z]+/g, ""), c.tag));
+  head.appendChild(el("span", "card-title", c.title));
+  if (c.nodeOnly) head.appendChild(el("span", "run-badge", "NODE-ONLY"));
+  else head.appendChild(el("span", c.failed ? "fail-badge" : "pass-badge", c.failed ? "FAIL" : "PASS"));
+  card.appendChild(head);
+  card.appendChild(el("p", "card-claim", c.claim));
+  if (c.nodeOnly) card.appendChild(el("p", "note", "Node-only — runs in npm test. " + c.nodeOnly));
+  if (c.adapted) card.appendChild(el("p", "note", "Adapted for the browser: " + c.adapted));
+  if (c.known) card.appendChild(el("p", "note warn", c.known));
+  const io = el("div", "io");
+  const left = el("div");
+  left.appendChild(el("div", "io-label", c.nodeOnly ? "code (from the test file, not run on this page)" : "code"));
+  left.appendChild(codeBlock(c.nodeOnly ? c.nodeSource : bodyOf(c.run)));
+  io.appendChild(left);
+  if (!c.nodeOnly) {
+    const right = el("div");
+    right.appendChild(el("div", "io-label", "output, this run"));
+    right.appendChild(renderOut(c));
+    io.appendChild(right);
+  }
+  card.appendChild(io);
+  return card;
+}
+
+// Outcome of a table row against what the test expects.
+function isClosed(r) {
+  const v = r.value;
+  if (r.rejected) return true;
+  if (Array.isArray(v)) return v.every((x) => x === undefined || x === null);
+  return v === undefined || v === null;
+}
+function judge(r) {
+  const e = r.row.expect;
+  if (e === "closed") return { pass: isClosed(r), label: isClosed(r) ? (r.rejected ? "rejected" : "closed") : "OPENED" };
+  if (e && typeof e === "object" && "open" in e) {
+    const pass = !r.rejected && deepEq(r.value, e.open);
+    return { pass, label: pass ? "opens" : "unexpected" };
+  }
+  if (e && typeof e === "object" && "not" in e) {
+    const pass = !Object.is(r.value, e.not);
+    return { pass, label: pass ? "not the original" : "ORIGINAL VALUE SHOWN" };
+  }
+  return { pass: true, label: "" };
+}
+function renderTable(spec, rows) {
+  const t = $(spec.id);
+  if (!t) return;
+  const head = el("tr");
+  spec.columns.forEach((c) => head.appendChild(el("th", "", c.label)));
+  head.appendChild(el("th", "", spec.resultLabel ?? "result, this run"));
+  t.appendChild(head);
+  const mine = rows.filter((r) => r.table === spec.id);
+  if (!mine.length) {
+    const tr = el("tr"); const td = el("td", "pending", "no rows (case did not run)");
+    td.colSpan = spec.columns.length + 1; tr.appendChild(td); t.appendChild(tr);
+  }
+  for (const r of mine) {
+    const tr = el("tr");
+    spec.columns.forEach((c, i) => {
+      const td = el("td", i === 0 ? "party" : "txt");
+      const v = typeof c.get === "function" ? c.get(r) : r.row[c.key];
+      if (c.code) td.appendChild(el("code", "", v ?? "")); else td.textContent = v ?? "";
+      tr.appendChild(td);
+    });
+    const j = judge(r);
+    const closed = isClosed(r);
+    const td = el("td", !j.pass ? "leak" : closed ? "notderived" : "clean");
+    td.appendChild(el("div", "val", r.rejected ? errMsg(r.value) : fmt(r.value)));
+    td.appendChild(el("div", "cap", (j.pass ? "" : "FAIL · ") + (j.label || (closed ? "closed" : "value"))));
+    tr.appendChild(td);
+    t.appendChild(tr);
+  }
+}
+function renderScans(rows) {
+  const t = $("scans");
+  if (!t) return;
+  const head = el("tr");
+  ["surface scanned", "markers looked for", "result, this run"].forEach((h) => head.appendChild(el("th", "", h)));
+  t.appendChild(head);
+  const bySurface = new Map();
+  for (const r of rows.filter((r) => r.table === "scans")) {
+    if (!bySurface.has(r.row.surface)) bySurface.set(r.row.surface, []);
+    bySurface.get(r.row.surface).push(r);
+  }
+  for (const [surface, list] of bySurface) {
+    const tr = el("tr");
+    tr.appendChild(el("td", "party", surface));
+    const m = el("td", "txt");
+    list.forEach((r) => m.appendChild(el("code", "marker", r.row.marker)));
+    tr.appendChild(m);
+    const found = list.filter((r) => r.value);
+    const td = el("td", found.length ? "leak" : "clean");
+    td.appendChild(el("div", "val", found.length ? `FOUND ${found.length}` : "none found"));
+    td.appendChild(el("div", "cap", `${list.length - found.length}/${list.length} absent`));
+    tr.appendChild(td);
+    t.appendChild(tr);
+  }
+}
+
+async function sha256Hex(text) {
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+  return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+async function loadKernel() {
+  const npm = new URLSearchParams(location.search).get("npm");
+  if (npm && /^\d+\.\d+\.\d+(-[0-9A-Za-z.]+)?$/.test(npm) && npm !== KERNEL.version) {
+    const url = `https://cdn.jsdelivr.net/npm/this.me@${npm}/dist/me.es.js`;
+    const mod = await import(url);
+    return { mod, desc: [`this.me@${npm} from npm (not hash-pinned), loaded from `, ["code", url], "."] };
+  }
+  const errors = [];
+  for (const url of KERNEL.urls) {
+    try {
+      const res = await fetch(url, { cache: "force-cache" });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const text = await res.text();
+      const hash = await sha256Hex(text);
+      if (hash !== KERNEL.sha256) throw new Error(`sha256 mismatch: got ${hash}`);
+      const blobUrl = URL.createObjectURL(new Blob([text], { type: "text/javascript" }));
+      const mod = await import(blobUrl);
+      URL.revokeObjectURL(blobUrl);
+      return {
+        mod,
+        desc: [`this.me@${KERNEL.version} from npm, `, ["code", "dist/me.es.js"], " loaded from ", ["code", new URL(url).host],
+          " (sha256 ", ["code", hash.slice(0, 16) + "…"], ", verified)."],
+      };
+    } catch (e) {
+      errors.push(`${url}: ${e?.message || e}`);
+    }
+  }
+  throw new Error("Could not load this.me@" + KERNEL.version + ":\n" + errors.join("\n"));
+}
+
+function withTimeout(p, ms) {
+  return Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error(`timed out after ${ms} ms`)), ms))]);
+}
+
+async function main() {
+  renderSetup();
+  let kernel;
+  try {
+    kernel = await loadKernel();
+  } catch (e) {
+    $("status").className = "status bad";
+    $("status").replaceChildren(el("span", "fail-badge", "ERROR"), el("span", "big", "Kernel failed to load"));
+    $("fatal").appendChild(el("div", "fatal", String(e?.stack || e)));
+    return;
+  }
+  M = kernel.mod;
+  ME = M.default;
+  window.ME = ME; // for poking around in the console
+  if (typeof onKernel === "function") onKernel(M);
+
+  const results = [];
+  // Every case finishes in well under a second on 4.0.2. Kernels that lack an API
+  // the cases use can leave a promise pending forever, so each case gets a limit;
+  // after the first timeout the rest get a shorter one so the page still finishes.
+  let limit = 15000;
+  for (const c of CASES) {
+    current = { ...c, lines: [], shown: [], rows: [], failed: false, error: null };
+    if (c.nodeOnly) { results.push(current); continue; }
+    $("status").querySelector(".big").textContent = `Running case ${c.id}…`;
+    try { await withTimeout(c.run(), limit); }
+    catch (e) { current.failed = true; current.error = e; if (/^timed out after/.test(e?.message)) limit = 5000; }
+    results.push(current);
+  }
+
+  const rows = results.flatMap((r) => r.rows);
+  (typeof TABLES === "undefined" ? [] : TABLES).forEach((spec) => renderTable(spec, rows));
+  renderScans(rows);
+  for (const r of results) $("cards-" + r.section).appendChild(renderCard(r));
+
+  const ran = results.filter((r) => !r.nodeOnly);
+  const passed = ran.filter((r) => !r.failed).length;
+  const nodeOnly = results.length - ran.length;
+  const allOk = passed === ran.length;
+  const st = $("status");
+  st.className = "status " + (allOk ? "ok" : "bad");
+  const kd = el("span", "kernel");
+  for (const part of ["Kernel: ", ...kernel.desc]) kd.appendChild(Array.isArray(part) ? el(part[0], "", part[1]) : document.createTextNode(part));
+  kd.appendChild(document.createTextNode(` Ran ${new Date().toLocaleString()} in ${navigator.userAgent.match(/(Firefox|Edg|Chrome|Safari)\/[\d.]+/)?.[0] ?? "this browser"}.`));
+  st.replaceChildren(
+    el("span", allOk ? "pass-badge" : "fail-badge", allOk ? "PASS" : "FAIL"),
+    el("span", "big", `${passed}/${ran.length} cases pass in this browser` + (nodeOnly ? ` · ${nodeOnly} Node-only` : "")),
+    kd,
+  );
+  const de = document.documentElement.dataset;
+  de.done = "1"; de.passed = String(passed); de.ran = String(ran.length); de.nodeonly = String(nodeOnly); de.total = String(results.length);
+  de.failedIds = ran.filter((r) => r.failed).map((r) => r.id).join(",");
+
+  $("foot").append(
+    "Same cases, from the command line: ", el("code", "", RUN_COMMAND),
+    ". Append ", el("code", "", "?npm=<version>"), " to this page's URL to run them against another published version.",
+  );
+}
+
+// ── Page cases ───────────────────────────────────────────────────────
+const NODE_SRC = {
+  "leak1": "const dir = tempDir(\"me-security-leak-array-\");\ntry {\n  const { DiskStore } = ME as any;\n  const me: any = new ME(undefined, { store: new DiskStore({ baseDir: dir }) });\n  await me.createIdentityRoot(\"LEAK_PASSWORD_ARRAY_TOKEN\");\n  me.vault[\"_\"](\"LEAK_SECRET_ARRAY_TOKEN\");\n  me.vault.list([{ tag: \"LEAK_ARRAY_ITEM_TOKEN_1\" }, { tag: \"LEAK_ARRAY_ITEM_TOKEN_2\" }, \"LEAK_ARRAY_ITEM_TOKEN_3\"]);\n\n  const markers = [\n    \"LEAK_PASSWORD_ARRAY_TOKEN\",\n    \"LEAK_SECRET_ARRAY_TOKEN\",\n    \"LEAK_ARRAY_ITEM_TOKEN_1\",\n    \"LEAK_ARRAY_ITEM_TOKEN_2\",\n    \"LEAK_ARRAY_ITEM_TOKEN_3\",\n  ];\n\n  const snapshot = me.exportSnapshot();\n  assertNoMarkers(JSON.stringify(snapshot), markers, \"exportSnapshot() with an array branch value\");\n\n  fs.writeFileSync(path.join(dir, \"snapshot.json\"), JSON.stringify(snapshot), \"utf8\");\n  for (const { file, contents } of readAllTextFiles(dir)) {\n    assertNoMarkers(contents, markers, `on-disk file ${file}`);\n  }\n\n  const reopened: any = new ME(undefined, { store: new DiskStore({ baseDir: tempDir(\"me-security-leak-array-reopen-\") }) });\n  reopened.hydrate(snapshot);\n  await reopened.unlockIdentity(\"LEAK_PASSWORD_ARRAY_TOKEN\");\n  reopened.vault[\"_\"](\"LEAK_SECRET_ARRAY_TOKEN\");\n  assert.deepEqual(\n    reopened(\"vault.list\"),\n    [{ tag: \"LEAK_ARRAY_ITEM_TOKEN_1\" }, { tag: \"LEAK_ARRAY_ITEM_TOKEN_2\" }, \"LEAK_ARRAY_ITEM_TOKEN_3\"],\n    \"exact recovery of an array/object branch value\",\n  );\n} finally {\n  cleanup(dir);\n}"
+};
+// Mirrors Typescript/tests/Security/leakage.test.ts (§3), cases in file order.
+const RUN_COMMAND = "cd Typescript && node tests/Security/leakage.test.ts";
+const SETUP_SOURCES = [assertNoMarkers];
+const TABLES = [];
+
+const CASES = [
+  {
+    id: "1", section: "cases", tag: "GUARANTEE",
+    title: "array and object branch values never leak markers in snapshot/disk, and recover exactly",
+    claim: "Arrays and objects in a protected scope: no marker in the snapshot or in any file DiskStore writes, and exact recovery.",
+    nodeOnly: "It writes through DiskStore and scans every file on disk; DiskStore needs node:fs (in a browser it throws \"DiskStore requires a Node.js runtime.\").",
+    nodeSource: NODE_SRC.leak1,
+  },
+  {
+    id: "2", section: "cases", tag: "GUARANTEE",
+    title: "Unicode content (emoji, RTL, combining marks, CJK) never leaks and recovers exactly",
+    claim: "A Unicode marker (emoji, Arabic, Devanagari, Japanese, combining marks) is absent from the snapshot and comes back byte for byte.",
+    run: async () => {
+      const me = new ME();
+      await me.createIdentityRoot("password-unicode-leak-secret-99");
+      me.vault["_"]("secret-unicode-leak-99");
+      const unicodeMarker = "LEAK_UNICODE_TOKEN_🔒_مرحبا_देवनागरी_こんにちは_é̂";
+      me.vault.note(unicodeMarker);
+
+      const snapshot = me.exportSnapshot();
+      assertNoMarkers(JSON.stringify(snapshot), [unicodeMarker], "exportSnapshot() with Unicode content");
+
+      const reopened = new ME();
+      reopened.hydrate(snapshot);
+      await reopened.unlockIdentity("password-unicode-leak-secret-99");
+      reopened.vault["_"]("secret-unicode-leak-99");
+      assert.equal(reopened("vault.note"), unicodeMarker, "exact Unicode recovery, including combining marks and emoji");
+    },
+  },
+  {
+    id: "3", section: "cases", tag: "GUARANTEE",
+    title: "root-scope value writes via operators ('=' reference, '?' identity-ref) do not leak the underlying marker beyond what's documented",
+    claim: "A '=' reference to a protected root-scope value doesn't copy that value into the log in the clear; the value itself recovers once the secret is back.",
+    run: async () => {
+      const me = new ME();
+      await me.createIdentityRoot("password-operator-leak-10");
+      me["_"]("root-secret-operator-leak-10");
+      me.source("LEAK_OPERATOR_SOURCE_TOKEN");
+      // '=' reference/derivation — value mode carve-out documented in
+      // core-write.ts: pointer/identity-ref/'='/'?' writes are not
+      // re-encrypted at the value layer (they reference other protected
+      // data rather than duplicating it). This test documents what's
+      // actually observable for that carve-out rather than assuming it
+      // behaves like a normal encrypted value.
+      me.derived("=source");
+      const snapshot = me.exportSnapshot();
+      const serialized = JSON.stringify(snapshot);
+      // The referenced VALUE ("LEAK_OPERATOR_SOURCE_TOKEN") is itself a
+      // protected root-scope value and must not appear in the clear.
+      assert.ok(!serialized.includes("LEAK_OPERATOR_SOURCE_TOKEN"), "the referenced protected value must not leak via the '=' derivation's memory record");
+      noteScan("exportSnapshot() after a '=' reference to a protected value", serialized, "LEAK_OPERATOR_SOURCE_TOKEN"); // page: table row
+
+      // Recovery of the underlying protected value itself (what actually
+      // matters for the leakage property under test — the derivation
+      // recompute engine's own hydrate-time-vs-later-unlock interaction is a
+      // separate concern from identity-bound-secrets and outside this
+      // battery's scope).
+      const reopened = new ME();
+      reopened.hydrate(snapshot);
+      await reopened.unlockIdentity("password-operator-leak-10");
+      reopened["_"]("root-secret-operator-leak-10");
+      assert.equal(reopened("source"), "LEAK_OPERATOR_SOURCE_TOKEN", "the protected root value itself recovers correctly once the secret is resupplied");
+    },
+  },
+  {
+    id: "4", section: "cases", tag: "DOCUMENTED",
+    title: "replaying a memory log alone (no encryptedBranches) never leaks the branch marker, and correctly stays unrecoverable without it (documented, see typedocs §9.1)",
+    claim: "The memory log alone carries no protected content. Replaying it can't rebuild the scope, and the read fails closed instead of throwing.",
+    run: async () => {
+      const me = new ME();
+      await me.createIdentityRoot("password-replay-leak-11");
+      me.vault["_"]("secret-replay-leak-11");
+      me.vault.balance("LEAK_REPLAY_BRANCH_TOKEN");
+
+      const snapshot = me.exportSnapshot();
+      const memoriesOnly = snapshot.memories;
+      assertNoMarkers(JSON.stringify(memoriesOnly), ["LEAK_REPLAY_BRANCH_TOKEN"], "the memory log alone");
+
+      const replayed = new ME();
+      await replayed.createIdentityRoot("password-replay-leak-11-b");
+      replayed.replayMemories(memoriesOnly);
+      replayed.vault["_"]("secret-replay-leak-11");
+      // Per §9.1: replaying the memory log ALONE cannot reconstruct
+      // branch-scoped content — encryptedBranches is a separate, required
+      // transport. This must fail closed (undefined/null), not throw, and
+      // absolutely not silently write "***" as if it were real data.
+      let threw = false;
+      let result;
+      try {
+        result = replayed("vault.balance");
+      } catch {
+        threw = true;
+      }
+      show('replayed("vault.balance")', result);
+      assert.equal(threw, false);
+      assert.ok(
+        [undefined, null].includes(result),
+        "memory-log-only replay must not reconstruct branch content (documented architectural boundary, §9.1)",
+      );
+    },
+  },
+  {
+    id: "5", section: "cases", tag: "GUARANTEE",
+    title: "errors thrown/logged during tampering flows never embed the plaintext secret or password",
+    claim: "A wrong password and a tampered envelope both raise errors. Neither the message nor the stack contains the password, the secret or the value.",
+    adapted: "same code; stack traces use the browser's format instead of Node's, and are scanned the same way.",
+    run: async () => {
+      const me = new ME();
+      const PASSWORD = "LEAK_ERROR_PASSWORD_TOKEN_12345678";
+      await me.createIdentityRoot(PASSWORD);
+      me.vault["_"]("LEAK_ERROR_SECRET_TOKEN");
+      me.vault.balance("LEAK_ERROR_VALUE_TOKEN");
+
+      const collectedErrors = [];
+      try {
+        await me.unlockIdentity("a-plausible-but-wrong-password-attempt");
+      } catch (e) {
+        collectedErrors.push(String(e instanceof Error ? e.stack || e.message : e));
+      }
+      try {
+        const envelope = me.exportIdentityRootBackup();
+        envelope.aead.ciphertext = envelope.aead.ciphertext.slice(0, -4) + "0000";
+        const other = new ME();
+        other.importIdentityRootBackup(envelope, { force: true });
+        await other.unlockIdentity(PASSWORD);
+      } catch (e) {
+        collectedErrors.push(String(e instanceof Error ? e.stack || e.message : e));
+      }
+      show("errors collected (first line of each)", collectedErrors.map((s) => s.split("\n")[0]));
+
+      const combined = collectedErrors.join("\n");
+      assertNoMarkers(combined, [PASSWORD, "LEAK_ERROR_SECRET_TOKEN", "LEAK_ERROR_VALUE_TOKEN"], "collected error messages/stacks");
+    },
+  },
+  {
+    id: "6", section: "cases", tag: "DOCUMENTED",
+    title: "a warmed in-session decrypted-branch cache is a PRIVATE session artifact, not a public leak — distinguished from exportSnapshot()'s disk-safe output in the SAME session",
+    claim: "The unlocked session can read its own value (that's what unlocked means). Its snapshot, taken right after, still doesn't contain it.",
+    run: async () => {
+      const me = new ME();
+      await me.createIdentityRoot("password-cache-distinction-13");
+      me.vault["_"]("secret-cache-distinction-13");
+      me.vault.balance("LEAK_CACHE_DISTINCTION_TOKEN");
+      assert.equal(me("vault.balance"), "LEAK_CACHE_DISTINCTION_TOKEN", "warm the decrypted-branch cache in this unlocked session");
+
+      // The PUBLIC disk-safe surface (what actually leaves the process via
+      // persistence) must still be clean, in the exact same session, right
+      // after the cache was warmed.
+      const snapshot = me.exportSnapshot();
+      assertNoMarkers(JSON.stringify(snapshot), ["LEAK_CACHE_DISTINCTION_TOKEN"], "exportSnapshot() immediately after warming the decrypted-branch cache");
+    },
+  },
+];
+
+main();
+</script>
+</body>
+</html>

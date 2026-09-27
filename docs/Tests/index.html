@@ -52,6 +52,8 @@
     .topnav a { text-decoration:none; color:inherit; padding:4px 10px; border-radius:6px; transition:background 120ms; }
     @media (prefers-color-scheme: dark) { .topnav button:hover, .topnav a:hover { background:rgba(79,209,197,0.1); } }
     .topnav .spacer { flex:1; }
+    .group-title { font-size: 0.75rem; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; color: #51606d; margin: 48px 0 16px; }
+    @media (prefers-color-scheme: dark) { .group-title { color: #98a7b3; } }
   </style>
   <link rel="icon" type="image/png" href="https://res.cloudinary.com/dkwnxf6gm/image/upload/v1769890772/this.me.png">
 </head>
@@ -79,10 +81,39 @@
         <div class="card-title">Raw Results</div>
         <div class="card-desc">Verbatim terminal output from the full firetest run. All suites, all benchmarks.</div>
       </a>
+    </div>
+
+    <h2 class="group-title">Security · run live in your browser against this.me 4.0.2</h2>
+    <div class="grid">
       <a class="card" href="derived-from-secret.html">
         <div class="card-icon">🔐</div>
         <div class="card-title">Derived from Secret</div>
-        <div class="card-desc">Without the key, formulas over a secret compute nothing. 11 cases, run live in your browser against this.me 4.0.2.</div>
+        <div class="card-desc">Without the key, formulas over a secret compute nothing.</div>
+      </a>
+      <a class="card" href="isolation-between-identities.html">
+        <div class="card-icon">🧱</div>
+        <div class="card-title">Isolation between Identities</div>
+        <div class="card-desc">Data encrypted under one identity doesn't open under another.</div>
+      </a>
+      <a class="card" href="information-leakage.html">
+        <div class="card-icon">🕳️</div>
+        <div class="card-title">Information Leakage</div>
+        <div class="card-desc">Protected values and passwords don't show up in snapshots, logs or errors.</div>
+      </a>
+      <a class="card" href="crypto-tampering.html">
+        <div class="card-icon">🧪</div>
+        <div class="card-title">Crypto Tampering</div>
+        <div class="card-desc">Any changed byte fails closed; bad KDF inputs are refused.</div>
+      </a>
+      <a class="card" href="replay-and-restart.html">
+        <div class="card-icon">🔁</div>
+        <div class="card-title">Replay and Restart</div>
+        <div class="card-desc">A restarted kernel comes back closed and recovers exactly with the secret.</div>
+      </a>
+      <a class="card" href="wrapped-secret.html">
+        <div class="card-icon">✉️</div>
+        <div class="card-title">Secret Wrapped for a Recipient</div>
+        <div class="card-desc">Only the recipient's private key opens the wrapped secret.</div>
       </a>
     </div>
   </div>
