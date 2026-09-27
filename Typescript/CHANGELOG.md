@@ -2,6 +2,26 @@
 
 ## Unreleased
 
+### Semantics change: `[i]` derivations apply to children added later
+
+`me.users["[i]"]["="]("isAdult", "age >= 18")` used to expand once over the
+children that existed at declaration time; a child written afterwards
+(`me.users.luisa.age(40)`) got no formula. The declaration is now kept as a
+rule: the first write under a new child of the collection instantiates the
+formula for that child.
+
+- Redeclaring the same `[i]` target and name replaces the formula for existing
+  and future children.
+- Removing one child (`me.users.ana["-"]()`) keeps the rule; writing that child
+  again re-instantiates it. Removing the collection itself (or an ancestor)
+  drops the rule.
+- Per-write cost is O(path depth), independent of how many rules exist; a
+  write at or above a rule's collection rescans that collection.
+- Known limits: rules are not persisted in snapshots (neither are formulas
+  yet), and writing a whole object onto the collection
+  (`me.users({ luisa: { ... } })`) stores it as a leaf value that hides the
+  children, while the rule stays active.
+
 ### Fix: derived values now recompute when any input they read changes
 
 A derivation subscribed to a different path than the evaluator read, so some

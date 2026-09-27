@@ -8,6 +8,7 @@ import type {
   MEDecryptedBranchCacheEntry,
   MEDecryptedValueCacheEntry,
   MEDerivationRecord,
+  MEIteratorRule,
   MEEffectiveSecretCacheEntry,
   MEOptions,
   MERecomputeWave,
@@ -97,6 +98,7 @@ export type SecretState = {
 
 export type DerivationState = {
   derivations: Record<string, MEDerivationRecord>;
+  iteratorRules: Record<string, MEIteratorRule>;
   refSubscribers: Record<string, Set<string>>;
   recomputeMode: "eager" | "lazy";
   refVersions: Record<string, number>;
@@ -159,6 +161,7 @@ export function createInitialKernelState(options: MEOptions = {}): KernelState {
     },
     derivation: {
       derivations: {},
+      iteratorRules: {},
       refSubscribers: {},
       recomputeMode: "eager",
       refVersions: {},

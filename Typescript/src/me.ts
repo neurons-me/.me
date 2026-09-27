@@ -85,6 +85,7 @@ import type {
   MEDecryptedBranchCacheEntry,
   MEDecryptedValueCacheEntry,
   MEDerivationRecord,
+  MEIteratorRule,
   MEEffectiveSecretCacheEntry,
   MEKernelLike,
   MEOptions,
@@ -278,6 +279,7 @@ export class ME {
   private index!: Record<string, any>;
   private _memories!: KernelMemory[];
   private derivations!: Record<string, MEDerivationRecord>;
+  private iteratorRules!: Record<string, MEIteratorRule>;
   private refSubscribers!: Record<string, Set<string>>;
   private recomputeMode!: "eager" | "lazy";
   private refVersions!: Record<string, number>;

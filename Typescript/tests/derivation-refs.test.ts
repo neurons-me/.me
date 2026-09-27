@@ -139,6 +139,94 @@ const cases: Case[] = [
       assert.deepEqual(Object.keys(me.refSubscribers), []);
     },
   },
+  // ─── [i] rules apply to children added after the declaration ─────────────
+  {
+    name: "[i] rule reaches a child added later",
+    run(mode) {
+      const me = fresh(mode);
+      me.users.ana.age(20);
+      me.users.pablo.age(15);
+      me.users["[i]"]["="]("isAdult", "age >= 18");
+      assert.equal(me("users.ana.isAdult"), true);
+      assert.equal(me("users.pablo.isAdult"), false);
+      me.users.luisa.age(40);
+      assert.equal(me("users.luisa.isAdult"), true);
+      me.users.luisa.age(12);
+      assert.equal(me("users.luisa.isAdult"), false);
+    },
+  },
+  {
+    name: "[i] rule reaches a child whose inputs arrive in a later write",
+    run(mode) {
+      const me = fresh(mode);
+      me.users.ana.age(20);
+      me.users["[i]"]["="]("isAdult", "age >= 18");
+      me.users.luisa.name("Luisa"); // child exists, age not yet
+      me.users.luisa.age(40);
+      assert.equal(me("users.luisa.isAdult"), true);
+    },
+  },
+  {
+    name: "[i] nested target (shops[i].menu) reaches a shop added later",
+    run(mode) {
+      const me = fresh(mode);
+      me.shops.north.menu.latte(4);
+      me.shops.north.menu.espresso(3);
+      me.shops["[i]"].menu["="]("deal", "latte + espresso - 1.5");
+      assert.equal(me("shops.north.menu.deal"), 5.5);
+      me.shops.south.menu.latte(5);
+      me.shops.south.menu.espresso(4);
+      assert.equal(me("shops.south.menu.deal"), 7.5);
+    },
+  },
+  {
+    name: "[i] numeric index child added later (dep[i] as in the fan-out demo)",
+    run(mode) {
+      const me = fresh(mode);
+      me.master.factor(2);
+      me.dep[0].value(1);
+      me.dep["[i]"]["="]("out", "value * master.factor");
+      me.dep[7].value(5);
+      assert.equal(me("dep[7].out"), 10);
+      me.master.factor(3);
+      assert.equal(me("dep[7].out"), 15);
+      assert.equal(me("dep[0].out"), 3);
+    },
+  },
+  {
+    name: "[i] redeclared formula replaces the old one for later children too",
+    run(mode) {
+      const me = fresh(mode);
+      me.users.ana.age(20);
+      me.users["[i]"]["="]("isAdult", "age >= 18");
+      me.users["[i]"]["="]("isAdult", "age >= 21");
+      assert.equal(me("users.ana.isAdult"), false);
+      me.users.luisa.age(19);
+      assert.equal(me("users.luisa.isAdult"), false);
+    },
+  },
+  {
+    name: "[i] rule is dropped when its collection is removed",
+    run(mode) {
+      const me = fresh(mode);
+      me.users.ana.age(20);
+      me.users["[i]"]["="]("isAdult", "age >= 18");
+      me.users["-"]();
+      me.users.luisa.age(40);
+      assert.equal(me("users.luisa.isAdult"), undefined);
+    },
+  },
+  {
+    name: "[i] rule survives removing one child and re-adding it",
+    run(mode) {
+      const me = fresh(mode);
+      me.users.ana.age(20);
+      me.users["[i]"]["="]("isAdult", "age >= 18");
+      me.users.ana["-"]();
+      me.users.ana.age(10);
+      assert.equal(me("users.ana.isAdult"), false);
+    },
+  },
 ];
 
 let failed = 0;
@@ -157,4 +245,4 @@ if (failed > 0) {
   console.log(`\n${failed} failing`);
   process.exit(1);
 }
-console.log("\nall derivation-ref cases passed");
+console.log("\nall derivation cases passed");

@@ -2,6 +2,7 @@ import { pathStartsWith } from "./operators.ts";
 import { resolveBranchScope } from "./secret.ts";
 import type {
   MEDerivationRecord,
+  MEIteratorRule,
   MEExplainResult,
   MEKernelLike,
   SemanticPath,
@@ -325,8 +326,49 @@ export function invalidateFromPath(self: MEKernelLike, path: SemanticPath): void
   if (startedWave) finalizeRecomputeWave(self);
 }
 
+// ─── [i] rule index ──────────────────────────────────────────────────────────
+// Lookup structure over self.iteratorRules so a write costs O(path depth), not
+// O(rules). Cached per rules object (replaced wholesale on reset/import) and
+// dropped whenever a rule is added or removed.
+
+export type IteratorRuleIndex = {
+  /** Collection path → rules applying to its direct children. */
+  byPrefix: Map<string, MEIteratorRule[]>;
+  /** Every collection path and each of its ancestors (incl. "" for root). */
+  ancestors: Set<string>;
+};
+
+const iteratorRuleIndexCache = new WeakMap<Record<string, MEIteratorRule>, IteratorRuleIndex>();
+
+export function getIteratorRuleIndex(self: MEKernelLike): IteratorRuleIndex {
+  const cached = iteratorRuleIndexCache.get(self.iteratorRules);
+  if (cached) return cached;
+  const index: IteratorRuleIndex = { byPrefix: new Map(), ancestors: new Set() };
+  for (const rule of Object.values(self.iteratorRules)) {
+    const key = rule.prefix.join(".");
+    const list = index.byPrefix.get(key);
+    if (list) list.push(rule);
+    else index.byPrefix.set(key, [rule]);
+    for (let i = 0; i <= rule.prefix.length; i++) index.ancestors.add(rule.prefix.slice(0, i).join("."));
+  }
+  iteratorRuleIndexCache.set(self.iteratorRules, index);
+  return index;
+}
+
+export function setIteratorRule(self: MEKernelLike, key: string, rule: MEIteratorRule): void {
+  self.iteratorRules[key] = rule;
+  iteratorRuleIndexCache.delete(self.iteratorRules);
+}
+
 export function clearDerivationsByPrefix(self: MEKernelLike, prefixPath: SemanticPath): void {
   const prefix = prefixPath.join(".");
+  for (const [key, rule] of Object.entries(self.iteratorRules)) {
+    const collection = rule.prefix.join(".");
+    if (prefix === "" || collection === prefix || collection.startsWith(prefix + ".")) {
+      delete self.iteratorRules[key];
+      iteratorRuleIndexCache.delete(self.iteratorRules);
+    }
+  }
   for (const target of Object.keys(self.derivations)) {
     if (prefix === "" || target === prefix || target.startsWith(prefix + ".")) {
       unregisterDerivation(self, target);

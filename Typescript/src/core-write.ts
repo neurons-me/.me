@@ -5,8 +5,10 @@ import {
 } from "./crypto.ts";
 import {
   clearDerivationsByPrefix,
+  getIteratorRuleIndex,
   invalidateFromPath,
   registerDerivation,
+  setIteratorRule,
 } from "./derivation.ts";
 import { tryEvaluateAssignExpression } from "./evaluator.ts";
 import { normalizeCall } from "./normalizeCall.ts";
@@ -46,6 +48,7 @@ import {
 import type {
   KernelMemory,
   MappingInstruction,
+  MEIteratorRule,
   MEKernelLike,
   OperatorRegistry,
   ReplayMemoryInput,
@@ -366,6 +369,7 @@ export function replayMemories(self: MEKernelLike, memories: ReplayMemoryInput[]
   self.seqCounter = 0;
   self._memories = [];
   self.derivations = {};
+  self.iteratorRules = {};
   self.refSubscribers = {};
   self.refVersions = {};
   self.derivationRefVersions = {};
@@ -763,6 +767,7 @@ export function commitIndexedBatch(
 
   for (const targetPath of touchedPaths) {
     invalidateFromPath(self, targetPath);
+    applyIteratorRules(self, targetPath);
   }
 
   const batchMemory = commitBatchMemoryOnly(self, basePath, startIndex, items, operator ?? "batch_set");
@@ -1011,6 +1016,7 @@ export function postulate(
         }
         if (out) {
           for (const c of changed) invalidateFromPath(self, c);
+          for (const c of changed) applyIteratorRules(self, c);
           return out;
         }
       }
@@ -1029,15 +1035,16 @@ export function postulate(
     }
 
     if (pathContainsIterator(ev.targetPath)) {
-      const indices = collectIteratorIndices(self, ev.targetPath);
+      const rule: MEIteratorRule = {
+        targetPath: [...ev.targetPath],
+        prefix: iteratorPrefix(ev.targetPath),
+        name: ev.name,
+        expr: ev.expr,
+      };
+      setIteratorRule(self, iteratorRuleKey(rule), rule);
       let out: any = undefined;
-      for (const idx of indices) {
-        const targetScope = normalizeSelectorPath(substituteIteratorInPath(ev.targetPath, idx));
-        const assignTarget = normalizeSelectorPath([...targetScope, ev.name]);
-        const expr = substituteIteratorInExpression(ev.expr, idx);
-        registerDerivation(self, assignTarget, targetScope, expr);
-        const evaluated = tryEvaluateAssignExpression(self, targetScope, expr);
-        out = postulate(self, assignTarget, evaluated.ok ? evaluated.value : expr, "=");
+      for (const idx of collectIteratorIndices(self, ev.targetPath)) {
+        out = instantiateIteratorRule(self, rule, idx);
       }
       return out;
     }
@@ -1092,7 +1099,62 @@ export function postulate(
 
   const memory = commitValueMapping(self, targetPath, expression, operator);
   invalidateFromPath(self, targetPath);
+  applyIteratorRules(self, targetPath);
   return memory;
+}
+
+// ─── [i] rules ───────────────────────────────────────────────────────────────
+// A `[i]` derivation is stored as a rule, not just expanded once, so a child
+// added to the collection after the declaration gets the formula too.
+
+function iteratorPrefix(targetPath: SemanticPath): SemanticPath {
+  const pos = targetPath.findIndex((segment) => segment.includes("[i]"));
+  const prefix = targetPath.slice(0, pos);
+  const base = targetPath[pos].split("[i]").join("").trim();
+  if (base) prefix.push(base);
+  return prefix;
+}
+
+function iteratorRuleKey(rule: MEIteratorRule): string {
+  return `${rule.targetPath.join(".")}\u0000${rule.name}`;
+}
+
+function instantiateIteratorRule(self: MEKernelLike, rule: MEIteratorRule, idx: string): any {
+  const targetScope = normalizeSelectorPath(substituteIteratorInPath(rule.targetPath, idx));
+  const assignTarget = normalizeSelectorPath([...targetScope, rule.name]);
+  const expr = substituteIteratorInExpression(rule.expr, idx);
+  registerDerivation(self, assignTarget, targetScope, expr);
+  const evaluated = tryEvaluateAssignExpression(self, targetScope, expr);
+  return postulate(self, assignTarget, evaluated.ok ? evaluated.value : expr, "=");
+}
+
+function ensureRuleInstance(self: MEKernelLike, rule: MEIteratorRule, idx: string): void {
+  const targetScope = normalizeSelectorPath(substituteIteratorInPath(rule.targetPath, idx));
+  const assignKey = normalizeSelectorPath([...targetScope, rule.name]).join(".");
+  if (self.derivations[assignKey]) return; // also stops re-entry from the rule's own write
+  instantiateIteratorRule(self, rule, idx);
+}
+
+// Called after every committed write. Each proper ancestor of the written path
+// is looked up as a collection (O(depth)); the segment right below it is the
+// child. A write at or above a collection may add several children at once
+// (rare), so only then is the collection rescanned.
+function applyIteratorRules(self: MEKernelLike, path: SemanticPath): void {
+  const { byPrefix, ancestors } = getIteratorRuleIndex(self);
+  if (byPrefix.size === 0) return;
+  let key = "";
+  for (let depth = 0; depth < path.length; depth++) {
+    const rules = byPrefix.get(key);
+    if (rules) for (const rule of rules) ensureRuleInstance(self, rule, path[depth]);
+    key = key ? `${key}.${path[depth]}` : path[depth];
+  }
+  if (!ancestors.has(key)) return;
+  for (const [collection, rules] of byPrefix) {
+    if (key !== "" && collection !== key && !collection.startsWith(key + ".")) continue;
+    for (const rule of rules) {
+      for (const idx of collectIteratorIndices(self, rule.targetPath)) ensureRuleInstance(self, rule, idx);
+    }
+  }
 }
 
 export function removeSubtree(self: MEKernelLike, targetPath: SemanticPath) {

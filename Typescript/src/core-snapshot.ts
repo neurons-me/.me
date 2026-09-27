@@ -93,6 +93,7 @@ export function hydrate(self: MEKernelLike, snapshot: MESnapshotInput): void {
   );
   self.keySpaces = data.keySpaces && typeof data.keySpaces === "object" ? data.keySpaces : {};
   self.derivations = {};
+  self.iteratorRules = {};
   self.refSubscribers = {};
   self.refVersions = {};
   self.derivationRefVersions = {};

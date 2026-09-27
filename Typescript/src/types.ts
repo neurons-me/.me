@@ -618,6 +618,16 @@ export interface MEDerivationRecord {
   lastComputedAt: number;
 }
 
+/** A `[i]` derivation kept as a template so children added later get it too. */
+export interface MEIteratorRule {
+  /** Declared target scope, still containing `[i]` (e.g. ["users[i]"]). */
+  targetPath: SemanticPath;
+  /** Collection whose direct children the rule applies to (e.g. ["users"]). */
+  prefix: SemanticPath;
+  name: string;
+  expr: string;
+}
+
 export interface MEBranchScopeCacheEntry {
   epoch: number;
   scope: SemanticPath | null;
@@ -785,6 +795,7 @@ export interface MEKernelLike extends Record<string, any> {
   seqCounter: number;
   _memories: KernelMemory[];
   derivations: Record<string, MEDerivationRecord>;
+  iteratorRules: Record<string, MEIteratorRule>;
   refSubscribers: Record<string, Set<string>>;
   recomputeMode: MERecomputeMode;
   refVersions: Record<string, number>;
