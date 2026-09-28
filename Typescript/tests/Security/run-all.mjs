@@ -30,6 +30,7 @@ const sections = [
   "generative.test.ts",
   "seed-persistence.test.ts",
   "derived-from-secret.test.ts",
+  "audience-algebra.test.ts",
 ];
 
 let anyFailed = false;
