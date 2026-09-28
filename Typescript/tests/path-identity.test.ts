@@ -15,6 +15,17 @@ import ME from "../dist/index.js";
 
 type Case = { bug: string; name: string; run: () => void };
 
+// Only a failed `knownBug` check counts as the expected failure. Setup,
+// preconditions and any other error (TypeError, import failure, a different
+// assertion) propagate and fail the suite.
+const KNOWN_BUG = "KNOWN BUG: ";
+function knownBug(condition: boolean, message: string): void {
+  if (!condition) throw new assert.AssertionError({ message: KNOWN_BUG + message });
+}
+function isKnownBug(err: unknown): boolean {
+  return err instanceof assert.AssertionError && err.message.startsWith(KNOWN_BUG);
+}
+
 // Control (a normal assertion): without any scope, x → y → t is public and
 // survives a snapshot into a fresh instance. The scope case below relies on it.
 {
@@ -34,9 +45,9 @@ const knownFailing: Case[] = [
       me["a.b"].c(1);
       me.a["b.c"](2);
       const paths = me.inspect().memories.map((m: any) => m.path);
-      assert.equal(new Set(paths).size, 2, `both writes recorded under one path: ${JSON.stringify(paths)}`);
+      knownBug(new Set(paths).size === 2, `both writes recorded under one path: ${JSON.stringify(paths)}`);
       const values = Object.values(me.inspect().index);
-      assert.ok(values.includes(1) && values.includes(2), "the first value was overwritten");
+      knownBug(values.includes(1) && values.includes(2), "the first value was overwritten");
     },
   },
   {
@@ -51,10 +62,10 @@ const knownFailing: Case[] = [
       // that never received the scope key.
       const copy: any = new (ME as any)();
       copy.importSnapshot(me.exportSnapshot());
-      assert.equal(copy("x.y.t"), 6, "the nested value was stored inside the literal segment's sealed branch");
+      knownBug(copy("x.y.t") === 6, "the nested value was stored inside the literal segment's sealed branch");
       // Log plane: the write is not redacted as a sealed one.
       const t = me.inspect().memories.find((m: any) => m.path.endsWith("t"));
-      assert.equal(t?.value, 6, "the nested write was logged as sealed");
+      knownBug(t?.value === 6, "the nested write was logged as sealed");
     },
   },
 ];
@@ -65,7 +76,8 @@ for (const c of knownFailing) {
     c.run();
     unexpectedPass++;
     console.log(`PASS? ${c.bug}: ${c.name} — now passes, move it out of knownFailing`);
-  } catch {
+  } catch (err) {
+    if (!isKnownBug(err)) throw err;
     console.log(`KNOWN FAIL ${c.bug}: ${c.name}`);
   }
 }
