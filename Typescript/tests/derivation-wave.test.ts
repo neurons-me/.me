@@ -352,6 +352,15 @@ const cases: Case[] = [
 ];
 
 // ─── known failing: open bugs, kept red and visible ────────────────────────
+// Only a failed `knownBug` check counts as the expected failure; setup,
+// preconditions and any other error fail the suite.
+const KNOWN_BUG = "KNOWN BUG: ";
+function knownBug(condition: boolean, message: string): void {
+  if (!condition) throw new assert.AssertionError({ message: KNOWN_BUG + message });
+}
+function isKnownBug(err: unknown): boolean {
+  return err instanceof assert.AssertionError && err.message.startsWith(KNOWN_BUG);
+}
 // These run on every test pass and print as KNOWN FAIL without failing the
 // suite. If one starts passing, the suite fails so it gets moved above.
 const knownFailing: Array<Case & { bug: string }> = [
@@ -366,7 +375,7 @@ const knownFailing: Array<Case & { bug: string }> = [
       me.view["="]("adult", "pick.age >= 18");
       assert.equal(me("view.adult"), true);
       me.pick["->"]("users.luis");
-      assert.equal(me("view.adult"), false);
+      knownBug(me("view.adult") === false, "formula through a pointer kept its old value");
     },
   },
   {
@@ -378,7 +387,7 @@ const knownFailing: Array<Case & { bug: string }> = [
       me.pick["->"]("users.ana");
       me.view["="]("adult", "pick.age >= 18");
       me.users.ana.age(10);
-      assert.equal(me("view.adult"), false);
+      knownBug(me("view.adult") === false, "formula through a pointer kept its old value");
     },
   },
   {
@@ -388,7 +397,7 @@ const knownFailing: Array<Case & { bug: string }> = [
       const me = fresh(mode);
       me.f.dep[2].out(7);
       me.f["="]("top", "dep.2.out + 1"); // dep[2].out works; dep.2.out is split into dep, 2, out
-      assert.equal(me("f.top"), 8);
+      knownBug(me("f.top") === 8, "dep.2.out did not read the path");
     },
   },
 ];
@@ -401,7 +410,8 @@ for (const mode of ["eager", "lazy"] as const) {
       await c.run(mode);
       unexpectedPass++;
       console.log(`PASS? [${mode}] ${c.bug}: ${c.name} — now passes, move it out of knownFailing`);
-    } catch {
+    } catch (err) {
+      if (!isKnownBug(err)) throw err;
       console.log(`KNOWN FAIL [${mode}] ${c.bug}: ${c.name}`);
     }
   }
