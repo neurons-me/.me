@@ -15,6 +15,16 @@ import ME from "../dist/index.js";
 
 type Case = { bug: string; name: string; run: () => void };
 
+// Control (a normal assertion): without any scope, x → y → t is public and
+// survives a snapshot into a fresh instance. The scope case below relies on it.
+{
+  const control: any = new (ME as any)();
+  control.x.y.t(6);
+  const controlCopy: any = new (ME as any)();
+  controlCopy.importSnapshot(control.exportSnapshot());
+  assert.equal(controlCopy("x.y.t"), 6, "control: public nested value survives a snapshot");
+}
+
 const knownFailing: Case[] = [
   {
     bug: "#6 path identity",
@@ -33,14 +43,6 @@ const knownFailing: Case[] = [
     bug: "#6 path identity",
     name: 'a secret scope on segment "x.y" does not capture the nested path x → y → t',
     run() {
-      // Control: without any scope, x → y → t is public and survives a
-      // snapshot into a fresh instance.
-      const control: any = new (ME as any)();
-      control.x.y.t(6);
-      const controlCopy: any = new (ME as any)();
-      controlCopy.importSnapshot(control.exportSnapshot());
-      assert.equal(controlCopy("x.y.t"), 6, "control precondition");
-
       // A scope on the single segment "x.y" must not change that.
       const me: any = new (ME as any)();
       me["x.y"]["_"]("scope-key");
