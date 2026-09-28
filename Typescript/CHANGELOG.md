@@ -134,7 +134,7 @@ Covered by `tests/derivation-refs.test.ts`.
 
 ### Known issues
 
-#4 and #5 run as visible red tests (`KNOWN FAIL`) in `tests/derivation-wave.test.ts`.
+#4 and #5 run as visible red tests (`KNOWN FAIL`) in `tests/derivation-wave.test.ts`, #6 in `tests/path-identity.test.ts`.
 
 - **#4 pointers.** A formula that reads through a pointer
   (`me.pick["->"]("users.ana")`, `"pick.age >= 18"`) is not recomputed when
@@ -142,6 +142,14 @@ Covered by `tests/derivation-refs.test.ts`.
   subscribes to `pick.age`, not to `users.ana.age`.
 - **#5 formula grammar.** A numeric segment after a dot (`"dep.2.out"`) is
   split into `dep`, `2`, `out`; use `"dep[2].out"`.
+- **#6 path identity.** Segments are joined with `.` in the index, the memory
+  log, secret scopes and key derivation (`crypto.ts` `normalizePathContext`),
+  so a segment containing `.` collides with nesting: `me["a.b"].c(1)` then
+  `me.a["b.c"](2)` land on one key `a.b.c` and the second silently overwrites
+  the first; a secret scope declared on segment `"x.y"` also seals the nested
+  path `x.y.t`. The fix depends on the path encoding (NRP v0.4 D5); stored
+  `a.b.c` records cannot be migrated automatically because their segment
+  boundaries are already lost. Red tests: `tests/path-identity.test.ts`.
 - **#2 persistence.** Formulas and `[i]` rules are not saved in snapshots;
   after `importSnapshot()`/`replayMemories()` derived values are plain values.
 - **Log growth.** Every changed recompute appends a memory; per-write cost
