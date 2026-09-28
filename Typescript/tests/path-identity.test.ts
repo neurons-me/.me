@@ -6,6 +6,10 @@
 // (bug #6). These cases state the desired separation without assuming how a
 // literal "." will be escaped; they run as KNOWN FAIL until the path encoding
 // is decided (NRP v0.4 D5) and fail the suite if they start passing.
+//
+// These are reproductions of an expected failure, not satisfied acceptance
+// tests: `npm test` passing means the bug is still there, unchanged. When the
+// kernel is fixed, each case becomes a normal assertion outside knownFailing.
 import assert from "node:assert/strict";
 import ME from "../dist/index.js";
 
@@ -29,11 +33,26 @@ const knownFailing: Case[] = [
     bug: "#6 path identity",
     name: 'a secret scope on segment "x.y" does not capture the nested path x → y → t',
     run() {
+      // Control: without any scope, x → y → t is public and survives a
+      // snapshot into a fresh instance.
+      const control: any = new (ME as any)();
+      control.x.y.t(6);
+      const controlCopy: any = new (ME as any)();
+      controlCopy.importSnapshot(control.exportSnapshot());
+      assert.equal(controlCopy("x.y.t"), 6, "control precondition");
+
+      // A scope on the single segment "x.y" must not change that.
       const me: any = new (ME as any)();
       me["x.y"]["_"]("scope-key");
-      me.x.y.t(6); // not under the literal "x.y" segment
+      me.x.y.t(6); // path ["x","y","t"], not under the segment ["x.y"]
+      // Storage plane: the nested value is readable from a fresh instance
+      // that never received the scope key.
+      const copy: any = new (ME as any)();
+      copy.importSnapshot(me.exportSnapshot());
+      assert.equal(copy("x.y.t"), 6, "the nested value was stored inside the literal segment's sealed branch");
+      // Log plane: the write is not redacted as a sealed one.
       const t = me.inspect().memories.find((m: any) => m.path.endsWith("t"));
-      assert.equal(t?.value, 6, "the nested write was sealed into the literal segment's scope");
+      assert.equal(t?.value, 6, "the nested write was logged as sealed");
     },
   },
 ];
