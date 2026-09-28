@@ -492,9 +492,10 @@ export function invalidateFromPaths(self: MEKernelLike, roots: string[]): void {
     }
   };
 
+  let head = 0; // queue read position (no Array.shift: O(1) per pop)
   while (done.size < affected.size) {
-    while (ready.length > 0) {
-      const target = ready.shift()!;
+    while (head < ready.length) {
+      const target = ready[head++];
       if (done.has(target)) continue;
       done.add(target);
       const d = self.derivations[target];

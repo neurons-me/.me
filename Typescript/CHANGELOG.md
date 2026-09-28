@@ -1,8 +1,26 @@
 # TypeScript .me Changelog
 
-## Unreleased
+## 4.1.0 - unreleased
 
-### Fix: eager recompute order, early cutoff, removals, cycles
+Correctness release for derived values (`=`). Several cases returned a stale
+or placeholder value without any error; they are fixed, and two behaviors
+change as a result (see **Changed**). Minor version rather than a patch
+because of those behavior changes.
+
+Summary:
+
+- **Fixed:** refs subscribed to the wrong path (stale values); eager waves
+  computing with stale intermediates; removals not recomputing; cycles
+  overflowing the stack in lazy mode.
+- **Changed:** a derivation with no correct value is `undefined` (was its own
+  formula text); `[i]` rules also apply to children added later;
+  `explain().meta.dependsOn` reports the path actually read.
+- **Added:** `explain().meta.changed`, `explain().meta.unresolved`, early
+  cutoff, `npm run test:derivations`.
+- **Known issues:** see the end of this section.
+
+
+### Fixed: eager recompute order, early cutoff, removals, cycles
 
 Eager mode (the default) walked a write's dependents breadth-first and
 evaluated each once, so a derivation that read the written path directly
@@ -34,7 +52,7 @@ ordering step.
   `undefined`, derivations reading them are `undefined` (missing input), and
   the rest of the wave updates normally.
 
-### Behavior change: a derivation with no correct value is `undefined`
+### Changed: a derivation with no correct value is `undefined`
 
 When a formula could not be evaluated, its value used to be the formula text
 (`me("p.y") === "x + later"`). It is now `undefined`, both at declaration and
@@ -45,18 +63,18 @@ rejects, e.g. `"true + 1"`). A payload like `"1 + console.log(1)"` is still
 never executed; it now reads `undefined` (missing input `console.log`) instead
 of its own text. The value is computed normally once a missing input arrives.
 
-Performance: ~4% per recomputed dependent on a flat fan-out versus the
-previous release (A/B, 5 alternating runs, Apple M2), the cost of the cutoff
-comparison.
+Performance versus 4.0.2 (A/B, alternating runs, Apple M2): flat fan-out
+~+4% per recomputed dependent (the cutoff comparison; a per-derivation cache
+of the last value it wrote keeps it there, and is invalidated by any other
+write to that path). Non-flat graphs: a 5,000-node chain ~+11%, 50-wide
+layered diamonds ~+15% (noisy, +10–30% across runs), a 5,000-wide two-layer
+graph on par; all scale linearly (t(5000)/t(500) ≈ 10–12).
 
-Known limit, unchanged by this release: a formula that reads through a
-pointer (`me.pick["->"]("users.ana")`, `"pick.age >= 18"`) is not recomputed
-when the pointer is retargeted or when the pointed-to value is written; it
-subscribes to `pick.age`, not to `users.ana.age`.
+Covered by `tests/derivation-wave.test.ts` (including cache-invalidation
+cases for direct writes, `learn()`, pointer writes, `lockIdentity()`,
+`importSnapshot()` and `replayMemories()`).
 
-Covered by `tests/derivation-wave.test.ts`.
-
-### Semantics change: `[i]` derivations apply to children added later
+### Changed: `[i]` derivations apply to children added later
 
 `me.users["[i]"]["="]("isAdult", "age >= 18")` used to expand once over the
 children that existed at declaration time; a child written afterwards
@@ -76,7 +94,7 @@ formula for that child.
   (`me.users({ luisa: { ... } })`) stores it as a leaf value that hides the
   children, while the rule stays active.
 
-### Fix: derived values now recompute when any input they read changes
+### Fixed: derived values now recompute when any input they read changes
 
 A derivation subscribed to a different path than the evaluator read, so some
 writes left derived values stale with no error:
@@ -113,3 +131,18 @@ Visible changes:
   `meta.k` and the input count as a separate `inputs` column.
 
 Covered by `tests/derivation-refs.test.ts`.
+
+### Known issues
+
+#4 and #5 run as visible red tests (`KNOWN FAIL`) in `tests/derivation-wave.test.ts`.
+
+- **#4 pointers.** A formula that reads through a pointer
+  (`me.pick["->"]("users.ana")`, `"pick.age >= 18"`) is not recomputed when
+  the pointer is retargeted or when the pointed-to value is written: it
+  subscribes to `pick.age`, not to `users.ana.age`.
+- **#5 formula grammar.** A numeric segment after a dot (`"dep.2.out"`) is
+  split into `dep`, `2`, `out`; use `"dep[2].out"`.
+- **#2 persistence.** Formulas and `[i]` rules are not saved in snapshots;
+  after `importSnapshot()`/`replayMemories()` derived values are plain values.
+- **Log growth.** Every changed recompute appends a memory; per-write cost
+  drifts up as the history grows (benchmark 5).

@@ -6,7 +6,7 @@
 import assert from "node:assert/strict";
 import ME from "../dist/index.js";
 
-type Case = { name: string; run: (mode: "eager" | "lazy") => void };
+type Case = { name: string; run: (mode: "eager" | "lazy") => void | Promise<void> };
 
 function fresh(mode: "eager" | "lazy"): any {
   const me: any = new (ME as any)();
@@ -133,6 +133,119 @@ const cases: Case[] = [
     },
   },
 
+  // ─── cutoff cache: the last value a derivation wrote must never go stale ──
+  // Pattern: the formula wrote `true` (cached). The stored value is changed by
+  // some other route; then an input changes so the formula yields `true`
+  // again. The wave must still write it: comparing against a stale cache would
+  // cut it off and leave the other route's value in place.
+  {
+    name: "cache: write via learn() (memory-log layer)",
+    run(mode) {
+      const me = fresh(mode);
+      me.s.a(1);
+      me.s["="]("pos", "a > 0");
+      me("s.pos");
+      me.learn({ path: "s.pos", operator: null, expression: false, value: false });
+      assert.equal(me("s.pos"), false);
+      me.s.a(2);
+      assert.equal(me("s.pos"), true);
+    },
+  },
+  {
+    name: "cache: a write through a pointer does not reach the derived path",
+    run(mode) {
+      const me = fresh(mode);
+      me.s.a(1);
+      me.s["="]("pos", "a > 0");
+      me("s.pos");
+      me.alias["->"]("s");
+      me.alias.pos(false); // stored under alias.pos, not s.pos
+      assert.equal(me("s.pos"), true);
+      me.s.a(2);
+      assert.equal(me("s.pos"), true);
+    },
+  },
+  {
+    name: "cache: formula in a secret branch across lockIdentity/unlock",
+    async run(mode) {
+      const me = fresh(mode);
+      await me.createIdentityRoot("wave-cache-lock-password-01");
+      me.vault["_"]("vault-door-01");
+      me.vault.a(1);
+      me.vault["="]("pos", "a > 0");
+      assert.equal(me("vault.pos"), true);
+      me.lockIdentity();
+      me.vault.pos(false); // refused while locked: stored value must be untouched
+      await me.unlockIdentity("wave-cache-lock-password-01");
+      me.vault["_"]("vault-door-01");
+      assert.equal(me("vault.pos"), true);
+      me.vault.a(0);
+      assert.equal(me("vault.pos"), false);
+      me.vault.a(3);
+      assert.equal(me("vault.pos"), true);
+    },
+  },
+  {
+    name: "cache: importSnapshot replaces formulas and cache together",
+    run(mode) {
+      const me = fresh(mode);
+      me.s.a(1);
+      me.s["="]("pos", "a > 0");
+      me("s.pos");
+      const other = fresh(mode);
+      other.s.a(1);
+      other.s.pos(false);
+      me.importSnapshot(other.exportSnapshot());
+      assert.equal(me("s.pos"), false);
+      // Formulas are not persisted in snapshots yet (bug #2): nothing is
+      // derived after import, so no cache can outlive it.
+      assert.equal(me.explain("s.pos").derivation, null);
+      me.s["="]("pos", "a > 0");
+      assert.equal(me("s.pos"), true);
+    },
+  },
+  {
+    name: "cache: replayMemories resets formulas and cache together",
+    run(mode) {
+      const me = fresh(mode);
+      me.s.a(1);
+      me.s["="]("pos", "a > 0");
+      me("s.pos");
+      me.replayMemories([
+        { path: "s.a", operator: null, expression: 1, value: 1 },
+        { path: "s.pos", operator: null, expression: false, value: false },
+      ]);
+      assert.equal(me("s.pos"), false);
+      assert.equal(me.explain("s.pos").derivation, null);
+    },
+  },
+
+  // ─── flat fan-out shortcut ───────────────────────────────────────────────
+  {
+    name: "almost flat: 100 direct dependents, one with its own dependent",
+    run(mode) {
+      const me = fresh(mode);
+      me.f.src(1);
+      for (let i = 1; i <= 100; i++) me.f.dep[i]["="]("out", "f.src * " + i);
+      me.f["="]("top", "dep[50].out + 1"); // reads a dependent, not the source
+      me.f.src(2);
+      assert.equal(me("f.dep[50].out"), 100);
+      assert.equal(me("f.top"), 101);
+      if (mode === "eager") assert.equal(me.explain("f.top").meta.k, 101);
+    },
+  },
+  {
+    name: "almost flat, adversarial: the second-level node also reads the source",
+    run(mode) {
+      const me = fresh(mode);
+      me.f.src(1);
+      for (let i = 1; i <= 100; i++) me.f.dep[i]["="]("out", "f.src * " + i);
+      me.f["="]("top", "src + dep[100].out"); // src is f.src here (scope f) // same level as deps by src, one below by dep
+      me.f.src(3);
+      assert.equal(me("f.top"), 3 + 300);
+    },
+  },
+
   // ─── missing inputs: undefined + reason ──────────────────────────────────
   {
     name: "removing an input makes the derived value undefined, with reason",
@@ -238,11 +351,65 @@ const cases: Case[] = [
   },
 ];
 
+// ─── known failing: open bugs, kept red and visible ────────────────────────
+// These run on every test pass and print as KNOWN FAIL without failing the
+// suite. If one starts passing, the suite fails so it gets moved above.
+const knownFailing: Array<Case & { bug: string }> = [
+  {
+    bug: "#4 pointers",
+    name: "retargeting a pointer recomputes formulas that read through it",
+    run(mode) {
+      const me = fresh(mode);
+      me.users.ana.age(20);
+      me.users.luis.age(15);
+      me.pick["->"]("users.ana");
+      me.view["="]("adult", "pick.age >= 18");
+      assert.equal(me("view.adult"), true);
+      me.pick["->"]("users.luis");
+      assert.equal(me("view.adult"), false);
+    },
+  },
+  {
+    bug: "#4 pointers",
+    name: "writing the pointed-to value recomputes formulas that read through it",
+    run(mode) {
+      const me = fresh(mode);
+      me.users.ana.age(20);
+      me.pick["->"]("users.ana");
+      me.view["="]("adult", "pick.age >= 18");
+      me.users.ana.age(10);
+      assert.equal(me("view.adult"), false);
+    },
+  },
+  {
+    bug: "#5 formula grammar",
+    name: "a numeric segment after a dot (dep.2.out) reads the path",
+    run(mode) {
+      const me = fresh(mode);
+      me.f.dep[2].out(7);
+      me.f["="]("top", "dep.2.out + 1"); // dep[2].out works; dep.2.out is split into dep, 2, out
+      assert.equal(me("f.top"), 8);
+    },
+  },
+];
+
 let failed = 0;
+let unexpectedPass = 0;
+for (const mode of ["eager", "lazy"] as const) {
+  for (const c of knownFailing) {
+    try {
+      await c.run(mode);
+      unexpectedPass++;
+      console.log(`PASS? [${mode}] ${c.bug}: ${c.name} — now passes, move it out of knownFailing`);
+    } catch {
+      console.log(`KNOWN FAIL [${mode}] ${c.bug}: ${c.name}`);
+    }
+  }
+}
 for (const mode of ["eager", "lazy"] as const) {
   for (const c of cases) {
     try {
-      c.run(mode);
+      await c.run(mode);
       console.log(`ok   [${mode}] ${c.name}`);
     } catch (err: any) {
       failed++;
@@ -250,8 +417,8 @@ for (const mode of ["eager", "lazy"] as const) {
     }
   }
 }
-if (failed > 0) {
-  console.log(`\n${failed} failing`);
+if (failed > 0 || unexpectedPass > 0) {
+  console.log(`\n${failed} failing, ${unexpectedPass} known-failing now passing`);
   process.exit(1);
 }
 console.log("\nall wave cases passed");
