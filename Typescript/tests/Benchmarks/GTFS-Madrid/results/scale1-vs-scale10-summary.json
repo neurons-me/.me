@@ -1,0 +1,161 @@
+{
+  "claim": "dependency propagation (not RML materialization); CREATE via gtfs.idx membership slots",
+  "createHonesty": "CREATE has no prior dependency edge; benchmark models creation via explicit membership/index slots \u2192 measurable wave when a member enters the set. NOT natural GTFS CREATE k=1.",
+  "comparison": "n vs k locality: graph n ~10\u00d7; mutations ~8.6\u00d7; k distribution stays flat (locality preserved)",
+  "scale1": {
+    "version": "scale-1-CHANGE/base\u2192seed0-sweep",
+    "mutations": 151,
+    "creates": 111,
+    "updates": 7,
+    "deletes": 33,
+    "graph": {
+      "routes": 13,
+      "trips": 130,
+      "stopTimes": 2364,
+      "services": 5,
+      "stopTimesWired": 2364
+    },
+    "idx": {
+      "routesIndexed": 16,
+      "tripsIndexed": 151,
+      "stopTimeSlots": 2448,
+      "routeMembers": 16,
+      "serviceMembers": 8
+    },
+    "k": {
+      "mean": 5.105960264900662,
+      "median": 1,
+      "p50": 1,
+      "p95": 18.5,
+      "p99": 27,
+      "max": 27,
+      "n": 151
+    },
+    "kByType": {
+      "CREATE": {
+        "n": 111,
+        "k": {
+          "mean": 1,
+          "median": 1,
+          "p50": 1,
+          "p95": 1,
+          "p99": 1,
+          "max": 1,
+          "n": 111
+        }
+      },
+      "UPDATE": {
+        "n": 7,
+        "k": {
+          "mean": 12.142857142857142,
+          "median": 1,
+          "p50": 1,
+          "p95": 27,
+          "p99": 27,
+          "max": 27,
+          "n": 7
+        }
+      },
+      "DELETE": {
+        "n": 33,
+        "k": {
+          "mean": 17.424242424242426,
+          "median": 18,
+          "p50": 18,
+          "p95": 19,
+          "p99": 19,
+          "max": 19,
+          "n": 33
+        }
+      }
+    },
+    "recomputeMs": {
+      "p50": 0.0037079999999605207,
+      "p95": 0.07304199999998673
+    },
+    "earlyCutoffRatio": 0.005188067444876783,
+    "loadMs": 332.2735
+  },
+  "scale10": {
+    "version": "scale10-CHANGE/base\u2192seed0-sweep",
+    "mutations": 1304,
+    "creates": 1020,
+    "updates": 42,
+    "deletes": 242,
+    "graph": {
+      "routes": 130,
+      "trips": 1300,
+      "stopTimes": 23640,
+      "services": 50,
+      "stopTimesWired": 23640
+    },
+    "idx": {
+      "routesIndexed": 152,
+      "tripsIndexed": 1459,
+      "stopTimeSlots": 24457,
+      "routeMembers": 152,
+      "serviceMembers": 72
+    },
+    "k": {
+      "mean": 4.329754601226994,
+      "median": 1,
+      "p50": 1,
+      "p95": 18,
+      "p99": 26.76000000000022,
+      "max": 27,
+      "n": 1304
+    },
+    "kByType": {
+      "CREATE": {
+        "n": 1020,
+        "k": {
+          "mean": 1,
+          "median": 1,
+          "p50": 1,
+          "p95": 1,
+          "p99": 1,
+          "max": 1,
+          "n": 1020
+        }
+      },
+      "UPDATE": {
+        "n": 42,
+        "k": {
+          "mean": 9.666666666666666,
+          "median": 1,
+          "p50": 1,
+          "p95": 27,
+          "p99": 27,
+          "max": 27,
+          "n": 42
+        }
+      },
+      "DELETE": {
+        "n": 242,
+        "k": {
+          "mean": 17.43801652892562,
+          "median": 18,
+          "p50": 18,
+          "p95": 19,
+          "p99": 19,
+          "max": 19,
+          "n": 242
+        }
+      }
+    },
+    "recomputeMs": {
+      "p50": 0.0032919999998739513,
+      "p95": 0.0857017000005726
+    },
+    "earlyCutoffRatio": 0.00495926319518243,
+    "loadMs": 2439.7442
+  },
+  "ratios_scale10_over_scale1": {
+    "mutations": 8.635761589403973,
+    "graph_stopTimes": 10.0,
+    "k_mean": 0.8479804731326539,
+    "k_p95": 0.972972972972973,
+    "k_max": 1.0,
+    "loadMs": 7.342578327793219
+  }
+}

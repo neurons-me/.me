@@ -1,0 +1,519 @@
+{
+  "version": "scale1-vs-scale10-vs-scale100-CHANGE/base\u2192seed0",
+  "claim": "dependency propagation (not RML materialization)",
+  "createHonesty": "CREATE has no prior dependency edge; modeled via gtfs.idx membership/index slots \u2192 measurable wave. Not natural GTFS CREATE k=1. Not RML.",
+  "download": {
+    "package": "GTFS-Scale-100-CHANGE.tar.xz",
+    "zenodo": "10.5281/zenodo.14038823",
+    "compressedBytes": 1198398288,
+    "compressedGiB": 1.116,
+    "selectiveExtractBytes": 62229113,
+    "selectiveExtractMiB": 59.35,
+    "extracted": "data/scale100/{base,seed0}/{routes,trips,stop_times,calendar,calendar_dates}.txt only (skipped SHAPES ~300MB each and other unused tables)"
+  },
+  "wallClock": {
+    "scale100_sweep_real_s": 5114.25,
+    "scale100_peak_rss_bytes": 2456879104,
+    "scale100_peak_rss_GiB": 2.29
+  },
+  "scales": {
+    "scale1": {
+      "mutations_N": 151,
+      "creates": 111,
+      "updates": 7,
+      "deletes": 33,
+      "skipped": 0,
+      "graph_routes_base": 13,
+      "graph_trips_base": 130,
+      "graph_stopTimes_wired": 2364,
+      "graph_services": 5,
+      "idx_tripSlots": 151,
+      "idx_stopTimeSlots": 2448,
+      "idx_routeMembers": 16,
+      "idx_serviceMembers": 8,
+      "k_mean": 5.105960264900662,
+      "k_p50": 1,
+      "k_p95": 18.5,
+      "k_max": 27,
+      "k_CREATE_n": 111,
+      "k_CREATE_mean": 1,
+      "k_CREATE_p50": 1,
+      "k_CREATE_p95": 1,
+      "k_CREATE_max": 1,
+      "k_UPDATE_n": 7,
+      "k_UPDATE_mean": 12.142857142857142,
+      "k_UPDATE_p50": 1,
+      "k_UPDATE_p95": 27,
+      "k_UPDATE_max": 27,
+      "k_DELETE_n": 33,
+      "k_DELETE_mean": 17.424242424242426,
+      "k_DELETE_p50": 18,
+      "k_DELETE_p95": 19,
+      "k_DELETE_max": 19,
+      "recomputeMs_p50": 0.0037079999999605207,
+      "recomputeMs_p95": 0.07304199999998673,
+      "early_cutoff": 0.005188067444876783,
+      "loadMs": 332.2735,
+      "measurableByKind": {
+        "CREATE/route": 3,
+        "DELETE/route": 3,
+        "CREATE/service": 3,
+        "UPDATE/service.monday": 1,
+        "UPDATE/service.tuesday": 1,
+        "UPDATE/service.wednesday": 1,
+        "UPDATE/service.thursday": 1,
+        "UPDATE/service.friday": 1,
+        "UPDATE/service.startDate": 1,
+        "UPDATE/service.endDate": 1,
+        "CREATE/trip": 21,
+        "DELETE/trip": 30,
+        "CREATE/stopTime": 84
+      },
+      "claim": "dependency propagation (not RML materialization)",
+      "createSemantics": "gtfs.idx membership slots (0 pre-seeded for seed-only ids, 1 for base) + parent sum aggregates (routeCount/serviceCount/tripCount/stopTimeCount); CREATE flips slot \u2192 aggregate wave"
+    },
+    "scale10": {
+      "mutations_N": 1304,
+      "creates": 1020,
+      "updates": 42,
+      "deletes": 242,
+      "skipped": 0,
+      "graph_routes_base": 130,
+      "graph_trips_base": 1300,
+      "graph_stopTimes_wired": 23640,
+      "graph_services": 50,
+      "idx_tripSlots": 1459,
+      "idx_stopTimeSlots": 24457,
+      "idx_routeMembers": 152,
+      "idx_serviceMembers": 72,
+      "k_mean": 4.329754601226994,
+      "k_p50": 1,
+      "k_p95": 18,
+      "k_max": 27,
+      "k_CREATE_n": 1020,
+      "k_CREATE_mean": 1,
+      "k_CREATE_p50": 1,
+      "k_CREATE_p95": 1,
+      "k_CREATE_max": 1,
+      "k_UPDATE_n": 42,
+      "k_UPDATE_mean": 9.666666666666666,
+      "k_UPDATE_p50": 1,
+      "k_UPDATE_p95": 27,
+      "k_UPDATE_max": 27,
+      "k_DELETE_n": 242,
+      "k_DELETE_mean": 17.43801652892562,
+      "k_DELETE_p50": 18,
+      "k_DELETE_p95": 19,
+      "k_DELETE_max": 19,
+      "recomputeMs_p50": 0.003832999999758613,
+      "recomputeMs_p95": 0.0966937500006679,
+      "early_cutoff": 0.00495926319518243,
+      "loadMs": 2855.4572,
+      "measurableByKind": {
+        "CREATE/route": 22,
+        "DELETE/route": 22,
+        "CREATE/service": 22,
+        "UPDATE/service.tuesday": 4,
+        "UPDATE/service.wednesday": 4,
+        "UPDATE/service.thursday": 4,
+        "UPDATE/service.saturday": 4,
+        "UPDATE/service.startDate": 9,
+        "UPDATE/service.endDate": 9,
+        "UPDATE/service.friday": 1,
+        "UPDATE/service.sunday": 4,
+        "UPDATE/service.monday": 3,
+        "CREATE/trip": 159,
+        "DELETE/trip": 220,
+        "CREATE/stopTime": 817
+      },
+      "claim": "dependency propagation (not RML materialization)",
+      "createSemantics": "gtfs.idx membership slots (0 pre-seeded for seed-only ids, 1 for base) + parent sum aggregates (routeCount/serviceCount/tripCount/stopTimeCount); CREATE flips slot \u2192 aggregate wave"
+    },
+    "scale100": {
+      "mutations_N": 13401,
+      "creates": 10560,
+      "updates": 454,
+      "deletes": 2387,
+      "skipped": 0,
+      "graph_routes_base": 1300,
+      "graph_trips_base": 13000,
+      "graph_stopTimes_wired": 236400,
+      "graph_services": 500,
+      "idx_tripSlots": 14708,
+      "idx_stopTimeSlots": 244818,
+      "idx_routeMembers": 1517,
+      "idx_serviceMembers": 717,
+      "k_mean": 4.265278710543989,
+      "k_p50": 1,
+      "k_p95": 18,
+      "k_max": 27,
+      "k_CREATE_n": 10560,
+      "k_CREATE_mean": 1,
+      "k_CREATE_p50": 1,
+      "k_CREATE_p95": 1,
+      "k_CREATE_max": 1,
+      "k_UPDATE_n": 454,
+      "k_UPDATE_mean": 10.964757709251101,
+      "k_UPDATE_p50": 1,
+      "k_UPDATE_p95": 27,
+      "k_UPDATE_max": 27,
+      "k_DELETE_n": 2387,
+      "k_DELETE_mean": 17.43653121072476,
+      "k_DELETE_p50": 18,
+      "k_DELETE_p95": 19,
+      "k_DELETE_max": 19,
+      "recomputeMs_p50": 0.003125000002910383,
+      "recomputeMs_p95": 0.13070800062268972,
+      "early_cutoff": 0.004898616140940185,
+      "loadMs": 32541.2205,
+      "measurableByKind": {
+        "CREATE/route": 217,
+        "DELETE/route": 217,
+        "CREATE/service": 217,
+        "UPDATE/service.monday": 42,
+        "UPDATE/service.thursday": 40,
+        "UPDATE/service.startDate": 84,
+        "UPDATE/service.endDate": 84,
+        "UPDATE/service.tuesday": 45,
+        "UPDATE/service.sunday": 47,
+        "UPDATE/service.saturday": 33,
+        "UPDATE/service.wednesday": 38,
+        "UPDATE/service.friday": 41,
+        "CREATE/trip": 1708,
+        "DELETE/trip": 2170,
+        "CREATE/stopTime": 8418
+      },
+      "claim": "dependency propagation (not RML materialization)",
+      "createSemantics": "gtfs.idx membership slots (0 pre-seeded for seed-only ids, 1 for base) + parent sum aggregates (routeCount/serviceCount/tripCount/stopTimeCount); CREATE flips slot \u2192 aggregate wave"
+    }
+  },
+  "comparisonTable": [
+    {
+      "metric": "mutations N",
+      "scale1": 151,
+      "scale10": 1304,
+      "scale100": 13401,
+      "ratio_10_over_1": 8.635761589403973,
+      "ratio_100_over_10": 10.276840490797547,
+      "ratio_100_over_1": 88.74834437086092
+    },
+    {
+      "metric": "creates",
+      "scale1": 111,
+      "scale10": 1020,
+      "scale100": 10560,
+      "ratio_10_over_1": 9.18918918918919,
+      "ratio_100_over_10": 10.352941176470589,
+      "ratio_100_over_1": 95.13513513513513
+    },
+    {
+      "metric": "updates",
+      "scale1": 7,
+      "scale10": 42,
+      "scale100": 454,
+      "ratio_10_over_1": 6.0,
+      "ratio_100_over_10": 10.80952380952381,
+      "ratio_100_over_1": 64.85714285714286
+    },
+    {
+      "metric": "deletes",
+      "scale1": 33,
+      "scale10": 242,
+      "scale100": 2387,
+      "ratio_10_over_1": 7.333333333333333,
+      "ratio_100_over_10": 9.863636363636363,
+      "ratio_100_over_1": 72.33333333333333
+    },
+    {
+      "metric": "graph routes (base)",
+      "scale1": 13,
+      "scale10": 130,
+      "scale100": 1300,
+      "ratio_10_over_1": 10.0,
+      "ratio_100_over_10": 10.0,
+      "ratio_100_over_1": 100.0
+    },
+    {
+      "metric": "graph trips (base)",
+      "scale1": 130,
+      "scale10": 1300,
+      "scale100": 13000,
+      "ratio_10_over_1": 10.0,
+      "ratio_100_over_10": 10.0,
+      "ratio_100_over_1": 100.0
+    },
+    {
+      "metric": "graph stopTimes wired",
+      "scale1": 2364,
+      "scale10": 23640,
+      "scale100": 236400,
+      "ratio_10_over_1": 10.0,
+      "ratio_100_over_10": 10.0,
+      "ratio_100_over_1": 100.0
+    },
+    {
+      "metric": "graph services",
+      "scale1": 5,
+      "scale10": 50,
+      "scale100": 500,
+      "ratio_10_over_1": 10.0,
+      "ratio_100_over_10": 10.0,
+      "ratio_100_over_1": 100.0
+    },
+    {
+      "metric": "idx tripSlots",
+      "scale1": 151,
+      "scale10": 1459,
+      "scale100": 14708,
+      "ratio_10_over_1": 9.66225165562914,
+      "ratio_100_over_10": 10.080877313228239,
+      "ratio_100_over_1": 97.40397350993378
+    },
+    {
+      "metric": "idx stopTimeSlots",
+      "scale1": 2448,
+      "scale10": 24457,
+      "scale100": 244818,
+      "ratio_10_over_1": 9.990604575163399,
+      "ratio_100_over_10": 10.010140246146298,
+      "ratio_100_over_1": 100.00735294117646
+    },
+    {
+      "metric": "idx routeMembers",
+      "scale1": 16,
+      "scale10": 152,
+      "scale100": 1517,
+      "ratio_10_over_1": 9.5,
+      "ratio_100_over_10": 9.980263157894736,
+      "ratio_100_over_1": 94.8125
+    },
+    {
+      "metric": "idx serviceMembers",
+      "scale1": 8,
+      "scale10": 72,
+      "scale100": 717,
+      "ratio_10_over_1": 9.0,
+      "ratio_100_over_10": 9.958333333333334,
+      "ratio_100_over_1": 89.625
+    },
+    {
+      "metric": "k mean",
+      "scale1": 5.105960264900662,
+      "scale10": 4.329754601226994,
+      "scale100": 4.265278710543989,
+      "ratio_10_over_1": 0.8479804731326539,
+      "ratio_100_over_10": 0.9851086501150128,
+      "ratio_100_over_1": 0.8353528992115985
+    },
+    {
+      "metric": "k p50",
+      "scale1": 1,
+      "scale10": 1,
+      "scale100": 1,
+      "ratio_10_over_1": 1.0,
+      "ratio_100_over_10": 1.0,
+      "ratio_100_over_1": 1.0
+    },
+    {
+      "metric": "k p95",
+      "scale1": 18.5,
+      "scale10": 18,
+      "scale100": 18,
+      "ratio_10_over_1": 0.972972972972973,
+      "ratio_100_over_10": 1.0,
+      "ratio_100_over_1": 0.972972972972973
+    },
+    {
+      "metric": "k max",
+      "scale1": 27,
+      "scale10": 27,
+      "scale100": 27,
+      "ratio_10_over_1": 1.0,
+      "ratio_100_over_10": 1.0,
+      "ratio_100_over_1": 1.0
+    },
+    {
+      "metric": "k CREATE mean",
+      "scale1": 1,
+      "scale10": 1,
+      "scale100": 1,
+      "ratio_10_over_1": 1.0,
+      "ratio_100_over_10": 1.0,
+      "ratio_100_over_1": 1.0
+    },
+    {
+      "metric": "k CREATE p50",
+      "scale1": 1,
+      "scale10": 1,
+      "scale100": 1,
+      "ratio_10_over_1": 1.0,
+      "ratio_100_over_10": 1.0,
+      "ratio_100_over_1": 1.0
+    },
+    {
+      "metric": "k CREATE p95",
+      "scale1": 1,
+      "scale10": 1,
+      "scale100": 1,
+      "ratio_10_over_1": 1.0,
+      "ratio_100_over_10": 1.0,
+      "ratio_100_over_1": 1.0
+    },
+    {
+      "metric": "k CREATE max",
+      "scale1": 1,
+      "scale10": 1,
+      "scale100": 1,
+      "ratio_10_over_1": 1.0,
+      "ratio_100_over_10": 1.0,
+      "ratio_100_over_1": 1.0
+    },
+    {
+      "metric": "k UPDATE mean",
+      "scale1": 12.142857142857142,
+      "scale10": 9.666666666666666,
+      "scale100": 10.964757709251101,
+      "ratio_10_over_1": 0.796078431372549,
+      "ratio_100_over_10": 1.1342852802673553,
+      "ratio_100_over_1": 0.9029800466442084
+    },
+    {
+      "metric": "k UPDATE p50",
+      "scale1": 1,
+      "scale10": 1,
+      "scale100": 1,
+      "ratio_10_over_1": 1.0,
+      "ratio_100_over_10": 1.0,
+      "ratio_100_over_1": 1.0
+    },
+    {
+      "metric": "k UPDATE p95",
+      "scale1": 27,
+      "scale10": 27,
+      "scale100": 27,
+      "ratio_10_over_1": 1.0,
+      "ratio_100_over_10": 1.0,
+      "ratio_100_over_1": 1.0
+    },
+    {
+      "metric": "k UPDATE max",
+      "scale1": 27,
+      "scale10": 27,
+      "scale100": 27,
+      "ratio_10_over_1": 1.0,
+      "ratio_100_over_10": 1.0,
+      "ratio_100_over_1": 1.0
+    },
+    {
+      "metric": "k DELETE mean",
+      "scale1": 17.424242424242426,
+      "scale10": 17.43801652892562,
+      "scale100": 17.43653121072476,
+      "ratio_10_over_1": 1.0007905138339919,
+      "ratio_100_over_10": 0.99991482298469,
+      "ratio_100_over_1": 1.000705269485073
+    },
+    {
+      "metric": "k DELETE p50",
+      "scale1": 18,
+      "scale10": 18,
+      "scale100": 18,
+      "ratio_10_over_1": 1.0,
+      "ratio_100_over_10": 1.0,
+      "ratio_100_over_1": 1.0
+    },
+    {
+      "metric": "k DELETE p95",
+      "scale1": 19,
+      "scale10": 19,
+      "scale100": 19,
+      "ratio_10_over_1": 1.0,
+      "ratio_100_over_10": 1.0,
+      "ratio_100_over_1": 1.0
+    },
+    {
+      "metric": "k DELETE max",
+      "scale1": 19,
+      "scale10": 19,
+      "scale100": 19,
+      "ratio_10_over_1": 1.0,
+      "ratio_100_over_10": 1.0,
+      "ratio_100_over_1": 1.0
+    },
+    {
+      "metric": "recomputeMs p50",
+      "scale1": 0.0037079999999605207,
+      "scale10": 0.003832999999758613,
+      "scale100": 0.003125000002910383,
+      "ratio_10_over_1": 1.0337108953072878,
+      "ratio_100_over_10": 0.8152882867485477,
+      "ratio_100_over_1": 0.842772384828386
+    },
+    {
+      "metric": "recomputeMs p95",
+      "scale1": 0.07304199999998673,
+      "scale10": 0.0966937500006679,
+      "scale100": 0.13070800062268972,
+      "ratio_10_over_1": 1.323810273550635,
+      "ratio_100_over_10": 1.3517730010656002,
+      "ratio_100_over_1": 1.7894909863190147
+    },
+    {
+      "metric": "early-cutoff",
+      "scale1": 0.005188067444876783,
+      "scale10": 0.00495926319518243,
+      "scale100": 0.004898616140940185,
+      "ratio_10_over_1": 0.9558979808714135,
+      "ratio_100_over_10": 0.9877709547052957,
+      "ratio_100_over_1": 0.9442082611662206
+    },
+    {
+      "metric": "loadMs (separate)",
+      "scale1": 332.2735,
+      "scale10": 2855.4572,
+      "scale100": 32541.2205,
+      "ratio_10_over_1": 8.593695254060284,
+      "ratio_100_over_10": 11.396150675975813,
+      "ratio_100_over_1": 97.93504597868923
+    }
+  ],
+  "n_vs_k_locality": {
+    "note": "Graph size n scales ~10\u00d7 per step; mutation count ~8.6\u00d7 then ~10.3\u00d7; k stays flat (p50=1, p95\u224818\u201319, max=27 across scales). Locality preserved under scale-up.",
+    "k_p50_all": [
+      1,
+      1,
+      1
+    ],
+    "k_p95_all": [
+      18.5,
+      18,
+      18
+    ],
+    "k_max_all": [
+      27,
+      27,
+      27
+    ],
+    "k_DELETE_p50_all": [
+      18,
+      18,
+      18
+    ],
+    "k_DELETE_p95_all": [
+      19,
+      19,
+      19
+    ],
+    "k_DELETE_max_all": [
+      19,
+      19,
+      19
+    ]
+  },
+  "files": [
+    "results/scale1-base-seed0-sweep.{json,md,tsv}",
+    "results/scale10-base-seed0-sweep.{json,md,tsv}",
+    "results/scale100-base-seed0-sweep.{json,md,tsv}",
+    "results/scale1-vs-scale10-vs-scale100-summary.{json,md}"
+  ]
+}

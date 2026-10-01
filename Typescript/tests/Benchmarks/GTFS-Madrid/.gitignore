@@ -1,0 +1,5 @@
+# GTFS dumps are large — never commit. See README for download URLs.
+data/
+*.csv
+*.zip
+*.gz
