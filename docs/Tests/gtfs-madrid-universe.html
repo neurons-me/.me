@@ -10,22 +10,22 @@
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: "Inter", "Helvetica Neue", Helvetica, Arial, sans-serif; background: #f4f7f8; color: #0f1720; min-height: 100vh; -webkit-font-smoothing: antialiased; }
-    .page { max-width: 1120px; margin: 0 auto; padding: 72px 32px 80px; }
-    .breadcrumb { font-size: 0.8rem; color: #51606d; margin-bottom: 24px; display: flex; gap: 8px; flex-wrap: wrap; }
+    .page { max-width: 1180px; margin: 0 auto; padding: 52px 20px 56px; }
+    .breadcrumb { font-size: 0.8rem; color: #51606d; margin-bottom: 10px; display: flex; gap: 8px; flex-wrap: wrap; }
     .breadcrumb a { color: #0f6a78; text-decoration: none; }
     .breadcrumb a:hover { text-decoration: underline; }
-    .kicker { font-size: 0.75rem; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; color: #51606d; margin-bottom: 12px; }
-    h1 { font-size: 2.25rem; font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; margin-bottom: 16px; }
-    .rule { font-size: 1.02rem; line-height: 1.6; color: #1f2d38; max-width: 820px; margin-bottom: 14px; }
+    .kicker { font-size: 0.75rem; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; color: #51606d; margin-bottom: 6px; }
+    h1 { font-size: 1.85rem; font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; margin-bottom: 8px; }
+    .rule { font-size: 0.95rem; line-height: 1.55; color: #1f2d38; max-width: 820px; margin-bottom: 10px; }
     .rule code, p code, li code, td code, .meta code, .stat code, .pill code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.86em; background: rgba(15,23,32,0.06); padding: 1px 5px; border-radius: 4px; }
     .meta { font-size: 0.85rem; color: #51606d; line-height: 1.7; margin-bottom: 8px; }
     .meta a { color: #0f6a78; }
     .note { font-size: 0.8rem; line-height: 1.55; color: #51606d; background: rgba(15,23,32,0.04); border-left: 3px solid rgba(15,106,120,0.45); padding: 8px 12px; border-radius: 4px; margin: 12px 0 8px; max-width: 820px; }
     .note.warn { border-left-color: rgba(217,119,6,0.7); background: rgba(217,119,6,0.07); color: #6b4d0a; }
-    h2 { font-size: 1.15rem; font-weight: 700; margin: 36px 0 8px; padding-bottom: 8px; border-bottom: 1px solid rgba(15,23,32,0.10); }
+    h2 { font-size: 1.05rem; font-weight: 700; margin: 28px 0 8px; padding-bottom: 6px; border-bottom: 1px solid rgba(15,23,32,0.10); }
     .h2-note { font-size: 0.875rem; color: #51606d; margin-bottom: 14px; line-height: 1.55; max-width: 820px; }
 
-    .status { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; background: #fff; border: 1px solid rgba(15,23,32,0.10); border-radius: 12px; padding: 14px 18px; margin: 20px 0 8px; font-size: 0.875rem; }
+    .status { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; background: #fff; border: 1px solid rgba(15,23,32,0.10); border-radius: 12px; padding: 10px 14px; margin: 10px 0 8px; font-size: 0.875rem; }
     .status .big { font-weight: 800; font-size: 1rem; }
     .status .kernel { color: #51606d; font-size: 0.8rem; flex-basis: 100%; line-height: 1.6; }
     .status.ok { border-color: rgba(16,185,129,0.35); }
@@ -35,14 +35,14 @@
     .fail-badge { background: rgba(220,38,38,0.12); color: #b91c1c; }
     .run-badge { background: rgba(15,23,32,0.06); color: #51606d; }
 
-    .layout { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 16px; margin-top: 12px; }
+    .layout { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 14px; margin-top: 8px; }
     @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
 
     .viz-card, .side-card { background: #fff; border: 1px solid rgba(15,23,32,0.10); border-radius: 12px; padding: 14px 16px; }
     .viz-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
     .viz-title { font-weight: 700; font-size: 0.95rem; }
     .viz-sub { font-size: 0.75rem; color: #51606d; }
-    #universe { width: 100%; height: 460px; display: block; border-radius: 10px; background: #0b1114; cursor: crosshair; }
+    #universe { width: 100%; height: 520px; display: block; border-radius: 10px; background: #0b1114; cursor: crosshair; }
     .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 0.72rem; color: #51606d; margin-top: 10px; }
     .legend span::before { content: ""; display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; }
     .legend .l-svc::before { background: #38bdf8; }
@@ -130,34 +130,9 @@
     </p>
     <p class="kicker">this.me / Tests / Benchmarks</p>
     <h1>GTFS Madrid — universe &amp; k</h1>
-    <p class="rule">
-      A tiny GTFS-Madrid-shaped knowledge universe runs live in this page on the
-      <code>this.me</code> kernel. Mutate a service day, a trip’s route code, delete a route,
-      or flip a CREATE membership slot — then watch which dependents recompute.
-    </p>
-    <p class="rule">
+    <p class="rule" style="margin-bottom:6px">
       <strong>n</strong> is how much knowledge is loaded. <strong>k</strong> is how much a mutation
-      actually touches. They are not the same variable.
-    </p>
-
-    <p class="note">
-      Honesty, matching the blog and the benchmark README:
-      this is <strong>not</strong> an RML/RDF materialization run.
-      CREATE is measured via explicit <code>gtfs.idx</code> membership slots (flip <code>0→1</code>),
-      not as “natural GTFS CREATE k=1”.
-      Loading a larger snapshot costs more; that is not the same as recomputation after a mutation.
-    </p>
-    <p class="note warn" id="kernel-note">
-      Kernel: published <code>this.me@4.1.0</code> (hash-pinned). Isolation demos still pin 4.0.2;
-      DELETE via <code>me["-"]</code> needs 4.1.0 for ABSENCE invalidation. Append <code>?local=1</code>
-      to load <code>../../Typescript/dist/me.es.js</code> instead (static serve from repo root).
-    </p>
-    <p class="meta">
-      Graph JSON: <a href="./gtfs-madrid-demo-graph.json"><code>gtfs-madrid-demo-graph.json</code></a>
-      · adapter patterns from
-      <a href="https://github.com/neurons-me/.me/tree/feat/gtfs-madrid-benchmark/Typescript/tests/Benchmarks/GTFS-Madrid"><code>GTFS-Madrid/</code></a>
-      · blog:
-      <a href="https://dev.to/suign/what-happened-when-we-loaded-madrids-gtfs-data-into-a-reactive-knowledge-graph-1ngh">GTFS Madrid / k locality</a>
+      actually touches. Mutate below — watch the recomputed wave.
     </p>
 
     <div class="status" id="status">
@@ -165,13 +140,6 @@
       <span class="big">Loading kernel…</span>
     </div>
     <div id="fatal"></div>
-
-    <h2>Live universe</h2>
-    <p class="h2-note">
-      Nodes are GTFS entities + idx aggregates. Highlighted nodes/edges are the last
-      <code>explain()</code> wave (<code>recomputed</code> / <code>sourcePath</code>).
-      Density adds ghost points for visual scale only — they are not wired into the kernel.
-    </p>
 
     <div class="layout">
       <div class="viz-card">
@@ -182,7 +150,7 @@
           </div>
           <div class="pill-row" id="value-pills"></div>
         </div>
-        <canvas id="universe" width="760" height="460"></canvas>
+        <canvas id="universe" width="760" height="520"></canvas>
         <div class="legend">
           <span class="l-svc">service</span>
           <span class="l-rte">route</span>
@@ -205,11 +173,11 @@
 
         <div class="lbl" style="font-size:0.66rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#51606d;margin-bottom:6px">Density (visual only)</div>
         <div class="density" id="density">
-          <button type="button" data-scale="1" class="active">×1</button>
-          <button type="button" data-scale="10">×10</button>
+          <button type="button" data-scale="1">×1</button>
+          <button type="button" data-scale="10" class="active">×10</button>
           <button type="button" data-scale="100">×100</button>
         </div>
-        <p class="density-note">Ghost dots inflate the drawn field to suggest larger n. Kernel graph stays the demo subset — load≠recompute.</p>
+        <p class="density-note">Ghost dots inflate the drawn field to suggest larger n. Kernel graph stays the demo subset — load≠recompute. Starts at ×10.</p>
 
         <div class="lbl" style="font-size:0.66rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#51606d;margin:10px 0 6px">Mutations</div>
         <div class="btns" id="mutations">
@@ -239,6 +207,33 @@
         <div class="wave" id="wave">—</div>
       </div>
     </div>
+
+    <h2>What this is</h2>
+    <p class="rule">
+      A tiny GTFS-Madrid-shaped knowledge universe runs live in this page on the
+      <code>this.me</code> kernel. Mutate a service day, a trip’s route code, delete a route,
+      or flip a CREATE membership slot — then watch which dependents recompute.
+    </p>
+    <p class="note">
+      Honesty, matching the blog and the benchmark README:
+      this is <strong>not</strong> an RML/RDF materialization run.
+      CREATE is measured via explicit <code>gtfs.idx</code> membership slots (flip <code>0→1</code>),
+      not as “natural GTFS CREATE k=1”.
+      Loading a larger snapshot costs more; that is not the same as recomputation after a mutation.
+      Density adds ghost points for visual scale only — they are not wired into the kernel.
+    </p>
+    <p class="note warn" id="kernel-note">
+      Kernel: published <code>this.me@4.1.0</code> (hash-pinned). Isolation demos still pin 4.0.2;
+      DELETE via <code>me["-"]</code> needs 4.1.0 for ABSENCE invalidation. Append <code>?local=1</code>
+      to load <code>../../Typescript/dist/me.es.js</code> instead (static serve from repo root).
+    </p>
+    <p class="meta">
+      Graph JSON: <a href="./gtfs-madrid-demo-graph.json"><code>gtfs-madrid-demo-graph.json</code></a>
+      · adapter patterns from
+      <a href="https://github.com/neurons-me/.me/tree/main/Typescript/tests/Benchmarks/GTFS-Madrid"><code>GTFS-Madrid/</code></a>
+      · blog:
+      <a href="https://dev.to/suign/what-happened-when-we-loaded-madrids-gtfs-data-into-a-reactive-knowledge-graph-1ngh">GTFS Madrid / k locality</a>
+    </p>
 
     <p class="foot" id="foot">
       Same adapter conceptually as <code>Typescript/tests/Benchmarks/GTFS-Madrid/</code>.
@@ -272,7 +267,7 @@ let edges = [];
 let ghosts = [];
 let hitPaths = new Set();
 let sourcePath = null;
-let densityScale = 1;
+let densityScale = 10;
 let lastMeta = null;
 let nLive = 0;
 
@@ -518,7 +513,7 @@ function draw() {
   const ctx = canvas.getContext("2d");
   const dpr = window.devicePixelRatio || 1;
   const w = canvas.clientWidth || 760;
-  const h = 460;
+  const h = 520;
   canvas.width = Math.floor(w * dpr);
   canvas.height = Math.floor(h * dpr);
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
