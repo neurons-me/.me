@@ -174,10 +174,10 @@
         <div class="lbl" style="font-size:0.66rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#51606d;margin-bottom:6px">Density (visual only)</div>
         <div class="density" id="density">
           <button type="button" data-scale="1">×1</button>
-          <button type="button" data-scale="10" class="active">×10</button>
-          <button type="button" data-scale="100">×100</button>
+          <button type="button" data-scale="10">×10</button>
+          <button type="button" data-scale="100" class="active">×100</button>
         </div>
-        <p class="density-note">Ghost dots inflate the drawn field to suggest larger n. Kernel graph stays the demo subset — load≠recompute. Starts at ×10.</p>
+        <p class="density-note">Ghost dots inflate the drawn field to suggest larger n. Kernel graph stays the demo subset — load≠recompute. Starts at ×100.</p>
 
         <div class="lbl" style="font-size:0.66rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#51606d;margin:10px 0 6px">Mutations</div>
         <div class="btns" id="mutations">
@@ -267,7 +267,7 @@ let edges = [];
 let ghosts = [];
 let hitPaths = new Set();
 let sourcePath = null;
-let densityScale = 10;
+let densityScale = 100;
 let lastMeta = null;
 let nLive = 0;
 
