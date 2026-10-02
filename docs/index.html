@@ -98,6 +98,15 @@
       font-size: 1.1rem;
     }
 
+    .card-media {
+      display: block;
+      width: calc(100% + 40px);
+      height: 140px;
+      margin: -20px -20px 0;
+      object-fit: cover;
+      border-radius: 12px 12px 0 0;
+    }
+
     .card-title {
       font-size: 1rem;
       font-weight: 700;
@@ -240,13 +249,13 @@
       </a>
 
       <a class="card" href="https://neurons-me.github.io/.me/docs/Hemisphere-Scale.html">
-        <div class="card-icon">🌐</div>
+        <img class="card-media" src="https://suign.github.io/assets/imgs/HEMISPHERE.jpg" alt="Hemisphere Scale benchmark" />
         <div class="card-title">Hemisphere Scale</div>
         <div class="card-desc">1 million nodes. One sensor flips. Six derivations cascade. Everything else stays cold.</div>
       </a>
 
       <a class="card" href="https://neurons-me.github.io/.me/docs/Extreme-Fan-Out.html">
-        <div class="card-icon">💥</div>
+        <img class="card-media" src="https://suign.github.io/assets/imgs/EXTREME-FAN-OUT.jpg" alt="Extreme Fan-Out benchmark" />
         <div class="card-title">Extreme Fan-Out</div>
         <div class="card-desc">One write instantly updates 100,000 dependents — O(k) is honest when k is enormous.</div>
       </a>
