@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>.me — Madrid fares, reactive</title>
-  <meta name="description" content="Human-facing Madrid fare/trip knowledge in this.me: .me syntax first, labeled semantic graph, live euro outputs + explain() after mutations." />
+  <meta name="description" content="Raise a Madrid metro fare in this.me and watch trip and day costs recompute. Syntax → graph → output." />
   <link rel="icon" type="image/png" href="https://res.cloudinary.com/dkwnxf6gm/image/upload/v1769890772/this.me.png">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -32,18 +32,15 @@
     .status .big { font-weight: 800; font-size: 0.95rem; }
     .status .kernel { color: #51606d; font-size: 0.76rem; flex-basis: 100%; line-height: 1.5; }
     .status.ok { border-color: rgba(16,185,129,0.35); }
+
     .status-compact { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 6px 0 8px; font-size: 0.82rem; }
     .status-compact .big { font-weight: 700; }
     .status-compact .ver { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.78rem; color: #51606d; }
     .status-compact details { font-size: 0.72rem; color: #51606d; }
     .status-compact details summary { cursor: pointer; color: #0f6a78; list-style: none; }
     .status-compact details summary::-webkit-details-marker { display: none; }
-    .status-compact details[open] summary { margin-bottom: 4px; }
     .status-compact .kernel-more { max-width: 720px; line-height: 1.45; margin-top: 4px; }
-    @media (prefers-color-scheme: dark) {
-      .status-compact .ver, .status-compact details { color: #98a7b3; }
-      .status-compact details summary { color: #4fd1c5; }
-    }
+
     .status.bad { border-color: rgba(220,38,38,0.45); }
     .pass-badge, .fail-badge, .run-badge { font-size: 0.7rem; font-weight: 700; padding: 2px 8px; border-radius: 20px; letter-spacing: 0.04em; white-space: nowrap; }
     .pass-badge { background: rgba(16,185,129,0.12); color: #047857; }
@@ -162,6 +159,8 @@
       .topnav { background:rgba(11,17,20,0.92); border-bottom-color:rgba(232,237,237,0.08); }
       .wave-steps li { background: rgba(255,255,255,0.05); color: #98a7b3; }
       .out-row .euro { color: #4fd1c5; }
+      .status-compact .ver, .status-compact details { color: #98a7b3; }
+      .status-compact details summary { color: #4fd1c5; }
     }
 </style>
 </head>
@@ -181,11 +180,11 @@
     </p>
     <p class="kicker">this.me / Tests</p>
     <h1>Raise the fare. Watch the cost move.</h1>
-    <p class="rule">
+        <p class="rule">
       Raise the metro fare. Watch the trip cost and the day total recompute — only what depends on that fare.
     </p>
     <p class="rule" style="margin-bottom:8px">
-      Toggle a monthly pass: ticket price drops to zero for the rider. Same kernel, human labels on the graph.
+      Toggle a monthly pass: ticket goes to zero for the rider. Graph labels can stay Spanish; everything else is English.
     </p>
 
     <div class="status-compact" id="status">
@@ -257,13 +256,13 @@
             <span class="kind tgl">TGL</span> Toggle monthly pass
           </button>
           <button type="button" data-mut="add-leg" disabled title="solAtocha.legs += 1 → trip cost">
-            <span class="kind add">ADD</span> Add leg on Sol→Atocha
+            <span class="kind add">ADD</span> Add Sol→Atocha leg
           </button>
           <button type="button" data-mut="add-day-trip" disabled title="day.tripsCount += 1 → day cost">
             <span class="kind add">ADD</span> Another trip today
           </button>
           <button type="button" data-mut="reset" disabled title="rebuild seed">
-            <span class="kind rst">RST</span> Rebuild seed
+            <span class="kind rst">RST</span> Reset
           </button>
         </div>
       </div>
@@ -294,8 +293,7 @@
 
     <h2>Notes</h2>
     <p class="rule">
-      Graph labels can stay in Spanish (pasaje, abono, Sol→Atocha). Controls, status, and explain stay in English
-      so non-bilingual readers can follow the mutation → recompute loop.
+      Graph node labels may stay Spanish (pasaje, abono, Sol→Atocha). Controls, status, and explain stay in English.
       Formulas are number|boolean only; euros are display-only. Abono uses
       <code>(1 - hasAbono) * singleCents</code> with <code>hasAbono</code> as <code>0|1</code>.
     </p>
@@ -362,12 +360,12 @@ me.madrid.day["="]("abonoPaysOff",
 
 const OUT_SPECS = [
   { path: "madrid.fares.singleCents", name: "Single ticket", kind: "euro" },
-  { path: "madrid.fares.ticketCents", name: "Precio efectivo (ticket)", kind: "euro" },
+  { path: "madrid.fares.ticketCents", name: "Effective ticket", kind: "euro" },
   { path: "madrid.fares.abonoMensualCents", name: "Monthly pass", kind: "euro" },
   { path: "madrid.rider.hasAbono", name: "Has monthly pass?", kind: "bool01" },
   { path: "madrid.trips.solAtocha.legs", name: "Legs Sol→Atocha", kind: "int" },
-  { path: "madrid.trips.solAtocha.costCents", name: "Coste viaje Sol→Atocha", kind: "euro" },
-  { path: "madrid.day.tripsCount", name: "Viajes hoy", kind: "int" },
+  { path: "madrid.trips.solAtocha.costCents", name: "Sol→Atocha cost", kind: "euro" },
+  { path: "madrid.day.tripsCount", name: "Trips today", kind: "int" },
   { path: "madrid.day.costCents", name: "Day cost", kind: "euro" },
   { path: "madrid.day.abonoPaysOff", name: "Pass pays off today?", kind: "bool" },
 ];
@@ -757,8 +755,329 @@ function setStatus(ok, title, kernelDesc) {
     parts.push(Array.isArray(part) ? (part[0] === "code" ? part[1] : String(part)) : String(part));
   }
   const more = el("details", "");
-  const sum = el("summary", "", "view more");
-  const body = el("div", "kernel-more", parts.join(""));
-  more.append(sum, body);
+  more.append(el("summary", "", "view more"), el("div", "kernel-more", parts.join("")));
   st.replaceChildren(badge, big, ver, more);
 }
+
+function stopWaveAnim() {
+  if (waveAnim.timer != null) {
+    clearTimeout(waveAnim.timer);
+    waveAnim.timer = null;
+  }
+}
+
+function renderWaveSteps() {
+  const box = $("wave-steps");
+  const skip = $("wave-skip");
+  const replay = $("wave-replay");
+  const steps = waveAnim.steps;
+  if (!steps.length) {
+    box.replaceChildren(el("li", "empty", "Run a mutation to animate meta.recomputed hop-by-hop"));
+    skip.disabled = true;
+    replay.disabled = !(lastMeta?.recomputed?.length);
+    return;
+  }
+  box.replaceChildren();
+  steps.forEach((p, i) => {
+    const cls = i === waveAnim.index ? "current" : (i < waveAnim.index ? "done" : "");
+    box.appendChild(el("li", cls, `${i + 1}. ${p}`));
+  });
+  const playing = waveAnim.timer != null;
+  const atEnd = waveAnim.index >= steps.length - 1 && !playing;
+  skip.disabled = atEnd || (!playing && waveAnim.index < 0);
+  replay.disabled = false;
+}
+
+function startWaveAnim(recomputed) {
+  stopWaveAnim();
+  const steps = Array.isArray(recomputed) ? recomputed.slice() : [];
+  waveAnim.steps = steps;
+  waveAnim.index = -1;
+  waveAnim.current = null;
+  if (!steps.length) {
+    hitPaths = new Set();
+    renderWaveSteps();
+    draw();
+    return;
+  }
+  renderWaveSteps();
+  const tick = () => {
+    waveAnim.index += 1;
+    if (waveAnim.index >= steps.length) {
+      waveAnim.timer = null;
+      waveAnim.current = null;
+      hitPaths = new Set(steps);
+      renderWaveSteps();
+      draw();
+      return;
+    }
+    waveAnim.current = steps[waveAnim.index];
+    hitPaths = new Set(steps.slice(0, waveAnim.index + 1));
+    renderWaveSteps();
+    draw();
+    waveAnim.timer = setTimeout(tick, WAVE_HOP_MS);
+  };
+  tick();
+}
+
+function skipWaveAnim() {
+  if (!waveAnim.steps.length) return;
+  stopWaveAnim();
+  waveAnim.index = waveAnim.steps.length - 1;
+  waveAnim.current = null;
+  hitPaths = new Set(waveAnim.steps);
+  renderWaveSteps();
+  draw();
+}
+
+function replayWaveAnim() {
+  const steps = waveAnim.steps.length
+    ? waveAnim.steps
+    : (lastMeta?.recomputed ? lastMeta.recomputed.slice() : []);
+  if (!steps.length) return;
+  startWaveAnim(steps);
+}
+
+function formatOutValue(spec, v) {
+  if (spec.kind === "euro") {
+    const e = euros(v);
+    return { main: e, hint: typeof v === "number" ? `${v} cents` : "", free: v === 0 };
+  }
+  if (spec.kind === "bool01") {
+    return { main: v === 1 || v === true ? "sí (1)" : "no (0)", hint: "0|1 leaf", free: false };
+  }
+  if (spec.kind === "bool") {
+    return { main: v === true ? "sí" : v === false ? "no" : String(v), hint: "boolean", free: false };
+  }
+  return { main: String(v), hint: "", free: false };
+}
+
+function refreshLiveOuts() {
+  const box = $("live-outs");
+  box.replaceChildren();
+  if (!me) return;
+  for (const spec of OUT_SPECS) {
+    let v;
+    try { v = me(spec.path); } catch { v = undefined; }
+    const fmt = formatOutValue(spec, v);
+    const row = el("div", "out-row");
+    const left = el("div");
+    left.appendChild(el("div", "name", spec.name));
+    const pathEl = el("div", "path");
+    pathEl.appendChild(el("code", "", spec.path));
+    left.appendChild(pathEl);
+    const right = el("div");
+    const euro = el("div", "euro" + (fmt.free ? " free" : ""), fmt.main);
+    right.appendChild(euro);
+    if (fmt.hint) right.appendChild(el("div", "hint", fmt.hint));
+    row.appendChild(left);
+    row.appendChild(right);
+    row.style.cursor = "pointer";
+    row.title = "Click to explain " + spec.path;
+    row.addEventListener("click", () => {
+      const node = nodes.find((n) => n.explain === spec.path || n.id === entityOfPath(spec.path));
+      if (node) selectNode(node);
+      else {
+        selectedNodeId = entityOfPath(spec.path);
+        selectedExplainPath = spec.path;
+        try {
+          lastExplain = me.explain(spec.path);
+          dependsOnPaths = new Set(lastExplain?.meta?.dependsOn ?? []);
+          $("me-syntax").textContent = syntaxForPath(spec.path, lastExplain);
+          $("explain-json").textContent = JSON.stringify(lastExplain, null, 2);
+          $("syntax-sub").textContent = `selected · ${spec.path}`;
+          $("explain-sub").textContent = `me.explain(${JSON.stringify(spec.path)})`;
+        } catch { /* */ }
+        draw();
+      }
+    });
+    box.appendChild(row);
+  }
+}
+
+function explainProbe(paths) {
+  let best = null;
+  let bestMeta = null;
+  for (const p of paths) {
+    try {
+      me(p);
+      const ex = me.explain(p);
+      const meta = ex?.meta;
+      if (meta && (bestMeta == null || (meta.k ?? 0) >= (bestMeta.k ?? 0))) {
+        best = ex;
+        bestMeta = meta;
+        sourcePath = p;
+      }
+    } catch { /* */ }
+  }
+  return best;
+}
+
+function updateStats(meta, label, ms) {
+  lastMeta = meta;
+  $("stat-k").textContent = meta?.k != null ? String(meta.k) : "—";
+  $("stat-changed").textContent = meta?.recomputed?.length != null ? String(meta.recomputed.length) : "—";
+  $("stat-ms").textContent = ms != null ? ms.toFixed(1) : "—";
+  $("stat-mut").textContent = label || "—";
+  $("stat-src").textContent = sourcePath || "—";
+  if (meta) {
+    $("explain-sub").textContent = `last wave · k=${meta.k ?? "—"} · from ${sourcePath || "?"}`;
+    $("explain-json").textContent = JSON.stringify({ source: sourcePath, meta, value: me(sourcePath) }, null, 2);
+    startWaveAnim(meta.recomputed || []);
+  }
+  refreshLiveOuts();
+  if (selectedNodeId) refreshSelectionExplain();
+  else draw();
+}
+
+const MUTATIONS = {
+  "bump-fare": () => {
+    const cur = me("madrid.fares.singleCents") ?? 150;
+    const next = cur + 50;
+    me.madrid.fares.singleCents(next);
+    const probe = explainProbe([
+      "madrid.fares.ticketCents",
+      "madrid.trips.solAtocha.costCents",
+      "madrid.day.costCents",
+      "madrid.day.abonoPaysOff",
+    ]);
+    return {
+      label: `UPD singleCents ${cur}→${next} (${euros(next)})`,
+      probe,
+      syntax: `me.madrid.fares.singleCents(${next})  // was ${cur}`,
+    };
+  },
+  "toggle-abono": () => {
+    const cur = me("madrid.rider.hasAbono") ? 1 : 0;
+    const next = cur ? 0 : 1;
+    me.madrid.rider.hasAbono(next);
+    const probe = explainProbe([
+      "madrid.fares.ticketCents",
+      "madrid.trips.solAtocha.costCents",
+      "madrid.day.costCents",
+    ]);
+    return {
+      label: `TGL hasAbono ${cur}→${next}`,
+      probe,
+      syntax: `me.madrid.rider.hasAbono(${next})  // abono ${next ? "ON → ticket 0" : "OFF → pay single"}`,
+    };
+  },
+  "add-leg": () => {
+    const cur = me("madrid.trips.solAtocha.legs") ?? 1;
+    const next = cur + 1;
+    me.madrid.trips.solAtocha.legs(next);
+    const probe = explainProbe(["madrid.trips.solAtocha.costCents"]);
+    return {
+      label: `ADD solAtocha.legs ${cur}→${next}`,
+      probe,
+      syntax: `me.madrid.trips.solAtocha.legs(${next})`,
+    };
+  },
+  "add-day-trip": () => {
+    const cur = me("madrid.day.tripsCount") ?? 2;
+    const next = cur + 1;
+    me.madrid.day.tripsCount(next);
+    const probe = explainProbe(["madrid.day.costCents", "madrid.day.abonoPaysOff"]);
+    return {
+      label: `ADD day.tripsCount ${cur}→${next}`,
+      probe,
+      syntax: `me.madrid.day.tripsCount(${next})`,
+    };
+  },
+  reset: () => {
+    rebuild();
+    return { label: "RESET", probe: null, syntax: "// RESET — rebuild Madrid knowledge seed" };
+  },
+};
+
+function runMutation(key) {
+  if (!me) return;
+  const t0 = performance.now();
+  const { label, probe, syntax } = MUTATIONS[key]();
+  const ms = performance.now() - t0;
+  lastMutationSyntax = syntax || "";
+  if (key === "reset") {
+    updateStats(null, label, ms);
+    $("me-syntax").textContent = SEED_SYNTAX;
+    $("explain-sub").textContent = "universe rebuilt — click a node or run a mutation";
+    $("explain-json").textContent = "—";
+    return;
+  }
+  $("me-syntax").textContent = syntaxForPath(selectedExplainPath, lastExplain);
+  if (!selectedExplainPath) {
+    $("me-syntax").textContent = `${SEED_SYNTAX}\n\n// last mutation\n${lastMutationSyntax}`;
+  }
+  updateStats(probe?.meta ?? null, label, ms);
+}
+
+function rebuild() {
+  me = new ME();
+  seedMe(me);
+  warmReads(me);
+  const model = buildVizModel();
+  nodes = model.nodes;
+  edges = model.edges;
+  nLive = nodes.length;
+  hitPaths = new Set();
+  sourcePath = null;
+  lastMeta = null;
+  lastMutationSyntax = "";
+  selectedNodeId = null;
+  selectedExplainPath = null;
+  dependsOnPaths = new Set();
+  lastExplain = null;
+  $("stat-n").textContent = String(nLive);
+  $("stat-k").textContent = "—";
+  $("stat-changed").textContent = "—";
+  $("stat-ms").textContent = "—";
+  $("stat-src").textContent = "—";
+  $("stat-mut").textContent = "seeded; waiting for mutation";
+  stopWaveAnim();
+  waveAnim = { steps: [], index: -1, timer: null, current: null };
+  renderWaveSteps();
+  $("me-syntax").textContent = SEED_SYNTAX;
+  $("explain-json").textContent = "—";
+  $("syntax-sub").textContent = "Seed shown — click a graph node or run a mutation to focus a path";
+  $("explain-sub").textContent = "me.explain(path) or last mutation wave meta";
+  $("viz-sub").textContent = "pasaje · abono · Sol→Atocha · coste del día — click a node to explain()";
+  refreshLiveOuts();
+  document.querySelectorAll("#mutations button").forEach((b) => { b.disabled = false; });
+  draw();
+}
+
+async function main() {
+  try {
+    const kernel = await loadKernel();
+    ME = kernel.mod.default;
+    window.ME = ME;
+    rebuild();
+    setStatus(true, "Ready", kernel.desc);
+
+    $("universe").addEventListener("click", (ev) => {
+      const n = hitTestNode(ev.clientX, ev.clientY);
+      if (n) selectNode(n);
+      else clearSelection();
+    });
+    window.addEventListener("keydown", (ev) => {
+      if (ev.key === "Escape") clearSelection();
+    });
+    window.addEventListener("resize", () => draw());
+
+    $("mutations").addEventListener("click", (ev) => {
+      const btn = ev.target.closest("button[data-mut]");
+      if (!btn || btn.disabled) return;
+      runMutation(btn.dataset.mut);
+    });
+    $("wave-skip").addEventListener("click", skipWaveAnim);
+    $("wave-replay").addEventListener("click", replayWaveAnim);
+  } catch (e) {
+    console.error(e);
+    setStatus(false, "Failed to start", []);
+    $("fatal").textContent = String(e?.stack || e);
+  }
+}
+
+main();
+</script>
+</body>
+</html>
