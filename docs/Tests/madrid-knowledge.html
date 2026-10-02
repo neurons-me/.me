@@ -1,0 +1,1039 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>.me — Madrid knowledge (human semantic graph)</title>
+  <meta name="description" content="Human-facing Madrid fare/trip knowledge in this.me: .me syntax first, labeled semantic graph, live euro outputs + explain() after mutations." />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/this.gui@1.4.6/dist/styles.css" />
+  <link rel="icon" type="image/png" href="https://res.cloudinary.com/dkwnxf6gm/image/upload/v1769890772/this.me.png">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: "Inter", "Helvetica Neue", Helvetica, Arial, sans-serif; background: #f4f7f8; color: #0f1720; min-height: 100vh; -webkit-font-smoothing: antialiased; }
+    .page { max-width: 1180px; margin: 0 auto; padding: 40px 16px 28px; }
+    .breadcrumb { font-size: 0.78rem; color: #51606d; margin-bottom: 6px; display: flex; gap: 8px; flex-wrap: wrap; }
+    .breadcrumb a { color: #0f6a78; text-decoration: none; }
+    .breadcrumb a:hover { text-decoration: underline; }
+    .kicker { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; color: #51606d; margin-bottom: 4px; }
+    h1 { font-size: 1.55rem; font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; margin-bottom: 6px; }
+    .rule { font-size: 0.9rem; line-height: 1.5; color: #1f2d38; max-width: 860px; margin-bottom: 8px; }
+    .rule code, p code, li code, td code, .meta code, .stat code, .pill code, .out-row code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.86em;
+      background: rgba(15,23,32,0.06); padding: 1px 5px; border-radius: 4px;
+    }
+    .meta { font-size: 0.82rem; color: #51606d; line-height: 1.6; margin-bottom: 6px; }
+    .meta a { color: #0f6a78; }
+    .note { font-size: 0.78rem; line-height: 1.5; color: #51606d; background: rgba(15,23,32,0.04); border-left: 3px solid rgba(15,106,120,0.45); padding: 7px 10px; border-radius: 4px; margin: 10px 0 6px; max-width: 860px; }
+    .note.warn { border-left-color: rgba(217,119,6,0.7); background: rgba(217,119,6,0.07); color: #6b4d0a; }
+    h2 { font-size: 1rem; font-weight: 700; margin: 22px 0 6px; padding-bottom: 5px; border-bottom: 1px solid rgba(15,23,32,0.10); }
+    .section-lbl { font-size: 0.66rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: #51606d; margin: 16px 0 6px; }
+    .section-lbl .ord { display: inline-block; min-width: 1.4em; color: #0f6a78; }
+
+    .status { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; background: #fff; border: 1px solid rgba(15,23,32,0.10); border-radius: 10px; padding: 8px 12px; margin: 8px 0 6px; font-size: 0.84rem; }
+    .status .big { font-weight: 800; font-size: 0.95rem; }
+    .status .kernel { color: #51606d; font-size: 0.76rem; flex-basis: 100%; line-height: 1.5; }
+    .status.ok { border-color: rgba(16,185,129,0.35); }
+    .status.bad { border-color: rgba(220,38,38,0.45); }
+    .pass-badge, .fail-badge, .run-badge { font-size: 0.7rem; font-weight: 700; padding: 2px 8px; border-radius: 20px; letter-spacing: 0.04em; white-space: nowrap; }
+    .pass-badge { background: rgba(16,185,129,0.12); color: #047857; }
+    .fail-badge { background: rgba(220,38,38,0.12); color: #b91c1c; }
+    .run-badge { background: rgba(15,23,32,0.06); color: #51606d; }
+
+    .panel { background: #fff; border: 1px solid rgba(15,23,32,0.10); border-radius: 10px; padding: 10px 12px; }
+    .panel-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
+    .panel-title { font-weight: 700; font-size: 0.95rem; }
+    .panel-sub { font-size: 0.72rem; color: #51606d; }
+
+    pre.mono {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.72rem; line-height: 1.45;
+      background: #0b1114; color: #e2e8f0;
+      border-radius: 8px; padding: 10px 12px;
+      max-height: 280px; overflow: auto; white-space: pre-wrap; word-break: break-word;
+      border: 1px solid rgba(15,23,32,0.12);
+    }
+
+    .layout { display: grid; grid-template-columns: minmax(0, 1fr) 260px; gap: 10px; align-items: start; }
+    @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
+
+    #universe { width: 100%; height: 420px; display: block; border-radius: 8px; background: #0b1114; cursor: pointer; }
+    .legend { display: flex; gap: 12px; flex-wrap: wrap; font-size: 0.68rem; color: #51606d; margin-top: 6px; }
+    .legend span::before { content: ""; display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 5px; vertical-align: -1px; }
+    .legend .l-fare::before { background: #fbbf24; }
+    .legend .l-rider::before { background: #38bdf8; }
+    .legend .l-place::before { background: #a78bfa; }
+    .legend .l-line::before { background: #34d399; }
+    .legend .l-trip::before { background: #fb7185; }
+    .legend .l-day::before { background: #f472b6; }
+    .legend .l-sel::before { background: transparent; box-shadow: inset 0 0 0 2px #fbbf24; }
+    .legend .l-dep::before { background: #22d3ee; }
+    .legend .l-hit::before { background: #f43f5e; border-radius: 2px; }
+    .legend .l-hop::before { background: #fb7185; box-shadow: 0 0 0 2px rgba(251,113,133,0.55); }
+
+    .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-bottom: 8px; }
+    .stat { background: rgba(15,23,32,0.035); border: 1px solid rgba(15,23,32,0.08); border-radius: 8px; padding: 6px 8px; }
+    .stat .lbl { font-size: 0.6rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #51606d; margin-bottom: 2px; }
+    .stat .val { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.95rem; font-weight: 700; }
+    .stat-src { font-size: 0.68rem; color: #51606d; line-height: 1.35; margin-bottom: 8px; word-break: break-word; }
+
+    .side-lbl { font-size: 0.6rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #51606d; margin: 8px 0 4px; }
+    .side-lbl:first-of-type { margin-top: 0; }
+    .btns { display: flex; flex-direction: column; gap: 5px; }
+    .btns button {
+      appearance: none; border: 1px solid rgba(15,23,32,0.14); background: #fff; color: inherit;
+      border-radius: 8px; padding: 7px 9px; cursor: pointer; font: inherit; font-size: 0.76rem; text-align: left;
+      display: flex; gap: 7px; align-items: flex-start;
+    }
+    .btns button:hover:not(:disabled) { background: rgba(15,106,120,0.08); border-color: rgba(15,106,120,0.35); }
+    .btns button:disabled { opacity: 0.45; cursor: not-allowed; }
+    .btns .kind { font-size: 0.62rem; font-weight: 800; letter-spacing: 0.06em; padding: 1px 5px; border-radius: 4px; flex-shrink: 0; margin-top: 1px; }
+    .btns .kind.upd { background: rgba(251,191,36,0.18); color: #92400e; }
+    .btns .kind.tgl { background: rgba(56,189,248,0.18); color: #075985; }
+    .btns .kind.add { background: rgba(52,211,153,0.18); color: #065f46; }
+    .btns .kind.rst { background: rgba(15,23,32,0.08); color: #334155; }
+
+    .wave-strip { margin-top: 10px; }
+    .wave-strip-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
+    .wave-strip-head .lbl { font-size: 0.66rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #51606d; margin-right: auto; }
+    .wave-strip-head button {
+      appearance: none; border: 1px solid rgba(15,23,32,0.14); background: #fff; color: inherit;
+      border-radius: 6px; padding: 3px 9px; cursor: pointer; font: inherit; font-size: 0.72rem;
+    }
+    .wave-strip-head button:hover:not(:disabled) { background: rgba(15,106,120,0.08); border-color: rgba(15,106,120,0.35); }
+    .wave-strip-head button:disabled { opacity: 0.4; cursor: not-allowed; }
+    .wave-steps { list-style: none; display: flex; flex-wrap: wrap; gap: 4px; max-height: 72px; overflow: auto; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.68rem; }
+    .wave-steps li { padding: 2px 7px; border-radius: 999px; background: rgba(15,23,32,0.05); color: #51606d; border: 1px solid transparent; }
+    .wave-steps li.done { background: rgba(244,63,94,0.1); color: #be123c; }
+    .wave-steps li.current { background: rgba(244,63,94,0.2); color: #9f1239; border-color: rgba(244,63,94,0.55); font-weight: 700; }
+    .wave-steps li.empty { background: transparent; border: none; color: #51606d; }
+
+    .out-grid { display: grid; grid-template-columns: 1.1fr 1fr; gap: 10px; }
+    @media (max-width: 900px) { .out-grid { grid-template-columns: 1fr; } }
+    .out-rows { display: flex; flex-direction: column; gap: 6px; }
+    .out-row {
+      display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: baseline;
+      background: rgba(15,23,32,0.035); border: 1px solid rgba(15,23,32,0.08); border-radius: 8px; padding: 8px 10px;
+    }
+    .out-row .name { font-size: 0.82rem; font-weight: 600; }
+    .out-row .path { font-size: 0.68rem; color: #51606d; margin-top: 2px; word-break: break-all; }
+    .out-row .euro { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 1.05rem; font-weight: 800; color: #0f6a78; }
+    .out-row .euro.free { color: #047857; }
+    .out-row .hint { font-size: 0.68rem; color: #51606d; text-align: right; }
+    .foot { font-size: 0.75rem; color: #51606d; margin-top: 18px; line-height: 1.5; max-width: 860px; }
+  </style>
+</head>
+<body>
+  <nav class="gui-topbar">
+    <a href="https://neurons-me.github.io">⌂ Home</a>
+    <span class="gui-sep">·</span>
+    <a href="https://github.com/neurons-me/.me" target="_blank" rel="noopener"><svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" style="vertical-align:middle;margin-right:4px"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg> GitHub</a>
+  </nav>
+
+  <div class="page">
+    <p class="breadcrumb">
+      <a href="../">← .me Docs</a>
+      <span>/</span>
+      <a href="./">Tests</a>
+    </p>
+    <p class="kicker">this.me / Tests / Madrid knowledge</p>
+    <h1>Madrid knowledge — fares, trips, abono</h1>
+    <p class="rule">
+      A <strong>human-facing</strong> semantic story: pasaje, abono, viaje Sol→Atocha, coste del día —
+      not GTFS <code>stopTime</code> / <code>T1</code> locality nodes.
+      Change a fare or toggle abono; dependents recalculate. Values live as <strong>integer cents</strong>; the UI formats euros.
+    </p>
+
+    <div class="status" id="status">
+      <span class="run-badge">RUNNING</span>
+      <span class="big">Loading kernel…</span>
+    </div>
+    <div id="fatal"></div>
+
+    <!-- 1. .me syntax FIRST -->
+    <div class="section-lbl"><span class="ord">1.</span> .me syntax</div>
+    <div class="panel">
+      <div class="panel-head">
+        <div>
+          <div class="panel-title">Readable assertions / formulas</div>
+          <div class="panel-sub" id="syntax-sub">Seed shown — click a graph node or run a mutation to focus a path</div>
+        </div>
+      </div>
+      <pre class="mono" id="me-syntax">—</pre>
+    </div>
+
+    <!-- 2. Knowledge graph -->
+    <div class="section-lbl"><span class="ord">2.</span> Knowledge graph</div>
+    <div class="layout">
+      <div class="panel">
+        <div class="panel-head">
+          <div>
+            <div class="panel-title">People · places · lines · fares · trips</div>
+            <div class="viz-sub panel-sub" id="viz-sub">waiting for kernel…</div>
+          </div>
+        </div>
+        <canvas id="universe" width="760" height="420"></canvas>
+        <div class="legend">
+          <span class="l-rider">rider</span>
+          <span class="l-fare">fare</span>
+          <span class="l-place">place</span>
+          <span class="l-line">line</span>
+          <span class="l-trip">trip</span>
+          <span class="l-day">day</span>
+          <span class="l-sel">selected</span>
+          <span class="l-dep">dependsOn</span>
+          <span class="l-hit">recomputed</span>
+          <span class="l-hop">wave hop</span>
+        </div>
+        <div class="wave-strip panel" style="margin-top:10px;padding:8px 10px;">
+          <div class="wave-strip-head">
+            <span class="lbl">Wave hops</span>
+            <button type="button" id="wave-skip" disabled>Skip</button>
+            <button type="button" id="wave-replay" disabled>Replay</button>
+          </div>
+          <ol class="wave-steps" id="wave-steps"><li class="empty">Run a mutation to animate meta.recomputed hop-by-hop</li></ol>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="stats">
+          <div class="stat"><div class="lbl">n</div><div class="val" id="stat-n">—</div></div>
+          <div class="stat"><div class="lbl">k</div><div class="val" id="stat-k">—</div></div>
+          <div class="stat"><div class="lbl">changed</div><div class="val" id="stat-changed">—</div></div>
+          <div class="stat"><div class="lbl">ms</div><div class="val" id="stat-ms">—</div></div>
+        </div>
+        <div class="stat-src"><span id="stat-mut">no mutation yet</span> · <code id="stat-src">—</code></div>
+
+        <div class="side-lbl">Mutations</div>
+        <div class="btns" id="mutations">
+          <button type="button" data-mut="bump-fare" disabled title="singleCents +50 → ticket / trip / day">
+            <span class="kind upd">UPD</span> Bump pasaje sencillo (+€0.50)
+          </button>
+          <button type="button" data-mut="toggle-abono" disabled title="hasAbono 0↔1 → ticketCents via (1−hasAbono)*single">
+            <span class="kind tgl">TGL</span> Toggle abono mensual
+          </button>
+          <button type="button" data-mut="add-leg" disabled title="solAtocha.legs += 1 → trip cost">
+            <span class="kind add">ADD</span> Add leg on Sol→Atocha
+          </button>
+          <button type="button" data-mut="add-day-trip" disabled title="day.tripsCount += 1 → day cost">
+            <span class="kind add">ADD</span> Another trip today
+          </button>
+          <button type="button" data-mut="reset" disabled title="rebuild seed">
+            <span class="kind rst">RST</span> Rebuild seed
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. Output -->
+    <div class="section-lbl"><span class="ord">3.</span> Output</div>
+    <div class="out-grid">
+      <div class="panel">
+        <div class="panel-head">
+          <div>
+            <div class="panel-title">Live values (euros from cents)</div>
+            <div class="panel-sub">Formatted in the UI; kernel stores integer cents / booleans only</div>
+          </div>
+        </div>
+        <div class="out-rows" id="live-outs"></div>
+      </div>
+      <div class="panel">
+        <div class="panel-head">
+          <div>
+            <div class="panel-title">explain() / last wave</div>
+            <div class="panel-sub" id="explain-sub">me.explain(path) or last mutation wave meta</div>
+          </div>
+        </div>
+        <pre class="mono" id="explain-json" style="max-height:320px">—</pre>
+      </div>
+    </div>
+
+    <h2>What this is</h2>
+    <p class="rule">
+      Same <code>this.me</code> kernel as the technical GTFS locality demo, but the nodes are
+      <em>pasaje</em>, <em>abono</em>, <em>viaje</em>, <em>precio</em> — a story you can read.
+      Formulas are number|boolean only; euros are a display concern.
+      Ternary <code>?:</code> is not used for costs (seeds but yields undefined); abono uses
+      <code>(1 - hasAbono) * singleCents</code> with <code>hasAbono</code> as <code>0|1</code>.
+    </p>
+    <p class="note warn" id="kernel-note">
+      Kernel: published <code>this.me@4.1.0</code> (hash-pinned). Append <code>?local=1</code>
+      to load <code>../../Typescript/dist/me.es.js</code> (static serve from repo root).
+    </p>
+    <p class="meta">
+      Technical / k locality twin:
+      <a href="./gtfs-madrid-universe.html">GTFS Madrid / k</a>
+      · typed GTFS reactive:
+      <a href="./semantic-reactive.html">Semantic graph / reactive</a>
+      · package:
+      <a href="https://www.npmjs.com/package/this.me">this.me@4.1.0</a>
+    </p>
+    <p class="foot" id="foot">
+      UI order is fixed: syntax → graph → output. Click a node to <code>explain()</code> without mutating.
+    </p>
+  </div>
+
+<script type="module">
+// ── Kernel: published this.me@4.1.0 (same pin as gtfs-madrid-universe) ──
+const KERNEL = {
+  version: "4.1.0",
+  sha256: "47cc8f9a9b5ee2921a59023d400e694d6c9b9f80a0782db850b06156cbb46afa",
+  urls: [
+    "https://cdn.jsdelivr.net/npm/this.me@4.1.0/dist/me.es.js",
+    "https://unpkg.com/this.me@4.1.0/dist/me.es.js",
+  ],
+  localRel: "../../Typescript/dist/me.es.js",
+  whyNot402: "4.0.2 evaluates absolute cross-branch `=` but does not invalidate dependents after me[\"-\"] DELETE (ABSENCE).",
+};
+
+const SEED_SYNTAX = `// Madrid knowledge — cents as integers (euros only in UI)
+const me = new ME();
+
+me.madrid.fares.singleCents(150);          // €1.50 pasaje sencillo
+me.madrid.fares.transferCents(0);          // trasbordo
+me.madrid.fares.abonoMensualCents(5460);   // €54.60 abono
+
+me.madrid.rider.hasAbono(0);               // 0|1 — no ternary in cost formulas
+
+me.madrid.places.sol.label("Sol");
+me.madrid.places.atocha.label("Atocha");
+me.madrid.lines.linea1.name("Línea 1");
+me.madrid.lines.linea1.active(true);
+
+me.madrid.trips.solAtocha.from("Sol");
+me.madrid.trips.solAtocha.to("Atocha");
+me.madrid.trips.solAtocha.legs(1);
+me.madrid.trips.solAtocha.line("Línea 1");
+
+me.madrid.day.tripsCount(2);
+
+// formulas (number|boolean only)
+me.madrid.fares["="]("ticketCents",
+  "(1 - madrid.rider.hasAbono) * madrid.fares.singleCents");
+me.madrid.trips.solAtocha["="]("costCents",
+  "legs * madrid.fares.ticketCents");
+me.madrid.day["="]("costCents",
+  "tripsCount * madrid.fares.ticketCents");
+me.madrid.day["="]("abonoPaysOff",
+  "madrid.day.costCents >= madrid.fares.abonoMensualCents");`;
+
+const OUT_SPECS = [
+  { path: "madrid.fares.singleCents", name: "Pasaje sencillo", kind: "euro" },
+  { path: "madrid.fares.ticketCents", name: "Precio efectivo (ticket)", kind: "euro" },
+  { path: "madrid.fares.abonoMensualCents", name: "Abono mensual", kind: "euro" },
+  { path: "madrid.rider.hasAbono", name: "¿Tiene abono?", kind: "bool01" },
+  { path: "madrid.trips.solAtocha.legs", name: "Legs Sol→Atocha", kind: "int" },
+  { path: "madrid.trips.solAtocha.costCents", name: "Coste viaje Sol→Atocha", kind: "euro" },
+  { path: "madrid.day.tripsCount", name: "Viajes hoy", kind: "int" },
+  { path: "madrid.day.costCents", name: "Coste del día", kind: "euro" },
+  { path: "madrid.day.abonoPaysOff", name: "¿Abono compensa hoy?", kind: "bool" },
+];
+
+let ME, me;
+let nodes = [];
+let edges = [];
+let hitPaths = new Set();
+let sourcePath = null;
+let lastMeta = null;
+let nLive = 0;
+let selectedNodeId = null;
+let selectedExplainPath = null;
+let dependsOnPaths = new Set();
+let lastExplain = null;
+let lastMutationSyntax = "";
+const CANVAS_H = 420;
+const WAVE_HOP_MS = 320;
+let waveAnim = { steps: [], index: -1, timer: null, current: null };
+
+const $ = (id) => document.getElementById(id);
+function el(tag, cls, text) {
+  const n = document.createElement(tag);
+  if (cls) n.className = cls;
+  if (text !== undefined) n.textContent = text;
+  return n;
+}
+
+function euros(cents) {
+  if (typeof cents !== "number" || !Number.isFinite(cents)) return "—";
+  return `€${(cents / 100).toFixed(2)}`;
+}
+
+async function sha256Hex(text) {
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+  return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+async function loadKernel() {
+  const params = new URLSearchParams(location.search);
+  const wantLocal = params.get("local") === "1";
+  const npm = params.get("npm");
+  const errors = [];
+
+  if (wantLocal) {
+    try {
+      const url = new URL(KERNEL.localRel, location.href).href;
+      const res = await fetch(url, { cache: "no-store" });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const text = await res.text();
+      const hash = await sha256Hex(text);
+      const blobUrl = URL.createObjectURL(new Blob([text], { type: "text/javascript" }));
+      const mod = await import(blobUrl);
+      URL.revokeObjectURL(blobUrl);
+      return {
+        mod,
+        desc: [`local worktree `, ["code", KERNEL.localRel], ` (sha256 `, ["code", hash.slice(0, 16) + "…"], `, not pin-checked).`],
+      };
+    } catch (e) {
+      errors.push(`local: ${e?.message || e}`);
+    }
+  }
+
+  if (npm && /^\d+\.\d+\.\d+(-[0-9A-Za-z.]+)?$/.test(npm) && npm !== KERNEL.version) {
+    const url = `https://cdn.jsdelivr.net/npm/this.me@${npm}/dist/me.es.js`;
+    const mod = await import(url);
+    return { mod, desc: [`this.me@${npm} from npm (not hash-pinned), loaded from `, ["code", url], "."] };
+  }
+
+  for (const url of KERNEL.urls) {
+    try {
+      const res = await fetch(url, { cache: "force-cache" });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const text = await res.text();
+      const hash = await sha256Hex(text);
+      if (hash !== KERNEL.sha256) throw new Error(`sha256 mismatch: got ${hash}`);
+      const blobUrl = URL.createObjectURL(new Blob([text], { type: "text/javascript" }));
+      const mod = await import(blobUrl);
+      URL.revokeObjectURL(blobUrl);
+      return {
+        mod,
+        desc: [
+          `this.me@${KERNEL.version} from npm, `, ["code", "dist/me.es.js"], " loaded from ",
+          ["code", new URL(url).host], " (sha256 ", ["code", hash.slice(0, 16) + "…"], ", verified).",
+          ` Prefer 4.1.0 over isolation’s 4.0.2: ${KERNEL.whyNot402}`,
+        ],
+      };
+    } catch (e) {
+      errors.push(`${url}: ${e?.message || e}`);
+    }
+  }
+  throw new Error("Could not load this.me@" + KERNEL.version + ":\n" + errors.join("\n"));
+}
+
+function seedMe(instance) {
+  instance.madrid.fares.singleCents(150);
+  instance.madrid.fares.transferCents(0);
+  instance.madrid.fares.abonoMensualCents(5460);
+  instance.madrid.rider.hasAbono(0);
+  instance.madrid.places.sol.label("Sol");
+  instance.madrid.places.atocha.label("Atocha");
+  instance.madrid.lines.linea1.name("Línea 1");
+  instance.madrid.lines.linea1.active(true);
+  instance.madrid.trips.solAtocha.from("Sol");
+  instance.madrid.trips.solAtocha.to("Atocha");
+  instance.madrid.trips.solAtocha.legs(1);
+  instance.madrid.trips.solAtocha.line("Línea 1");
+  instance.madrid.day.tripsCount(2);
+  instance.madrid.fares["="]("ticketCents", "(1 - madrid.rider.hasAbono) * madrid.fares.singleCents");
+  instance.madrid.trips.solAtocha["="]("costCents", "legs * madrid.fares.ticketCents");
+  instance.madrid.day["="]("costCents", "tripsCount * madrid.fares.ticketCents");
+  instance.madrid.day["="]("abonoPaysOff", "madrid.day.costCents >= madrid.fares.abonoMensualCents");
+}
+
+function warmReads(instance) {
+  for (const s of OUT_SPECS) {
+    try { instance(s.path); } catch { /* skip */ }
+  }
+}
+
+function buildVizModel() {
+  const col = {
+    rider: "#38bdf8", fare: "#fbbf24", place: "#a78bfa",
+    line: "#34d399", trip: "#fb7185", day: "#f472b6",
+  };
+  const ns = [
+    { id: "madrid.rider", kind: "rider", label: "Viajero", x: 90, y: 80, color: col.rider, r: 14, explain: "madrid.rider.hasAbono" },
+    { id: "madrid.fares", kind: "fare", label: "Tarifas", x: 280, y: 70, color: col.fare, r: 15, explain: "madrid.fares.ticketCents" },
+    { id: "madrid.fares.singleCents", kind: "fare", label: "Pasaje €", x: 200, y: 180, color: col.fare, r: 11, explain: "madrid.fares.singleCents" },
+    { id: "madrid.fares.abonoMensualCents", kind: "fare", label: "Abono €", x: 360, y: 180, color: col.fare, r: 11, explain: "madrid.fares.abonoMensualCents" },
+    { id: "madrid.places.sol", kind: "place", label: "Sol", x: 520, y: 70, color: col.place, r: 12, explain: "madrid.places.sol.label" },
+    { id: "madrid.places.atocha", kind: "place", label: "Atocha", x: 640, y: 70, color: col.place, r: 12, explain: "madrid.places.atocha.label" },
+    { id: "madrid.lines.linea1", kind: "line", label: "Línea 1", x: 580, y: 160, color: col.line, r: 12, explain: "madrid.lines.linea1.active" },
+    { id: "madrid.trips.solAtocha", kind: "trip", label: "Sol→Atocha", x: 520, y: 280, color: col.trip, r: 14, explain: "madrid.trips.solAtocha.costCents" },
+    { id: "madrid.day", kind: "day", label: "Día / coste", x: 280, y: 340, color: col.day, r: 15, explain: "madrid.day.costCents" },
+  ];
+  const es = [
+    { from: "madrid.rider", to: "madrid.fares", kind: "formula", fieldFrom: "madrid.rider.hasAbono", fieldTo: "madrid.fares.ticketCents" },
+    { from: "madrid.fares.singleCents", to: "madrid.fares", kind: "formula", fieldFrom: "madrid.fares.singleCents", fieldTo: "madrid.fares.ticketCents" },
+    { from: "madrid.fares.abonoMensualCents", to: "madrid.day", kind: "formula", fieldFrom: "madrid.fares.abonoMensualCents", fieldTo: "madrid.day.abonoPaysOff" },
+    { from: "madrid.fares", to: "madrid.trips.solAtocha", kind: "formula", fieldFrom: "madrid.fares.ticketCents", fieldTo: "madrid.trips.solAtocha.costCents" },
+    { from: "madrid.fares", to: "madrid.day", kind: "formula", fieldFrom: "madrid.fares.ticketCents", fieldTo: "madrid.day.costCents" },
+    { from: "madrid.trips.solAtocha", to: "madrid.day", kind: "uses" },
+    { from: "madrid.places.sol", to: "madrid.trips.solAtocha", kind: "uses" },
+    { from: "madrid.places.atocha", to: "madrid.trips.solAtocha", kind: "uses" },
+    { from: "madrid.lines.linea1", to: "madrid.trips.solAtocha", kind: "uses" },
+  ];
+  return { nodes: ns, edges: es };
+}
+
+function entityOfPath(path) {
+  if (!path) return null;
+  const known = [
+    "madrid.trips.solAtocha",
+    "madrid.fares.singleCents",
+    "madrid.fares.abonoMensualCents",
+    "madrid.fares.ticketCents",
+    "madrid.fares",
+    "madrid.rider",
+    "madrid.places.sol",
+    "madrid.places.atocha",
+    "madrid.lines.linea1",
+    "madrid.day",
+  ];
+  for (const k of known) {
+    if (path === k || path.startsWith(k + ".")) return k === "madrid.fares.ticketCents" ? "madrid.fares" : k;
+  }
+  return path;
+}
+
+function pathDepends(nodeId) {
+  if (dependsOnPaths.has(nodeId)) return true;
+  for (const p of dependsOnPaths) {
+    if (p === nodeId || p.startsWith(nodeId + ".") || nodeId.startsWith(p + ".")) return true;
+    if (entityOfPath(p) === nodeId) return true;
+  }
+  return false;
+}
+
+function pathHit(nodeId) {
+  if (hitPaths.has(nodeId)) return true;
+  for (const p of hitPaths) {
+    if (p === nodeId || p.startsWith(nodeId + ".") || entityOfPath(p) === nodeId) return true;
+  }
+  return false;
+}
+
+function syntaxForPath(path, explain) {
+  const lines = [];
+  if (!path) return SEED_SYNTAX;
+  lines.push(`// selected path`);
+  const v = explain?.value;
+  const shown = typeof v === "number" && /Cents$/.test(path) ? `${v}  // ${euros(v)}` : JSON.stringify(v);
+  lines.push(`me(${JSON.stringify(path)})  // → ${shown}`);
+  if (explain?.expr) {
+    lines.push("");
+    lines.push(`// formula (=)`);
+    lines.push(`// expr = ${explain.expr}`);
+  }
+  if (lastMutationSyntax) {
+    lines.push("");
+    lines.push("// last mutation");
+    lines.push(lastMutationSyntax);
+  }
+  lines.push("");
+  lines.push(`const explain = me.explain(${JSON.stringify(path)})`);
+  return lines.join("\n");
+}
+
+function clearSelection() {
+  selectedNodeId = null;
+  selectedExplainPath = null;
+  dependsOnPaths = new Set();
+  lastExplain = null;
+  $("me-syntax").textContent = lastMutationSyntax
+    ? `${SEED_SYNTAX}\n\n// last mutation\n${lastMutationSyntax}`
+    : SEED_SYNTAX;
+  $("syntax-sub").textContent = "Seed shown — click a graph node or run a mutation to focus a path";
+  $("explain-sub").textContent = "me.explain(path) or last mutation wave meta";
+  if (!lastMeta) $("explain-json").textContent = "—";
+  draw();
+}
+
+function refreshSelectionExplain() {
+  if (!selectedNodeId || !me) return;
+  const node = nodes.find((n) => n.id === selectedNodeId);
+  if (!node) { clearSelection(); return; }
+  const path = node.explain || node.id;
+  let full = null;
+  try {
+    try { me(path); } catch { /* */ }
+    full = me.explain(path);
+    selectedExplainPath = path;
+  } catch {
+    selectedExplainPath = path;
+  }
+  lastExplain = full;
+  dependsOnPaths = new Set(full?.meta?.dependsOn ?? []);
+  $("syntax-sub").textContent = `selected ${node.kind} · ${path}`;
+  $("me-syntax").textContent = syntaxForPath(path, full);
+  $("explain-sub").textContent = `me.explain(${JSON.stringify(path)})`;
+  $("explain-json").textContent = full ? JSON.stringify(full, null, 2) : "—";
+  draw();
+}
+
+function selectNode(node) {
+  if (!node) { clearSelection(); return; }
+  selectedNodeId = node.id;
+  refreshSelectionExplain();
+}
+
+function hitTestNode(clientX, clientY) {
+  const canvas = $("universe");
+  const rect = canvas.getBoundingClientRect();
+  const x = ((clientX - rect.left) / rect.width) * (canvas.clientWidth || 760);
+  const y = ((clientY - rect.top) / rect.height) * CANVAS_H;
+  let best = null;
+  let bestDist = Infinity;
+  for (const n of nodes) {
+    const d = Math.hypot(n.x - x, n.y - y);
+    if (d <= n.r + 6 && d < bestDist) {
+      best = n;
+      bestDist = d;
+    }
+  }
+  return best;
+}
+
+function draw() {
+  const canvas = $("universe");
+  const ctx = canvas.getContext("2d");
+  const dpr = window.devicePixelRatio || 1;
+  const w = canvas.clientWidth || 760;
+  const h = CANVAS_H;
+  canvas.width = Math.floor(w * dpr);
+  canvas.height = Math.floor(h * dpr);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, w, h);
+
+  ctx.fillStyle = "#0b1114";
+  ctx.fillRect(0, 0, w, h);
+  ctx.strokeStyle = "rgba(148,163,184,0.08)";
+  ctx.lineWidth = 1;
+  for (let x = 40; x < w; x += 40) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke(); }
+  for (let y = 40; y < h; y += 40) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke(); }
+
+  const byId = new Map(nodes.map((n) => [n.id, n]));
+  // scale x to canvas width
+  const scaleX = (x) => (x / 720) * Math.max(w - 40, 100) + 20;
+
+  for (const e of edges) {
+    const a = byId.get(e.from);
+    const b = byId.get(e.to);
+    if (!a || !b) continue;
+    const ax = scaleX(a.x), bx = scaleX(b.x);
+    const waveHit = (e.fieldFrom && hitPaths.has(e.fieldFrom)) || (e.fieldTo && hitPaths.has(e.fieldTo))
+      || pathHit(e.from) || pathHit(e.to);
+    const depHit = (e.fieldFrom && dependsOnPaths.has(e.fieldFrom)) || (e.fieldTo && dependsOnPaths.has(e.fieldTo))
+      || pathDepends(e.from) || pathDepends(e.to);
+    ctx.beginPath();
+    if (waveHit) {
+      ctx.strokeStyle = "rgba(244,63,94,0.85)";
+      ctx.lineWidth = 2.2;
+    } else if (depHit) {
+      ctx.strokeStyle = "rgba(34,211,238,0.9)";
+      ctx.lineWidth = 2;
+    } else {
+      ctx.strokeStyle = e.kind === "formula" ? "rgba(148,163,184,0.4)" : "rgba(148,163,184,0.2)";
+      ctx.lineWidth = e.kind === "formula" ? 1.4 : 1;
+    }
+    if (e.kind === "formula") ctx.setLineDash([5, 4]);
+    else ctx.setLineDash([]);
+    ctx.moveTo(ax, a.y);
+    ctx.lineTo(bx, b.y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  if (sourcePath) {
+    const ent = entityOfPath(sourcePath);
+    const n = ent && byId.get(ent);
+    if (n && n.id !== selectedNodeId) {
+      ctx.beginPath();
+      ctx.setLineDash([4, 3]);
+      ctx.strokeStyle = "rgba(251,146,60,0.95)";
+      ctx.lineWidth = 2;
+      ctx.arc(scaleX(n.x), n.y, n.r + 10, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+  }
+
+  if (selectedNodeId) {
+    const n = byId.get(selectedNodeId);
+    if (n) {
+      ctx.beginPath();
+      ctx.strokeStyle = "rgba(251,191,36,0.98)";
+      ctx.lineWidth = 3;
+      ctx.arc(scaleX(n.x), n.y, n.r + 8, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+  }
+
+  for (const n of nodes) {
+    const nx = scaleX(n.x);
+    const wave = pathHit(n.id);
+    const hopNow = waveAnim.current && (
+      waveAnim.current === n.id ||
+      waveAnim.current.startsWith(n.id + ".") ||
+      n.id.startsWith(waveAnim.current + ".") ||
+      entityOfPath(waveAnim.current) === n.id
+    );
+    const dep = pathDepends(n.id) && !wave;
+    const sel = n.id === selectedNodeId;
+    ctx.beginPath();
+    ctx.fillStyle = hopNow ? "#fb7185" : wave ? "#f43f5e" : dep ? "#22d3ee" : n.color;
+    ctx.arc(nx, n.y, hopNow ? n.r + 4 : (wave || dep) ? n.r + 2 : n.r, 0, Math.PI * 2);
+    ctx.fill();
+    if (hopNow || wave || dep || sel) {
+      ctx.strokeStyle = hopNow ? "rgba(255,255,255,0.95)" : sel ? "rgba(251,191,36,0.95)" : "rgba(255,255,255,0.7)";
+      ctx.lineWidth = hopNow ? 2.5 : sel ? 2 : 1.5;
+      ctx.stroke();
+    }
+    ctx.fillStyle = "rgba(226,232,240,0.95)";
+    ctx.font = "600 12px Inter, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(n.label, nx, n.y - n.r - 7);
+  }
+
+  ctx.textAlign = "left";
+  ctx.fillStyle = "rgba(148,163,184,0.9)";
+  ctx.font = "12px Inter, sans-serif";
+  const k = lastMeta?.k ?? "—";
+  const selLbl = selectedExplainPath ? `  ·  sel=${selectedExplainPath}` : "";
+  ctx.fillText(`n=${nLive}  ·  k=${k}${selLbl}`, 14, h - 14);
+}
+
+function setStatus(ok, title, kernelDesc) {
+  const st = $("status");
+  st.className = "status " + (ok ? "ok" : "bad");
+  const kd = el("span", "kernel");
+  for (const part of ["Kernel: ", ...(kernelDesc || [])]) {
+    kd.appendChild(Array.isArray(part) ? el(part[0], "", part[1]) : document.createTextNode(part));
+  }
+  st.replaceChildren(
+    el("span", ok ? "pass-badge" : "fail-badge", ok ? "READY" : "ERROR"),
+    el("span", "big", title),
+    kd,
+  );
+}
+
+function stopWaveAnim() {
+  if (waveAnim.timer != null) {
+    clearTimeout(waveAnim.timer);
+    waveAnim.timer = null;
+  }
+}
+
+function renderWaveSteps() {
+  const box = $("wave-steps");
+  const skip = $("wave-skip");
+  const replay = $("wave-replay");
+  const steps = waveAnim.steps;
+  if (!steps.length) {
+    box.replaceChildren(el("li", "empty", "Run a mutation to animate meta.recomputed hop-by-hop"));
+    skip.disabled = true;
+    replay.disabled = !(lastMeta?.recomputed?.length);
+    return;
+  }
+  box.replaceChildren();
+  steps.forEach((p, i) => {
+    const cls = i === waveAnim.index ? "current" : (i < waveAnim.index ? "done" : "");
+    box.appendChild(el("li", cls, `${i + 1}. ${p}`));
+  });
+  const playing = waveAnim.timer != null;
+  const atEnd = waveAnim.index >= steps.length - 1 && !playing;
+  skip.disabled = atEnd || (!playing && waveAnim.index < 0);
+  replay.disabled = false;
+}
+
+function startWaveAnim(recomputed) {
+  stopWaveAnim();
+  const steps = Array.isArray(recomputed) ? recomputed.slice() : [];
+  waveAnim.steps = steps;
+  waveAnim.index = -1;
+  waveAnim.current = null;
+  if (!steps.length) {
+    hitPaths = new Set();
+    renderWaveSteps();
+    draw();
+    return;
+  }
+  renderWaveSteps();
+  const tick = () => {
+    waveAnim.index += 1;
+    if (waveAnim.index >= steps.length) {
+      waveAnim.timer = null;
+      waveAnim.current = null;
+      hitPaths = new Set(steps);
+      renderWaveSteps();
+      draw();
+      return;
+    }
+    waveAnim.current = steps[waveAnim.index];
+    hitPaths = new Set(steps.slice(0, waveAnim.index + 1));
+    renderWaveSteps();
+    draw();
+    waveAnim.timer = setTimeout(tick, WAVE_HOP_MS);
+  };
+  tick();
+}
+
+function skipWaveAnim() {
+  if (!waveAnim.steps.length) return;
+  stopWaveAnim();
+  waveAnim.index = waveAnim.steps.length - 1;
+  waveAnim.current = null;
+  hitPaths = new Set(waveAnim.steps);
+  renderWaveSteps();
+  draw();
+}
+
+function replayWaveAnim() {
+  const steps = waveAnim.steps.length
+    ? waveAnim.steps
+    : (lastMeta?.recomputed ? lastMeta.recomputed.slice() : []);
+  if (!steps.length) return;
+  startWaveAnim(steps);
+}
+
+function formatOutValue(spec, v) {
+  if (spec.kind === "euro") {
+    const e = euros(v);
+    return { main: e, hint: typeof v === "number" ? `${v} cents` : "", free: v === 0 };
+  }
+  if (spec.kind === "bool01") {
+    return { main: v === 1 || v === true ? "sí (1)" : "no (0)", hint: "0|1 leaf", free: false };
+  }
+  if (spec.kind === "bool") {
+    return { main: v === true ? "sí" : v === false ? "no" : String(v), hint: "boolean", free: false };
+  }
+  return { main: String(v), hint: "", free: false };
+}
+
+function refreshLiveOuts() {
+  const box = $("live-outs");
+  box.replaceChildren();
+  if (!me) return;
+  for (const spec of OUT_SPECS) {
+    let v;
+    try { v = me(spec.path); } catch { v = undefined; }
+    const fmt = formatOutValue(spec, v);
+    const row = el("div", "out-row");
+    const left = el("div");
+    left.appendChild(el("div", "name", spec.name));
+    const pathEl = el("div", "path");
+    pathEl.appendChild(el("code", "", spec.path));
+    left.appendChild(pathEl);
+    const right = el("div");
+    const euro = el("div", "euro" + (fmt.free ? " free" : ""), fmt.main);
+    right.appendChild(euro);
+    if (fmt.hint) right.appendChild(el("div", "hint", fmt.hint));
+    row.appendChild(left);
+    row.appendChild(right);
+    row.style.cursor = "pointer";
+    row.title = "Click to explain " + spec.path;
+    row.addEventListener("click", () => {
+      const node = nodes.find((n) => n.explain === spec.path || n.id === entityOfPath(spec.path));
+      if (node) selectNode(node);
+      else {
+        selectedNodeId = entityOfPath(spec.path);
+        selectedExplainPath = spec.path;
+        try {
+          lastExplain = me.explain(spec.path);
+          dependsOnPaths = new Set(lastExplain?.meta?.dependsOn ?? []);
+          $("me-syntax").textContent = syntaxForPath(spec.path, lastExplain);
+          $("explain-json").textContent = JSON.stringify(lastExplain, null, 2);
+          $("syntax-sub").textContent = `selected · ${spec.path}`;
+          $("explain-sub").textContent = `me.explain(${JSON.stringify(spec.path)})`;
+        } catch { /* */ }
+        draw();
+      }
+    });
+    box.appendChild(row);
+  }
+}
+
+function explainProbe(paths) {
+  let best = null;
+  let bestMeta = null;
+  for (const p of paths) {
+    try {
+      me(p);
+      const ex = me.explain(p);
+      const meta = ex?.meta;
+      if (meta && (bestMeta == null || (meta.k ?? 0) >= (bestMeta.k ?? 0))) {
+        best = ex;
+        bestMeta = meta;
+        sourcePath = p;
+      }
+    } catch { /* */ }
+  }
+  return best;
+}
+
+function updateStats(meta, label, ms) {
+  lastMeta = meta;
+  $("stat-k").textContent = meta?.k != null ? String(meta.k) : "—";
+  $("stat-changed").textContent = meta?.recomputed?.length != null ? String(meta.recomputed.length) : "—";
+  $("stat-ms").textContent = ms != null ? ms.toFixed(1) : "—";
+  $("stat-mut").textContent = label || "—";
+  $("stat-src").textContent = sourcePath || "—";
+  if (meta) {
+    $("explain-sub").textContent = `last wave · k=${meta.k ?? "—"} · from ${sourcePath || "?"}`;
+    $("explain-json").textContent = JSON.stringify({ source: sourcePath, meta, value: me(sourcePath) }, null, 2);
+    startWaveAnim(meta.recomputed || []);
+  }
+  refreshLiveOuts();
+  if (selectedNodeId) refreshSelectionExplain();
+  else draw();
+}
+
+const MUTATIONS = {
+  "bump-fare": () => {
+    const cur = me("madrid.fares.singleCents") ?? 150;
+    const next = cur + 50;
+    me.madrid.fares.singleCents(next);
+    const probe = explainProbe([
+      "madrid.fares.ticketCents",
+      "madrid.trips.solAtocha.costCents",
+      "madrid.day.costCents",
+      "madrid.day.abonoPaysOff",
+    ]);
+    return {
+      label: `UPD singleCents ${cur}→${next} (${euros(next)})`,
+      probe,
+      syntax: `me.madrid.fares.singleCents(${next})  // was ${cur}`,
+    };
+  },
+  "toggle-abono": () => {
+    const cur = me("madrid.rider.hasAbono") ? 1 : 0;
+    const next = cur ? 0 : 1;
+    me.madrid.rider.hasAbono(next);
+    const probe = explainProbe([
+      "madrid.fares.ticketCents",
+      "madrid.trips.solAtocha.costCents",
+      "madrid.day.costCents",
+    ]);
+    return {
+      label: `TGL hasAbono ${cur}→${next}`,
+      probe,
+      syntax: `me.madrid.rider.hasAbono(${next})  // abono ${next ? "ON → ticket 0" : "OFF → pay single"}`,
+    };
+  },
+  "add-leg": () => {
+    const cur = me("madrid.trips.solAtocha.legs") ?? 1;
+    const next = cur + 1;
+    me.madrid.trips.solAtocha.legs(next);
+    const probe = explainProbe(["madrid.trips.solAtocha.costCents"]);
+    return {
+      label: `ADD solAtocha.legs ${cur}→${next}`,
+      probe,
+      syntax: `me.madrid.trips.solAtocha.legs(${next})`,
+    };
+  },
+  "add-day-trip": () => {
+    const cur = me("madrid.day.tripsCount") ?? 2;
+    const next = cur + 1;
+    me.madrid.day.tripsCount(next);
+    const probe = explainProbe(["madrid.day.costCents", "madrid.day.abonoPaysOff"]);
+    return {
+      label: `ADD day.tripsCount ${cur}→${next}`,
+      probe,
+      syntax: `me.madrid.day.tripsCount(${next})`,
+    };
+  },
+  reset: () => {
+    rebuild();
+    return { label: "RESET", probe: null, syntax: "// RESET — rebuild Madrid knowledge seed" };
+  },
+};
+
+function runMutation(key) {
+  if (!me) return;
+  const t0 = performance.now();
+  const { label, probe, syntax } = MUTATIONS[key]();
+  const ms = performance.now() - t0;
+  lastMutationSyntax = syntax || "";
+  if (key === "reset") {
+    updateStats(null, label, ms);
+    $("me-syntax").textContent = SEED_SYNTAX;
+    $("explain-sub").textContent = "universe rebuilt — click a node or run a mutation";
+    $("explain-json").textContent = "—";
+    return;
+  }
+  $("me-syntax").textContent = syntaxForPath(selectedExplainPath, lastExplain);
+  if (!selectedExplainPath) {
+    $("me-syntax").textContent = `${SEED_SYNTAX}\n\n// last mutation\n${lastMutationSyntax}`;
+  }
+  updateStats(probe?.meta ?? null, label, ms);
+}
+
+function rebuild() {
+  me = new ME();
+  seedMe(me);
+  warmReads(me);
+  const model = buildVizModel();
+  nodes = model.nodes;
+  edges = model.edges;
+  nLive = nodes.length;
+  hitPaths = new Set();
+  sourcePath = null;
+  lastMeta = null;
+  lastMutationSyntax = "";
+  selectedNodeId = null;
+  selectedExplainPath = null;
+  dependsOnPaths = new Set();
+  lastExplain = null;
+  $("stat-n").textContent = String(nLive);
+  $("stat-k").textContent = "—";
+  $("stat-changed").textContent = "—";
+  $("stat-ms").textContent = "—";
+  $("stat-src").textContent = "—";
+  $("stat-mut").textContent = "seeded; waiting for mutation";
+  stopWaveAnim();
+  waveAnim = { steps: [], index: -1, timer: null, current: null };
+  renderWaveSteps();
+  $("me-syntax").textContent = SEED_SYNTAX;
+  $("explain-json").textContent = "—";
+  $("syntax-sub").textContent = "Seed shown — click a graph node or run a mutation to focus a path";
+  $("explain-sub").textContent = "me.explain(path) or last mutation wave meta";
+  $("viz-sub").textContent = "pasaje · abono · Sol→Atocha · coste del día — click a node to explain()";
+  refreshLiveOuts();
+  document.querySelectorAll("#mutations button").forEach((b) => { b.disabled = false; });
+  draw();
+}
+
+async function main() {
+  try {
+    const kernel = await loadKernel();
+    ME = kernel.mod.default;
+    window.ME = ME;
+    rebuild();
+    setStatus(true, "Madrid knowledge ready", kernel.desc);
+
+    $("universe").addEventListener("click", (ev) => {
+      const n = hitTestNode(ev.clientX, ev.clientY);
+      if (n) selectNode(n);
+      else clearSelection();
+    });
+    window.addEventListener("keydown", (ev) => {
+      if (ev.key === "Escape") clearSelection();
+    });
+    window.addEventListener("resize", () => draw());
+
+    $("mutations").addEventListener("click", (ev) => {
+      const btn = ev.target.closest("button[data-mut]");
+      if (!btn || btn.disabled) return;
+      runMutation(btn.dataset.mut);
+    });
+    $("wave-skip").addEventListener("click", skipWaveAnim);
+    $("wave-replay").addEventListener("click", replayWaveAnim);
+  } catch (e) {
+    console.error(e);
+    setStatus(false, "Failed to start", []);
+    $("fatal").textContent = String(e?.stack || e);
+  }
+}
+
+main();
+</script>
+</body>
+</html>
