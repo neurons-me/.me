@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>.me — Semantic graph / reactive</title>
-  <meta name="description" content="Live semantic knowledge graph in this.me: mutate membership, watch = formulas recompute, inspect .me syntax and explain() JSON." />
+  <title>.me — Semantic graph / reactive (GTFS Madrid)</title>
+  <meta name="description" content="GTFS Madrid as a semantic graph in this.me: click a node → me.explain(path), dependsOn + recomputed wave, .me syntax + explain JSON." />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/this.gui@1.4.6/dist/styles.css" />
   <link rel="icon" type="image/png" href="https://res.cloudinary.com/dkwnxf6gm/image/upload/v1769890772/this.me.png">
   <style>
@@ -23,6 +23,7 @@
     .note { font-size: 0.8rem; line-height: 1.55; color: #51606d; background: rgba(15,23,32,0.04); border-left: 3px solid rgba(15,106,120,0.45); padding: 8px 12px; border-radius: 4px; margin: 12px 0 8px; max-width: 820px; }
     .note.warn { border-left-color: rgba(217,119,6,0.7); background: rgba(217,119,6,0.07); color: #6b4d0a; }
     h2 { font-size: 1.05rem; font-weight: 700; margin: 28px 0 8px; padding-bottom: 6px; border-bottom: 1px solid rgba(15,23,32,0.10); }
+    .h2-note { font-size: 0.875rem; color: #51606d; margin-bottom: 14px; line-height: 1.55; max-width: 820px; }
 
     .status { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; background: #fff; border: 1px solid rgba(15,23,32,0.10); border-radius: 12px; padding: 10px 14px; margin: 10px 0 8px; font-size: 0.875rem; }
     .status .big { font-weight: 800; font-size: 1rem; }
@@ -37,47 +38,26 @@
     .layout { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 14px; margin-top: 8px; }
     @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
 
-    .viz-card, .side-card, .code-card { background: #fff; border: 1px solid rgba(15,23,32,0.10); border-radius: 12px; padding: 14px 16px; }
+    .viz-card, .side-card { background: #fff; border: 1px solid rgba(15,23,32,0.10); border-radius: 12px; padding: 14px 16px; }
     .viz-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
     .viz-title { font-weight: 700; font-size: 0.95rem; }
     .viz-sub { font-size: 0.75rem; color: #51606d; }
-    #universe { width: 100%; height: 520px; display: block; border-radius: 10px; background: #0b1114; cursor: crosshair; }
+    #universe { width: 100%; height: 520px; display: block; border-radius: 10px; background: #0b1114; cursor: pointer; }
     .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 0.72rem; color: #51606d; margin-top: 10px; }
     .legend span::before { content: ""; display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; }
-    .legend .l-people::before { background: #38bdf8; }
-    .legend .l-topics::before { background: #a78bfa; }
-    .legend .l-papers::before { background: #34d399; }
-    .legend .l-derived::before { background: #fbbf24; }
+    .legend .l-svc::before { background: #38bdf8; }
+    .legend .l-rte::before { background: #a78bfa; }
+    .legend .l-trp::before { background: #34d399; }
+    .legend .l-st::before { background: #fbbf24; }
+    .legend .l-idx::before { background: #fb7185; }
     .legend .l-hit::before { background: #f43f5e; border-radius: 2px; }
-    .legend .l-src::before { background: transparent; box-shadow: inset 0 0 0 2px #fbbf24; border-radius: 50%; }
-
-    .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
-    .stat { background: rgba(15,23,32,0.035); border: 1px solid rgba(15,23,32,0.08); border-radius: 10px; padding: 10px 12px; }
-    .stat .lbl { font-size: 0.66rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #51606d; margin-bottom: 4px; }
-    .stat .val { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 1.05rem; font-weight: 700; }
-    .stat.wide { grid-column: 1 / -1; }
-    .stat .sub { font-size: 0.72rem; color: #51606d; margin-top: 4px; line-height: 1.4; word-break: break-word; }
-
-    .btns { display: flex; flex-direction: column; gap: 8px; }
-    .btns button {
-      appearance: none; border: 1px solid rgba(15,23,32,0.14); background: #fff; color: inherit;
-      border-radius: 10px; padding: 10px 12px; text-align: left; cursor: pointer; font: inherit; font-size: 0.82rem; line-height: 1.35;
-      transition: background 120ms, border-color 120ms, transform 80ms;
-    }
-    .btns button:hover:not(:disabled) { background: rgba(15,106,120,0.08); border-color: rgba(15,106,120,0.35); }
-    .btns button:active:not(:disabled) { transform: translateY(1px); }
-    .btns button:disabled { opacity: 0.45; cursor: not-allowed; }
-    .btns button .kind { display: inline-block; font-size: 0.66rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; margin-right: 6px; padding: 1px 6px; border-radius: 4px; }
-    .kind.upd { background: rgba(217,119,6,0.12); color: #a16207; }
-    .kind.rst { background: rgba(15,23,32,0.07); color: #51606d; }
-    .btns button small { display: block; color: #51606d; font-size: 0.72rem; margin-top: 3px; }
-
-    .pill-row { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 4px; }
-    .pill { font-size: 0.7rem; padding: 3px 8px; border-radius: 999px; background: rgba(15,23,32,0.06); color: #51606d; }
-    .pill.hit { background: rgba(244,63,94,0.14); color: #be123c; font-weight: 700; }
+    .legend .l-dep::before { background: #22d3ee; }
+    .legend .l-sel::before { background: transparent; box-shadow: inset 0 0 0 2px #fbbf24; border-radius: 50%; }
+    .legend .l-ghost::before { background: rgba(148,163,184,0.45); }
 
     .code-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 14px; }
     @media (max-width: 900px) { .code-grid { grid-template-columns: 1fr; } }
+    .code-card { background: #fff; border: 1px solid rgba(15,23,32,0.10); border-radius: 12px; padding: 14px 16px; }
     .code-card .viz-title { margin-bottom: 8px; }
     .code-card .viz-sub { margin-bottom: 8px; }
     pre.mono {
@@ -88,6 +68,38 @@
       max-height: 320px; overflow: auto; white-space: pre-wrap; word-break: break-word;
       border: 1px solid rgba(15,23,32,0.12);
     }
+
+    .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+    .stat { background: rgba(15,23,32,0.035); border: 1px solid rgba(15,23,32,0.08); border-radius: 10px; padding: 10px 12px; }
+    .stat .lbl { font-size: 0.66rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #51606d; margin-bottom: 4px; }
+    .stat .val { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 1.05rem; font-weight: 700; }
+    .stat.wide { grid-column: 1 / -1; }
+    .stat .sub { font-size: 0.72rem; color: #51606d; margin-top: 4px; line-height: 1.4; word-break: break-word; }
+
+    .btns { display: flex; flex-direction: column; gap: 8px; }
+    .btns button, .density button {
+      appearance: none; border: 1px solid rgba(15,23,32,0.14); background: #fff; color: inherit;
+      border-radius: 10px; padding: 10px 12px; text-align: left; cursor: pointer; font: inherit; font-size: 0.82rem; line-height: 1.35;
+      transition: background 120ms, border-color 120ms, transform 80ms;
+    }
+    .btns button:hover:not(:disabled), .density button:hover { background: rgba(15,106,120,0.08); border-color: rgba(15,106,120,0.35); }
+    .btns button:active:not(:disabled) { transform: translateY(1px); }
+    .btns button:disabled { opacity: 0.45; cursor: not-allowed; }
+    .btns button .kind { display: inline-block; font-size: 0.66rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; margin-right: 6px; padding: 1px 6px; border-radius: 4px; }
+    .kind.upd { background: rgba(217,119,6,0.12); color: #a16207; }
+    .kind.del { background: rgba(220,38,38,0.12); color: #b91c1c; }
+    .kind.cre { background: rgba(15,106,120,0.12); color: #0f6a78; }
+    .kind.rst { background: rgba(15,23,32,0.07); color: #51606d; }
+    .btns button small { display: block; color: #51606d; font-size: 0.72rem; margin-top: 3px; }
+
+    .density { display: flex; gap: 6px; flex-wrap: wrap; margin: 10px 0 4px; }
+    .density button.active { background: rgba(15,106,120,0.12); border-color: rgba(15,106,120,0.4); font-weight: 700; }
+    .density-note { font-size: 0.72rem; color: #51606d; line-height: 1.45; margin-bottom: 10px; }
+
+    .wave { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.72rem; line-height: 1.45; background: rgba(15,23,32,0.035); border: 1px solid rgba(15,23,32,0.08); border-radius: 8px; padding: 10px 12px; max-height: 180px; overflow: auto; white-space: pre-wrap; word-break: break-word; }
+    .pill-row { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 4px; }
+    .pill { font-size: 0.7rem; padding: 3px 8px; border-radius: 999px; background: rgba(15,23,32,0.06); color: #51606d; }
+    .pill.hit { background: rgba(244,63,94,0.14); color: #be123c; font-weight: 700; }
 
     .fatal { background: rgba(220,38,38,0.08); border: 1px solid rgba(220,38,38,0.35); color: #b91c1c; border-radius: 12px; padding: 14px 18px; font-size: 0.875rem; white-space: pre-wrap; margin-top: 16px; }
     .foot { margin-top: 40px; font-size: 0.8rem; color: #51606d; line-height: 1.7; }
@@ -101,21 +113,21 @@
 
     @media (prefers-color-scheme: dark) {
       body { background: #0b1114; color: #e8eded; }
-      .kicker, .breadcrumb, .meta, .status .kernel, .foot, .viz-sub, .stat .lbl, .stat .sub, .btns button small, .legend { color: #98a7b3; }
+      .kicker, .breadcrumb, .meta, .h2-note, .status .kernel, .foot, .viz-sub, .stat .lbl, .stat .sub, .density-note, .btns button small, .legend { color: #98a7b3; }
       .rule { color: #d5dde2; }
       .breadcrumb a, .meta a, .foot a { color: #4fd1c5; }
       h2 { border-color: rgba(232,237,237,0.08); }
       .rule code, p code, li code, .meta code, .stat code, .pill code { background: rgba(232,237,237,0.08); }
       .status, .viz-card, .side-card, .code-card { background: #111a1f; border-color: rgba(232,237,237,0.08); }
-      .stat { background: rgba(255,255,255,0.03); border-color: rgba(232,237,237,0.08); }
-      .btns button { background: #111a1f; border-color: rgba(232,237,237,0.12); color: #e8eded; }
-      .btns button:hover:not(:disabled) { background: rgba(79,209,197,0.1); border-color: rgba(79,209,197,0.35); }
+      pre.mono { border-color: rgba(232,237,237,0.08); }
+      .stat, .wave { background: rgba(255,255,255,0.03); border-color: rgba(232,237,237,0.08); }
+      .btns button, .density button { background: #111a1f; border-color: rgba(232,237,237,0.12); color: #e8eded; }
+      .btns button:hover:not(:disabled), .density button:hover { background: rgba(79,209,197,0.1); border-color: rgba(79,209,197,0.35); }
       .note { background: rgba(255,255,255,0.03); color: #98a7b3; }
       .note.warn { color: #f5c26b; }
       .topnav { background:rgba(11,17,20,0.92); border-bottom-color:rgba(232,237,237,0.08); }
       .topnav button:hover, .topnav a:hover { background:rgba(79,209,197,0.1); }
       .pill { background: rgba(255,255,255,0.06); color: #98a7b3; }
-      pre.mono { border-color: rgba(232,237,237,0.08); }
     }
   </style>
 </head>
@@ -134,9 +146,10 @@
       <a href="./">Tests</a>
     </p>
     <p class="kicker">this.me / Tests / Semantic</p>
-    <h1>Semantic graph — reactive .me</h1>
+    <h1>Semantic graph — GTFS Madrid reactive</h1>
     <p class="rule" style="margin-bottom:6px">
-      Mutate a membership → watch <code>=</code> formulas recompute. <strong>k</strong> is the recomputed set size; inspect <code>explain()</code> JSON beside the live graph.
+      Services / routes / trips / stopTimes / idx as typed nodes with <code>=</code> formula edges.
+      <strong>Click a node</strong> → <code>me.explain(path)</code> (no mutation needed). Mutate to watch <strong>k</strong> and the recomputed wave.
     </p>
 
     <div class="status" id="status">
@@ -149,97 +162,122 @@
       <div class="viz-card">
         <div class="viz-head">
           <div>
-            <div class="viz-title">Semantic knowledge graph</div>
+            <div class="viz-title">GTFS Madrid semantic graph</div>
             <div class="viz-sub" id="viz-sub">waiting for kernel…</div>
           </div>
           <div class="pill-row" id="value-pills"></div>
         </div>
         <canvas id="universe" width="760" height="520"></canvas>
         <div class="legend">
-          <span class="l-people">people</span>
-          <span class="l-topics">topics</span>
-          <span class="l-papers">papers</span>
-          <span class="l-derived">derived (=)</span>
-          <span class="l-hit">recomputed</span>
-          <span class="l-src">sourcePath</span>
+          <span class="l-svc">service</span>
+          <span class="l-rte">route</span>
+          <span class="l-trp">trip</span>
+          <span class="l-st">stopTime</span>
+          <span class="l-idx">idx / aggregate</span>
+          <span class="l-sel">selected</span>
+          <span class="l-dep">dependsOn</span>
+          <span class="l-hit">recomputed wave</span>
+          <span class="l-ghost">ghost (density)</span>
         </div>
       </div>
 
       <div class="side-card">
         <div class="stats">
-          <div class="stat"><div class="lbl">n (facts)</div><div class="val" id="stat-n">—</div><div class="sub">asserted + derived paths</div></div>
+          <div class="stat"><div class="lbl">n (live)</div><div class="val" id="stat-n">—</div><div class="sub">wired entities + idx</div></div>
           <div class="stat"><div class="lbl">k (last wave)</div><div class="val" id="stat-k">—</div><div class="sub">recomputed count</div></div>
           <div class="stat"><div class="lbl">changed</div><div class="val" id="stat-changed">—</div></div>
           <div class="stat"><div class="lbl">latency</div><div class="val" id="stat-ms">—</div></div>
           <div class="stat wide"><div class="lbl">sourcePath</div><div class="val" id="stat-src" style="font-size:0.78rem">—</div><div class="sub" id="stat-mut">no mutation yet</div></div>
         </div>
 
-        <div class="lbl" style="font-size:0.66rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#51606d;margin:4px 0 6px">Mutations</div>
+        <div class="lbl" style="font-size:0.66rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#51606d;margin-bottom:6px">Density (visual only)</div>
+        <div class="density" id="density">
+          <button type="button" data-scale="1">×1</button>
+          <button type="button" data-scale="10">×10</button>
+          <button type="button" data-scale="100" class="active">×100</button>
+        </div>
+        <p class="density-note">Ghost dots inflate the drawn field to suggest larger n. Kernel graph stays the demo subset — load≠recompute. Starts at ×100.</p>
+
+        <div class="lbl" style="font-size:0.66rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#51606d;margin:10px 0 6px">Mutations</div>
         <div class="btns" id="mutations">
-          <button type="button" data-mut="bob-off" disabled>
-            <span class="kind upd">UPDATE</span> bob.interested.kg 1→0
-            <small>wave → fanCount + sharesKgWithBob</small>
+          <button type="button" data-mut="upd-monday" disabled>
+            <span class="kind upd">UPDATE</span> S1 weekdays → false
+            <small>active derived → trips.T1/T2.live (k≈3)</small>
           </button>
-          <button type="button" data-mut="carol-on" disabled>
-            <span class="kind upd">UPDATE</span> carol.interested.kg 0→1
-            <small>wave → fanCount</small>
+          <button type="button" data-mut="upd-route" disabled>
+            <span class="kind upd">UPDATE</span> T1.routeId → 2 (R2)
+            <small>stopTimes.T1_*.routeId</small>
           </button>
-          <button type="button" data-mut="bob-unauthor" disabled>
-            <span class="kind upd">UPDATE</span> papers.p1.authored.bob 1→0
-            <small>wave → authorCount + coAuthorBob</small>
+          <button type="button" data-mut="del-route" disabled>
+            <span class="kind del">DELETE</span> routes.R1 via me["-"]
+            <small>trips.*.validRoute → ABSENCE</small>
+          </button>
+          <button type="button" data-mut="create-trip" disabled>
+            <span class="kind cre">CREATE</span> idx tripMember T_NEW 0→1
+            <small>honest CREATE: membership / tripCount</small>
           </button>
           <button type="button" data-mut="reset" disabled>
-            <span class="kind rst">RESET</span> rebuild graph
-            <small>fresh kernel + seed + warm-read</small>
+            <span class="kind rst">RESET</span> rebuild universe
+            <small>reload graph into a fresh kernel</small>
           </button>
         </div>
+
+        <div class="lbl" style="font-size:0.66rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#51606d;margin:14px 0 6px">Last wave</div>
+        <div class="wave" id="wave">—</div>
       </div>
     </div>
 
     <div class="code-grid">
       <div class="code-card">
         <div class="viz-title">.me syntax</div>
-        <div class="viz-sub">Seed script + last mutation as typed JS</div>
+        <div class="viz-sub" id="syntax-sub">Click a node — or run a mutation — to see the path as typed .me</div>
         <pre class="mono" id="me-syntax">—</pre>
       </div>
       <div class="code-card">
         <div class="viz-title">explain() JSON</div>
-        <div class="viz-sub" id="explain-sub">full meta from me.explain(probePath)</div>
+        <div class="viz-sub" id="explain-sub">full result from me.explain(path) — dependsOn + wave meta</div>
         <pre class="mono" id="explain-json">—</pre>
       </div>
     </div>
 
     <h2>What this is</h2>
     <p class="rule">
-      A tiny semantic universe — people, topics, papers — wired with absolute-path
-      <code>=</code> formulas. Flip membership (0/1), then read <code>explain()</code> for
-      <code>k</code>, <code>recomputed</code>, <code>changed</code>, and <code>sourcePath</code>.
+      A tiny GTFS-Madrid-shaped knowledge universe runs live on the
+      <code>this.me</code> kernel. Click any node to select it and call
+      <code>me.explain(path)</code> — <code>dependsOn</code> highlights in cyan;
+      after a mutation the recomputed wave is red. Selected node keeps a gold ring.
     </p>
     <p class="note">
-      Honesty: this is <strong>not</strong> RDF/SPARQL. Paths are <code>.me</code> namespace assertions
-      plus <code>=</code> derived facts. <strong>k</strong> = recomputed set size for the last wave
-      that touched the probe path — load cost ≠ recompute cost.
+      Honesty, matching the blog and the benchmark README:
+      this is <strong>not</strong> an RML/RDF materialization run.
+      CREATE is measured via explicit <code>gtfs.idx</code> membership slots (flip <code>0→1</code>),
+      not as “natural GTFS CREATE k=1”.
+      Loading a larger snapshot costs more; that is not the same as recomputation after a mutation.
+      Density adds ghost points for visual scale only — they are not wired into the kernel.
     </p>
     <p class="note warn" id="kernel-note">
-      Kernel: published <code>this.me@4.1.0</code> (hash-pinned), same pin as the GTFS Madrid demo.
-      Append <code>?local=1</code> to load <code>../../Typescript/dist/me.es.js</code> instead
-      (static serve from repo root).
+      Kernel: published <code>this.me@4.1.0</code> (hash-pinned). Isolation demos still pin 4.0.2;
+      DELETE via <code>me["-"]</code> needs 4.1.0 for ABSENCE invalidation. Append <code>?local=1</code>
+      to load <code>../../Typescript/dist/me.es.js</code> instead (static serve from repo root).
     </p>
     <p class="meta">
-      Sibling:
+      Same demo graph as
       <a href="./gtfs-madrid-universe.html">GTFS Madrid / k</a>
+      · JSON:
+      <a href="./gtfs-madrid-demo-graph.json"><code>gtfs-madrid-demo-graph.json</code></a>
       · package:
       <a href="https://www.npmjs.com/package/this.me">this.me@4.1.0</a>
     </p>
 
     <p class="foot" id="foot">
-      Seed uses number/boolean-safe <code>=</code> formulas and 0/1 membership.
-      Mutations recompute only dependents — watch the red wave and gold source ring.
+      Primary semantic demo: GTFS entities with real <code>.me</code> paths.
+      Click a node to <code>explain()</code> without mutating; Escape / background clears selection.
+      Density ×100 and graph-at-top match the universe page.
     </p>
   </div>
 
 <script type="module">
-// ── Kernel: published this.me@4.1.0 (same pin as gtfs-madrid-universe.html) ──
+// ── Kernel: published this.me@4.1.0 (DELETE ABSENCE). Isolation pins 4.0.2. ──
 const KERNEL = {
   version: "4.1.0",
   sha256: "47cc8f9a9b5ee2921a59023d400e694d6c9b9f80a0782db850b06156cbb46afa",
@@ -251,50 +289,27 @@ const KERNEL = {
   whyNot402: "4.0.2 evaluates absolute cross-branch `=` but does not invalidate dependents after me[\"-\"] DELETE (ABSENCE).",
 };
 
-const SEED_SYNTAX = `me.people.alice.interested.kg(1)
-me.people.bob.interested.kg(1)
-me.people.carol.interested.kg(0)
-me.topics.kg["="]("fanCount", "people.alice.interested.kg + people.bob.interested.kg + people.carol.interested.kg")
-me.papers.p1.authored.alice(1)
-me.papers.p1.authored.bob(1)
-me.papers.p1.about.kg(1)
-me.papers.p1["="]("authorCount", "authored.alice + authored.bob")
-me.people.alice["="]("coAuthorBob", "papers.p1.authored.alice * papers.p1.authored.bob")
-me.people.alice["="]("sharesKgWithBob", "people.alice.interested.kg * people.bob.interested.kg")
+const SERVICE_ACTIVE =
+  "(monday || tuesday || wednesday || thursday || friday || saturday || sunday) && startDate > 0 && endDate >= startDate";
 
-// warm-read derived paths
-me("topics.kg.fanCount")
-me("papers.p1.authorCount")
-me("people.alice.coAuthorBob")
-me("people.alice.sharesKgWithBob")`;
+const DAYS = ["monday","tuesday","wednesday","thursday","friday","saturday","sunday"];
 
-const WARM_PATHS = [
-  "topics.kg.fanCount",
-  "papers.p1.authorCount",
-  "people.alice.coAuthorBob",
-  "people.alice.sharesKgWithBob",
-];
+const FALLBACK_GRAPH = null; // filled after fetch attempt; page embeds via fetch of sibling JSON
 
-const VALUE_PILLS = [
-  ["fanCount", "topics.kg.fanCount"],
-  ["authorCount", "papers.p1.authorCount"],
-  ["coAuthorBob", "people.alice.coAuthorBob"],
-  ["sharesKg", "people.alice.sharesKgWithBob"],
-  ["bob.kg", "people.bob.interested.kg"],
-  ["carol.kg", "people.carol.interested.kg"],
-  ["p1.bob", "papers.p1.authored.bob"],
-];
-
-let ME, me;
+let ME, me, graph;
 let nodes = [];
 let edges = [];
+let ghosts = [];
 let hitPaths = new Set();
 let sourcePath = null;
+let densityScale = 100;
 let lastMeta = null;
-let lastProbePath = null;
-let lastMutationSyntax = "";
 let nLive = 0;
-let anim = null;
+let selectedNodeId = null;
+let selectedExplainPath = null;
+let dependsOnPaths = new Set();
+let lastExplain = null;
+let lastMutationSyntax = "";
 
 const $ = (id) => document.getElementById(id);
 function el(tag, cls, text) {
@@ -365,114 +380,329 @@ async function loadKernel() {
   throw new Error("Could not load this.me@" + KERNEL.version + ":\n" + errors.join("\n"));
 }
 
-function seedMe(instance) {
-  instance.people.alice.interested.kg(1);
-  instance.people.bob.interested.kg(1);
-  instance.people.carol.interested.kg(0);
-  instance.topics.kg["="](
-    "fanCount",
-    "people.alice.interested.kg + people.bob.interested.kg + people.carol.interested.kg",
+function stopTimeId(tripId, stopSequence, stopId) {
+  const base = `${tripId}_${stopSequence}`;
+  if (stopId == null || String(stopId).trim() === "") return base;
+  const raw = String(stopId).trim();
+  const seg = /^[0-9a-fA-F]+$/.test(raw) ? `s${raw}` : raw.replace(/[^A-Za-z0-9_]/g, "_");
+  return `${base}_${seg}`;
+}
+
+function sumExpr(terms) {
+  if (!terms.length) return "0";
+  return terms.join(" + ");
+}
+
+function seedMe(instance, g) {
+  // Services
+  for (const s of g.services) {
+    const n = instance.gtfs.services[s.serviceId];
+    n.serviceId(s.serviceId);
+    for (const d of DAYS) n[d](s[d] === true);
+    n.startDate(s.startDate > 0 ? s.startDate : 1);
+    n.endDate(s.endDate > 0 ? s.endDate : 1);
+    n["="]("active", SERVICE_ACTIVE);
+  }
+  // Routes
+  for (const r of g.routes) {
+    const n = instance.gtfs.routes[r.routeId];
+    n.label(r.routeId);
+    n.shortName(r.shortName ?? r.routeId);
+    n.code(r.code);
+    n.active(r.active !== false);
+  }
+  // Trips
+  for (const t of g.trips) {
+    const n = instance.gtfs.trips[t.tripId];
+    n.tripId(t.tripId);
+    n.serviceId(t.serviceId);
+    n.routeLabel(t.routeId);
+    n.routeId(t.routeCode);
+    n["="]("live", `gtfs.services.${t.serviceId}.active`);
+    n["="]("validRoute", `gtfs.routes.${t.routeId}.active`);
+  }
+  // Stop times
+  for (const st of g.stopTimes) {
+    const id = stopTimeId(st.tripId, st.stopSequence, st.stopId);
+    const n = instance.gtfs.stopTimes[id];
+    n.tripId(st.tripId);
+    n.stopId(st.stopId);
+    n.stopSequence(st.stopSequence);
+    n.arrivalTime(st.arrivalTime ?? "00:00:00");
+    n.departureTime(st.departureTime ?? st.arrivalTime ?? "00:00:00");
+    n["="]("routeId", `gtfs.trips.${st.tripId}.routeId`);
+  }
+  // idx membership + aggregates
+  const idx = g.idx;
+  for (const m of idx.routeMembers) instance.gtfs.idx.routeMember[m.routeId](m.present);
+  instance.gtfs.idx["="]("routeCount", sumExpr(idx.routeMembers.map((m) => `routeMember.${m.routeId}`)));
+  for (const m of idx.serviceMembers) instance.gtfs.idx.serviceMember[m.serviceId](m.present);
+  instance.gtfs.idx["="]("serviceCount", sumExpr(idx.serviceMembers.map((m) => `serviceMember.${m.serviceId}`)));
+  for (const [routeId, members] of Object.entries(idx.tripMembers)) {
+    for (const m of members) instance.gtfs.idx.routes[routeId].tripMember[m.tripId](m.present);
+    instance.gtfs.idx.routes[routeId]["="]("tripCount", sumExpr(members.map((m) => `tripMember.${m.tripId}`)));
+  }
+  for (const [tripId, members] of Object.entries(idx.stopTimeMembers)) {
+    for (const m of members) instance.gtfs.idx.trips[tripId].stopTimeMember[m.stId](m.present);
+    instance.gtfs.idx.trips[tripId]["="]("stopTimeCount", sumExpr(members.map((m) => `stopTimeMember.${m.stId}`)));
+  }
+}
+
+function warmReads(instance, g) {
+  for (const s of g.services) instance(`gtfs.services.${s.serviceId}.active`);
+  for (const t of g.trips) {
+    instance(`gtfs.trips.${t.tripId}.live`);
+    instance(`gtfs.trips.${t.tripId}.validRoute`);
+  }
+  for (const st of g.stopTimes) {
+    const id = stopTimeId(st.tripId, st.stopSequence, st.stopId);
+    instance(`gtfs.stopTimes.${id}.routeId`);
+  }
+  instance("gtfs.idx.routeCount");
+  instance("gtfs.idx.serviceCount");
+  for (const routeId of Object.keys(g.idx.tripMembers)) instance(`gtfs.idx.routes.${routeId}.tripCount`);
+  for (const tripId of Object.keys(g.idx.stopTimeMembers)) instance(`gtfs.idx.trips.${tripId}.stopTimeCount`);
+}
+
+function buildVizModel(g) {
+  const ns = [];
+  const es = [];
+  const col = { service: "#38bdf8", route: "#a78bfa", trip: "#34d399", stopTime: "#fbbf24", idx: "#fb7185" };
+  const laneY = { service: 70, route: 150, trip: 250, stopTime: 360, idx: 430 };
+  const place = (kind, list, keyFn, labelFn, pathFn) => {
+    const n = list.length;
+    list.forEach((item, i) => {
+      const x = 60 + ((i + 0.5) / Math.max(n, 1)) * 640;
+      ns.push({
+        id: pathFn(item),
+        kind,
+        label: labelFn(item),
+        x, y: laneY[kind],
+        color: col[kind],
+        r: kind === "stopTime" ? 7 : 11,
+      });
+    });
+  };
+  place("service", g.services, (s) => s.serviceId, (s) => s.serviceId, (s) => `gtfs.services.${s.serviceId}`);
+  place("route", g.routes, (r) => r.routeId, (r) => r.routeId, (r) => `gtfs.routes.${r.routeId}`);
+  place("trip", g.trips, (t) => t.tripId, (t) => t.tripId, (t) => `gtfs.trips.${t.tripId}`);
+  place(
+    "stopTime",
+    g.stopTimes,
+    (st) => stopTimeId(st.tripId, st.stopSequence, st.stopId),
+    (st) => `${st.tripId}#${st.stopSequence}`,
+    (st) => `gtfs.stopTimes.${stopTimeId(st.tripId, st.stopSequence, st.stopId)}`
   );
-  instance.papers.p1.authored.alice(1);
-  instance.papers.p1.authored.bob(1);
-  instance.papers.p1.about.kg(1);
-  instance.papers.p1["="]("authorCount", "authored.alice + authored.bob");
-  instance.people.alice["="]("coAuthorBob", "papers.p1.authored.alice * papers.p1.authored.bob");
-  instance.people.alice["="]("sharesKgWithBob", "people.alice.interested.kg * people.bob.interested.kg");
-}
-
-function warmReads(instance) {
-  for (const p of WARM_PATHS) instance(p);
-}
-
-function buildGraphLayout(w, h) {
-  // Layered + light force: people / topics+papers / derived
-  const cx = w / 2;
-  const peopleY = h * 0.22;
-  const midY = h * 0.48;
-  const derY = h * 0.78;
-
-  const N = [
-    { id: "people.alice", label: "alice", kind: "people", pathPrefix: "people.alice", x: cx - 180, y: peopleY, r: 16, color: "#38bdf8" },
-    { id: "people.bob", label: "bob", kind: "people", pathPrefix: "people.bob", x: cx, y: peopleY, r: 16, color: "#38bdf8" },
-    { id: "people.carol", label: "carol", kind: "people", pathPrefix: "people.carol", x: cx + 180, y: peopleY, r: 16, color: "#38bdf8" },
-    { id: "topics.kg", label: "topics.kg", kind: "topics", pathPrefix: "topics.kg", x: cx - 110, y: midY, r: 18, color: "#a78bfa" },
-    { id: "papers.p1", label: "papers.p1", kind: "papers", pathPrefix: "papers.p1", x: cx + 130, y: midY, r: 18, color: "#34d399" },
-    { id: "topics.kg.fanCount", label: "fanCount", kind: "derived", pathExact: "topics.kg.fanCount", x: cx - 200, y: derY, r: 12, color: "#fbbf24" },
-    { id: "papers.p1.authorCount", label: "authorCount", kind: "derived", pathExact: "papers.p1.authorCount", x: cx + 40, y: derY, r: 12, color: "#fbbf24" },
-    { id: "people.alice.coAuthorBob", label: "coAuthorBob", kind: "derived", pathExact: "people.alice.coAuthorBob", x: cx + 200, y: derY, r: 12, color: "#fbbf24" },
-    { id: "people.alice.sharesKgWithBob", label: "sharesKgWithBob", kind: "derived", pathExact: "people.alice.sharesKgWithBob", x: cx - 40, y: derY + 36, r: 12, color: "#fbbf24" },
+  // idx aggregates as nodes
+  const idxNodes = [
+    { id: "gtfs.idx.routeCount", label: "routeCount" },
+    { id: "gtfs.idx.serviceCount", label: "serviceCount" },
+    ...Object.keys(g.idx.tripMembers).map((r) => ({ id: `gtfs.idx.routes.${r}.tripCount`, label: `${r}.tripCount` })),
+    ...Object.keys(g.idx.stopTimeMembers).map((t) => ({ id: `gtfs.idx.trips.${t}.stopTimeCount`, label: `${t}.stCount` })),
   ];
+  idxNodes.forEach((item, i) => {
+    const x = 50 + ((i + 0.5) / idxNodes.length) * 660;
+    ns.push({ id: item.id, kind: "idx", label: item.label, x, y: laneY.idx, color: col.idx, r: 8 });
+  });
 
-  const E = [
-    // membership (asserted)
-    { from: "people.alice", to: "topics.kg", kind: "member", fieldFrom: "people.alice.interested.kg", label: "interested" },
-    { from: "people.bob", to: "topics.kg", kind: "member", fieldFrom: "people.bob.interested.kg", label: "interested" },
-    { from: "people.carol", to: "topics.kg", kind: "member", fieldFrom: "people.carol.interested.kg", label: "interested" },
-    { from: "people.alice", to: "papers.p1", kind: "member", fieldFrom: "papers.p1.authored.alice", label: "authored" },
-    { from: "people.bob", to: "papers.p1", kind: "member", fieldFrom: "papers.p1.authored.bob", label: "authored" },
-    { from: "papers.p1", to: "topics.kg", kind: "member", fieldFrom: "papers.p1.about.kg", label: "about" },
-    // formula deps
-    { from: "people.alice", to: "topics.kg.fanCount", kind: "formula", fieldTo: "topics.kg.fanCount", fieldFrom: "people.alice.interested.kg" },
-    { from: "people.bob", to: "topics.kg.fanCount", kind: "formula", fieldTo: "topics.kg.fanCount", fieldFrom: "people.bob.interested.kg" },
-    { from: "people.carol", to: "topics.kg.fanCount", kind: "formula", fieldTo: "topics.kg.fanCount", fieldFrom: "people.carol.interested.kg" },
-    { from: "topics.kg", to: "topics.kg.fanCount", kind: "formula", fieldTo: "topics.kg.fanCount" },
-    { from: "papers.p1", to: "papers.p1.authorCount", kind: "formula", fieldTo: "papers.p1.authorCount", fieldFrom: "papers.p1.authored.alice" },
-    { from: "people.bob", to: "papers.p1.authorCount", kind: "formula", fieldTo: "papers.p1.authorCount", fieldFrom: "papers.p1.authored.bob" },
-    { from: "people.alice", to: "people.alice.coAuthorBob", kind: "formula", fieldTo: "people.alice.coAuthorBob", fieldFrom: "papers.p1.authored.alice" },
-    { from: "people.bob", to: "people.alice.coAuthorBob", kind: "formula", fieldTo: "people.alice.coAuthorBob", fieldFrom: "papers.p1.authored.bob" },
-    { from: "people.alice", to: "people.alice.sharesKgWithBob", kind: "formula", fieldTo: "people.alice.sharesKgWithBob", fieldFrom: "people.alice.interested.kg" },
-    { from: "people.bob", to: "people.alice.sharesKgWithBob", kind: "formula", fieldTo: "people.alice.sharesKgWithBob", fieldFrom: "people.bob.interested.kg" },
-  ];
-
-  // light separation pass
-  for (let iter = 0; iter < 40; iter++) {
-    for (let i = 0; i < N.length; i++) {
-      for (let j = i + 1; j < N.length; j++) {
-        const a = N[i], b = N[j];
-        let dx = b.x - a.x, dy = b.y - a.y;
-        let dist = Math.hypot(dx, dy) || 0.01;
-        const min = a.r + b.r + 36;
-        if (dist < min) {
-          const push = (min - dist) * 0.08;
-          dx /= dist; dy /= dist;
-          a.x -= dx * push; a.y -= dy * push;
-          b.x += dx * push; b.y += dy * push;
-        }
-      }
-    }
-    for (const n of N) {
-      n.x = Math.min(w - 40, Math.max(40, n.x));
-      n.y = Math.min(h - 28, Math.max(28, n.y));
-    }
+  // Structural edges (membership) for drawing
+  for (const t of g.trips) {
+    es.push({ from: `gtfs.services.${t.serviceId}`, to: `gtfs.trips.${t.tripId}`, kind: "uses" });
+    es.push({ from: `gtfs.routes.${t.routeId}`, to: `gtfs.trips.${t.tripId}`, kind: "on" });
+  }
+  for (const st of g.stopTimes) {
+    const id = stopTimeId(st.tripId, st.stopSequence, st.stopId);
+    es.push({ from: `gtfs.trips.${st.tripId}`, to: `gtfs.stopTimes.${id}`, kind: "has" });
+  }
+  // Formula edges from graph.edges (map field paths → entity nodes)
+  const entityOf = (path) => {
+    const m = path.match(/^(gtfs\.(?:services|routes|trips|stopTimes)\.[^.]+)/);
+    if (m) return m[1];
+    if (path.startsWith("gtfs.idx.")) return path; // keep aggregate path
+    return path;
+  };
+  for (const e of g.edges || []) {
+    es.push({ from: entityOf(e.from), to: entityOf(e.to), kind: "formula", fieldFrom: e.from, fieldTo: e.to });
   }
 
-  nodes = N;
-  edges = E;
-  nLive = 10; // 6 asserted + 4 derived
+  return { nodes: ns, edges: es };
 }
 
-function pathHit(node) {
-  if (node.pathExact) return hitPaths.has(node.pathExact);
-  if (node.pathPrefix) {
-    for (const p of hitPaths) {
-      if (p === node.pathPrefix || p.startsWith(node.pathPrefix + ".")) return true;
-    }
+function makeGhosts(count) {
+  const out = [];
+  for (let i = 0; i < count; i++) {
+    out.push({
+      x: 30 + Math.random() * 700,
+      y: 30 + Math.random() * 400,
+      r: 2 + Math.random() * 2.5,
+    });
   }
-  return hitPaths.has(node.id);
+  return out;
 }
 
-function nodeForSource(src) {
-  if (!src) return null;
-  // prefer exact derived / leaf match, else entity prefix
+function entityOfPath(path) {
+  if (!path) return null;
+  const m = path.match(/^(gtfs\.(?:services|routes|trips|stopTimes)\.[^.]+)/);
+  if (m) return m[1];
+  if (path.startsWith("gtfs.idx.")) return path;
+  return path;
+}
+
+function pathDepends(nodeId) {
+  if (dependsOnPaths.has(nodeId)) return true;
+  for (const p of dependsOnPaths) {
+    if (p === nodeId || p.startsWith(nodeId + ".") || nodeId.startsWith(p + ".")) return true;
+  }
+  // also match when dependsOn is a field under the entity node
+  for (const p of dependsOnPaths) {
+    const ent = entityOfPath(p);
+    if (ent === nodeId) return true;
+  }
+  return false;
+}
+
+function explainPathsForNode(node) {
+  if (!node) return [];
+  if (node.kind === "idx") return [node.id];
+  if (node.kind === "service") return [`${node.id}.active`];
+  if (node.kind === "route") return [`${node.id}.active`];
+  if (node.kind === "trip") return [`${node.id}.live`, `${node.id}.validRoute`];
+  if (node.kind === "stopTime") return [`${node.id}.routeId`];
+  return [node.id];
+}
+
+function syntaxForPath(path, explain) {
+  const lines = [];
+  if (!path) return "—";
+  lines.push(`// selected path`);
+  lines.push(`me(${JSON.stringify(path)})  // → ${JSON.stringify(explain?.value)}`);
+  if (explain?.expr) {
+    lines.push("");
+    lines.push(`// formula (=)`);
+    // reconstruct approximate seed for known patterns
+    const tripLive = path.match(/^gtfs\.trips\.([^.]+)\.live$/);
+    const tripVR = path.match(/^gtfs\.trips\.([^.]+)\.validRoute$/);
+    const stRoute = path.match(/^gtfs\.stopTimes\.([^.]+)\.routeId$/);
+    const svcActive = path.match(/^gtfs\.services\.([^.]+)\.active$/);
+    const idxTrip = path.match(/^gtfs\.idx\.routes\.([^.]+)\.tripCount$/);
+    const idxSt = path.match(/^gtfs\.idx\.trips\.([^.]+)\.stopTimeCount$/);
+    if (tripLive) {
+      const t = graph.trips.find((x) => x.tripId === tripLive[1]);
+      if (t) lines.push(`me.gtfs.trips.${t.tripId}["="]("live", "gtfs.services.${t.serviceId}.active")`);
+    } else if (tripVR) {
+      const t = graph.trips.find((x) => x.tripId === tripVR[1]);
+      if (t) lines.push(`me.gtfs.trips.${t.tripId}["="]("validRoute", "gtfs.routes.${t.routeId}.active")`);
+    } else if (stRoute) {
+      const id = stRoute[1];
+      const st = graph.stopTimes.find((s) => stopTimeId(s.tripId, s.stopSequence, s.stopId) === id);
+      if (st) lines.push(`me.gtfs.stopTimes.${id}["="]("routeId", "gtfs.trips.${st.tripId}.routeId")`);
+    } else if (svcActive) {
+      lines.push(`me.gtfs.services.${svcActive[1]}["="]("active", SERVICE_ACTIVE)`);
+    } else if (idxTrip) {
+      lines.push(`me.gtfs.idx.routes.${idxTrip[1]}["="]("tripCount", /* sum of tripMember.* */)`);
+    } else if (idxSt) {
+      lines.push(`me.gtfs.idx.trips.${idxSt[1]}["="]("stopTimeCount", /* sum of stopTimeMember.* */)`);
+    } else {
+      lines.push(`// expr: ${explain.expr}`);
+    }
+    lines.push(`// expr = ${explain.expr}`);
+  }
+  if (lastMutationSyntax) {
+    lines.push("");
+    lines.push("// last mutation");
+    lines.push(lastMutationSyntax);
+  }
+  lines.push("");
+  lines.push(`const explain = me.explain(${JSON.stringify(path)})`);
+  return lines.join("\n");
+}
+
+function clearSelection() {
+  selectedNodeId = null;
+  selectedExplainPath = null;
+  dependsOnPaths = new Set();
+  lastExplain = null;
+  $("me-syntax").textContent = lastMutationSyntax
+    ? `// no node selected\n\n// last mutation\n${lastMutationSyntax}`
+    : "— click a node to select & explain (no mutation required)";
+  $("syntax-sub").textContent = "Click a node — or run a mutation — to see the path as typed .me";
+  $("explain-sub").textContent = "full result from me.explain(path) — dependsOn + wave meta";
+  $("explain-json").textContent = "—";
+  draw();
+}
+
+function refreshSelectionExplain() {
+  if (!selectedNodeId || !me) return;
+  const node = nodes.find((n) => n.id === selectedNodeId);
+  if (!node) { clearSelection(); return; }
+  const paths = explainPathsForNode(node);
   let best = null;
+  let full = null;
+  for (const p of paths) {
+    try {
+      me(p);
+      const ex = me.explain(p);
+      const meta = ex?.meta;
+      if (meta && (best == null || (meta.k ?? 0) > (best.k ?? 0) || (meta.dependsOn?.length ?? 0) > (best.dependsOn?.length ?? 0))) {
+        best = meta;
+        full = ex;
+        selectedExplainPath = p;
+      } else if (!best && ex) {
+        best = meta || {};
+        full = ex;
+        selectedExplainPath = p;
+      }
+    } catch { /* skip */ }
+  }
+  if (!full && paths[0]) {
+    try {
+      full = me.explain(paths[0]);
+      selectedExplainPath = paths[0];
+      best = full?.meta || {};
+    } catch { /* skip */ }
+  }
+  lastExplain = full;
+  dependsOnPaths = new Set(full?.meta?.dependsOn ?? []);
+  $("syntax-sub").textContent = selectedExplainPath
+    ? `selected ${node.kind} · ${selectedExplainPath}`
+    : "selected node";
+  $("me-syntax").textContent = syntaxForPath(selectedExplainPath, full);
+  $("explain-sub").textContent = selectedExplainPath
+    ? `me.explain(${JSON.stringify(selectedExplainPath)})`
+    : "explain()";
+  $("explain-json").textContent = full ? JSON.stringify(full, null, 2) : "—";
+  draw();
+}
+
+function selectNode(node) {
+  if (!node) { clearSelection(); return; }
+  selectedNodeId = node.id;
+  refreshSelectionExplain();
+}
+
+function hitTestNode(clientX, clientY) {
+  const canvas = $("universe");
+  const rect = canvas.getBoundingClientRect();
+  const x = ((clientX - rect.left) / rect.width) * (canvas.clientWidth || 760);
+  const y = ((clientY - rect.top) / rect.height) * 520;
+  let best = null;
+  let bestDist = Infinity;
   for (const n of nodes) {
-    if (n.pathExact === src) return n;
-    if (n.pathPrefix && (src === n.pathPrefix || src.startsWith(n.pathPrefix + "."))) {
-      if (!best || (n.pathPrefix.length > (best.pathPrefix?.length || 0))) best = n;
+    const d = Math.hypot(n.x - x, n.y - y);
+    if (d <= n.r + 4 && d < bestDist) {
+      best = n;
+      bestDist = d;
     }
   }
   return best;
+}
+
+function pathHit(nodeId) {
+  if (hitPaths.has(nodeId)) return true;
+  for (const p of hitPaths) {
+    if (p === nodeId || p.startsWith(nodeId + ".")) return true;
+  }
+  return false;
 }
 
 function draw() {
@@ -493,13 +723,12 @@ function draw() {
   for (let x = 40; x < w; x += 40) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke(); }
   for (let y = 40; y < h; y += 40) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke(); }
 
-  // lane labels
-  ctx.fillStyle = "rgba(148,163,184,0.45)";
-  ctx.font = "11px Inter, sans-serif";
-  ctx.textAlign = "left";
-  ctx.fillText("people", 12, 18);
-  ctx.fillText("topics / papers", 12, h * 0.48 - 24);
-  ctx.fillText("derived (=)", 12, h * 0.72);
+  for (const g of ghosts) {
+    ctx.beginPath();
+    ctx.fillStyle = "rgba(148,163,184,0.28)";
+    ctx.arc(g.x, g.y, g.r, 0, Math.PI * 2);
+    ctx.fill();
+  }
 
   const byId = new Map(nodes.map((n) => [n.id, n]));
 
@@ -507,48 +736,71 @@ function draw() {
     const a = byId.get(e.from);
     const b = byId.get(e.to);
     if (!a || !b) continue;
-    const hit = (e.fieldFrom && hitPaths.has(e.fieldFrom))
-      || (e.fieldTo && hitPaths.has(e.fieldTo))
-      || pathHit(a) || pathHit(b);
+    const waveHit = (e.fieldFrom && hitPaths.has(e.fieldFrom)) || (e.fieldTo && hitPaths.has(e.fieldTo))
+      || pathHit(e.from) || pathHit(e.to);
+    const depHit = (e.fieldFrom && dependsOnPaths.has(e.fieldFrom)) || (e.fieldTo && dependsOnPaths.has(e.fieldTo))
+      || pathDepends(e.from) || pathDepends(e.to);
     ctx.beginPath();
-    if (e.kind === "formula") {
-      ctx.setLineDash([5, 4]);
-      ctx.strokeStyle = hit ? "rgba(244,63,94,0.85)" : "rgba(148,163,184,0.35)";
-      ctx.lineWidth = hit ? 2 : 1.2;
+    if (waveHit) {
+      ctx.strokeStyle = "rgba(244,63,94,0.85)";
+      ctx.lineWidth = 2.2;
+    } else if (depHit) {
+      ctx.strokeStyle = "rgba(34,211,238,0.9)";
+      ctx.lineWidth = 2;
     } else {
-      ctx.setLineDash([]);
-      ctx.strokeStyle = hit ? "rgba(244,63,94,0.85)" : "rgba(148,163,184,0.28)";
-      ctx.lineWidth = hit ? 2.2 : 1.4;
+      ctx.strokeStyle = e.kind === "formula" ? "rgba(148,163,184,0.35)" : "rgba(148,163,184,0.18)";
+      ctx.lineWidth = e.kind === "formula" ? 1.2 : 1;
     }
+    if (e.kind === "formula") ctx.setLineDash([5, 4]);
+    else ctx.setLineDash([]);
     ctx.moveTo(a.x, a.y);
     ctx.lineTo(b.x, b.y);
     ctx.stroke();
     ctx.setLineDash([]);
   }
 
+  // mutation source ring (amber dashed) — distinct from selection gold
   if (sourcePath) {
-    const n = nodeForSource(sourcePath);
+    const ent = entityOfPath(sourcePath);
+    const n = ent && byId.get(ent);
+    if (n && n.id !== selectedNodeId) {
+      ctx.beginPath();
+      ctx.setLineDash([4, 3]);
+      ctx.strokeStyle = "rgba(251,146,60,0.95)";
+      ctx.lineWidth = 2;
+      ctx.arc(n.x, n.y, n.r + 10, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+  }
+
+  // selected gold ring
+  if (selectedNodeId) {
+    const n = byId.get(selectedNodeId);
     if (n) {
       ctx.beginPath();
-      ctx.strokeStyle = "rgba(251,191,36,0.95)";
-      ctx.lineWidth = 2.5;
-      ctx.arc(n.x, n.y, n.r + 9, 0, Math.PI * 2);
+      ctx.setLineDash([]);
+      ctx.strokeStyle = "rgba(251,191,36,0.98)";
+      ctx.lineWidth = 3;
+      ctx.arc(n.x, n.y, n.r + 8, 0, Math.PI * 2);
       ctx.stroke();
     }
   }
 
   for (const n of nodes) {
-    const hit = pathHit(n);
+    const wave = pathHit(n.id);
+    const dep = pathDepends(n.id) && !wave;
+    const sel = n.id === selectedNodeId;
     ctx.beginPath();
-    ctx.fillStyle = hit ? "#f43f5e" : n.color;
-    ctx.arc(n.x, n.y, hit ? n.r + 2 : n.r, 0, Math.PI * 2);
+    ctx.fillStyle = wave ? "#f43f5e" : dep ? "#22d3ee" : n.color;
+    ctx.arc(n.x, n.y, (wave || dep) ? n.r + 2 : n.r, 0, Math.PI * 2);
     ctx.fill();
-    if (hit) {
-      ctx.strokeStyle = "rgba(255,255,255,0.7)";
-      ctx.lineWidth = 1.5;
+    if (wave || dep || sel) {
+      ctx.strokeStyle = sel ? "rgba(251,191,36,0.95)" : "rgba(255,255,255,0.7)";
+      ctx.lineWidth = sel ? 2 : 1.5;
       ctx.stroke();
     }
-    ctx.fillStyle = "rgba(226,232,240,0.92)";
+    ctx.fillStyle = "rgba(226,232,240,0.9)";
     ctx.font = "11px ui-monospace, Menlo, monospace";
     ctx.textAlign = "center";
     ctx.fillText(n.label, n.x, n.y - n.r - 6);
@@ -558,7 +810,8 @@ function draw() {
   ctx.fillStyle = "rgba(148,163,184,0.9)";
   ctx.font = "12px Inter, sans-serif";
   const k = lastMeta?.k ?? "—";
-  ctx.fillText(`n=${nLive}  ·  k=${k}  ·  people/topics/papers + = formulas`, 14, h - 14);
+  const selLbl = selectedExplainPath ? `  ·  sel=${selectedExplainPath}` : "";
+  ctx.fillText(`n=${nLive}  ·  k=${k}  ·  ghosts=${ghosts.length}  ·  density×${densityScale}${selLbl}`, 14, h - 14);
 }
 
 function setStatus(ok, title, kernelDesc) {
@@ -575,37 +828,7 @@ function setStatus(ok, title, kernelDesc) {
   );
 }
 
-function updateSyntaxPanel() {
-  const mut = lastMutationSyntax
-    ? `\n\n// last mutation\n${lastMutationSyntax}`
-    : "\n\n// no mutation yet — click a button";
-  $("me-syntax").textContent = SEED_SYNTAX + mut;
-}
-
-function updateExplainPanel(meta, probePath) {
-  lastProbePath = probePath;
-  $("explain-sub").textContent = probePath
-    ? `me.explain(${JSON.stringify(probePath)}) → meta`
-    : "full meta from me.explain(probePath)";
-  $("explain-json").textContent = meta
-    ? JSON.stringify(meta, null, 2)
-    : "—";
-}
-
-function updatePills() {
-  const row = $("value-pills");
-  row.replaceChildren();
-  if (!me) return;
-  for (const [label, path] of VALUE_PILLS) {
-    let v;
-    try { v = me(path); } catch { v = "?"; }
-    const hit = hitPaths.has(path);
-    const p = el("span", "pill" + (hit ? " hit" : ""), `${label}=${v}`);
-    row.appendChild(p);
-  }
-}
-
-function updateStats(meta, mutLabel, ms, probePath) {
+function updateStats(meta, mutLabel, ms) {
   lastMeta = meta;
   $("stat-n").textContent = String(nLive);
   $("stat-k").textContent = meta?.k != null ? String(meta.k) : "—";
@@ -616,8 +839,48 @@ function updateStats(meta, mutLabel, ms, probePath) {
   const recomputed = meta?.recomputed ?? [];
   hitPaths = new Set(recomputed);
   sourcePath = meta?.sourcePath ?? null;
-  updateExplainPanel(meta, probePath);
-  updatePills();
+  $("wave").textContent = meta
+    ? JSON.stringify({ k: meta.k, sourcePath: meta.sourcePath, recomputed, changed: meta.changed, dependsOn: meta.dependsOn }, null, 2)
+    : "—";
+  refreshPills();
+  if (selectedNodeId) refreshSelectionExplain();
+  else draw();
+}
+
+function refreshPills() {
+  const box = $("value-pills");
+  box.replaceChildren();
+  if (!me) return;
+  const samples = [
+    ["S1.active", "gtfs.services.S1.active"],
+    ["T1.live", "gtfs.trips.T1.live"],
+    ["T1.validRoute", "gtfs.trips.T1.validRoute"],
+    ["T1_1.routeId", "gtfs.stopTimes.T1_1_ST_A.routeId"],
+    ["R1.tripCount", "gtfs.idx.routes.R1.tripCount"],
+  ];
+  for (const [label, path] of samples) {
+    let v;
+    try { v = me(path); } catch { v = "?"; }
+    const p = el("span", "pill" + (hitPaths.has(path) ? " hit" : ""), `${label}=${JSON.stringify(v)}`);
+    box.appendChild(p);
+  }
+}
+
+function countLive(g) {
+  return g.services.length + g.routes.length + g.trips.length + g.stopTimes.length
+    + 2 // routeCount, serviceCount
+    + Object.keys(g.idx.tripMembers).length
+    + Object.keys(g.idx.stopTimeMembers).length;
+}
+
+function applyDensity(scale) {
+  densityScale = scale;
+  const extra = graph?.meta?.scales?.[String(scale)]?.extraGhosts ?? 0;
+  ghosts = makeGhosts(extra);
+  document.querySelectorAll("#density button").forEach((b) => {
+    b.classList.toggle("active", Number(b.dataset.scale) === scale);
+  });
+  $("viz-sub").textContent = `${graph.meta.note.split(".")[0]}. Drawn n=${nLive}, ghosts=${ghosts.length}.`;
   draw();
 }
 
@@ -625,104 +888,209 @@ function explainProbe(paths) {
   let best = null;
   for (const p of paths) {
     try {
+      me(p);
       const meta = me.explain(p)?.meta;
       if (meta && (best == null || (meta.k ?? 0) > (best.k ?? 0))) best = { path: p, meta };
-    } catch { /* ignore */ }
+    } catch { /* skip */ }
   }
   return best;
 }
 
-function setMutEnabled(on) {
-  document.querySelectorAll("#mutations button").forEach((b) => { b.disabled = !on; });
-}
-
-function rebuild() {
-  me = new ME();
-  seedMe(me);
-  warmReads(me);
-  lastMutationSyntax = "";
-  lastMeta = null;
-  hitPaths = new Set();
-  sourcePath = null;
-  const canvas = $("universe");
-  const w = canvas.clientWidth || 760;
-  buildGraphLayout(w, 520);
-  updateSyntaxPanel();
-  updateStats(null, "seeded + warm-read", null, null);
-  $("viz-sub").textContent = "people · topics · papers — membership edges + formula deps";
-  // show baseline explain of fanCount (no wave yet)
-  try {
-    const meta = me.explain("topics.kg.fanCount")?.meta;
-    updateExplainPanel(meta, "topics.kg.fanCount");
-  } catch { /* ignore */ }
-  updatePills();
-  draw();
-}
+const MUTATIONS = {
+  "upd-monday": () => {
+    // Clear Mon–Fri so derived active flips (monday-only would early-cutoff while tue–fri stay true).
+    for (const d of ["monday","tuesday","wednesday","thursday","friday"]) me.gtfs.services.S1[d](false);
+    const probe = explainProbe(["gtfs.trips.T1.live", "gtfs.trips.T2.live", "gtfs.services.S1.active"]);
+    return {
+      label: "UPDATE S1 weekdays=false",
+      probe,
+      syntax: 'for (const d of ["monday","tuesday","wednesday","thursday","friday"])\n  me.gtfs.services.S1[d](false)',
+    };
+  },
+  "upd-route": () => {
+    me.gtfs.trips.T1.routeId(2);
+    const probe = explainProbe([
+      "gtfs.stopTimes.T1_1_ST_A.routeId",
+      "gtfs.stopTimes.T1_2_ST_B.routeId",
+      "gtfs.stopTimes.T1_3_ST_C.routeId",
+    ]);
+    return { label: "UPDATE T1.routeId=2", probe, syntax: "me.gtfs.trips.T1.routeId(2)" };
+  },
+  "del-route": () => {
+    me["-"]("gtfs.routes.R1");
+    const probe = explainProbe(["gtfs.trips.T1.validRoute", "gtfs.trips.T2.validRoute"]);
+    return { label: 'DELETE gtfs.routes.R1 (me["-"])', probe, syntax: 'me["-"]("gtfs.routes.R1")' };
+  },
+  "create-trip": () => {
+    // honest CREATE: flip pre-seeded membership; also materialize a tiny trip for viz consistency
+    me.gtfs.idx.routes.R1.tripMember.T_NEW(1);
+    const probe = explainProbe(["gtfs.idx.routes.R1.tripCount"]);
+    return { label: "CREATE idx R1.tripMember.T_NEW 0→1", probe, syntax: "me.gtfs.idx.routes.R1.tripMember.T_NEW(1)" };
+  },
+  reset: () => {
+    rebuild();
+    return { label: "RESET", probe: null, syntax: "// RESET — rebuild universe" };
+  },
+};
 
 function runMutation(key) {
   if (!me) return;
   const t0 = performance.now();
-  let label = key;
-  let probePaths = [];
-  let syntax = "";
-
-  if (key === "bob-off") {
-    me.people.bob.interested.kg(0);
-    label = "bob.interested.kg 1→0";
-    syntax = "me.people.bob.interested.kg(0)";
-    probePaths = ["topics.kg.fanCount", "people.alice.sharesKgWithBob"];
-  } else if (key === "carol-on") {
-    me.people.carol.interested.kg(1);
-    label = "carol.interested.kg 0→1";
-    syntax = "me.people.carol.interested.kg(1)";
-    probePaths = ["topics.kg.fanCount"];
-  } else if (key === "bob-unauthor") {
-    me.papers.p1.authored.bob(0);
-    label = "papers.p1.authored.bob 1→0";
-    syntax = "me.papers.p1.authored.bob(0)";
-    probePaths = ["papers.p1.authorCount", "people.alice.coAuthorBob"];
-  } else if (key === "reset") {
-    rebuild();
-    lastMutationSyntax = "// RESET — rebuild universe\nme = new ME(); seed(); warm();";
-    updateSyntaxPanel();
-    return;
-  } else {
+  const { label, probe, syntax } = MUTATIONS[key]();
+  const ms = performance.now() - t0;
+  lastMutationSyntax = syntax || "";
+  if (key === "reset") {
+    updateStats(null, label, ms);
+    $("wave").textContent = "universe rebuilt; click a node or run a mutation";
     return;
   }
-
-  const ms = performance.now() - t0;
-  lastMutationSyntax = syntax;
-  updateSyntaxPanel();
-  const probe = explainProbe(probePaths);
-  updateStats(probe?.meta ?? null, label, ms, probe?.path ?? probePaths[0]);
+  updateStats(probe?.meta ?? null, label, ms);
 }
 
-async function boot() {
+function rebuild() {
+  me = new ME();
+  seedMe(me, graph);
+  warmReads(me, graph);
+  const model = buildVizModel(graph);
+  nodes = model.nodes;
+  edges = model.edges;
+  nLive = countLive(graph);
+  hitPaths = new Set();
+  sourcePath = null;
+  lastMeta = null;
+  lastMutationSyntax = "";
+  selectedNodeId = null;
+  selectedExplainPath = null;
+  dependsOnPaths = new Set();
+  lastExplain = null;
+  applyDensity(densityScale);
+  $("stat-n").textContent = String(nLive);
+  $("stat-k").textContent = "—";
+  $("stat-changed").textContent = "—";
+  $("stat-ms").textContent = "—";
+  $("stat-src").textContent = "—";
+  $("stat-mut").textContent = "seeded; waiting for mutation";
+  $("wave").textContent = "—";
+  $("me-syntax").textContent = "— click a node to select & explain (no mutation required)";
+  $("explain-json").textContent = "—";
+  $("syntax-sub").textContent = "Click a node — or run a mutation — to see the path as typed .me";
+  $("explain-sub").textContent = "full result from me.explain(path) — dependsOn + wave meta";
+  refreshPills();
+  document.querySelectorAll("#mutations button").forEach((b) => { b.disabled = false; });
+}
+
+async function loadGraph() {
   try {
-    const kernel = await loadKernel();
-    ME = kernel.mod.default || kernel.mod.ME;
-    if (!ME) throw new Error("ME constructor missing from module");
-    rebuild();
-    setMutEnabled(true);
-    setStatus(true, "Semantic graph ready", kernel.desc);
-    $("mutations").addEventListener("click", (ev) => {
-      const b = ev.target.closest("button[data-mut]");
-      if (!b || b.disabled) return;
-      runMutation(b.dataset.mut);
-    });
-    window.addEventListener("resize", () => {
-      const canvas = $("universe");
-      const w = canvas.clientWidth || 760;
-      buildGraphLayout(w, 520);
-      draw();
-    });
+    const res = await fetch(new URL("./gtfs-madrid-demo-graph.json", location.href), { cache: "no-store" });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return await res.json();
+  } catch (e) {
+    // file:// often blocks sibling fetch — embed minimal fallback matching the JSON
+    console.warn("graph fetch failed, using inline fallback", e);
+    return {
+      meta: {
+        note: "Inline fallback (sibling JSON fetch failed — use a static server for the full file)",
+        scales: { "1": { extraGhosts: 0 }, "10": { extraGhosts: 120 }, "100": { extraGhosts: 1200 } },
+      },
+      routes: [
+        { routeId: "R1", code: 1, shortName: "L1", active: true },
+        { routeId: "R2", code: 2, shortName: "L2", active: true },
+      ],
+      services: [
+        { serviceId: "S1", monday: true, tuesday: true, wednesday: true, thursday: true, friday: true, saturday: false, sunday: false, startDate: 20170630, endDate: 20180630 },
+        { serviceId: "S2", monday: false, tuesday: false, wednesday: false, thursday: false, friday: false, saturday: true, sunday: true, startDate: 20170630, endDate: 20180630 },
+      ],
+      trips: [
+        { tripId: "T1", routeId: "R1", routeCode: 1, serviceId: "S1" },
+        { tripId: "T2", routeId: "R1", routeCode: 1, serviceId: "S1" },
+        { tripId: "T3", routeId: "R2", routeCode: 2, serviceId: "S2" },
+      ],
+      stopTimes: [
+        { tripId: "T1", stopId: "ST_A", stopSequence: 1, arrivalTime: "08:00:00" },
+        { tripId: "T1", stopId: "ST_B", stopSequence: 2, arrivalTime: "08:05:00" },
+        { tripId: "T1", stopId: "ST_C", stopSequence: 3, arrivalTime: "08:12:00" },
+        { tripId: "T2", stopId: "ST_A", stopSequence: 1, arrivalTime: "09:00:00" },
+        { tripId: "T2", stopId: "ST_D", stopSequence: 2, arrivalTime: "09:08:00" },
+        { tripId: "T3", stopId: "ST_E", stopSequence: 1, arrivalTime: "10:00:00" },
+        { tripId: "T3", stopId: "ST_F", stopSequence: 2, arrivalTime: "10:07:00" },
+      ],
+      idx: {
+        routeMembers: [{ routeId: "R1", present: 1 }, { routeId: "R2", present: 1 }, { routeId: "R3", present: 0 }],
+        serviceMembers: [{ serviceId: "S1", present: 1 }, { serviceId: "S2", present: 1 }, { serviceId: "S3", present: 0 }],
+        tripMembers: {
+          R1: [{ tripId: "T1", present: 1 }, { tripId: "T2", present: 1 }, { tripId: "T_NEW", present: 0 }],
+          R2: [{ tripId: "T3", present: 1 }],
+        },
+        stopTimeMembers: {
+          T1: [{ stId: "T1_1_ST_A", present: 1 }, { stId: "T1_2_ST_B", present: 1 }, { stId: "T1_3_ST_C", present: 1 }, { stId: "T1_4_ST_NEW", present: 0 }],
+          T2: [{ stId: "T2_1_ST_A", present: 1 }, { stId: "T2_2_ST_D", present: 1 }],
+          T3: [{ stId: "T3_1_ST_E", present: 1 }, { stId: "T3_2_ST_F", present: 1 }],
+        },
+      },
+      edges: [
+        { from: "gtfs.services.S1.active", to: "gtfs.trips.T1.live" },
+        { from: "gtfs.services.S1.active", to: "gtfs.trips.T2.live" },
+        { from: "gtfs.services.S2.active", to: "gtfs.trips.T3.live" },
+        { from: "gtfs.routes.R1.active", to: "gtfs.trips.T1.validRoute" },
+        { from: "gtfs.routes.R1.active", to: "gtfs.trips.T2.validRoute" },
+        { from: "gtfs.routes.R2.active", to: "gtfs.trips.T3.validRoute" },
+        { from: "gtfs.trips.T1.routeId", to: "gtfs.stopTimes.T1_1_ST_A.routeId" },
+        { from: "gtfs.trips.T1.routeId", to: "gtfs.stopTimes.T1_2_ST_B.routeId" },
+        { from: "gtfs.trips.T1.routeId", to: "gtfs.stopTimes.T1_3_ST_C.routeId" },
+        { from: "gtfs.idx.routes.R1.tripMember.T_NEW", to: "gtfs.idx.routes.R1.tripCount" },
+      ],
+    };
+  }
+}
+
+async function main() {
+  $("density").addEventListener("click", (ev) => {
+    const b = ev.target.closest("button[data-scale]");
+    if (!b) return;
+    applyDensity(Number(b.dataset.scale));
+  });
+  $("mutations").addEventListener("click", (ev) => {
+    const b = ev.target.closest("button[data-mut]");
+    if (!b || b.disabled) return;
+    runMutation(b.dataset.mut);
+  });
+  $("universe").addEventListener("click", (ev) => {
+    const node = hitTestNode(ev.clientX, ev.clientY);
+    if (node) selectNode(node);
+    else clearSelection();
+  });
+  window.addEventListener("keydown", (ev) => {
+    if (ev.key === "Escape") clearSelection();
+  });
+  window.addEventListener("resize", () => draw());
+
+  let kernel;
+  try {
+    kernel = await loadKernel();
   } catch (e) {
     setStatus(false, "Kernel failed to load", []);
-    $("fatal").replaceChildren(el("div", "fatal", String(e?.stack || e)));
+    $("fatal").appendChild(el("div", "fatal", String(e?.stack || e)));
+    return;
   }
+  ME = kernel.mod.default;
+  window.ME = ME;
+
+  try {
+    graph = await loadGraph();
+    rebuild();
+  } catch (e) {
+    setStatus(false, "Graph seed failed", kernel.desc);
+    $("fatal").appendChild(el("div", "fatal", String(e?.stack || e)));
+    return;
+  }
+
+  setStatus(true, `Universe ready · n=${nLive}`, kernel.desc);
+  $("foot").append(
+    document.createTextNode(" Open via static serve so the sibling JSON loads; file:// falls back to an inline copy. "),
+  );
 }
 
-boot();
+main();
 </script>
 </body>
 </html>
