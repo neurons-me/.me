@@ -20,7 +20,7 @@
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: "Inter", "Helvetica Neue", Helvetica, Arial, sans-serif; background: #f4f7f8; color: #0f1720; min-height: 100vh; -webkit-font-smoothing: antialiased; }
-    .page { max-width: 1180px; margin: 0 auto; padding: 40px 16px 28px; }
+    .page { max-width: 1180px; margin: 0 auto; padding: 28px 16px 28px; }
     .breadcrumb { font-size: 0.78rem; color: #51606d; margin-bottom: 6px; display: flex; gap: 8px; flex-wrap: wrap; }
     .breadcrumb a { color: #0f6a78; text-decoration: none; }
     .breadcrumb a:hover { text-decoration: underline; }
@@ -143,16 +143,85 @@
     .foot { margin-top: 28px; font-size: 0.78rem; color: #51606d; line-height: 1.6; }
     .foot a { color: #0f6a78; }
 
-    .topnav { position:fixed; top:0; left:0; right:0; z-index:100; display:flex; align-items:center; gap:4px; padding:8px 20px; background:rgba(244,247,248,0.92); backdrop-filter:blur(8px); border-bottom:1px solid rgba(15,23,32,0.08); font-size:0.82rem; font-weight:600; }
-    .topnav button { background:none; border:none; cursor:pointer; font:inherit; padding:4px 8px; border-radius:6px; color:inherit; transition:background 120ms; }
-    .topnav button:hover, .topnav a:hover { background:rgba(15,106,120,0.1); }
-    .topnav a { text-decoration:none; color:inherit; padding:4px 10px; border-radius:6px; transition:background 120ms; }
-    .topnav { flex-wrap:wrap; }
-    .topnav .brand { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:0.78rem; font-weight:600; color:#51606d; border:1px solid rgba(15,23,32,0.12); border-radius:999px; padding:4px 10px; margin-right:6px; }
-    .topnav .brand:hover { background:rgba(15,106,120,0.1); color:inherit; }
-    .topnav a.active { background:rgba(15,106,120,0.14); color:#0f6a78; }
-    .topnav .spacer { flex:1; min-width:8px; }
-    body { padding-top: 48px; }
+
+    /* Site topbar — match Syntax (neurons-me remote theme) height + controls */
+    .topbar {
+      position: sticky; top: 0; z-index: 200;
+      background: rgba(255,255,255,0.86);
+      border-bottom: 1px solid #d0d7de;
+      backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+      color: #24292f;
+    }
+    .topbar-inner {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 20px; max-width: 980px; margin: 0 auto; padding: 12px 32px;
+    }
+    .topbar .brand {
+      color: inherit; font-size: 14px; font-weight: 600; letter-spacing: 0;
+      white-space: nowrap; text-decoration: none;
+    }
+    .topbar .brand:hover { text-decoration: none; opacity: 0.85; }
+    .topbar-search { flex: 1 1 auto; min-width: 120px; max-width: 280px; }
+    .topbar [data-gui-searchbar] input { min-width: 0; }
+    .topbar [data-gui-searchbar] > div > div { border-color: rgba(9,105,218,0.24) !important; }
+    .topbar [data-gui-searchbar] > div > div:focus-within {
+      border-color: #0969da !important; box-shadow: 0 0 0 3px rgba(9,105,218,0.12);
+    }
+    .topbar .nav-links {
+      display: flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: flex-end;
+    }
+    .topbar .nav-links a {
+      color: #57606a; border-radius: 6px; padding: 6px 10px; font-size: 14px;
+      line-height: 1; text-decoration: none;
+    }
+    .topbar .nav-links a:hover { color: #24292f; background: #f6f8fa; text-decoration: none; }
+    @media (prefers-color-scheme: dark) {
+      .topbar {
+        background: rgba(11,17,20,0.86); border-bottom-color: #30363d; color: #c9d1d9;
+      }
+      .topbar .nav-links a { color: #8b949e; }
+      .topbar .nav-links a:hover { color: #c9d1d9; background: #161b22; }
+      .topbar [data-gui-searchbar] > div > div {
+        background: #111a1f !important; border-color: rgba(232,237,237,0.1) !important;
+      }
+      .topbar [data-gui-searchbar] > div > div:focus-within {
+        border-color: #4fd1c5 !important; box-shadow: 0 0 0 3px rgba(79,209,197,0.12);
+      }
+      .topbar [data-gui-searchbar] input { color: #e8eded !important; }
+      .topbar [data-gui-searchbar] input::placeholder { color: #98a7b3 !important; opacity: 1 !important; }
+      .topbar [data-gui-searchbar] > div > div > span:last-of-type {
+        background: rgba(232,237,237,0.1) !important; color: #98a7b3 !important;
+      }
+      .topbar [data-gui-searchbar] a[role="option"] {
+        color: #e8eded !important; border-bottom-color: rgba(232,237,237,0.08) !important;
+      }
+    }
+    @media (max-width: 767px) {
+      .topbar-inner { align-items: flex-start; flex-direction: column; gap: 8px; padding: 12px 16px; }
+      .topbar-search { order: 3; width: 100%; max-width: 100%; }
+      .topbar .nav-links { justify-content: flex-start; }
+      .topbar .nav-links a { padding: 6px 8px; }
+    }
+
+
+    .sc-topnav {
+      display: flex; align-items: center; gap: 4px; flex-wrap: wrap;
+      padding: 8px 20px; margin: 0;
+      border-bottom: 1px solid rgba(15,23,32,0.08);
+      font-size: 0.82rem; font-weight: 600;
+      background: transparent;
+    }
+    .sc-topnav .brand {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.78rem; font-weight: 600; color: #51606d;
+      border: 1px solid rgba(15,23,32,0.12); border-radius: 999px;
+      padding: 4px 10px; margin-right: 6px; text-decoration: none;
+    }
+    .sc-topnav .brand:hover { background: rgba(15,106,120,0.1); color: inherit; }
+    .sc-topnav a { text-decoration: none; color: inherit; padding: 4px 10px; border-radius: 6px; }
+    .sc-topnav a:hover { background: rgba(15,106,120,0.1); }
+    .sc-topnav a.active { background: rgba(15,106,120,0.14); color: #0f6a78; }
+
 
     @media (prefers-color-scheme: dark) {
       body { background: #0b1114; color: #e8eded; }
@@ -171,10 +240,11 @@
       .density button.active { background: rgba(79,209,197,0.16); }
       .note { background: rgba(255,255,255,0.03); color: #98a7b3; }
       .note.warn { color: #f5c26b; }
-      .topnav { background:rgba(11,17,20,0.92); border-bottom-color:rgba(232,237,237,0.08); }
-      .topnav button:hover, .topnav a:hover { background:rgba(79,209,197,0.1); }
-      .topnav .brand { color:#98a7b3; border-color:rgba(232,237,237,0.14); }
-      .topnav a.active { background:rgba(79,209,197,0.16); color:#4fd1c5; }
+
+      .sc-topnav { border-bottom-color: rgba(232,237,237,0.08); }
+      .sc-topnav .brand { color: #98a7b3; border-color: rgba(232,237,237,0.14); }
+      .sc-topnav a.active { background: rgba(79,209,197,0.16); color: #4fd1c5; }
+      .sc-topnav a:hover { background: rgba(79,209,197,0.1); }
       .pill { background: rgba(255,255,255,0.06); color: #98a7b3; }
       .wave-steps li { background: rgba(255,255,255,0.05); color: #98a7b3; }
       .wave-steps li.done { background: rgba(244,63,94,0.16); color: #fda4af; }
@@ -183,16 +253,30 @@
   </style>
 </head>
 <body>
-  <nav class="topnav" aria-label="Smart Cities">
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="https://neurons-me.github.io/.me/">.me</a>
+      <div
+        class="topbar-search"
+        data-gui-searchbar
+        data-src="https://neurons-me.github.io/index.json"
+        data-placeholder="Search in All.This"
+      ></div>
+      <nav class="nav-links" aria-label="Main navigation">
+        <a href="https://neurons-me.github.io/">Home</a>
+        <a href="https://neurons-me.github.io/.me/docs/">Docs</a>
+        <a href="https://github.com/neurons-me/.me">Github</a>
+        <a href="https://neurons-me.github.io/all.this/">All.This</a>
+      </nav>
+    </div>
+  </header>
+  <nav class="sc-topnav" aria-label="Smart Cities">
     <a class="brand" href="https://neurons-me.github.io/">← neurons.me</a>
     <a href="https://neurons-me.github.io/smart-cities/">Smart Cities</a>
     <a href="https://neurons-me.github.io/.me/docs/Smart-Cities.html">Syntax</a>
     <a href="https://neurons-me.github.io/.me/docs/Tests/gtfs-madrid-universe.html" class="active">GTFS</a>
     <a href="https://neurons-me.github.io/.me/docs/Tests/madrid-knowledge.html">Fares</a>
-    <span class="spacer"></span>
-    <a href="https://github.com/neurons-me/.me" target="_blank" rel="noopener">GitHub</a>
   </nav>
-
   <div class="page">
     <p class="breadcrumb">
       <a href="../">← .me Docs</a>
@@ -1263,5 +1347,6 @@ async function main() {
 
 main();
 </script>
+  <script src="https://neurons-me.github.io/vendor/gui-searchbar.iife.js" defer></script>
 </body>
 </html>
