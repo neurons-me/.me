@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>.me — Madrid fares, reactive</title>
-  <meta name="description" content="Raise a Madrid metro fare in this.me and watch trip and day costs recompute. Syntax → graph → output." />
+  <meta name="description" content="Human door on the same .me idea as GTFS Madrid: change a fare or abono, watch dependents and k recompute. Syntax → graph → output." />
   <link rel="icon" type="image/png" href="https://res.cloudinary.com/dkwnxf6gm/image/upload/v1769890772/this.me.png">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -180,11 +180,14 @@
     </p>
     <p class="kicker">this.me / Tests</p>
     <h1>Raise the fare. Watch the cost move.</h1>
-        <p class="rule">
-      Raise the metro fare. Watch the trip cost and the day total recompute — only what depends on that fare.
+    <p class="rule">
+      Second door on the <strong>same idea</strong> as the GTFS universe demo and the DEV.to post:
+      knowledge is data plus relationships that make changes meaningful.
+      Here the domain is human — Madrid fares, abono, trip and day cost — not GTFS stopTime ids.
     </p>
     <p class="rule" style="margin-bottom:8px">
-      Toggle a monthly pass: ticket goes to zero for the rider. Graph labels can stay Spanish; everything else is English.
+      Change a source fact (bump the pasaje, toggle the monthly pass) → dependents recompute.
+      <code>me.explain()</code> shows <code>dependsOn</code> and <strong>k</strong>. Graph labels may stay Spanish; UI stays English.
     </p>
 
     <div class="status-compact" id="status">
@@ -293,7 +296,8 @@
 
     <h2>Notes</h2>
     <p class="rule">
-      Graph node labels may stay Spanish (pasaje, abono, Sol→Atocha). Controls, status, and explain stay in English.
+      Same core as the technical GTFS demo: mutate a leaf → follow <strong>k</strong>, not the whole graph.
+      Labels may stay Spanish (pasaje, abono, Sol→Atocha); controls and explain stay English.
       Formulas are number|boolean only; euros are display-only. Abono uses
       <code>(1 - hasAbono) * singleCents</code> with <code>hasAbono</code> as <code>0|1</code>.
     </p>
@@ -302,15 +306,17 @@
       to load <code>../../Typescript/dist/me.es.js</code> (static serve from repo root).
     </p>
     <p class="meta">
-      Technical / k locality twin:
+      Technical twin (GTFS universe / n vs k):
       <a href="./gtfs-madrid-universe.html">GTFS Madrid / k</a>
+      · blog:
+      <a href="https://dev.to/suign/what-happened-when-we-loaded-madrids-gtfs-data-into-a-reactive-knowledge-graph-1ngh">What happened when we loaded Madrid’s GTFS…</a>
+      · benchmark (main):
+      <a href="https://github.com/neurons-me/.me/tree/main/Typescript/tests/Benchmarks/GTFS-Madrid"><code>GTFS-Madrid/</code></a>
       · typed GTFS reactive:
       <a href="./semantic-reactive.html">Semantic graph / reactive</a>
-      · package:
-      <a href="https://www.npmjs.com/package/this.me">this.me@4.1.0</a>
     </p>
     <p class="foot" id="foot">
-      UI order is fixed: syntax → graph → output. Click a node to <code>explain()</code> without mutating.
+      UI order: syntax → graph → output. Click a node to <code>explain()</code> without mutating.
     </p>
   </div>
 

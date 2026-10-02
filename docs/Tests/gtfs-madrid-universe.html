@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>.me — GTFS Madrid semantic graph</title>
-  <meta name="description" content="Live GTFS Madrid semantic graph in this.me: click a node to explain(), highlight dependsOn + recompute wave, mutate and watch k." />
+  <title>.me — GTFS Madrid live knowledge universe</title>
+  <meta name="description" content="Real GTFS Madrid shaped as a reactive knowledge graph in this.me: relationships → dependencies, mutate → affected set k. n vs k; scale result briefly." />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/this.gui@1.4.6/dist/styles.css" />
   <link rel="icon" type="image/png" href="https://res.cloudinary.com/dkwnxf6gm/image/upload/v1769890772/this.me.png">
   <style>
@@ -181,10 +181,15 @@
       <a href="./">Tests</a>
     </p>
     <p class="kicker">this.me / Tests / Benchmarks</p>
-    <h1>GTFS Madrid — semantic graph</h1>
+    <h1>GTFS Madrid — live knowledge universe</h1>
     <p class="rule" style="margin-bottom:6px">
-      Services / routes / trips / stopTimes / idx as typed nodes with <code>=</code> formula edges.
-      <strong>Click a node</strong> → <code>me.explain(path)</code> (no mutation needed). Mutate to watch <strong>k</strong> and the recomputed wave.
+      We loaded real evolving <strong>GTFS Madrid</strong> into <code>.me</code>: routes, trips, services, stop times —
+      with relationships expressed as live dependencies. Change a fact → the kernel follows the affected set <strong>k</strong>,
+      not the whole universe <strong>n</strong>.
+    </p>
+    <p class="rule" style="margin-bottom:6px">
+      On the full benchmark, <strong>n</strong> grew ~100× (stop times 2.3k → 236k) while <strong>k</strong> p95/max stayed flat (~18 / 27).
+      This page is the interactive subset: <strong>click a node</strong> → <code>me.explain(path)</code>; mutate to watch the wave.
     </p>
 
     <div class="status" id="status">
@@ -279,18 +284,24 @@
 
     <h2>What this is</h2>
     <p class="rule">
-      A tiny GTFS-Madrid-shaped knowledge universe runs live on the
-      <code>this.me</code> kernel. Click any node to select it and call
-      <code>me.explain(path)</code> — <code>dependsOn</code> highlights in cyan;
-      after a mutation the recomputed wave is red. Selected node keeps a gold ring.
+      A tiny GTFS-Madrid-shaped knowledge universe on the live <code>this.me</code> kernel —
+      same idea as the full evolving workload, scaled down so you can see it.
+      Click a node → <code>me.explain(path)</code> (<code>dependsOn</code> in cyan).
+      Mutate → recomputed wave in red. Gold ring = selected.
+    </p>
+    <p class="rule">
+      <strong>n</strong> = universe size · <strong>k</strong> = what one change touches.
+      They are different variables: growing the world does not have to grow every mutation’s wave.
+      That is what the scale-1 → 10 → 100 result on the real GTFS adapter showed.
     </p>
     <p class="note">
-      Honesty, matching the blog and the benchmark README:
-      this is <strong>not</strong> an RML/RDF materialization run.
-      CREATE is measured via explicit <code>gtfs.idx</code> membership slots (flip <code>0→1</code>),
-      not as “natural GTFS CREATE k=1”.
-      Loading a larger snapshot costs more; that is not the same as recomputation after a mutation.
-      Density adds ghost points for visual scale only — they are not wired into the kernel.
+      Honesty (same as the blog / benchmark README):
+      this is <strong>not</strong> an RML/RDF materialization run, and we are <strong>not</strong> claiming mutations are O(k).
+      Dependency propagation stayed local to <strong>k</strong>; structural DELETE apply can still cost with corpus size —
+      that bottleneck is real and separate from recompute.
+      CREATE here uses explicit <code>gtfs.idx</code> membership slots (flip <code>0→1</code>), not “natural GTFS CREATE k=1”.
+      Loading a larger snapshot costs more with <strong>n</strong>; that is not the same as recomputation after a mutation.
+      Density ghosts are visual-only — not wired into the kernel.
     </p>
     <p class="note warn" id="kernel-note">
       Kernel: published <code>this.me@4.1.0</code> (hash-pinned). Isolation demos still pin 4.0.2;
@@ -299,17 +310,19 @@
     </p>
     <p class="meta">
       Graph JSON: <a href="./gtfs-madrid-demo-graph.json"><code>gtfs-madrid-demo-graph.json</code></a>
-      · adapter patterns from
+      · kernel:
+      <a href="https://github.com/neurons-me/.me">neurons-me/.me</a>
+      · benchmark (main):
       <a href="https://github.com/neurons-me/.me/tree/main/Typescript/tests/Benchmarks/GTFS-Madrid"><code>GTFS-Madrid/</code></a>
       · blog:
-      <a href="https://dev.to/suign/what-happened-when-we-loaded-madrids-gtfs-data-into-a-reactive-knowledge-graph-1ngh">GTFS Madrid / k locality</a>
-      · human story (fares / abono):
+      <a href="https://dev.to/suign/what-happened-when-we-loaded-madrids-gtfs-data-into-a-reactive-knowledge-graph-1ngh">What happened when we loaded Madrid’s GTFS…</a>
+      · human door (fares / abono):
       <a href="./madrid-knowledge.html">Madrid knowledge</a>
     </p>
 
     <p class="foot" id="foot">
-      Same adapter conceptually as <code>Typescript/tests/Benchmarks/GTFS-Madrid/</code>.
-      Full sweeps stay in Node; this page is the interactive subset.
+      Same adapter conceptually as <code>Typescript/tests/Benchmarks/GTFS-Madrid/</code> on main.
+      Full mutation sweeps stay in Node; this page is the interactive subset.
     </p>
   </div>
 
