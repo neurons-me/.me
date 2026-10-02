@@ -71,7 +71,11 @@
     .wave-steps li.current { background: rgba(244,63,94,0.2); color: #9f1239; border-color: rgba(244,63,94,0.55); font-weight: 700; }
     .wave-steps li.empty { background: transparent; border: none; color: #51606d; }
 
-    .code-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+    .code-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; align-items: stretch; }
+    .code-grid > .code-card { display: flex; flex-direction: column; min-height: 0; height: 100%; }
+    .code-grid > .code-card[open] { /* stretch open details */ }
+    .code-grid pre.mono { flex: 1 1 auto; max-height: none; min-height: 180px; height: 100%; }
+    #explain-json { max-height: none; }
     @media (max-width: 900px) { .code-grid { grid-template-columns: 1fr; } }
     .code-card { background: #fff; border: 1px solid rgba(15,23,32,0.10); border-radius: 10px; padding: 8px 10px; }
     .code-card summary { cursor: pointer; list-style: none; display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }

@@ -106,7 +106,17 @@
     .wave-steps li.current { background: rgba(244,63,94,0.2); color: #9f1239; border-color: rgba(244,63,94,0.55); font-weight: 700; }
     .wave-steps li.empty { background: transparent; border: none; color: #51606d; }
 
-    .out-grid { display: grid; grid-template-columns: 1.1fr 1fr; gap: 10px; }
+    .out-grid { display: grid; grid-template-columns: 1.1fr 1fr; gap: 10px; align-items: stretch; }
+    .out-grid > .panel { display: flex; flex-direction: column; min-height: 0; height: 100%; }
+    .out-grid > .panel .panel-head { flex: 0 0 auto; }
+    .out-grid > .panel .out-rows { flex: 0 0 auto; }
+    #explain-json {
+      flex: 1 1 auto;
+      max-height: none !important;
+      min-height: 220px;
+      height: 100%;
+      overflow: auto;
+    }
     @media (max-width: 900px) { .out-grid { grid-template-columns: 1fr; } }
     .out-rows { display: flex; flex-direction: column; gap: 6px; }
     .out-row {
@@ -265,7 +275,7 @@
             <div class="panel-sub" id="explain-sub">me.explain(path) or last mutation wave meta</div>
           </div>
         </div>
-        <pre class="mono" id="explain-json" style="max-height:320px">—</pre>
+        <pre class="mono" id="explain-json">—</pre>
       </div>
     </div>
 
