@@ -44,8 +44,6 @@ me_theme:
   favicon: "https://res.cloudinary.com/dkwnxf6gm/image/upload/v1769890772/this.me.png"
   social_image: "https://neurons-me.github.io/docs/assets/img/me.png"
   nav:
-    - label: Home
-      url: https://neurons-me.github.io/
     - label: Docs
       relative_url: /docs/
     - label: Github

@@ -4,24 +4,18 @@ title: Smart Cities As Reactive Semantic Trees
 ---
 
 <style>
+  /* Section strip — accent=neutral; site topbar comes from me-theme (logo+.me brand) */
   .sc-topnav {
     display: flex; align-items: center; gap: 4px; flex-wrap: wrap;
-    margin: 0 0 1.25rem; padding: 8px 0;
+    margin: 0 0 1.25rem; padding: 8px 0; min-height: 40px; box-sizing: border-box;
     border-bottom: 1px solid rgba(128,128,128,0.25);
     font-size: 0.82rem; font-weight: 600;
   }
-  .sc-topnav .brand {
-    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-    font-size: 0.78rem; font-weight: 600; opacity: 0.75;
-    border: 1px solid rgba(128,128,128,0.35); border-radius: 999px;
-    padding: 4px 10px; margin-right: 6px; text-decoration: none; color: inherit;
-  }
-  .sc-topnav a { text-decoration: none; color: inherit; opacity: 0.75; padding: 4px 10px; border-radius: 6px; }
+  .sc-topnav a { text-decoration: none; color: inherit; opacity: 0.75; padding: 5px 10px; border-radius: 6px; }
   .sc-topnav a:hover { opacity: 1; background: rgba(128,128,128,0.12); text-decoration: none; }
   .sc-topnav a.active { opacity: 1; background: rgba(15,106,120,0.14); color: #0f6a78; }
 </style>
 <nav class="sc-topnav" aria-label="Smart Cities">
-  <a class="brand" href="https://neurons-me.github.io/">← neurons.me</a>
   <a href="https://neurons-me.github.io/smart-cities/">Smart Cities</a>
   <a class="active" href="https://neurons-me.github.io/.me/docs/Smart-Cities.html">Syntax</a>
   <a href="https://neurons-me.github.io/.me/docs/Tests/gtfs-madrid-universe.html">GTFS</a>
