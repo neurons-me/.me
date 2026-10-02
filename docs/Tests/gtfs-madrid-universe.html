@@ -10,41 +10,41 @@
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: "Inter", "Helvetica Neue", Helvetica, Arial, sans-serif; background: #f4f7f8; color: #0f1720; min-height: 100vh; -webkit-font-smoothing: antialiased; }
-    .page { max-width: 1180px; margin: 0 auto; padding: 52px 20px 56px; }
-    .breadcrumb { font-size: 0.8rem; color: #51606d; margin-bottom: 10px; display: flex; gap: 8px; flex-wrap: wrap; }
+    .page { max-width: 1180px; margin: 0 auto; padding: 40px 16px 28px; }
+    .breadcrumb { font-size: 0.78rem; color: #51606d; margin-bottom: 6px; display: flex; gap: 8px; flex-wrap: wrap; }
     .breadcrumb a { color: #0f6a78; text-decoration: none; }
     .breadcrumb a:hover { text-decoration: underline; }
-    .kicker { font-size: 0.75rem; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; color: #51606d; margin-bottom: 6px; }
-    h1 { font-size: 1.85rem; font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; margin-bottom: 8px; }
-    .rule { font-size: 0.95rem; line-height: 1.55; color: #1f2d38; max-width: 820px; margin-bottom: 10px; }
+    .kicker { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; color: #51606d; margin-bottom: 4px; }
+    h1 { font-size: 1.55rem; font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; margin-bottom: 6px; }
+    .rule { font-size: 0.9rem; line-height: 1.5; color: #1f2d38; max-width: 820px; margin-bottom: 8px; }
     .rule code, p code, li code, td code, .meta code, .stat code, .pill code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.86em; background: rgba(15,23,32,0.06); padding: 1px 5px; border-radius: 4px; }
-    .meta { font-size: 0.85rem; color: #51606d; line-height: 1.7; margin-bottom: 8px; }
+    .meta { font-size: 0.82rem; color: #51606d; line-height: 1.6; margin-bottom: 6px; }
     .meta a { color: #0f6a78; }
-    .note { font-size: 0.8rem; line-height: 1.55; color: #51606d; background: rgba(15,23,32,0.04); border-left: 3px solid rgba(15,106,120,0.45); padding: 8px 12px; border-radius: 4px; margin: 12px 0 8px; max-width: 820px; }
+    .note { font-size: 0.78rem; line-height: 1.5; color: #51606d; background: rgba(15,23,32,0.04); border-left: 3px solid rgba(15,106,120,0.45); padding: 7px 10px; border-radius: 4px; margin: 10px 0 6px; max-width: 820px; }
     .note.warn { border-left-color: rgba(217,119,6,0.7); background: rgba(217,119,6,0.07); color: #6b4d0a; }
-    h2 { font-size: 1.05rem; font-weight: 700; margin: 28px 0 8px; padding-bottom: 6px; border-bottom: 1px solid rgba(15,23,32,0.10); }
-    .h2-note { font-size: 0.875rem; color: #51606d; margin-bottom: 14px; line-height: 1.55; max-width: 820px; }
+    h2 { font-size: 1rem; font-weight: 700; margin: 22px 0 6px; padding-bottom: 5px; border-bottom: 1px solid rgba(15,23,32,0.10); }
+    .h2-note { font-size: 0.85rem; color: #51606d; margin-bottom: 12px; line-height: 1.5; max-width: 820px; }
 
-    .status { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; background: #fff; border: 1px solid rgba(15,23,32,0.10); border-radius: 12px; padding: 10px 14px; margin: 10px 0 8px; font-size: 0.875rem; }
-    .status .big { font-weight: 800; font-size: 1rem; }
-    .status .kernel { color: #51606d; font-size: 0.8rem; flex-basis: 100%; line-height: 1.6; }
+    .status { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; background: #fff; border: 1px solid rgba(15,23,32,0.10); border-radius: 10px; padding: 8px 12px; margin: 8px 0 6px; font-size: 0.84rem; }
+    .status .big { font-weight: 800; font-size: 0.95rem; }
+    .status .kernel { color: #51606d; font-size: 0.76rem; flex-basis: 100%; line-height: 1.5; }
     .status.ok { border-color: rgba(16,185,129,0.35); }
     .status.bad { border-color: rgba(220,38,38,0.45); }
-    .pass-badge, .fail-badge, .run-badge { font-size: 0.72rem; font-weight: 700; padding: 2px 9px; border-radius: 20px; letter-spacing: 0.04em; white-space: nowrap; }
+    .pass-badge, .fail-badge, .run-badge { font-size: 0.7rem; font-weight: 700; padding: 2px 8px; border-radius: 20px; letter-spacing: 0.04em; white-space: nowrap; }
     .pass-badge { background: rgba(16,185,129,0.12); color: #047857; }
     .fail-badge { background: rgba(220,38,38,0.12); color: #b91c1c; }
     .run-badge { background: rgba(15,23,32,0.06); color: #51606d; }
 
-    .layout { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 14px; margin-top: 8px; }
+    .layout { display: grid; grid-template-columns: minmax(0, 1fr) 248px; gap: 10px; margin-top: 6px; align-items: start; }
     @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
 
-    .viz-card, .side-card { background: #fff; border: 1px solid rgba(15,23,32,0.10); border-radius: 12px; padding: 14px 16px; }
-    .viz-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
-    .viz-title { font-weight: 700; font-size: 0.95rem; }
-    .viz-sub { font-size: 0.75rem; color: #51606d; }
-    #universe { width: 100%; height: 520px; display: block; border-radius: 10px; background: #0b1114; cursor: pointer; }
-    .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 0.72rem; color: #51606d; margin-top: 10px; }
-    .legend span::before { content: ""; display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; }
+    .viz-card, .side-card { background: #fff; border: 1px solid rgba(15,23,32,0.10); border-radius: 10px; padding: 10px 12px; }
+    .viz-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
+    .viz-title { font-weight: 700; font-size: 0.9rem; }
+    .viz-sub { font-size: 0.72rem; color: #51606d; }
+    #universe { width: 100%; height: 400px; display: block; border-radius: 8px; background: #0b1114; cursor: pointer; }
+    .legend { display: flex; gap: 12px; flex-wrap: wrap; font-size: 0.68rem; color: #51606d; margin-top: 6px; }
+    .legend span::before { content: ""; display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 5px; vertical-align: -1px; }
     .legend .l-svc::before { background: #38bdf8; }
     .legend .l-rte::before { background: #a78bfa; }
     .legend .l-trp::before { background: #34d399; }
@@ -54,55 +54,79 @@
     .legend .l-dep::before { background: #22d3ee; }
     .legend .l-sel::before { background: transparent; box-shadow: inset 0 0 0 2px #fbbf24; border-radius: 50%; }
     .legend .l-ghost::before { background: rgba(148,163,184,0.45); }
+    .legend .l-hop::before { background: #fb7185; box-shadow: 0 0 0 2px rgba(251,113,133,0.55); }
 
-    .code-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 14px; }
+    .wave-strip { background: #fff; border: 1px solid rgba(15,23,32,0.10); border-radius: 10px; padding: 8px 12px; margin-top: 10px; }
+    .wave-strip-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
+    .wave-strip-head .lbl { font-size: 0.66rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #51606d; margin-right: auto; }
+    .wave-strip-head button {
+      appearance: none; border: 1px solid rgba(15,23,32,0.14); background: #fff; color: inherit;
+      border-radius: 6px; padding: 3px 9px; cursor: pointer; font: inherit; font-size: 0.72rem;
+    }
+    .wave-strip-head button:hover:not(:disabled) { background: rgba(15,106,120,0.08); border-color: rgba(15,106,120,0.35); }
+    .wave-strip-head button:disabled { opacity: 0.4; cursor: not-allowed; }
+    .wave-steps { list-style: none; display: flex; flex-wrap: wrap; gap: 4px; max-height: 72px; overflow: auto; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.68rem; }
+    .wave-steps li { padding: 2px 7px; border-radius: 999px; background: rgba(15,23,32,0.05); color: #51606d; border: 1px solid transparent; }
+    .wave-steps li.done { background: rgba(244,63,94,0.1); color: #be123c; }
+    .wave-steps li.current { background: rgba(244,63,94,0.2); color: #9f1239; border-color: rgba(244,63,94,0.55); font-weight: 700; }
+    .wave-steps li.empty { background: transparent; border: none; color: #51606d; }
+
+    .code-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
     @media (max-width: 900px) { .code-grid { grid-template-columns: 1fr; } }
-    .code-card { background: #fff; border: 1px solid rgba(15,23,32,0.10); border-radius: 12px; padding: 14px 16px; }
-    .code-card .viz-title { margin-bottom: 8px; }
-    .code-card .viz-sub { margin-bottom: 8px; }
+    .code-card { background: #fff; border: 1px solid rgba(15,23,32,0.10); border-radius: 10px; padding: 8px 10px; }
+    .code-card summary { cursor: pointer; list-style: none; display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+    .code-card summary::-webkit-details-marker { display: none; }
+    .code-card summary::after { content: "▾"; font-size: 0.7rem; color: #51606d; }
+    .code-card:not([open]) summary::after { content: "▸"; }
+    .code-card .viz-title { margin-bottom: 0; }
+    .code-card .viz-sub { margin: 4px 0 6px; }
     pre.mono {
       font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-      font-size: 0.72rem; line-height: 1.45;
+      font-size: 0.7rem; line-height: 1.4;
       background: #0b1114; color: #e2e8f0;
-      border-radius: 8px; padding: 12px 14px;
-      max-height: 320px; overflow: auto; white-space: pre-wrap; word-break: break-word;
+      border-radius: 6px; padding: 8px 10px;
+      max-height: 140px; overflow: auto; white-space: pre-wrap; word-break: break-word;
       border: 1px solid rgba(15,23,32,0.12);
     }
 
-    .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
-    .stat { background: rgba(15,23,32,0.035); border: 1px solid rgba(15,23,32,0.08); border-radius: 10px; padding: 10px 12px; }
-    .stat .lbl { font-size: 0.66rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #51606d; margin-bottom: 4px; }
-    .stat .val { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 1.05rem; font-weight: 700; }
-    .stat.wide { grid-column: 1 / -1; }
-    .stat .sub { font-size: 0.72rem; color: #51606d; margin-top: 4px; line-height: 1.4; word-break: break-word; }
+    .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-bottom: 8px; }
+    .stat { background: rgba(15,23,32,0.035); border: 1px solid rgba(15,23,32,0.08); border-radius: 8px; padding: 6px 8px; }
+    .stat .lbl { font-size: 0.6rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #51606d; margin-bottom: 2px; }
+    .stat .val { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.95rem; font-weight: 700; }
+    .stat-src { font-size: 0.68rem; color: #51606d; line-height: 1.35; margin-bottom: 8px; word-break: break-word; }
+    .stat-src code { font-size: 0.68rem; }
 
-    .btns { display: flex; flex-direction: column; gap: 8px; }
+    .side-lbl { font-size: 0.6rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #51606d; margin: 8px 0 4px; }
+    .side-lbl:first-of-type { margin-top: 0; }
+
+    .btns { display: flex; flex-direction: column; gap: 4px; }
     .btns button, .density button {
       appearance: none; border: 1px solid rgba(15,23,32,0.14); background: #fff; color: inherit;
-      border-radius: 10px; padding: 10px 12px; text-align: left; cursor: pointer; font: inherit; font-size: 0.82rem; line-height: 1.35;
+      border-radius: 8px; padding: 6px 8px; text-align: left; cursor: pointer; font: inherit; font-size: 0.76rem; line-height: 1.25;
       transition: background 120ms, border-color 120ms, transform 80ms;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
     .btns button:hover:not(:disabled), .density button:hover { background: rgba(15,106,120,0.08); border-color: rgba(15,106,120,0.35); }
     .btns button:active:not(:disabled) { transform: translateY(1px); }
     .btns button:disabled { opacity: 0.45; cursor: not-allowed; }
-    .btns button .kind { display: inline-block; font-size: 0.66rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; margin-right: 6px; padding: 1px 6px; border-radius: 4px; }
+    .btns button .kind { display: inline-block; font-size: 0.6rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; margin-right: 5px; padding: 1px 5px; border-radius: 3px; vertical-align: 1px; }
     .kind.upd { background: rgba(217,119,6,0.12); color: #a16207; }
     .kind.del { background: rgba(220,38,38,0.12); color: #b91c1c; }
     .kind.cre { background: rgba(15,106,120,0.12); color: #0f6a78; }
     .kind.rst { background: rgba(15,23,32,0.07); color: #51606d; }
-    .btns button small { display: block; color: #51606d; font-size: 0.72rem; margin-top: 3px; }
 
-    .density { display: flex; gap: 6px; flex-wrap: wrap; margin: 10px 0 4px; }
-    .density button.active { background: rgba(15,106,120,0.12); border-color: rgba(15,106,120,0.4); font-weight: 700; }
-    .density-note { font-size: 0.72rem; color: #51606d; line-height: 1.45; margin-bottom: 10px; }
+    .density { display: inline-flex; gap: 0; margin: 0 0 2px; border: 1px solid rgba(15,23,32,0.14); border-radius: 8px; overflow: hidden; }
+    .density button { border: none; border-radius: 0; padding: 5px 11px; min-width: 42px; text-align: center; border-right: 1px solid rgba(15,23,32,0.1); }
+    .density button:last-child { border-right: none; }
+    .density button.active { background: rgba(15,106,120,0.14); font-weight: 700; }
+    .density-note { font-size: 0.68rem; color: #51606d; line-height: 1.35; margin-bottom: 4px; }
 
-    .wave { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.72rem; line-height: 1.45; background: rgba(15,23,32,0.035); border: 1px solid rgba(15,23,32,0.08); border-radius: 8px; padding: 10px 12px; max-height: 180px; overflow: auto; white-space: pre-wrap; word-break: break-word; }
-    .pill-row { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 4px; }
-    .pill { font-size: 0.7rem; padding: 3px 8px; border-radius: 999px; background: rgba(15,23,32,0.06); color: #51606d; }
+    .pill-row { display: flex; flex-wrap: wrap; gap: 4px; margin: 4px 0 2px; }
+    .pill { font-size: 0.66rem; padding: 2px 7px; border-radius: 999px; background: rgba(15,23,32,0.06); color: #51606d; }
     .pill.hit { background: rgba(244,63,94,0.14); color: #be123c; font-weight: 700; }
 
-    .fatal { background: rgba(220,38,38,0.08); border: 1px solid rgba(220,38,38,0.35); color: #b91c1c; border-radius: 12px; padding: 14px 18px; font-size: 0.875rem; white-space: pre-wrap; margin-top: 16px; }
-    .foot { margin-top: 40px; font-size: 0.8rem; color: #51606d; line-height: 1.7; }
+    .fatal { background: rgba(220,38,38,0.08); border: 1px solid rgba(220,38,38,0.35); color: #b91c1c; border-radius: 10px; padding: 12px 14px; font-size: 0.84rem; white-space: pre-wrap; margin-top: 12px; }
+    .foot { margin-top: 28px; font-size: 0.78rem; color: #51606d; line-height: 1.6; }
     .foot a { color: #0f6a78; }
 
     .topnav { position:fixed; top:0; left:0; right:0; z-index:100; display:flex; align-items:center; gap:4px; padding:8px 20px; background:rgba(244,247,248,0.92); backdrop-filter:blur(8px); border-bottom:1px solid rgba(15,23,32,0.08); font-size:0.82rem; font-weight:600; }
@@ -110,24 +134,31 @@
     .topnav button:hover, .topnav a:hover { background:rgba(15,106,120,0.1); }
     .topnav a { text-decoration:none; color:inherit; padding:4px 10px; border-radius:6px; transition:background 120ms; }
     .topnav .spacer { flex:1; }
+    body { padding-top: 40px; }
 
     @media (prefers-color-scheme: dark) {
       body { background: #0b1114; color: #e8eded; }
-      .kicker, .breadcrumb, .meta, .h2-note, .status .kernel, .foot, .viz-sub, .stat .lbl, .stat .sub, .density-note, .btns button small, .legend { color: #98a7b3; }
+      .kicker, .breadcrumb, .meta, .h2-note, .status .kernel, .foot, .viz-sub, .stat .lbl, .stat-src, .density-note, .legend, .wave-strip-head .lbl, .wave-steps li.empty, .side-lbl { color: #98a7b3; }
       .rule { color: #d5dde2; }
       .breadcrumb a, .meta a, .foot a { color: #4fd1c5; }
       h2 { border-color: rgba(232,237,237,0.08); }
-      .rule code, p code, li code, .meta code, .stat code, .pill code { background: rgba(232,237,237,0.08); }
-      .status, .viz-card, .side-card, .code-card { background: #111a1f; border-color: rgba(232,237,237,0.08); }
+      .rule code, p code, li code, .meta code, .stat code, .pill code, .stat-src code { background: rgba(232,237,237,0.08); }
+      .status, .viz-card, .side-card, .code-card, .wave-strip { background: #111a1f; border-color: rgba(232,237,237,0.08); }
       pre.mono { border-color: rgba(232,237,237,0.08); }
-      .stat, .wave { background: rgba(255,255,255,0.03); border-color: rgba(232,237,237,0.08); }
-      .btns button, .density button { background: #111a1f; border-color: rgba(232,237,237,0.12); color: #e8eded; }
-      .btns button:hover:not(:disabled), .density button:hover { background: rgba(79,209,197,0.1); border-color: rgba(79,209,197,0.35); }
+      .stat { background: rgba(255,255,255,0.03); border-color: rgba(232,237,237,0.08); }
+      .btns button, .density button, .wave-strip-head button { background: #111a1f; border-color: rgba(232,237,237,0.12); color: #e8eded; }
+      .density { border-color: rgba(232,237,237,0.12); }
+      .density button { border-right-color: rgba(232,237,237,0.1); }
+      .btns button:hover:not(:disabled), .density button:hover, .wave-strip-head button:hover:not(:disabled) { background: rgba(79,209,197,0.1); border-color: rgba(79,209,197,0.35); }
+      .density button.active { background: rgba(79,209,197,0.16); }
       .note { background: rgba(255,255,255,0.03); color: #98a7b3; }
       .note.warn { color: #f5c26b; }
       .topnav { background:rgba(11,17,20,0.92); border-bottom-color:rgba(232,237,237,0.08); }
       .topnav button:hover, .topnav a:hover { background:rgba(79,209,197,0.1); }
       .pill { background: rgba(255,255,255,0.06); color: #98a7b3; }
+      .wave-steps li { background: rgba(255,255,255,0.05); color: #98a7b3; }
+      .wave-steps li.done { background: rgba(244,63,94,0.16); color: #fda4af; }
+      .wave-steps li.current { background: rgba(244,63,94,0.28); color: #fecdd3; border-color: rgba(251,113,133,0.6); }
     }
   </style>
 </head>
@@ -167,7 +198,7 @@
           </div>
           <div class="pill-row" id="value-pills"></div>
         </div>
-        <canvas id="universe" width="760" height="520"></canvas>
+        <canvas id="universe" width="760" height="400"></canvas>
         <div class="legend">
           <span class="l-svc">service</span>
           <span class="l-rte">route</span>
@@ -176,68 +207,70 @@
           <span class="l-idx">idx / aggregate</span>
           <span class="l-sel">selected</span>
           <span class="l-dep">dependsOn</span>
-          <span class="l-hit">recomputed wave</span>
-          <span class="l-ghost">ghost (density)</span>
+          <span class="l-hit">recomputed</span>
+          <span class="l-hop">wave hop</span>
+          <span class="l-ghost">ghost</span>
         </div>
       </div>
 
       <div class="side-card">
         <div class="stats">
-          <div class="stat"><div class="lbl">n (live)</div><div class="val" id="stat-n">—</div><div class="sub">wired entities + idx</div></div>
-          <div class="stat"><div class="lbl">k (last wave)</div><div class="val" id="stat-k">—</div><div class="sub">recomputed count</div></div>
+          <div class="stat"><div class="lbl">n</div><div class="val" id="stat-n">—</div></div>
+          <div class="stat"><div class="lbl">k</div><div class="val" id="stat-k">—</div></div>
           <div class="stat"><div class="lbl">changed</div><div class="val" id="stat-changed">—</div></div>
-          <div class="stat"><div class="lbl">latency</div><div class="val" id="stat-ms">—</div></div>
-          <div class="stat wide"><div class="lbl">sourcePath</div><div class="val" id="stat-src" style="font-size:0.78rem">—</div><div class="sub" id="stat-mut">no mutation yet</div></div>
+          <div class="stat"><div class="lbl">ms</div><div class="val" id="stat-ms">—</div></div>
         </div>
+        <div class="stat-src"><span id="stat-mut">no mutation yet</span> · <code id="stat-src">—</code></div>
 
-        <div class="lbl" style="font-size:0.66rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#51606d;margin-bottom:6px">Density (visual only)</div>
-        <div class="density" id="density">
+        <div class="side-lbl">Density</div>
+        <div class="density" id="density" role="group" aria-label="Density scale">
           <button type="button" data-scale="1">×1</button>
           <button type="button" data-scale="10">×10</button>
           <button type="button" data-scale="100" class="active">×100</button>
         </div>
-        <p class="density-note">Ghost dots inflate the drawn field to suggest larger n. Kernel graph stays the demo subset — load≠recompute. Starts at ×100.</p>
+        <p class="density-note">Ghosts only — kernel stays the demo subset.</p>
 
-        <div class="lbl" style="font-size:0.66rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#51606d;margin:10px 0 6px">Mutations</div>
+        <div class="side-lbl">Mutations</div>
         <div class="btns" id="mutations">
-          <button type="button" data-mut="upd-monday" disabled>
-            <span class="kind upd">UPDATE</span> S1 weekdays → false
-            <small>active derived → trips.T1/T2.live (k≈3)</small>
+          <button type="button" data-mut="upd-monday" disabled title="active → trips.T1/T2.live (k≈3)">
+            <span class="kind upd">UPD</span> S1 weekdays → false
           </button>
-          <button type="button" data-mut="upd-route" disabled>
-            <span class="kind upd">UPDATE</span> T1.routeId → 2 (R2)
-            <small>stopTimes.T1_*.routeId</small>
+          <button type="button" data-mut="upd-route" disabled title="stopTimes.T1_*.routeId">
+            <span class="kind upd">UPD</span> T1.routeId → 2
           </button>
-          <button type="button" data-mut="del-route" disabled>
-            <span class="kind del">DELETE</span> routes.R1 via me["-"]
-            <small>trips.*.validRoute → ABSENCE</small>
+          <button type="button" data-mut="del-route" disabled title="trips.*.validRoute → ABSENCE">
+            <span class="kind del">DEL</span> routes.R1
           </button>
-          <button type="button" data-mut="create-trip" disabled>
-            <span class="kind cre">CREATE</span> idx tripMember T_NEW 0→1
-            <small>honest CREATE: membership / tripCount</small>
+          <button type="button" data-mut="create-trip" disabled title="membership / tripCount">
+            <span class="kind cre">CRE</span> tripMember T_NEW 0→1
           </button>
-          <button type="button" data-mut="reset" disabled>
-            <span class="kind rst">RESET</span> rebuild universe
-            <small>reload graph into a fresh kernel</small>
+          <button type="button" data-mut="reset" disabled title="reload graph into a fresh kernel">
+            <span class="kind rst">RST</span> rebuild
           </button>
         </div>
-
-        <div class="lbl" style="font-size:0.66rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#51606d;margin:14px 0 6px">Last wave</div>
-        <div class="wave" id="wave">—</div>
       </div>
     </div>
 
+    <div class="wave-strip">
+      <div class="wave-strip-head">
+        <span class="lbl">Wave hops</span>
+        <button type="button" id="wave-skip" disabled>Skip</button>
+        <button type="button" id="wave-replay" disabled>Replay</button>
+      </div>
+      <ol class="wave-steps" id="wave-steps"><li class="empty">Run a mutation to animate meta.recomputed hop-by-hop</li></ol>
+    </div>
+
     <div class="code-grid">
-      <div class="code-card">
-        <div class="viz-title">.me syntax</div>
+      <details class="code-card" open>
+        <summary><span class="viz-title">.me syntax</span></summary>
         <div class="viz-sub" id="syntax-sub">Click a node — or run a mutation — to see the path as typed .me</div>
         <pre class="mono" id="me-syntax">—</pre>
-      </div>
-      <div class="code-card">
-        <div class="viz-title">explain() JSON</div>
-        <div class="viz-sub" id="explain-sub">full result from me.explain(path) — dependsOn + wave meta</div>
+      </details>
+      <details class="code-card" open>
+        <summary><span class="viz-title">explain() / last wave</span></summary>
+        <div class="viz-sub" id="explain-sub">me.explain(path) or last mutation wave meta</div>
         <pre class="mono" id="explain-json">—</pre>
-      </div>
+      </details>
     </div>
 
     <h2>What this is</h2>
@@ -308,6 +341,9 @@ let selectedExplainPath = null;
 let dependsOnPaths = new Set();
 let lastExplain = null;
 let lastMutationSyntax = "";
+const CANVAS_H = 400;
+const WAVE_HOP_MS = 320;
+let waveAnim = { steps: [], index: -1, timer: null, current: null };
 
 const $ = (id) => document.getElementById(id);
 function el(tag, cls, text) {
@@ -466,7 +502,10 @@ function buildVizModel(g) {
   const ns = [];
   const es = [];
   const col = { service: "#38bdf8", route: "#a78bfa", trip: "#34d399", stopTime: "#fbbf24", idx: "#fb7185" };
-  const laneY = { service: 70, route: 150, trip: 250, stopTime: 360, idx: 430 };
+  // Spread service→idx across full canvas height (small margins) — no dead zone under idx.
+  const laneKeys = ["service", "route", "trip", "stopTime", "idx"];
+  const yTop = 36, yBot = CANVAS_H - 28;
+  const laneY = Object.fromEntries(laneKeys.map((k, i) => [k, yTop + (i / (laneKeys.length - 1)) * (yBot - yTop)]));
   const place = (kind, list, keyFn, labelFn, pathFn) => {
     const n = list.length;
     list.forEach((item, i) => {
@@ -531,7 +570,7 @@ function makeGhosts(count) {
   for (let i = 0; i < count; i++) {
     out.push({
       x: 30 + Math.random() * 700,
-      y: 30 + Math.random() * 400,
+      y: 24 + Math.random() * (CANVAS_H - 48),
       r: 2 + Math.random() * 2.5,
     });
   }
@@ -624,7 +663,7 @@ function clearSelection() {
     ? `// no node selected\n\n// last mutation\n${lastMutationSyntax}`
     : "— click a node to select & explain (no mutation required)";
   $("syntax-sub").textContent = "Click a node — or run a mutation — to see the path as typed .me";
-  $("explain-sub").textContent = "full result from me.explain(path) — dependsOn + wave meta";
+  $("explain-sub").textContent = "me.explain(path) or last mutation wave meta";
   $("explain-json").textContent = "—";
   draw();
 }
@@ -682,7 +721,7 @@ function hitTestNode(clientX, clientY) {
   const canvas = $("universe");
   const rect = canvas.getBoundingClientRect();
   const x = ((clientX - rect.left) / rect.width) * (canvas.clientWidth || 760);
-  const y = ((clientY - rect.top) / rect.height) * 520;
+  const y = ((clientY - rect.top) / rect.height) * CANVAS_H;
   let best = null;
   let bestDist = Infinity;
   for (const n of nodes) {
@@ -708,7 +747,7 @@ function draw() {
   const ctx = canvas.getContext("2d");
   const dpr = window.devicePixelRatio || 1;
   const w = canvas.clientWidth || 760;
-  const h = 520;
+  const h = CANVAS_H;
   canvas.width = Math.floor(w * dpr);
   canvas.height = Math.floor(h * dpr);
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -787,15 +826,21 @@ function draw() {
 
   for (const n of nodes) {
     const wave = pathHit(n.id);
+    const hopNow = waveAnim.current && (
+      waveAnim.current === n.id ||
+      waveAnim.current.startsWith(n.id + ".") ||
+      n.id.startsWith(waveAnim.current + ".") ||
+      entityOfPath(waveAnim.current) === n.id
+    );
     const dep = pathDepends(n.id) && !wave;
     const sel = n.id === selectedNodeId;
     ctx.beginPath();
-    ctx.fillStyle = wave ? "#f43f5e" : dep ? "#22d3ee" : n.color;
-    ctx.arc(n.x, n.y, (wave || dep) ? n.r + 2 : n.r, 0, Math.PI * 2);
+    ctx.fillStyle = hopNow ? "#fb7185" : wave ? "#f43f5e" : dep ? "#22d3ee" : n.color;
+    ctx.arc(n.x, n.y, hopNow ? n.r + 4 : (wave || dep) ? n.r + 2 : n.r, 0, Math.PI * 2);
     ctx.fill();
-    if (wave || dep || sel) {
-      ctx.strokeStyle = sel ? "rgba(251,191,36,0.95)" : "rgba(255,255,255,0.7)";
-      ctx.lineWidth = sel ? 2 : 1.5;
+    if (hopNow || wave || dep || sel) {
+      ctx.strokeStyle = hopNow ? "rgba(255,255,255,0.95)" : sel ? "rgba(251,191,36,0.95)" : "rgba(255,255,255,0.7)";
+      ctx.lineWidth = hopNow ? 2.5 : sel ? 2 : 1.5;
       ctx.stroke();
     }
     ctx.fillStyle = "rgba(226,232,240,0.9)";
@@ -826,6 +871,86 @@ function setStatus(ok, title, kernelDesc) {
   );
 }
 
+function stopWaveAnim() {
+  if (waveAnim.timer != null) {
+    clearTimeout(waveAnim.timer);
+    waveAnim.timer = null;
+  }
+}
+
+function renderWaveSteps() {
+  const box = $("wave-steps");
+  const skip = $("wave-skip");
+  const replay = $("wave-replay");
+  const steps = waveAnim.steps;
+  if (!steps.length) {
+    box.replaceChildren(el("li", "empty", "Run a mutation to animate meta.recomputed hop-by-hop"));
+    skip.disabled = true;
+    replay.disabled = !(lastMeta?.recomputed?.length);
+    return;
+  }
+  box.replaceChildren();
+  steps.forEach((p, i) => {
+    const cls = i === waveAnim.index ? "current" : (i < waveAnim.index ? "done" : "");
+    const li = el("li", cls, `${i + 1}. ${p}`);
+    box.appendChild(li);
+  });
+  const playing = waveAnim.timer != null;
+  const atEnd = waveAnim.index >= steps.length - 1 && !playing;
+  skip.disabled = atEnd || (!playing && waveAnim.index < 0);
+  replay.disabled = false;
+}
+
+function startWaveAnim(recomputed) {
+  stopWaveAnim();
+  const steps = Array.isArray(recomputed) ? recomputed.slice() : [];
+  waveAnim.steps = steps;
+  waveAnim.index = -1;
+  waveAnim.current = null;
+  if (!steps.length) {
+    hitPaths = new Set();
+    renderWaveSteps();
+    draw();
+    return;
+  }
+  renderWaveSteps();
+  const tick = () => {
+    waveAnim.index += 1;
+    if (waveAnim.index >= steps.length) {
+      waveAnim.timer = null;
+      waveAnim.current = null;
+      hitPaths = new Set(steps);
+      renderWaveSteps();
+      draw();
+      return;
+    }
+    waveAnim.current = steps[waveAnim.index];
+    hitPaths = new Set(steps.slice(0, waveAnim.index + 1));
+    renderWaveSteps();
+    draw();
+    waveAnim.timer = setTimeout(tick, WAVE_HOP_MS);
+  };
+  tick();
+}
+
+function skipWaveAnim() {
+  if (!waveAnim.steps.length) return;
+  stopWaveAnim();
+  waveAnim.index = waveAnim.steps.length - 1;
+  waveAnim.current = null;
+  hitPaths = new Set(waveAnim.steps);
+  renderWaveSteps();
+  draw();
+}
+
+function replayWaveAnim() {
+  const steps = waveAnim.steps.length
+    ? waveAnim.steps
+    : (lastMeta?.recomputed ?? []);
+  if (!steps.length) return;
+  startWaveAnim(steps);
+}
+
 function updateStats(meta, mutLabel, ms) {
   lastMeta = meta;
   $("stat-n").textContent = String(nLive);
@@ -835,14 +960,19 @@ function updateStats(meta, mutLabel, ms) {
   $("stat-src").textContent = meta?.sourcePath ?? "—";
   $("stat-mut").textContent = mutLabel || "—";
   const recomputed = meta?.recomputed ?? [];
-  hitPaths = new Set(recomputed);
   sourcePath = meta?.sourcePath ?? null;
-  $("wave").textContent = meta
-    ? JSON.stringify({ k: meta.k, sourcePath: meta.sourcePath, recomputed, changed: meta.changed, dependsOn: meta.dependsOn }, null, 2)
-    : "—";
+  // Merge former LAST WAVE panel into explain JSON (selection refresh may overwrite with node explain).
+  if (meta) {
+    $("explain-sub").textContent = "last wave meta (also hop-animated below)";
+    $("explain-json").textContent = JSON.stringify(
+      { k: meta.k, sourcePath: meta.sourcePath, recomputed, changed: meta.changed, dependsOn: meta.dependsOn },
+      null,
+      2,
+    );
+  }
   refreshPills();
+  startWaveAnim(recomputed);
   if (selectedNodeId) refreshSelectionExplain();
-  else draw();
 }
 
 function refreshPills() {
@@ -939,7 +1069,8 @@ function runMutation(key) {
   lastMutationSyntax = syntax || "";
   if (key === "reset") {
     updateStats(null, label, ms);
-    $("wave").textContent = "universe rebuilt; click a node or run a mutation";
+    $("explain-sub").textContent = "universe rebuilt — click a node or run a mutation";
+    $("explain-json").textContent = "—";
     return;
   }
   updateStats(probe?.meta ?? null, label, ms);
@@ -968,11 +1099,13 @@ function rebuild() {
   $("stat-ms").textContent = "—";
   $("stat-src").textContent = "—";
   $("stat-mut").textContent = "seeded; waiting for mutation";
-  $("wave").textContent = "—";
+  stopWaveAnim();
+  waveAnim = { steps: [], index: -1, timer: null, current: null };
+  renderWaveSteps();
   $("me-syntax").textContent = "— click a node to select & explain (no mutation required)";
   $("explain-json").textContent = "—";
   $("syntax-sub").textContent = "Click a node — or run a mutation — to see the path as typed .me";
-  $("explain-sub").textContent = "full result from me.explain(path) — dependsOn + wave meta";
+  $("explain-sub").textContent = "me.explain(path) or last mutation wave meta";
   refreshPills();
   document.querySelectorAll("#mutations button").forEach((b) => { b.disabled = false; });
 }
@@ -1052,6 +1185,8 @@ async function main() {
     if (!b || b.disabled) return;
     runMutation(b.dataset.mut);
   });
+  $("wave-skip").addEventListener("click", () => skipWaveAnim());
+  $("wave-replay").addEventListener("click", () => replayWaveAnim());
   $("universe").addEventListener("click", (ev) => {
     const node = hitTestNode(ev.clientX, ev.clientY);
     if (node) selectNode(node);
