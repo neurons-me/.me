@@ -45,9 +45,6 @@
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: "Inter", "Helvetica Neue", Helvetica, Arial, sans-serif; background: #f4f7f8; color: #0f1720; min-height: 100vh; -webkit-font-smoothing: antialiased; }
     .page { max-width: 1180px; margin: 0 auto; padding: 28px 16px 28px; }
-    .breadcrumb { font-size: 0.78rem; color: #51606d; margin-bottom: 6px; display: flex; gap: 8px; flex-wrap: wrap; }
-    .breadcrumb a { color: #0f6a78; text-decoration: none; }
-    .breadcrumb a:hover { text-decoration: underline; }
     .kicker { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; color: #51606d; margin-bottom: 4px; }
     h1 { font-size: 1.55rem; font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; margin-bottom: 6px; }
     .rule { font-size: 0.9rem; line-height: 1.5; color: #1f2d38; max-width: 860px; margin-bottom: 8px; }
@@ -257,9 +254,9 @@
 
     @media (prefers-color-scheme: dark) {
       body { background: #0b1114; color: #e8eded; }
-      .kicker, .breadcrumb, .meta, .panel-sub, .stat .lbl, .side-lbl, .legend, .foot, .out-row .path, .out-row .hint, .stat-src, .status .kernel { color: #98a7b3; }
+      .kicker, .meta, .panel-sub, .stat .lbl, .side-lbl, .legend, .foot, .out-row .path, .out-row .hint, .stat-src, .status .kernel { color: #98a7b3; }
       .rule { color: #d5dde2; }
-      .breadcrumb a, .meta a { color: #4fd1c5; }
+      .meta a { color: #4fd1c5; }
       h2 { border-color: rgba(232,237,237,0.08); }
       .rule code, p code, .meta code, .stat code, .pill code, .out-row code { background: rgba(232,237,237,0.08); }
       .status, .panel { background: #111a1f; border-color: rgba(232,237,237,0.08); }
@@ -304,11 +301,6 @@
     <a href="https://neurons-me.github.io/mlearning.studio/datasets/madrid-gtfs/">Madrid GTFS dataset</a>
   </nav>
   <div class="page">
-    <p class="breadcrumb">
-      <a href="../">← .me Docs</a>
-      <span>/</span>
-      <a href="./">Tests</a>
-    </p>
     <p class="kicker">this.me / Tests</p>
     <h1>Raise the fare. Watch the cost move.</h1>
     <p class="rule">
