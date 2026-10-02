@@ -1,0 +1,728 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>.me — Semantic graph / reactive</title>
+  <meta name="description" content="Live semantic knowledge graph in this.me: mutate membership, watch = formulas recompute, inspect .me syntax and explain() JSON." />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/this.gui@1.4.6/dist/styles.css" />
+  <link rel="icon" type="image/png" href="https://res.cloudinary.com/dkwnxf6gm/image/upload/v1769890772/this.me.png">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: "Inter", "Helvetica Neue", Helvetica, Arial, sans-serif; background: #f4f7f8; color: #0f1720; min-height: 100vh; -webkit-font-smoothing: antialiased; }
+    .page { max-width: 1180px; margin: 0 auto; padding: 52px 20px 56px; }
+    .breadcrumb { font-size: 0.8rem; color: #51606d; margin-bottom: 10px; display: flex; gap: 8px; flex-wrap: wrap; }
+    .breadcrumb a { color: #0f6a78; text-decoration: none; }
+    .breadcrumb a:hover { text-decoration: underline; }
+    .kicker { font-size: 0.75rem; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; color: #51606d; margin-bottom: 6px; }
+    h1 { font-size: 1.85rem; font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; margin-bottom: 8px; }
+    .rule { font-size: 0.95rem; line-height: 1.55; color: #1f2d38; max-width: 820px; margin-bottom: 10px; }
+    .rule code, p code, li code, td code, .meta code, .stat code, .pill code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.86em; background: rgba(15,23,32,0.06); padding: 1px 5px; border-radius: 4px; }
+    .meta { font-size: 0.85rem; color: #51606d; line-height: 1.7; margin-bottom: 8px; }
+    .meta a { color: #0f6a78; }
+    .note { font-size: 0.8rem; line-height: 1.55; color: #51606d; background: rgba(15,23,32,0.04); border-left: 3px solid rgba(15,106,120,0.45); padding: 8px 12px; border-radius: 4px; margin: 12px 0 8px; max-width: 820px; }
+    .note.warn { border-left-color: rgba(217,119,6,0.7); background: rgba(217,119,6,0.07); color: #6b4d0a; }
+    h2 { font-size: 1.05rem; font-weight: 700; margin: 28px 0 8px; padding-bottom: 6px; border-bottom: 1px solid rgba(15,23,32,0.10); }
+
+    .status { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; background: #fff; border: 1px solid rgba(15,23,32,0.10); border-radius: 12px; padding: 10px 14px; margin: 10px 0 8px; font-size: 0.875rem; }
+    .status .big { font-weight: 800; font-size: 1rem; }
+    .status .kernel { color: #51606d; font-size: 0.8rem; flex-basis: 100%; line-height: 1.6; }
+    .status.ok { border-color: rgba(16,185,129,0.35); }
+    .status.bad { border-color: rgba(220,38,38,0.45); }
+    .pass-badge, .fail-badge, .run-badge { font-size: 0.72rem; font-weight: 700; padding: 2px 9px; border-radius: 20px; letter-spacing: 0.04em; white-space: nowrap; }
+    .pass-badge { background: rgba(16,185,129,0.12); color: #047857; }
+    .fail-badge { background: rgba(220,38,38,0.12); color: #b91c1c; }
+    .run-badge { background: rgba(15,23,32,0.06); color: #51606d; }
+
+    .layout { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 14px; margin-top: 8px; }
+    @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
+
+    .viz-card, .side-card, .code-card { background: #fff; border: 1px solid rgba(15,23,32,0.10); border-radius: 12px; padding: 14px 16px; }
+    .viz-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+    .viz-title { font-weight: 700; font-size: 0.95rem; }
+    .viz-sub { font-size: 0.75rem; color: #51606d; }
+    #universe { width: 100%; height: 520px; display: block; border-radius: 10px; background: #0b1114; cursor: crosshair; }
+    .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 0.72rem; color: #51606d; margin-top: 10px; }
+    .legend span::before { content: ""; display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; }
+    .legend .l-people::before { background: #38bdf8; }
+    .legend .l-topics::before { background: #a78bfa; }
+    .legend .l-papers::before { background: #34d399; }
+    .legend .l-derived::before { background: #fbbf24; }
+    .legend .l-hit::before { background: #f43f5e; border-radius: 2px; }
+    .legend .l-src::before { background: transparent; box-shadow: inset 0 0 0 2px #fbbf24; border-radius: 50%; }
+
+    .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+    .stat { background: rgba(15,23,32,0.035); border: 1px solid rgba(15,23,32,0.08); border-radius: 10px; padding: 10px 12px; }
+    .stat .lbl { font-size: 0.66rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #51606d; margin-bottom: 4px; }
+    .stat .val { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 1.05rem; font-weight: 700; }
+    .stat.wide { grid-column: 1 / -1; }
+    .stat .sub { font-size: 0.72rem; color: #51606d; margin-top: 4px; line-height: 1.4; word-break: break-word; }
+
+    .btns { display: flex; flex-direction: column; gap: 8px; }
+    .btns button {
+      appearance: none; border: 1px solid rgba(15,23,32,0.14); background: #fff; color: inherit;
+      border-radius: 10px; padding: 10px 12px; text-align: left; cursor: pointer; font: inherit; font-size: 0.82rem; line-height: 1.35;
+      transition: background 120ms, border-color 120ms, transform 80ms;
+    }
+    .btns button:hover:not(:disabled) { background: rgba(15,106,120,0.08); border-color: rgba(15,106,120,0.35); }
+    .btns button:active:not(:disabled) { transform: translateY(1px); }
+    .btns button:disabled { opacity: 0.45; cursor: not-allowed; }
+    .btns button .kind { display: inline-block; font-size: 0.66rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; margin-right: 6px; padding: 1px 6px; border-radius: 4px; }
+    .kind.upd { background: rgba(217,119,6,0.12); color: #a16207; }
+    .kind.rst { background: rgba(15,23,32,0.07); color: #51606d; }
+    .btns button small { display: block; color: #51606d; font-size: 0.72rem; margin-top: 3px; }
+
+    .pill-row { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 4px; }
+    .pill { font-size: 0.7rem; padding: 3px 8px; border-radius: 999px; background: rgba(15,23,32,0.06); color: #51606d; }
+    .pill.hit { background: rgba(244,63,94,0.14); color: #be123c; font-weight: 700; }
+
+    .code-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 14px; }
+    @media (max-width: 900px) { .code-grid { grid-template-columns: 1fr; } }
+    .code-card .viz-title { margin-bottom: 8px; }
+    .code-card .viz-sub { margin-bottom: 8px; }
+    pre.mono {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.72rem; line-height: 1.45;
+      background: #0b1114; color: #e2e8f0;
+      border-radius: 8px; padding: 12px 14px;
+      max-height: 320px; overflow: auto; white-space: pre-wrap; word-break: break-word;
+      border: 1px solid rgba(15,23,32,0.12);
+    }
+
+    .fatal { background: rgba(220,38,38,0.08); border: 1px solid rgba(220,38,38,0.35); color: #b91c1c; border-radius: 12px; padding: 14px 18px; font-size: 0.875rem; white-space: pre-wrap; margin-top: 16px; }
+    .foot { margin-top: 40px; font-size: 0.8rem; color: #51606d; line-height: 1.7; }
+    .foot a { color: #0f6a78; }
+
+    .topnav { position:fixed; top:0; left:0; right:0; z-index:100; display:flex; align-items:center; gap:4px; padding:8px 20px; background:rgba(244,247,248,0.92); backdrop-filter:blur(8px); border-bottom:1px solid rgba(15,23,32,0.08); font-size:0.82rem; font-weight:600; }
+    .topnav button { background:none; border:none; cursor:pointer; font:inherit; padding:4px 8px; border-radius:6px; color:inherit; transition:background 120ms; }
+    .topnav button:hover, .topnav a:hover { background:rgba(15,106,120,0.1); }
+    .topnav a { text-decoration:none; color:inherit; padding:4px 10px; border-radius:6px; transition:background 120ms; }
+    .topnav .spacer { flex:1; }
+
+    @media (prefers-color-scheme: dark) {
+      body { background: #0b1114; color: #e8eded; }
+      .kicker, .breadcrumb, .meta, .status .kernel, .foot, .viz-sub, .stat .lbl, .stat .sub, .btns button small, .legend { color: #98a7b3; }
+      .rule { color: #d5dde2; }
+      .breadcrumb a, .meta a, .foot a { color: #4fd1c5; }
+      h2 { border-color: rgba(232,237,237,0.08); }
+      .rule code, p code, li code, .meta code, .stat code, .pill code { background: rgba(232,237,237,0.08); }
+      .status, .viz-card, .side-card, .code-card { background: #111a1f; border-color: rgba(232,237,237,0.08); }
+      .stat { background: rgba(255,255,255,0.03); border-color: rgba(232,237,237,0.08); }
+      .btns button { background: #111a1f; border-color: rgba(232,237,237,0.12); color: #e8eded; }
+      .btns button:hover:not(:disabled) { background: rgba(79,209,197,0.1); border-color: rgba(79,209,197,0.35); }
+      .note { background: rgba(255,255,255,0.03); color: #98a7b3; }
+      .note.warn { color: #f5c26b; }
+      .topnav { background:rgba(11,17,20,0.92); border-bottom-color:rgba(232,237,237,0.08); }
+      .topnav button:hover, .topnav a:hover { background:rgba(79,209,197,0.1); }
+      .pill { background: rgba(255,255,255,0.06); color: #98a7b3; }
+      pre.mono { border-color: rgba(232,237,237,0.08); }
+    }
+  </style>
+</head>
+<body>
+  <nav class="topnav">
+    <button onclick="history.back()" title="Back">←</button>
+    <a href="https://neurons-me.github.io">⌂ Home</a>
+    <span class="spacer"></span>
+    <a href="https://github.com/neurons-me/.me" target="_blank" rel="noopener"><svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" style="vertical-align:middle;margin-right:4px"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg> GitHub</a>
+  </nav>
+
+  <div class="page">
+    <p class="breadcrumb">
+      <a href="../">← .me Docs</a>
+      <span>/</span>
+      <a href="./">Tests</a>
+    </p>
+    <p class="kicker">this.me / Tests / Semantic</p>
+    <h1>Semantic graph — reactive .me</h1>
+    <p class="rule" style="margin-bottom:6px">
+      Mutate a membership → watch <code>=</code> formulas recompute. <strong>k</strong> is the recomputed set size; inspect <code>explain()</code> JSON beside the live graph.
+    </p>
+
+    <div class="status" id="status">
+      <span class="run-badge">RUNNING</span>
+      <span class="big">Loading kernel…</span>
+    </div>
+    <div id="fatal"></div>
+
+    <div class="layout">
+      <div class="viz-card">
+        <div class="viz-head">
+          <div>
+            <div class="viz-title">Semantic knowledge graph</div>
+            <div class="viz-sub" id="viz-sub">waiting for kernel…</div>
+          </div>
+          <div class="pill-row" id="value-pills"></div>
+        </div>
+        <canvas id="universe" width="760" height="520"></canvas>
+        <div class="legend">
+          <span class="l-people">people</span>
+          <span class="l-topics">topics</span>
+          <span class="l-papers">papers</span>
+          <span class="l-derived">derived (=)</span>
+          <span class="l-hit">recomputed</span>
+          <span class="l-src">sourcePath</span>
+        </div>
+      </div>
+
+      <div class="side-card">
+        <div class="stats">
+          <div class="stat"><div class="lbl">n (facts)</div><div class="val" id="stat-n">—</div><div class="sub">asserted + derived paths</div></div>
+          <div class="stat"><div class="lbl">k (last wave)</div><div class="val" id="stat-k">—</div><div class="sub">recomputed count</div></div>
+          <div class="stat"><div class="lbl">changed</div><div class="val" id="stat-changed">—</div></div>
+          <div class="stat"><div class="lbl">latency</div><div class="val" id="stat-ms">—</div></div>
+          <div class="stat wide"><div class="lbl">sourcePath</div><div class="val" id="stat-src" style="font-size:0.78rem">—</div><div class="sub" id="stat-mut">no mutation yet</div></div>
+        </div>
+
+        <div class="lbl" style="font-size:0.66rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#51606d;margin:4px 0 6px">Mutations</div>
+        <div class="btns" id="mutations">
+          <button type="button" data-mut="bob-off" disabled>
+            <span class="kind upd">UPDATE</span> bob.interested.kg 1→0
+            <small>wave → fanCount + sharesKgWithBob</small>
+          </button>
+          <button type="button" data-mut="carol-on" disabled>
+            <span class="kind upd">UPDATE</span> carol.interested.kg 0→1
+            <small>wave → fanCount</small>
+          </button>
+          <button type="button" data-mut="bob-unauthor" disabled>
+            <span class="kind upd">UPDATE</span> papers.p1.authored.bob 1→0
+            <small>wave → authorCount + coAuthorBob</small>
+          </button>
+          <button type="button" data-mut="reset" disabled>
+            <span class="kind rst">RESET</span> rebuild graph
+            <small>fresh kernel + seed + warm-read</small>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="code-grid">
+      <div class="code-card">
+        <div class="viz-title">.me syntax</div>
+        <div class="viz-sub">Seed script + last mutation as typed JS</div>
+        <pre class="mono" id="me-syntax">—</pre>
+      </div>
+      <div class="code-card">
+        <div class="viz-title">explain() JSON</div>
+        <div class="viz-sub" id="explain-sub">full meta from me.explain(probePath)</div>
+        <pre class="mono" id="explain-json">—</pre>
+      </div>
+    </div>
+
+    <h2>What this is</h2>
+    <p class="rule">
+      A tiny semantic universe — people, topics, papers — wired with absolute-path
+      <code>=</code> formulas. Flip membership (0/1), then read <code>explain()</code> for
+      <code>k</code>, <code>recomputed</code>, <code>changed</code>, and <code>sourcePath</code>.
+    </p>
+    <p class="note">
+      Honesty: this is <strong>not</strong> RDF/SPARQL. Paths are <code>.me</code> namespace assertions
+      plus <code>=</code> derived facts. <strong>k</strong> = recomputed set size for the last wave
+      that touched the probe path — load cost ≠ recompute cost.
+    </p>
+    <p class="note warn" id="kernel-note">
+      Kernel: published <code>this.me@4.1.0</code> (hash-pinned), same pin as the GTFS Madrid demo.
+      Append <code>?local=1</code> to load <code>../../Typescript/dist/me.es.js</code> instead
+      (static serve from repo root).
+    </p>
+    <p class="meta">
+      Sibling:
+      <a href="./gtfs-madrid-universe.html">GTFS Madrid / k</a>
+      · package:
+      <a href="https://www.npmjs.com/package/this.me">this.me@4.1.0</a>
+    </p>
+
+    <p class="foot" id="foot">
+      Seed uses number/boolean-safe <code>=</code> formulas and 0/1 membership.
+      Mutations recompute only dependents — watch the red wave and gold source ring.
+    </p>
+  </div>
+
+<script type="module">
+// ── Kernel: published this.me@4.1.0 (same pin as gtfs-madrid-universe.html) ──
+const KERNEL = {
+  version: "4.1.0",
+  sha256: "47cc8f9a9b5ee2921a59023d400e694d6c9b9f80a0782db850b06156cbb46afa",
+  urls: [
+    "https://cdn.jsdelivr.net/npm/this.me@4.1.0/dist/me.es.js",
+    "https://unpkg.com/this.me@4.1.0/dist/me.es.js",
+  ],
+  localRel: "../../Typescript/dist/me.es.js",
+  whyNot402: "4.0.2 evaluates absolute cross-branch `=` but does not invalidate dependents after me[\"-\"] DELETE (ABSENCE).",
+};
+
+const SEED_SYNTAX = `me.people.alice.interested.kg(1)
+me.people.bob.interested.kg(1)
+me.people.carol.interested.kg(0)
+me.topics.kg["="]("fanCount", "people.alice.interested.kg + people.bob.interested.kg + people.carol.interested.kg")
+me.papers.p1.authored.alice(1)
+me.papers.p1.authored.bob(1)
+me.papers.p1.about.kg(1)
+me.papers.p1["="]("authorCount", "authored.alice + authored.bob")
+me.people.alice["="]("coAuthorBob", "papers.p1.authored.alice * papers.p1.authored.bob")
+me.people.alice["="]("sharesKgWithBob", "people.alice.interested.kg * people.bob.interested.kg")
+
+// warm-read derived paths
+me("topics.kg.fanCount")
+me("papers.p1.authorCount")
+me("people.alice.coAuthorBob")
+me("people.alice.sharesKgWithBob")`;
+
+const WARM_PATHS = [
+  "topics.kg.fanCount",
+  "papers.p1.authorCount",
+  "people.alice.coAuthorBob",
+  "people.alice.sharesKgWithBob",
+];
+
+const VALUE_PILLS = [
+  ["fanCount", "topics.kg.fanCount"],
+  ["authorCount", "papers.p1.authorCount"],
+  ["coAuthorBob", "people.alice.coAuthorBob"],
+  ["sharesKg", "people.alice.sharesKgWithBob"],
+  ["bob.kg", "people.bob.interested.kg"],
+  ["carol.kg", "people.carol.interested.kg"],
+  ["p1.bob", "papers.p1.authored.bob"],
+];
+
+let ME, me;
+let nodes = [];
+let edges = [];
+let hitPaths = new Set();
+let sourcePath = null;
+let lastMeta = null;
+let lastProbePath = null;
+let lastMutationSyntax = "";
+let nLive = 0;
+let anim = null;
+
+const $ = (id) => document.getElementById(id);
+function el(tag, cls, text) {
+  const n = document.createElement(tag);
+  if (cls) n.className = cls;
+  if (text !== undefined) n.textContent = text;
+  return n;
+}
+
+async function sha256Hex(text) {
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+  return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+async function loadKernel() {
+  const params = new URLSearchParams(location.search);
+  const wantLocal = params.get("local") === "1";
+  const npm = params.get("npm");
+  const errors = [];
+
+  if (wantLocal) {
+    try {
+      const url = new URL(KERNEL.localRel, location.href).href;
+      const res = await fetch(url, { cache: "no-store" });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const text = await res.text();
+      const hash = await sha256Hex(text);
+      const blobUrl = URL.createObjectURL(new Blob([text], { type: "text/javascript" }));
+      const mod = await import(blobUrl);
+      URL.revokeObjectURL(blobUrl);
+      return {
+        mod,
+        desc: [`local worktree `, ["code", KERNEL.localRel], ` (sha256 `, ["code", hash.slice(0, 16) + "…"], `, not pin-checked).`],
+      };
+    } catch (e) {
+      errors.push(`local: ${e?.message || e}`);
+    }
+  }
+
+  if (npm && /^\d+\.\d+\.\d+(-[0-9A-Za-z.]+)?$/.test(npm) && npm !== KERNEL.version) {
+    const url = `https://cdn.jsdelivr.net/npm/this.me@${npm}/dist/me.es.js`;
+    const mod = await import(url);
+    return { mod, desc: [`this.me@${npm} from npm (not hash-pinned), loaded from `, ["code", url], "."] };
+  }
+
+  for (const url of KERNEL.urls) {
+    try {
+      const res = await fetch(url, { cache: "force-cache" });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const text = await res.text();
+      const hash = await sha256Hex(text);
+      if (hash !== KERNEL.sha256) throw new Error(`sha256 mismatch: got ${hash}`);
+      const blobUrl = URL.createObjectURL(new Blob([text], { type: "text/javascript" }));
+      const mod = await import(blobUrl);
+      URL.revokeObjectURL(blobUrl);
+      return {
+        mod,
+        desc: [
+          `this.me@${KERNEL.version} from npm, `, ["code", "dist/me.es.js"], " loaded from ",
+          ["code", new URL(url).host], " (sha256 ", ["code", hash.slice(0, 16) + "…"], ", verified).",
+          ` Prefer 4.1.0 over isolation’s 4.0.2: ${KERNEL.whyNot402}`,
+        ],
+      };
+    } catch (e) {
+      errors.push(`${url}: ${e?.message || e}`);
+    }
+  }
+  throw new Error("Could not load this.me@" + KERNEL.version + ":\n" + errors.join("\n"));
+}
+
+function seedMe(instance) {
+  instance.people.alice.interested.kg(1);
+  instance.people.bob.interested.kg(1);
+  instance.people.carol.interested.kg(0);
+  instance.topics.kg["="](
+    "fanCount",
+    "people.alice.interested.kg + people.bob.interested.kg + people.carol.interested.kg",
+  );
+  instance.papers.p1.authored.alice(1);
+  instance.papers.p1.authored.bob(1);
+  instance.papers.p1.about.kg(1);
+  instance.papers.p1["="]("authorCount", "authored.alice + authored.bob");
+  instance.people.alice["="]("coAuthorBob", "papers.p1.authored.alice * papers.p1.authored.bob");
+  instance.people.alice["="]("sharesKgWithBob", "people.alice.interested.kg * people.bob.interested.kg");
+}
+
+function warmReads(instance) {
+  for (const p of WARM_PATHS) instance(p);
+}
+
+function buildGraphLayout(w, h) {
+  // Layered + light force: people / topics+papers / derived
+  const cx = w / 2;
+  const peopleY = h * 0.22;
+  const midY = h * 0.48;
+  const derY = h * 0.78;
+
+  const N = [
+    { id: "people.alice", label: "alice", kind: "people", pathPrefix: "people.alice", x: cx - 180, y: peopleY, r: 16, color: "#38bdf8" },
+    { id: "people.bob", label: "bob", kind: "people", pathPrefix: "people.bob", x: cx, y: peopleY, r: 16, color: "#38bdf8" },
+    { id: "people.carol", label: "carol", kind: "people", pathPrefix: "people.carol", x: cx + 180, y: peopleY, r: 16, color: "#38bdf8" },
+    { id: "topics.kg", label: "topics.kg", kind: "topics", pathPrefix: "topics.kg", x: cx - 110, y: midY, r: 18, color: "#a78bfa" },
+    { id: "papers.p1", label: "papers.p1", kind: "papers", pathPrefix: "papers.p1", x: cx + 130, y: midY, r: 18, color: "#34d399" },
+    { id: "topics.kg.fanCount", label: "fanCount", kind: "derived", pathExact: "topics.kg.fanCount", x: cx - 200, y: derY, r: 12, color: "#fbbf24" },
+    { id: "papers.p1.authorCount", label: "authorCount", kind: "derived", pathExact: "papers.p1.authorCount", x: cx + 40, y: derY, r: 12, color: "#fbbf24" },
+    { id: "people.alice.coAuthorBob", label: "coAuthorBob", kind: "derived", pathExact: "people.alice.coAuthorBob", x: cx + 200, y: derY, r: 12, color: "#fbbf24" },
+    { id: "people.alice.sharesKgWithBob", label: "sharesKgWithBob", kind: "derived", pathExact: "people.alice.sharesKgWithBob", x: cx - 40, y: derY + 36, r: 12, color: "#fbbf24" },
+  ];
+
+  const E = [
+    // membership (asserted)
+    { from: "people.alice", to: "topics.kg", kind: "member", fieldFrom: "people.alice.interested.kg", label: "interested" },
+    { from: "people.bob", to: "topics.kg", kind: "member", fieldFrom: "people.bob.interested.kg", label: "interested" },
+    { from: "people.carol", to: "topics.kg", kind: "member", fieldFrom: "people.carol.interested.kg", label: "interested" },
+    { from: "people.alice", to: "papers.p1", kind: "member", fieldFrom: "papers.p1.authored.alice", label: "authored" },
+    { from: "people.bob", to: "papers.p1", kind: "member", fieldFrom: "papers.p1.authored.bob", label: "authored" },
+    { from: "papers.p1", to: "topics.kg", kind: "member", fieldFrom: "papers.p1.about.kg", label: "about" },
+    // formula deps
+    { from: "people.alice", to: "topics.kg.fanCount", kind: "formula", fieldTo: "topics.kg.fanCount", fieldFrom: "people.alice.interested.kg" },
+    { from: "people.bob", to: "topics.kg.fanCount", kind: "formula", fieldTo: "topics.kg.fanCount", fieldFrom: "people.bob.interested.kg" },
+    { from: "people.carol", to: "topics.kg.fanCount", kind: "formula", fieldTo: "topics.kg.fanCount", fieldFrom: "people.carol.interested.kg" },
+    { from: "topics.kg", to: "topics.kg.fanCount", kind: "formula", fieldTo: "topics.kg.fanCount" },
+    { from: "papers.p1", to: "papers.p1.authorCount", kind: "formula", fieldTo: "papers.p1.authorCount", fieldFrom: "papers.p1.authored.alice" },
+    { from: "people.bob", to: "papers.p1.authorCount", kind: "formula", fieldTo: "papers.p1.authorCount", fieldFrom: "papers.p1.authored.bob" },
+    { from: "people.alice", to: "people.alice.coAuthorBob", kind: "formula", fieldTo: "people.alice.coAuthorBob", fieldFrom: "papers.p1.authored.alice" },
+    { from: "people.bob", to: "people.alice.coAuthorBob", kind: "formula", fieldTo: "people.alice.coAuthorBob", fieldFrom: "papers.p1.authored.bob" },
+    { from: "people.alice", to: "people.alice.sharesKgWithBob", kind: "formula", fieldTo: "people.alice.sharesKgWithBob", fieldFrom: "people.alice.interested.kg" },
+    { from: "people.bob", to: "people.alice.sharesKgWithBob", kind: "formula", fieldTo: "people.alice.sharesKgWithBob", fieldFrom: "people.bob.interested.kg" },
+  ];
+
+  // light separation pass
+  for (let iter = 0; iter < 40; iter++) {
+    for (let i = 0; i < N.length; i++) {
+      for (let j = i + 1; j < N.length; j++) {
+        const a = N[i], b = N[j];
+        let dx = b.x - a.x, dy = b.y - a.y;
+        let dist = Math.hypot(dx, dy) || 0.01;
+        const min = a.r + b.r + 36;
+        if (dist < min) {
+          const push = (min - dist) * 0.08;
+          dx /= dist; dy /= dist;
+          a.x -= dx * push; a.y -= dy * push;
+          b.x += dx * push; b.y += dy * push;
+        }
+      }
+    }
+    for (const n of N) {
+      n.x = Math.min(w - 40, Math.max(40, n.x));
+      n.y = Math.min(h - 28, Math.max(28, n.y));
+    }
+  }
+
+  nodes = N;
+  edges = E;
+  nLive = 10; // 6 asserted + 4 derived
+}
+
+function pathHit(node) {
+  if (node.pathExact) return hitPaths.has(node.pathExact);
+  if (node.pathPrefix) {
+    for (const p of hitPaths) {
+      if (p === node.pathPrefix || p.startsWith(node.pathPrefix + ".")) return true;
+    }
+  }
+  return hitPaths.has(node.id);
+}
+
+function nodeForSource(src) {
+  if (!src) return null;
+  // prefer exact derived / leaf match, else entity prefix
+  let best = null;
+  for (const n of nodes) {
+    if (n.pathExact === src) return n;
+    if (n.pathPrefix && (src === n.pathPrefix || src.startsWith(n.pathPrefix + "."))) {
+      if (!best || (n.pathPrefix.length > (best.pathPrefix?.length || 0))) best = n;
+    }
+  }
+  return best;
+}
+
+function draw() {
+  const canvas = $("universe");
+  const ctx = canvas.getContext("2d");
+  const dpr = window.devicePixelRatio || 1;
+  const w = canvas.clientWidth || 760;
+  const h = 520;
+  canvas.width = Math.floor(w * dpr);
+  canvas.height = Math.floor(h * dpr);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, w, h);
+
+  ctx.fillStyle = "#0b1114";
+  ctx.fillRect(0, 0, w, h);
+  ctx.strokeStyle = "rgba(148,163,184,0.08)";
+  ctx.lineWidth = 1;
+  for (let x = 40; x < w; x += 40) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke(); }
+  for (let y = 40; y < h; y += 40) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke(); }
+
+  // lane labels
+  ctx.fillStyle = "rgba(148,163,184,0.45)";
+  ctx.font = "11px Inter, sans-serif";
+  ctx.textAlign = "left";
+  ctx.fillText("people", 12, 18);
+  ctx.fillText("topics / papers", 12, h * 0.48 - 24);
+  ctx.fillText("derived (=)", 12, h * 0.72);
+
+  const byId = new Map(nodes.map((n) => [n.id, n]));
+
+  for (const e of edges) {
+    const a = byId.get(e.from);
+    const b = byId.get(e.to);
+    if (!a || !b) continue;
+    const hit = (e.fieldFrom && hitPaths.has(e.fieldFrom))
+      || (e.fieldTo && hitPaths.has(e.fieldTo))
+      || pathHit(a) || pathHit(b);
+    ctx.beginPath();
+    if (e.kind === "formula") {
+      ctx.setLineDash([5, 4]);
+      ctx.strokeStyle = hit ? "rgba(244,63,94,0.85)" : "rgba(148,163,184,0.35)";
+      ctx.lineWidth = hit ? 2 : 1.2;
+    } else {
+      ctx.setLineDash([]);
+      ctx.strokeStyle = hit ? "rgba(244,63,94,0.85)" : "rgba(148,163,184,0.28)";
+      ctx.lineWidth = hit ? 2.2 : 1.4;
+    }
+    ctx.moveTo(a.x, a.y);
+    ctx.lineTo(b.x, b.y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  if (sourcePath) {
+    const n = nodeForSource(sourcePath);
+    if (n) {
+      ctx.beginPath();
+      ctx.strokeStyle = "rgba(251,191,36,0.95)";
+      ctx.lineWidth = 2.5;
+      ctx.arc(n.x, n.y, n.r + 9, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+  }
+
+  for (const n of nodes) {
+    const hit = pathHit(n);
+    ctx.beginPath();
+    ctx.fillStyle = hit ? "#f43f5e" : n.color;
+    ctx.arc(n.x, n.y, hit ? n.r + 2 : n.r, 0, Math.PI * 2);
+    ctx.fill();
+    if (hit) {
+      ctx.strokeStyle = "rgba(255,255,255,0.7)";
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    }
+    ctx.fillStyle = "rgba(226,232,240,0.92)";
+    ctx.font = "11px ui-monospace, Menlo, monospace";
+    ctx.textAlign = "center";
+    ctx.fillText(n.label, n.x, n.y - n.r - 6);
+  }
+
+  ctx.textAlign = "left";
+  ctx.fillStyle = "rgba(148,163,184,0.9)";
+  ctx.font = "12px Inter, sans-serif";
+  const k = lastMeta?.k ?? "—";
+  ctx.fillText(`n=${nLive}  ·  k=${k}  ·  people/topics/papers + = formulas`, 14, h - 14);
+}
+
+function setStatus(ok, title, kernelDesc) {
+  const st = $("status");
+  st.className = "status " + (ok ? "ok" : "bad");
+  const kd = el("span", "kernel");
+  for (const part of ["Kernel: ", ...(kernelDesc || [])]) {
+    kd.appendChild(Array.isArray(part) ? el(part[0], "", part[1]) : document.createTextNode(part));
+  }
+  st.replaceChildren(
+    el("span", ok ? "pass-badge" : "fail-badge", ok ? "READY" : "ERROR"),
+    el("span", "big", title),
+    kd,
+  );
+}
+
+function updateSyntaxPanel() {
+  const mut = lastMutationSyntax
+    ? `\n\n// last mutation\n${lastMutationSyntax}`
+    : "\n\n// no mutation yet — click a button";
+  $("me-syntax").textContent = SEED_SYNTAX + mut;
+}
+
+function updateExplainPanel(meta, probePath) {
+  lastProbePath = probePath;
+  $("explain-sub").textContent = probePath
+    ? `me.explain(${JSON.stringify(probePath)}) → meta`
+    : "full meta from me.explain(probePath)";
+  $("explain-json").textContent = meta
+    ? JSON.stringify(meta, null, 2)
+    : "—";
+}
+
+function updatePills() {
+  const row = $("value-pills");
+  row.replaceChildren();
+  if (!me) return;
+  for (const [label, path] of VALUE_PILLS) {
+    let v;
+    try { v = me(path); } catch { v = "?"; }
+    const hit = hitPaths.has(path);
+    const p = el("span", "pill" + (hit ? " hit" : ""), `${label}=${v}`);
+    row.appendChild(p);
+  }
+}
+
+function updateStats(meta, mutLabel, ms, probePath) {
+  lastMeta = meta;
+  $("stat-n").textContent = String(nLive);
+  $("stat-k").textContent = meta?.k != null ? String(meta.k) : "—";
+  $("stat-changed").textContent = meta?.changed ? String(meta.changed.length) : "—";
+  $("stat-ms").textContent = ms != null ? `${ms.toFixed(2)} ms` : "—";
+  $("stat-src").textContent = meta?.sourcePath ?? "—";
+  $("stat-mut").textContent = mutLabel || "—";
+  const recomputed = meta?.recomputed ?? [];
+  hitPaths = new Set(recomputed);
+  sourcePath = meta?.sourcePath ?? null;
+  updateExplainPanel(meta, probePath);
+  updatePills();
+  draw();
+}
+
+function explainProbe(paths) {
+  let best = null;
+  for (const p of paths) {
+    try {
+      const meta = me.explain(p)?.meta;
+      if (meta && (best == null || (meta.k ?? 0) > (best.k ?? 0))) best = { path: p, meta };
+    } catch { /* ignore */ }
+  }
+  return best;
+}
+
+function setMutEnabled(on) {
+  document.querySelectorAll("#mutations button").forEach((b) => { b.disabled = !on; });
+}
+
+function rebuild() {
+  me = new ME();
+  seedMe(me);
+  warmReads(me);
+  lastMutationSyntax = "";
+  lastMeta = null;
+  hitPaths = new Set();
+  sourcePath = null;
+  const canvas = $("universe");
+  const w = canvas.clientWidth || 760;
+  buildGraphLayout(w, 520);
+  updateSyntaxPanel();
+  updateStats(null, "seeded + warm-read", null, null);
+  $("viz-sub").textContent = "people · topics · papers — membership edges + formula deps";
+  // show baseline explain of fanCount (no wave yet)
+  try {
+    const meta = me.explain("topics.kg.fanCount")?.meta;
+    updateExplainPanel(meta, "topics.kg.fanCount");
+  } catch { /* ignore */ }
+  updatePills();
+  draw();
+}
+
+function runMutation(key) {
+  if (!me) return;
+  const t0 = performance.now();
+  let label = key;
+  let probePaths = [];
+  let syntax = "";
+
+  if (key === "bob-off") {
+    me.people.bob.interested.kg(0);
+    label = "bob.interested.kg 1→0";
+    syntax = "me.people.bob.interested.kg(0)";
+    probePaths = ["topics.kg.fanCount", "people.alice.sharesKgWithBob"];
+  } else if (key === "carol-on") {
+    me.people.carol.interested.kg(1);
+    label = "carol.interested.kg 0→1";
+    syntax = "me.people.carol.interested.kg(1)";
+    probePaths = ["topics.kg.fanCount"];
+  } else if (key === "bob-unauthor") {
+    me.papers.p1.authored.bob(0);
+    label = "papers.p1.authored.bob 1→0";
+    syntax = "me.papers.p1.authored.bob(0)";
+    probePaths = ["papers.p1.authorCount", "people.alice.coAuthorBob"];
+  } else if (key === "reset") {
+    rebuild();
+    lastMutationSyntax = "// RESET — rebuild universe\nme = new ME(); seed(); warm();";
+    updateSyntaxPanel();
+    return;
+  } else {
+    return;
+  }
+
+  const ms = performance.now() - t0;
+  lastMutationSyntax = syntax;
+  updateSyntaxPanel();
+  const probe = explainProbe(probePaths);
+  updateStats(probe?.meta ?? null, label, ms, probe?.path ?? probePaths[0]);
+}
+
+async function boot() {
+  try {
+    const kernel = await loadKernel();
+    ME = kernel.mod.default || kernel.mod.ME;
+    if (!ME) throw new Error("ME constructor missing from module");
+    rebuild();
+    setMutEnabled(true);
+    setStatus(true, "Semantic graph ready", kernel.desc);
+    $("mutations").addEventListener("click", (ev) => {
+      const b = ev.target.closest("button[data-mut]");
+      if (!b || b.disabled) return;
+      runMutation(b.dataset.mut);
+    });
+    window.addEventListener("resize", () => {
+      const canvas = $("universe");
+      const w = canvas.clientWidth || 760;
+      buildGraphLayout(w, 520);
+      draw();
+    });
+  } catch (e) {
+    setStatus(false, "Kernel failed to load", []);
+    $("fatal").replaceChildren(el("div", "fatal", String(e?.stack || e)));
+  }
+}
+
+boot();
+</script>
+</body>
+</html>

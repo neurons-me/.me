@@ -2,18 +2,37 @@
   "meta": {
     "kind": "gtfs-madrid-demo-subset",
     "adapter": "Typescript/tests/Benchmarks/GTFS-Madrid/adapter.ts",
-    "note": "Synthetic mini matching adapter semantics (not full Zenodo dump). Shape inspired by scale-1: services → trips → stopTimes, plus routes and gtfs.idx membership for CREATE honesty.",
+    "note": "Synthetic mini matching adapter semantics (not full Zenodo dump). Shape inspired by scale-1: services \u2192 trips \u2192 stopTimes, plus routes and gtfs.idx membership for CREATE honesty.",
     "formulaLimit": "=` yields number|boolean only; routeId on trips/stopTimes is numeric code (1=R1, 2=R2).",
     "nLive": 14,
     "scales": {
-      "1": { "label": "scale≈1 demo", "extraGhosts": 0 },
-      "10": { "label": "density×10 (ghosts)", "extraGhosts": 120 },
-      "100": { "label": "density×100 (ghosts)", "extraGhosts": 1200 }
+      "1": {
+        "label": "scale\u22481 demo",
+        "extraGhosts": 0
+      },
+      "10": {
+        "label": "density\u00d710 (ghosts)",
+        "extraGhosts": 220
+      },
+      "100": {
+        "label": "density\u00d7100 (ghosts)",
+        "extraGhosts": 1400
+      }
     }
   },
   "routes": [
-    { "routeId": "R1", "code": 1, "shortName": "L1", "active": true },
-    { "routeId": "R2", "code": 2, "shortName": "L2", "active": true }
+    {
+      "routeId": "R1",
+      "code": 1,
+      "shortName": "L1",
+      "active": true
+    },
+    {
+      "routeId": "R2",
+      "code": 2,
+      "shortName": "L2",
+      "active": true
+    }
   ],
   "services": [
     {
@@ -42,72 +61,236 @@
     }
   ],
   "trips": [
-    { "tripId": "T1", "routeId": "R1", "routeCode": 1, "serviceId": "S1" },
-    { "tripId": "T2", "routeId": "R1", "routeCode": 1, "serviceId": "S1" },
-    { "tripId": "T3", "routeId": "R2", "routeCode": 2, "serviceId": "S2" }
+    {
+      "tripId": "T1",
+      "routeId": "R1",
+      "routeCode": 1,
+      "serviceId": "S1"
+    },
+    {
+      "tripId": "T2",
+      "routeId": "R1",
+      "routeCode": 1,
+      "serviceId": "S1"
+    },
+    {
+      "tripId": "T3",
+      "routeId": "R2",
+      "routeCode": 2,
+      "serviceId": "S2"
+    }
   ],
   "stopTimes": [
-    { "tripId": "T1", "stopId": "ST_A", "stopSequence": 1, "arrivalTime": "08:00:00" },
-    { "tripId": "T1", "stopId": "ST_B", "stopSequence": 2, "arrivalTime": "08:05:00" },
-    { "tripId": "T1", "stopId": "ST_C", "stopSequence": 3, "arrivalTime": "08:12:00" },
-    { "tripId": "T2", "stopId": "ST_A", "stopSequence": 1, "arrivalTime": "09:00:00" },
-    { "tripId": "T2", "stopId": "ST_D", "stopSequence": 2, "arrivalTime": "09:08:00" },
-    { "tripId": "T3", "stopId": "ST_E", "stopSequence": 1, "arrivalTime": "10:00:00" },
-    { "tripId": "T3", "stopId": "ST_F", "stopSequence": 2, "arrivalTime": "10:07:00" }
+    {
+      "tripId": "T1",
+      "stopId": "ST_A",
+      "stopSequence": 1,
+      "arrivalTime": "08:00:00"
+    },
+    {
+      "tripId": "T1",
+      "stopId": "ST_B",
+      "stopSequence": 2,
+      "arrivalTime": "08:05:00"
+    },
+    {
+      "tripId": "T1",
+      "stopId": "ST_C",
+      "stopSequence": 3,
+      "arrivalTime": "08:12:00"
+    },
+    {
+      "tripId": "T2",
+      "stopId": "ST_A",
+      "stopSequence": 1,
+      "arrivalTime": "09:00:00"
+    },
+    {
+      "tripId": "T2",
+      "stopId": "ST_D",
+      "stopSequence": 2,
+      "arrivalTime": "09:08:00"
+    },
+    {
+      "tripId": "T3",
+      "stopId": "ST_E",
+      "stopSequence": 1,
+      "arrivalTime": "10:00:00"
+    },
+    {
+      "tripId": "T3",
+      "stopId": "ST_F",
+      "stopSequence": 2,
+      "arrivalTime": "10:07:00"
+    }
   ],
   "idx": {
     "routeMembers": [
-      { "routeId": "R1", "present": 1 },
-      { "routeId": "R2", "present": 1 },
-      { "routeId": "R3", "present": 0 }
+      {
+        "routeId": "R1",
+        "present": 1
+      },
+      {
+        "routeId": "R2",
+        "present": 1
+      },
+      {
+        "routeId": "R3",
+        "present": 0
+      }
     ],
     "serviceMembers": [
-      { "serviceId": "S1", "present": 1 },
-      { "serviceId": "S2", "present": 1 },
-      { "serviceId": "S3", "present": 0 }
+      {
+        "serviceId": "S1",
+        "present": 1
+      },
+      {
+        "serviceId": "S2",
+        "present": 1
+      },
+      {
+        "serviceId": "S3",
+        "present": 0
+      }
     ],
     "tripMembers": {
       "R1": [
-        { "tripId": "T1", "present": 1 },
-        { "tripId": "T2", "present": 1 },
-        { "tripId": "T_NEW", "present": 0 }
+        {
+          "tripId": "T1",
+          "present": 1
+        },
+        {
+          "tripId": "T2",
+          "present": 1
+        },
+        {
+          "tripId": "T_NEW",
+          "present": 0
+        }
       ],
       "R2": [
-        { "tripId": "T3", "present": 1 }
+        {
+          "tripId": "T3",
+          "present": 1
+        }
       ]
     },
     "stopTimeMembers": {
       "T1": [
-        { "stId": "T1_1_ST_A", "present": 1 },
-        { "stId": "T1_2_ST_B", "present": 1 },
-        { "stId": "T1_3_ST_C", "present": 1 },
-        { "stId": "T1_4_ST_NEW", "present": 0 }
+        {
+          "stId": "T1_1_ST_A",
+          "present": 1
+        },
+        {
+          "stId": "T1_2_ST_B",
+          "present": 1
+        },
+        {
+          "stId": "T1_3_ST_C",
+          "present": 1
+        },
+        {
+          "stId": "T1_4_ST_NEW",
+          "present": 0
+        }
       ],
       "T2": [
-        { "stId": "T2_1_ST_A", "present": 1 },
-        { "stId": "T2_2_ST_D", "present": 1 }
+        {
+          "stId": "T2_1_ST_A",
+          "present": 1
+        },
+        {
+          "stId": "T2_2_ST_D",
+          "present": 1
+        }
       ],
       "T3": [
-        { "stId": "T3_1_ST_E", "present": 1 },
-        { "stId": "T3_2_ST_F", "present": 1 }
+        {
+          "stId": "T3_1_ST_E",
+          "present": 1
+        },
+        {
+          "stId": "T3_2_ST_F",
+          "present": 1
+        }
       ]
     }
   },
   "edges": [
-    { "from": "gtfs.services.S1.active", "to": "gtfs.trips.T1.live", "via": "formula" },
-    { "from": "gtfs.services.S1.active", "to": "gtfs.trips.T2.live", "via": "formula" },
-    { "from": "gtfs.services.S2.active", "to": "gtfs.trips.T3.live", "via": "formula" },
-    { "from": "gtfs.routes.R1.active", "to": "gtfs.trips.T1.validRoute", "via": "formula" },
-    { "from": "gtfs.routes.R1.active", "to": "gtfs.trips.T2.validRoute", "via": "formula" },
-    { "from": "gtfs.routes.R2.active", "to": "gtfs.trips.T3.validRoute", "via": "formula" },
-    { "from": "gtfs.trips.T1.routeId", "to": "gtfs.stopTimes.T1_1_ST_A.routeId", "via": "formula" },
-    { "from": "gtfs.trips.T1.routeId", "to": "gtfs.stopTimes.T1_2_ST_B.routeId", "via": "formula" },
-    { "from": "gtfs.trips.T1.routeId", "to": "gtfs.stopTimes.T1_3_ST_C.routeId", "via": "formula" },
-    { "from": "gtfs.trips.T2.routeId", "to": "gtfs.stopTimes.T2_1_ST_A.routeId", "via": "formula" },
-    { "from": "gtfs.trips.T2.routeId", "to": "gtfs.stopTimes.T2_2_ST_D.routeId", "via": "formula" },
-    { "from": "gtfs.trips.T3.routeId", "to": "gtfs.stopTimes.T3_1_ST_E.routeId", "via": "formula" },
-    { "from": "gtfs.trips.T3.routeId", "to": "gtfs.stopTimes.T3_2_ST_F.routeId", "via": "formula" },
-    { "from": "gtfs.idx.routes.R1.tripMember.T_NEW", "to": "gtfs.idx.routes.R1.tripCount", "via": "idx-sum" },
-    { "from": "gtfs.idx.trips.T1.stopTimeMember.T1_4_ST_NEW", "to": "gtfs.idx.trips.T1.stopTimeCount", "via": "idx-sum" }
+    {
+      "from": "gtfs.services.S1.active",
+      "to": "gtfs.trips.T1.live",
+      "via": "formula"
+    },
+    {
+      "from": "gtfs.services.S1.active",
+      "to": "gtfs.trips.T2.live",
+      "via": "formula"
+    },
+    {
+      "from": "gtfs.services.S2.active",
+      "to": "gtfs.trips.T3.live",
+      "via": "formula"
+    },
+    {
+      "from": "gtfs.routes.R1.active",
+      "to": "gtfs.trips.T1.validRoute",
+      "via": "formula"
+    },
+    {
+      "from": "gtfs.routes.R1.active",
+      "to": "gtfs.trips.T2.validRoute",
+      "via": "formula"
+    },
+    {
+      "from": "gtfs.routes.R2.active",
+      "to": "gtfs.trips.T3.validRoute",
+      "via": "formula"
+    },
+    {
+      "from": "gtfs.trips.T1.routeId",
+      "to": "gtfs.stopTimes.T1_1_ST_A.routeId",
+      "via": "formula"
+    },
+    {
+      "from": "gtfs.trips.T1.routeId",
+      "to": "gtfs.stopTimes.T1_2_ST_B.routeId",
+      "via": "formula"
+    },
+    {
+      "from": "gtfs.trips.T1.routeId",
+      "to": "gtfs.stopTimes.T1_3_ST_C.routeId",
+      "via": "formula"
+    },
+    {
+      "from": "gtfs.trips.T2.routeId",
+      "to": "gtfs.stopTimes.T2_1_ST_A.routeId",
+      "via": "formula"
+    },
+    {
+      "from": "gtfs.trips.T2.routeId",
+      "to": "gtfs.stopTimes.T2_2_ST_D.routeId",
+      "via": "formula"
+    },
+    {
+      "from": "gtfs.trips.T3.routeId",
+      "to": "gtfs.stopTimes.T3_1_ST_E.routeId",
+      "via": "formula"
+    },
+    {
+      "from": "gtfs.trips.T3.routeId",
+      "to": "gtfs.stopTimes.T3_2_ST_F.routeId",
+      "via": "formula"
+    },
+    {
+      "from": "gtfs.idx.routes.R1.tripMember.T_NEW",
+      "to": "gtfs.idx.routes.R1.tripCount",
+      "via": "idx-sum"
+    },
+    {
+      "from": "gtfs.idx.trips.T1.stopTimeMember.T1_4_ST_NEW",
+      "to": "gtfs.idx.trips.T1.stopTimeCount",
+      "via": "idx-sum"
+    }
   ]
 }
