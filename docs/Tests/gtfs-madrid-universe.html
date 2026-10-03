@@ -654,14 +654,19 @@ function buildVizModel(g) {
   const ns = [];
   const es = [];
   const col = { service: "#38bdf8", route: "#a78bfa", trip: "#34d399", stopTime: "#fbbf24", idx: "#fb7185" };
-  // Spread service→idx across full canvas height (small margins) — no dead zone under idx.
+  const canvasWidth = $("universe").clientWidth || 760;
+  // Keep labels and node rings inside the responsive canvas, rather than the old
+  // 760px design width. Extra vertical breathing room keeps idx labels clear of
+  // the legend below the canvas.
+  const xPad = Math.max(44, Math.min(64, canvasWidth * 0.1));
+  const xMin = xPad, xMax = Math.max(xMin, canvasWidth - xPad);
   const laneKeys = ["service", "route", "trip", "stopTime", "idx"];
-  const yTop = 36, yBot = CANVAS_H - 28;
+  const yTop = 52, yBot = CANVAS_H - 58;
   const laneY = Object.fromEntries(laneKeys.map((k, i) => [k, yTop + (i / (laneKeys.length - 1)) * (yBot - yTop)]));
   const place = (kind, list, keyFn, labelFn, pathFn) => {
     const n = list.length;
     list.forEach((item, i) => {
-      const x = 60 + ((i + 0.5) / Math.max(n, 1)) * 640;
+      const x = xMin + ((i + 0.5) / Math.max(n, 1)) * (xMax - xMin);
       ns.push({
         id: pathFn(item),
         kind,
@@ -690,7 +695,7 @@ function buildVizModel(g) {
     ...Object.keys(g.idx.stopTimeMembers).map((t) => ({ id: `gtfs.idx.trips.${t}.stopTimeCount`, label: `${t}.stCount` })),
   ];
   idxNodes.forEach((item, i) => {
-    const x = 50 + ((i + 0.5) / idxNodes.length) * 660;
+    const x = xMin + ((i + 0.5) / idxNodes.length) * (xMax - xMin);
     ns.push({ id: item.id, kind: "idx", label: item.label, x, y: laneY.idx, color: col.idx, r: 8 });
   });
 
@@ -719,9 +724,11 @@ function buildVizModel(g) {
 
 function makeGhosts(count) {
   const out = [];
+  const canvasWidth = $("universe").clientWidth || 760;
+  const pad = Math.max(12, Math.min(30, canvasWidth * 0.05));
   for (let i = 0; i < count; i++) {
     out.push({
-      x: 30 + Math.random() * 700,
+      x: pad + Math.random() * Math.max(0, canvasWidth - pad * 2),
       y: 24 + Math.random() * (CANVAS_H - 48),
       r: 2 + Math.random() * 2.5,
     });
@@ -1228,6 +1235,14 @@ function runMutation(key) {
   updateStats(probe?.meta ?? null, label, ms);
 }
 
+function relayoutViz() {
+  if (!graph) return;
+  const model = buildVizModel(graph);
+  nodes = model.nodes;
+  edges = model.edges;
+  draw();
+}
+
 function rebuild() {
   me = new ME();
   seedMe(me, graph);
@@ -1347,7 +1362,12 @@ async function main() {
   window.addEventListener("keydown", (ev) => {
     if (ev.key === "Escape") clearSelection();
   });
-  window.addEventListener("resize", () => draw());
+  // Coordinates are based on the current column width; reflow them when the
+  // responsive layout changes instead of letting the fixed-width model clip.
+  if (!window.__gtfsMadridResizeBound) {
+    window.__gtfsMadridResizeBound = true;
+    window.addEventListener("resize", relayoutViz);
+  }
 
   let kernel;
   try {
