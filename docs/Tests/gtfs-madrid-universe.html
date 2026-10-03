@@ -46,7 +46,10 @@
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: "Inter", "Helvetica Neue", Helvetica, Arial, sans-serif; background: #f4f7f8; color: #0f1720; min-height: 100vh; -webkit-font-smoothing: antialiased; }
     .page { max-width: 980px; margin: 0 auto; padding: 28px 16px 28px; }
-    .kicker { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; color: #51606d; margin-bottom: 4px; }
+    .kicker { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; color: #51606d; margin-bottom: 4px; display: flex; align-items: center; gap: 0.55rem; flex-wrap: wrap; }
+    .kicker a { color: #0f6a78; text-decoration: none; }
+    .kicker a:hover { text-decoration: underline; }
+    .kicker .separator { color: #8996a0; }
     h1 { font-size: 1.55rem; font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; margin-bottom: 6px; }
     .rule { font-size: 0.9rem; line-height: 1.5; color: #1f2d38; max-width: 820px; margin-bottom: 8px; }
     .rule code, p code, li code, td code, .meta code, .stat code, .pill code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.86em; background: rgba(15,23,32,0.06); padding: 1px 5px; border-radius: 4px; }
@@ -265,6 +268,7 @@
       .note { background: rgba(255,255,255,0.03); color: #98a7b3; }
       .note.warn { color: #f5c26b; }
 
+      .kicker a { color: #4fd1c5; }
       .sc-topnav { border-bottom-color: var(--sc-border); }
       .sc-topnav a.active { background: var(--sc-active); color: var(--sc-active-fg); }
       .sc-topnav a:hover { background: var(--sc-hover); color: var(--sc-fg); }
@@ -299,7 +303,17 @@
     <a href="https://neurons-me.github.io/.me/docs/Tests/madrid-knowledge.html">Fares</a>
   </nav>
   <div class="page">
-    <p class="kicker">this.me / Tests / Benchmarks / <a href="https://neurons-me.github.io/mlearning.studio/datasets/">Datasets</a> / Madrid GTFS</p>
+    <nav class="kicker breadcrumb" aria-label="Breadcrumb">
+      <a href="https://this.me">.me</a>
+      <span class="separator" aria-hidden="true">/</span>
+      <a href="https://neurons-me.github.io/.me/docs/Tests/">Tests</a>
+      <span class="separator" aria-hidden="true">/</span>
+      <a href="https://github.com/neurons-me/.me/tree/main/Typescript/tests/Benchmarks">Benchmarks</a>
+      <span class="separator" aria-hidden="true">/</span>
+      <a href="https://neurons-me.github.io/mlearning.studio/datasets/">Datasets</a>
+      <span class="separator" aria-hidden="true">/</span>
+      <a href="https://neurons-me.github.io/mlearning.studio/datasets/madrid-gtfs/">Madrid GTFS</a>
+    </nav>
     <h1>GTFS Madrid — live knowledge universe</h1>
     <p class="rule" style="margin-bottom:6px">
       We loaded real evolving <strong>GTFS Madrid</strong> into <code>.me</code>: routes, trips, services, stop times —
