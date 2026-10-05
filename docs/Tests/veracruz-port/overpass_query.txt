@@ -1,0 +1,14 @@
+[out:json][timeout:60];
+(
+  way["highway"~"^(primary|secondary|tertiary|residential)$"](19.17,-96.17,19.22,-96.10);
+  way["natural"="coastline"](19.17,-96.17,19.22,-96.10);
+  way["waterway"~"^(river|canal)$"](19.17,-96.17,19.22,-96.10);
+  relation["natural"="water"](19.17,-96.17,19.22,-96.10);
+  way["natural"="water"](19.17,-96.17,19.22,-96.10);
+  node["place"~"^(city|town|suburb|neighbourhood|quarter)$"](19.17,-96.17,19.22,-96.10);
+  node["tourism"="attraction"](19.17,-96.17,19.22,-96.10);
+  node["amenity"="townhall"](19.17,-96.17,19.22,-96.10);
+);
+out body;
+>;
+out skel qt;
