@@ -2,6 +2,8 @@
 // KERNEL: every fact, every derived value, every wave (k) and every explain().
 // The traffic model that decides WHAT to write lives in port-traffic.js (adapter).
 
+import { TRIPS as LM_TRIPS } from "./port-lastmile.js";
+
 export const SHIPS = [
   { i: 1, cargo: "coffee", unit: "t", total: 40000, haul: 50, tonsPerUnit: 1, stock: "coffee" },
   { i: 2, cargo: "sugar", unit: "t", total: 60000, haul: 50, tonsPerUnit: 1, stock: "sugar" },
@@ -10,13 +12,33 @@ export const SHIPS = [
 export const TRAIN = { i: 1, cargo: "sugar", total: 50000, haul: 50, stock: "sugar" };
 export const STOCKS = { coffee: 100000, sugar: 200000, containers: 5000 };
 export const FLEET = 500;
+// Fleet split (assumption, not a sourced statistic): 400 heavy trucks for ship/train
+// cargo + 100 small trucks for last-mile delivery from 2 CEDIS into the city.
+export const HEAVY = 400;
+export const LAST_MILE = 100;
+// Last-mile: an EXAMPLE schedule of 1,000 trips (port-lastmile.js, seeded), goods in kg.
+export const TRIP_COUNT = LM_TRIPS.length;
+export const LOCAL_KG = LM_TRIPS.reduce((a, t) => a + t[6], 0);
+export const BAND = 0.15;   // rebalancing band: units within avg ± 15% trips
+export const UNIT_IDS = Array.from({ length: LAST_MILE }, (_, i) => i + 1);
 
 // Truck counters by state — kernel facts, mutated in batches by the adapter.
-export const COUNTERS = [
-  "trucks.available",
+export const HEAVY_COUNTERS = [
+  "trucks.heavy.available",
   "queues.import.length", "trucks.import.loading", "trucks.import.enRoute", "trucks.import.returning",
   "queues.export.length", "trucks.export.loading", "trucks.export.enRoute", "trucks.export.returning",
 ];
+export const LAST_MILE_COUNTERS = [
+  "trucks.lastMile.available", "trucks.lastMile.loading", "trucks.lastMile.enRoute", "trucks.lastMile.returning",
+];
+export const COUNTERS = [...HEAVY_COUNTERS, ...LAST_MILE_COUNTERS];
+// Trip states (kernel facts, adapter-written counters): every trip is in exactly one.
+export const TRIP_COUNTERS = ["trips.unassigned", "trips.planned", "trips.active", "trips.done", "trips.unscheduled"];
+// Unit band classification (adapter classifies with the kernel's bandHigh/bandLow, writes the counts).
+export const BAND_COUNTERS = ["lastMile.unitsAbove", "lastMile.unitsWithin", "lastMile.unitsBelow"];
+// Adapter aggregates written as facts (the kernel has no min()/max()): labelled "adapter aggregate" in the UI.
+export const ADAPTER_AGGREGATES = ["trips.unitMax", "trips.unitMin"];
+const POOL_COUNTERS = { "trucks.heavy.available": HEAVY, "trucks.lastMile.available": LAST_MILE };
 
 // Derived rules — the kernel's own `=` formulas. Explicit sums, bracket index paths.
 export const FORMULAS = [
@@ -35,15 +57,36 @@ export const FORMULAS = [
   [["flows"], "exportHasWork", "exportRemaining > 0"],
   [["queues", "import"], "busy", "length > 0"],
   [["queues", "export"], "busy", "length > 0"],
+  [["localDelivery"], "deliveredKg", "totalKg - remainingKg"],
+  [["localDelivery"], "progress", "1 - remainingKg / totalKg"],
+  [["trips"], "pending", "trips.unassigned + trips.planned + trips.active"],
+  [["trips"], "assigned", "trips.planned + trips.active + trips.done"],
+  [["trips"], "accounted", "trips.done + trips.pending + trips.unscheduled"],
+  [["trips"], "balanced", "trips.accounted == trips.total"],
+  [["trips"], "doneShare", "trips.done / trips.total"],
+  [["trips"], "perUnitAvg", "trips.assigned / trucks.lastMile.fleet"],
+  [["trips"], "perUnitDoneAvg", "trips.done / trucks.lastMile.fleet"],
+  [["trips"], "bandHigh", "trips.perUnitAvg + trips.perUnitAvg * trips.band"],
+  [["trips"], "bandLow", "trips.perUnitAvg - trips.perUnitAvg * trips.band"],
+  [["lastMile"], "unitDoneSum", UNIT_IDS.map((i) => `lastMile.units[${i}].done`).join(" + ")],
+  [["lastMile"], "unitSumOk", "lastMile.unitDoneSum == trips.done"],
+  [["lastMile"], "unitsCounted", "lastMile.unitsAbove + lastMile.unitsWithin + lastMile.unitsBelow"],
+  [["lastMile"], "unitsOk", "lastMile.unitsCounted == trucks.lastMile.fleet"],
+  [["trucks", "heavy"], "working", "queues.import.length + queues.export.length + trucks.import.loading + trucks.export.loading + trucks.import.enRoute + trucks.export.enRoute + trucks.import.returning + trucks.export.returning"],
+  [["trucks", "heavy"], "balanced", "trucks.heavy.working + trucks.heavy.available == trucks.heavy.fleet"],
+  [["trucks", "lastMile"], "working", "trucks.lastMile.loading + trucks.lastMile.enRoute + trucks.lastMile.returning"],
+  [["trucks", "lastMile"], "balanced", "trucks.lastMile.working + trucks.lastMile.available == trucks.lastMile.fleet"],
   [["trucks"], "inQueue", "queues.import.length + queues.export.length"],
-  [["trucks"], "loading", "trucks.import.loading + trucks.export.loading"],
-  [["trucks"], "enRoute", "trucks.import.enRoute + trucks.export.enRoute"],
-  [["trucks"], "returning", "trucks.import.returning + trucks.export.returning"],
+  [["trucks"], "loading", "trucks.import.loading + trucks.export.loading + trucks.lastMile.loading"],
+  [["trucks"], "enRoute", "trucks.import.enRoute + trucks.export.enRoute + trucks.lastMile.enRoute"],
+  [["trucks"], "returning", "trucks.import.returning + trucks.export.returning + trucks.lastMile.returning"],
+  [["trucks"], "available", "trucks.heavy.available + trucks.lastMile.available"],
   [["trucks"], "working", "trucks.inQueue + trucks.loading + trucks.enRoute + trucks.returning"],
   [["trucks"], "accounted", "trucks.working + trucks.available"],
   [["trucks"], "balanced", "trucks.accounted == trucks.fleet"],
+  [["trucks"], "splitOk", "trucks.heavy.fleet + trucks.lastMile.fleet == trucks.fleet"],
   [["cargo"], "bulkTons", "coffee + sugar"],
-  [["port"], "busy", "flows.importRemaining + flows.exportRemaining + trucks.working > 0"],
+  [["port"], "busy", "flows.importRemaining + flows.exportRemaining + trips.pending + trucks.working > 0"],
 ];
 
 export function seedFacts() {
@@ -56,8 +99,14 @@ export function seedFacts() {
   f.push([["train", 1, "cargo"], TRAIN.cargo], [["train", 1, "total"], TRAIN.total],
     [["train", 1, "remainingToLoad"], TRAIN.total], [["train", 1, "haul"], TRAIN.haul]);
   for (const [k, v] of Object.entries(STOCKS)) f.push([["cargo", k], v]);
-  f.push([["trucks", "fleet"], FLEET]);
-  for (const c of COUNTERS) f.push([c.split("."), c === "trucks.available" ? FLEET : 0]);
+  f.push([["localDelivery", "totalKg"], LOCAL_KG], [["localDelivery", "remainingKg"], LOCAL_KG]);
+  f.push([["trips", "total"], TRIP_COUNT], [["trips", "band"], BAND], [["trips", "redirects"], 0]);
+  for (const c of TRIP_COUNTERS) f.push([c.split("."), c === "trips.unassigned" ? TRIP_COUNT : 0]);
+  for (const c of BAND_COUNTERS) f.push([c.split("."), c === "lastMile.unitsWithin" ? LAST_MILE : 0]);
+  for (const c of ADAPTER_AGGREGATES) f.push([c.split("."), 0]);
+  for (const i of UNIT_IDS) f.push([["lastMile", "units", i, "done"], 0]);
+  f.push([["trucks", "fleet"], FLEET], [["trucks", "heavy", "fleet"], HEAVY], [["trucks", "lastMile", "fleet"], LAST_MILE]);
+  for (const c of COUNTERS) f.push([c.split("."), POOL_COUNTERS[c] ?? 0]);
   return f;
 }
 
@@ -69,7 +118,7 @@ const nodeAt = (me, segs) => segs.reduce((n, s) => n[s], me);
 const setLeaf = (me, segs, v) => nodeAt(me, segs.slice(0, -1))[segs[segs.length - 1]](v);
 
 export const DERIVED_PATHS = FORMULAS.map(([scope, name]) => pathOf([...scope, name]));
-export const FACT_PATHS = seedFacts().map(([segs]) => pathOf(segs.map(String).map((s) => (/^\d+$/.test(s) ? Number(s) : s))));
+export const FACT_PATHS = seedFacts().map(([segs]) => pathOf(segs));
 
 export function createPortKernel(ME) {
   const me = new ME();
@@ -118,10 +167,33 @@ export function createPortKernel(ME) {
     }
     const imp = SHIPS.reduce((acc, s) => acc + me(`ships.${s.i}.remaining`) * s.tonsPerUnit, 0);
     if (imp !== me("flows.importRemaining")) mismatches.push({ path: "flows.importRemaining (arith)", live: me("flows.importRemaining"), fresh: imp });
-    const total = COUNTERS.reduce((a, c) => a + me(c), 0);
-    if (total !== FLEET || me("trucks.balanced") !== true) mismatches.push({ path: "trucks.balanced (Σ counters)", live: total, fresh: FLEET });
+    // no derived value may be undefined (the kernel returns undefined silently for unsupported syntax)
+    for (const p of DERIVED_PATHS) if (me(p) === undefined) mismatches.push({ path: p + " (undefined)", live: undefined, fresh: "defined" });
+    const sum = (list) => list.reduce((a, c) => a + me(c), 0);
+    const checks = [
+      ["Σ all counters = fleet", sum(COUNTERS), FLEET],
+      ["Σ heavy counters = heavy fleet", sum(HEAVY_COUNTERS), HEAVY],
+      ["Σ last-mile counters = last-mile fleet", sum(LAST_MILE_COUNTERS), LAST_MILE],
+      ["trucks.balanced", me("trucks.balanced"), true],
+      ["trucks.heavy.balanced", me("trucks.heavy.balanced"), true],
+      ["trucks.lastMile.balanced", me("trucks.lastMile.balanced"), true],
+      ["trucks.splitOk", me("trucks.splitOk"), true],
+      ["localDelivery.deliveredKg (arith)", me("localDelivery.deliveredKg"), me("localDelivery.totalKg") - me("localDelivery.remainingKg")],
+      ["trips: done + pending + unscheduled = total", me("trips.done") + me("trips.pending") + me("trips.unscheduled"), TRIP_COUNT],
+      ["trips: Σ state counters = total", sum(TRIP_COUNTERS), TRIP_COUNT],
+      ["trips.balanced", me("trips.balanced"), true],
+      ["Σ units[i].done = trips.done", UNIT_IDS.reduce((a, i) => a + me(`lastMile.units.${i}.done`), 0), me("trips.done")],
+      ["lastMile.unitSumOk", me("lastMile.unitSumOk"), true],
+      ["above + within + below = last-mile units", sum(BAND_COUNTERS), LAST_MILE],
+      ["lastMile.unitsOk", me("lastMile.unitsOk"), true],
+    ];
+    const near = (a, b) => typeof a === "number" && Math.abs(a - b) < 1e-9;
+    const avg = (me("trips.planned") + me("trips.active") + me("trips.done")) / LAST_MILE;
+    if (!near(me("trips.bandHigh"), avg * (1 + BAND))) mismatches.push({ path: "trips.bandHigh (arith avg × 1.15)", live: me("trips.bandHigh"), fresh: avg * (1 + BAND) });
+    if (!near(me("trips.bandLow"), avg * (1 - BAND))) mismatches.push({ path: "trips.bandLow (arith avg × 0.85)", live: me("trips.bandLow"), fresh: avg * (1 - BAND) });
+    for (const [label, live, expected] of checks) if (live !== expected) mismatches.push({ path: label, live, fresh: expected });
     for (const [label, live, expected] of extraChecks) if (live !== expected) mismatches.push({ path: label, live, fresh: expected });
-    return { ok: mismatches.length === 0, checked: DERIVED_PATHS.length + 2 + extraChecks.length, mismatches };
+    return { ok: mismatches.length === 0, checked: DERIVED_PATHS.length * 2 + 1 + 16 + 2 + extraChecks.length, mismatches };
   }
 
   return { me, read, write, waveOf, verifyFromScratch, seedLog };

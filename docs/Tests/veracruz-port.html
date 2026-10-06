@@ -284,7 +284,7 @@
   .node.hit .node-core { stroke: #dce8ef; filter: drop-shadow(0 0 5px rgba(126,184,201,0.55)); }
   .exit-label { font-family: var(--mono); font-size: 11px; fill: #8a94a0; paint-order: stroke; stroke: #0b0d10; stroke-width: 3px; letter-spacing: .03em; }
   .exit-tick { fill: none; stroke: #8a94a0; stroke-width: 1.2; opacity: .8; }
-  .legend { position: absolute; top: 10px; right: 12px; pointer-events: none; font-family: var(--mono); font-size: 10px; background: rgba(11,13,16,0.86); border: 1px solid var(--border); border-radius: 3px; padding: 6px 8px; color: var(--muted); line-height: 1.55; min-width: 196px; }
+  .legend { position: absolute; top: 10px; right: 12px; pointer-events: none; font-family: var(--mono); font-size: 9.5px; background: rgba(11,13,16,0.86); border: 1px solid var(--border); border-radius: 3px; padding: 5px 7px; color: var(--muted); line-height: 1.5; min-width: 0; width: 172px; }
   .legend .lg-row { display: flex; align-items: center; gap: 6px; }
   .legend .lg-row b { margin-left: auto; color: var(--text); font-weight: 500; }
   .legend i { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
@@ -297,6 +297,14 @@
   select.speed { background: #0a0c0f; color: var(--muted); border: 1px solid var(--border); font-family: var(--mono); font-size: 10.5px; padding: 0 6px; border-radius: 3px; }
   .writes .wc { color: var(--dim); margin-left: 6px; }
   .flush-meta { font-family: var(--mono); font-size: 9px; color: var(--dim); margin-top: 6px; }
+  .lm-head { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 10.5px; color: var(--muted); }
+  .lm-head b { color: #f4e6b8; font-size: 14px; font-weight: 500; }
+  .bar.lm > i { background: #e58fc0; }
+  .lm-sub { font-family: var(--mono); font-size: 9px; color: var(--dim); margin-top: 6px; line-height: 1.4; }
+  .lm-sub b { color: var(--text); font-weight: 500; }
+  .lm-strip { width: 100%; height: 46px; display: block; margin-top: 3px; background: #0a0c0f; border: 1px solid #151a20; border-radius: 3px; }
+  .lm-feed { list-style: none; font-family: var(--mono); font-size: 9px; color: var(--muted); margin-top: 2px; max-height: 84px; overflow: hidden; }
+  .lm-feed li { padding: 1px 0; } .lm-feed li.empty { color: var(--dim); }
   .writes { max-height: 300px; overflow: auto; }
 </style>
 </head>
@@ -312,7 +320,7 @@
   <div class="glossary">
     <details open>
       <summary>What is this?</summary>
-      <p>Port of Veracruz on the real .me kernel: ships, train, truck queues and stocks are facts; totals and flags are kernel formulas. OSM is just the map.</p>
+      <p>Port of Veracruz on the real .me kernel: ships, train, 500 trucks (400 heavy + 100 last-mile, 1,000 example trips) and stocks are facts; totals, averages and flags are kernel formulas. OSM is just the map.</p>
     </details>
     <details><summary>fact</summary><p>A value you write — <code>me.cargo.coffee(100000)</code>. It never computes itself.</p></details>
     <details><summary>rule / derived</summary><p>A kernel <code>=</code> formula — <code>importRemaining = ships[1].remainingTons + ships[2].remainingTons + ships[3].remainingTons</code>.</p></details>
@@ -635,28 +643,41 @@
           <g class="node yard" id="n-yard" transform="translate(513.6,457.8)">
             <rect class="node-core" x="-14" y="-14" width="28" height="28" rx="3"/>
             <text class="icon-txt" text-anchor="middle" y="3">YARD</text>
-            <text class="node-label" x="21" y="-6">CARGO YARD</text>
+            <text class="node-label" x="21" y="-6">CARGO YARD · CEDIS A</text>
             <text class="node-meta" x="21" y="6" id="yard-meta">stocks</text>
+          </g>
+          <!-- CEDIS B: example distribution centre (hypothetical site on an OSM street) -->
+          <g class="node yard" id="n-cedisb" transform="translate(220.7,529.8)">
+            <rect class="node-core" x="-9" y="-9" width="18" height="18" rx="2"/>
+            <text class="icon-txt" text-anchor="middle" y="3">B</text>
+            <text class="node-label" x="14" y="-4">CEDIS B</text>
+            <text class="node-meta" x="14" y="8" id="cedisb-meta">example site</text>
           </g>
         </g>
       </svg>
       <canvas class="traffic" id="traffic" aria-hidden="true"></canvas>
       <div class="legend" id="legend">
-        <div class="lg-h">500 trucks · each dot one truck</div>
-        <div class="lg-row"><i style="background:#7eb8c9"></i>en route · import (laden)<b id="lg-enimp">—</b></div>
-        <div class="lg-row"><i style="background:#c9b87e"></i>en route · export (laden)<b id="lg-enexp">—</b></div>
-        <div class="lg-row"><i style="background:#7ec99a"></i>loading / unloading<b id="lg-load">—</b></div>
+        <div class="lg-h">heavy · 400</div>
+        <div class="lg-row"><i style="background:#7eb8c9"></i>import, laden<b id="lg-enimp">—</b></div>
+        <div class="lg-row"><i style="background:#c9b87e"></i>export, laden<b id="lg-enexp">—</b></div>
+        <div class="lg-row"><i style="background:#7ec99a"></i>load / unload<b id="lg-load">—</b></div>
         <div class="lg-row"><i style="background:#b39ddb"></i>queued<b id="lg-queue">—</b></div>
-        <div class="lg-row"><i style="background:#5f6b78"></i>returning (empty)<b id="lg-ret">—</b></div>
-        <div class="lg-row"><i style="background:#3a424e;border:1px solid #6a7380"></i>idle in pool<b id="lg-idle">—</b></div>
-        <div class="lg-foot">counts = kernel counters · <span id="lg-off">—</span> off-map</div>
+        <div class="lg-row"><i style="background:#5f6b78"></i>returning<b id="lg-ret">—</b></div>
+        <div class="lg-row"><i style="background:#3a424e;border:1px solid #6a7380"></i>pool<b id="lg-idle">—</b></div>
+        <div class="lg-h" style="margin-top:3px">last-mile · 100</div>
+        <div class="lg-row"><i style="background:#e58fc0;width:5px;height:5px"></i>out · back<b id="lg-lm">—</b></div>
+        <div class="lg-row"><i style="background:#6a4a5e;width:5px;height:5px"></i>load · idle<b id="lg-lmidle">—</b></div>
+        <div class="lg-row"><i style="border:1px solid #e0a050;background:none"></i>/<i style="border:1px solid #5ec8e0;background:none"></i>band ↑ · ↓<b id="lg-band">—</b></div>
+        <div class="lg-row"><i style="background:#f4e6b8;border-radius:0;width:4px;height:4px"></i>trips ○ · ✓ · ✗<b id="lg-addr">—</b></div>
+        <div class="lg-foot">kernel counts · <span id="lg-off">—</span> off-map</div>
       </div>
       <div class="hud">
         <div class="hud-chip">import left <strong class="imp" id="hud-imp">—</strong></div>
         <div class="hud-chip">export left <strong class="exp" id="hud-exp">—</strong></div>
         <div class="hud-chip">trucks.working <strong id="hud-trucks">—</strong></div>
         <div class="hud-chip">trucks.balanced <strong id="hud-bal">—</strong></div>
-        <div class="hud-chip">sim <strong id="hud-tick">0 s</strong> <span style="color:var(--warn)">(adapter)</span></div>
+        <div class="hud-chip">sim <strong id="hud-tick">08:00</strong> <span style="color:var(--warn)">(adapter)</span></div>
+        <div class="hud-chip">assumed: heavy <strong>25 km/h</strong> · last-mile <strong>22 km/h</strong></div>
       </div>
     </div>
 
@@ -669,7 +690,7 @@
         <div class="tour-nav">
           <button type="button" class="ghost-btn" id="btn-prev" disabled>Back</button>
           <button type="button" id="btn-next">Next</button>
-          <span class="step-label" id="step-label">1 / 7</span>
+          <span class="step-label" id="step-label">1 / 8</span>
         </div>
       </div>
 
@@ -679,7 +700,7 @@
           <div class="panel" id="panel-mutate">
             <div class="btn-row">
               <button type="button" class="primary" id="btn-run" disabled>Start traffic ▸<br/><span class="sub">500 trucks · real me.… writes</span></button>
-              <select class="speed" id="sel-speed" aria-label="Simulation speed"><option value="1">×1</option><option value="4" selected>×4</option><option value="16">×16</option></select>
+              <select class="speed" id="sel-speed" aria-label="Playback speed (1 s real = N s simulated)" title="Playback: 1 s real = N s simulated"><option value="1">×1 real time</option><option value="10" selected>×10</option><option value="60">×60</option></select>
               <button type="button" class="ghost" id="btn-reset" disabled>Reset</button>
             </div>
             <div class="stats">
@@ -702,6 +723,10 @@
               <option value="flows.importRemaining">flows.importRemaining</option>
               <option value="flows.exportRemaining">flows.exportRemaining</option>
               <option value="flows.importProgress">flows.importProgress</option>
+              <option value="trips.bandHigh">trips.bandHigh</option>
+              <option value="trips.perUnitAvg">trips.perUnitAvg</option>
+              <option value="trips.balanced">trips.balanced</option>
+              <option value="lastMile.unitsOk">lastMile.unitsOk</option>
               <option value="trucks.working">trucks.working</option>
               <option value="trucks.balanced">trucks.balanced</option>
               <option value="trucks.inQueue">trucks.inQueue</option>
@@ -742,6 +767,21 @@
         </div>
 
         <div>
+          <h2>Last-mile · 1,000 scheduled trips <span class="src-tag kernel">kernel</span> <span class="src-tag adapter">dispatch = adapter</span></h2>
+          <div class="panel" id="panel-lastmile">
+            <div class="lm-head"><span>trips.done</span><b id="lm-done">—</b></div>
+            <div class="bar lm" id="bar-lm"><i id="bar-lm-i"></i></div>
+            <ul class="kv" id="lm-kv" style="margin-top:6px"></ul>
+            <div class="lm-sub">per unit (adapter view): bright = done, dim = assigned · dashed = kernel bandLow/bandHigh</div>
+            <canvas id="lm-strip" class="lm-strip" height="46"></canvas>
+            <div class="lm-sub">est. completion <span class="src-tag adapter">adapter estimate</span> <b id="lm-est">—</b></div>
+            <div class="lm-sub">redirects <span class="src-tag adapter">adapter log</span></div>
+            <ul class="lm-feed" id="lm-feed"></ul>
+            <div class="formula">trips.bandHigh = trips.perUnitAvg + trips.perUnitAvg * trips.band · trips.perUnitAvg = trips.assigned / trucks.lastMile.fleet · lastMile.unitDoneSum = units[1].done + … + units[100].done (explicit) · trips.balanced = trips.accounted == trips.total</div>
+            <div class="lm-sub">Assumed averages (not sourced): 22 km/h, load at CEDIS ~10 min, drop 5–8 min, shift 08:00–17:00, band ±15%. Plan: each unit greedily takes the trip it can finish earliest until its shift is full; then trips move from units above the band to units below (nearest to the receiver's next stop, only if its shift and windows still fit).</div>
+          </div>
+        </div>
+        <div>
           <h2>Stocks · me.cargo <span class="src-tag kernel">kernel</span></h2>
           <div class="panel" id="panel-stocks">
             <ul class="kv" id="stocks-kv"></ul>
@@ -752,9 +792,9 @@
         <div>
           <h2>Adapter · plain JS <span class="src-tag adapter">not kernel</span></h2>
           <div class="panel adapter" id="panel-adapter">
-            <p style="font-size:11px;line-height:1.45;color:var(--muted)">The traffic model (<code>port-traffic.js</code>) decides <em>what to write</em>; the kernel holds every value and decides <em>what recomputes</em>. Adapter only: each truck's route over OSM roads, berth/train slots, timers, which flow it joins, dot positions, and the pending deltas it flushes. Totals, flags, k and explain() are kernel.</p>
+            <p style="font-size:11px;line-height:1.45;color:var(--muted)">The traffic model (<code>port-traffic.js</code>) decides <em>what to write</em>; the kernel holds every value and decides <em>what recomputes</em>. Adapter only: each truck's route over OSM roads, berth/train/bay slots, timers, which flow it joins, the last-mile greedy plan, band classification and redirects, dot positions, and the pending deltas it flushes. Totals, averages, band limits, flags, k and explain() are kernel. Speeds and durations are assumptions (named constants in <code>port-traffic.js</code>).</p>
             <div class="btn-row" style="margin-top:8px"><button type="button" class="ghost" id="btn-verify" disabled>Verify: rebuild kernel from facts</button></div>
-            <div class="verify-out" id="verify-out">Flushes, then rebuilds a fresh kernel from the current facts + same formulas, compares every derived path, Σ counters = fleet, and adapter truck states vs kernel counters.</div>
+            <div class="verify-out" id="verify-out">Flushes, then rebuilds a fresh kernel from the current facts + same formulas and compares every derived path; checks Σ counters = 500, trips done + pending + unscheduled = 1,000, above + within + below = 100, band limits, and adapter states vs kernel counters.</div>
           </div>
         </div>
       </div>
@@ -768,9 +808,10 @@
 
 <script type="module">
 // ── Kernel: published this.me@4.1.0, unmodified, hash-pinned ──
-import { createPortKernel, SHIPS, TRAIN, COUNTERS, FLEET } from "./veracruz-port/port-sim.js";
-import { createTraffic, VIS_OF, CONFIG } from "./veracruz-port/port-traffic.js";
-import { ROUTES, KEY, EXITS } from "./veracruz-port/port-routes.js";
+import { createPortKernel, SHIPS, TRAIN, COUNTERS, TRIP_COUNTERS, UNIT_IDS, FLEET, HEAVY, LAST_MILE, BAND, TRIP_COUNT } from "./veracruz-port/port-sim.js";
+import { createTraffic, VIS_OF, CONFIG, LM, SIM_START_H, HEAVY_TRUCK_KMH, LAST_MILE_KMH } from "./veracruz-port/port-traffic.js";
+import { ROUTES, KEY, EXITS, PROJ } from "./veracruz-port/port-routes.js";
+import { CEDIS } from "./veracruz-port/port-lastmile.js";
 
 const KERNEL = {
   version: "4.1.0",
@@ -813,7 +854,7 @@ async function loadKernel() {
 }
 
 let ME = null, P = null, T = null, tourStep = 1;
-let running = false, speed = 4;
+let running = false, speed = 10;
 
 // ── stats (page-side bookkeeping of what the kernel returned) ──
 let flushLog = [];          // { t, n, kMax } for the last ~2 s of non-empty flushes
@@ -821,13 +862,16 @@ let frameLog = [];          // frame timestamps, last ~1 s
 let lastFlush = null;       // { writes, idx, sim }
 let flushCount = 0, writeCount = 0;
 let hitPaths = new Set();   // kernel paths written/recomputed since the last UI refresh
-let lastUi = 0, maxMoving = 0, moving = 0, offMap = 0;
+let lastUi = 0, lastSlow = 0, maxMoving = 0, moving = 0, offMap = 0;
+const clock = (simSec) => { const t = Math.floor(SIM_START_H * 3600 + simSec); return `${String(Math.floor(t / 3600) % 24).padStart(2, "0")}:${String(Math.floor(t / 60) % 60).padStart(2, "0")}`; };
+const realDur = (sec) => (sec < 90 ? `${Math.round(sec)} s` : sec < 5400 ? `${Math.round(sec / 60)} min` : `${(sec / 3600).toFixed(1)} h`);
 
 // Map kernel paths → map nodes (for lighting the kernel's affected set)
 const NODE_PREFIX = [
   ["ships.1.", "n-ship1"], ["ships.2.", "n-ship2"], ["ships.3.", "n-ship3"], ["train.1.", "n-train"],
   ["queues.import.", "n-qimp"], ["queues.export.", "n-qexp"], ["trucks.import.", "n-qimp"], ["trucks.export.", "n-qexp"],
-  ["cargo.", "n-yard"], ["trucks.available", "n-yard"],
+  ["cargo.", "n-yard"], ["trucks.heavy.available", "n-yard"], ["trucks.lastMile.", "n-cedisb"], ["trips.", "n-cedisb"],
+  ["lastMile.", "n-cedisb"], ["localDelivery.", "n-yard"],
   ["flows.", "n-port"], ["port.", "n-port"], ["trucks.", "n-port"],
 ];
 const nodeOfPath = (p) => (NODE_PREFIX.find(([pre]) => p.startsWith(pre)) || [])[1];
@@ -858,23 +902,20 @@ function render() {
   $("#bar-exp-i").style.width = pct(R("train.1.progress"));
 
   $("#queues-kv").innerHTML =
-    row("trucks.available", "fact", fmt(R("trucks.available"))) +
+    row("trucks.heavy.available", "fact", fmt(R("trucks.heavy.available"))) +
     row("queues.import.length", "fact", fmt(R("queues.import.length"))) +
-    row("trucks.import.loading", "fact", fmt(R("trucks.import.loading"))) +
-    row("trucks.import.enRoute", "fact", fmt(R("trucks.import.enRoute"))) +
-    row("trucks.import.returning", "fact", fmt(R("trucks.import.returning"))) +
+    row("trucks.import.loading · enRoute · returning", "facts", `${R("trucks.import.loading")} · ${R("trucks.import.enRoute")} · ${R("trucks.import.returning")}`) +
     row("queues.export.length", "fact", fmt(R("queues.export.length"))) +
-    row("trucks.export.loading", "fact", fmt(R("trucks.export.loading"))) +
-    row("trucks.export.enRoute", "fact", fmt(R("trucks.export.enRoute"))) +
-    row("trucks.export.returning", "fact", fmt(R("trucks.export.returning"))) +
-    row("trucks.inQueue", "rule", fmt(R("trucks.inQueue"))) +
-    row("trucks.loading", "rule", fmt(R("trucks.loading"))) +
-    row("trucks.enRoute", "rule", fmt(R("trucks.enRoute"))) +
-    row("trucks.returning", "rule", fmt(R("trucks.returning"))) +
-    row("trucks.working", "rule", fmt(R("trucks.working"))) +
+    row("trucks.export.loading · enRoute · returning", "facts", `${R("trucks.export.loading")} · ${R("trucks.export.enRoute")} · ${R("trucks.export.returning")}`) +
+    row("trucks.lastMile.available", "fact", fmt(R("trucks.lastMile.available"))) +
+    row("trucks.lastMile.loading · enRoute · returning", "facts", `${R("trucks.lastMile.loading")} · ${R("trucks.lastMile.enRoute")} · ${R("trucks.lastMile.returning")}`) +
+    row("trucks.heavy.working · balanced", "rules", `${R("trucks.heavy.working")} · ${R("trucks.heavy.balanced")}`) +
+    row("trucks.lastMile.working · balanced", "rules", `${R("trucks.lastMile.working")} · ${R("trucks.lastMile.balanced")}`) +
+    row("trucks.inQueue · loading · enRoute · returning", "rules", `${R("trucks.inQueue")} · ${R("trucks.loading")} · ${R("trucks.enRoute")} · ${R("trucks.returning")}`) +
+    row("trucks.available · working", "rules", `${fmt(R("trucks.available"))} · ${fmt(R("trucks.working"))}`) +
     row("trucks.accounted", "rule", fmt(R("trucks.accounted"))) +
     row("trucks.balanced", "rule", String(R("trucks.balanced"))) +
-    row("queues.import.busy", "rule", String(R("queues.import.busy"))) +
+    row("trucks.splitOk", "rule", String(R("trucks.splitOk"))) +
     row("port.busy", "rule", String(R("port.busy")));
 
   $("#stocks-kv").innerHTML =
@@ -882,7 +923,10 @@ function render() {
     row("cargo.sugar", "fact", `${fmt(R("cargo.sugar"))} t`) +
     row("cargo.containers", "fact", fmt(R("cargo.containers"))) +
     row("cargo.bulkTons", "rule", `${fmt(R("cargo.bulkTons"))} t`) +
-    row("trucks.fleet", "fact", fmt(R("trucks.fleet")));
+    row("trucks.fleet", "fact", fmt(R("trucks.fleet"))) +
+    row("trucks.heavy.fleet · trucks.lastMile.fleet", "facts", `${R("trucks.heavy.fleet")} · ${R("trucks.lastMile.fleet")}`);
+
+  renderLastMile();
 
   for (const s of SHIPS) {
     const work = R(`ships.${s.i}.hasWork`);
@@ -896,23 +940,72 @@ function render() {
   $("#n-train").classList.toggle("busy", !!tw);
   $("#qimp-meta").textContent = `${R("queues.import.length")} queued${R("queues.import.busy") ? "" : " · idle"}`;
   $("#qexp-meta").textContent = `${R("queues.export.length")} queued${R("queues.export.busy") ? "" : " · idle"}`;
-  $("#yard-meta").textContent = `pool ${fmt(R("trucks.available"))} · sugar ${fmt(R("cargo.sugar"))}`;
+  $("#yard-meta").textContent = `pool: ${fmt(R("trucks.heavy.available"))} heavy · ${T ? T.units.filter((u) => u.home === 0 && u.st === "lmPool").length : 0} small (adapter)`;
   $("#port-status").textContent = R("port.busy") ? "port.busy = true" : "port.busy = false";
 
   $("#hud-imp").textContent = fmt(R("flows.importRemaining")) + " t";
   $("#hud-exp").textContent = fmt(R("flows.exportRemaining")) + " t";
   $("#hud-trucks").textContent = `${fmt(R("trucks.working"))} / ${fmt(R("trucks.fleet"))}`;
   $("#hud-bal").textContent = String(R("trucks.balanced"));
-  $("#hud-tick").textContent = `${T ? T.simTime.toFixed(0) : 0} s ×${speed}`;
+  $("#hud-tick").textContent = `${T ? clock(T.simTime) : clock(0)} · ×${speed}`;
 
   $("#lg-enimp").textContent = fmt(R("trucks.import.enRoute"));
   $("#lg-enexp").textContent = fmt(R("trucks.export.enRoute"));
-  $("#lg-load").textContent = fmt(R("trucks.loading"));
+  $("#lg-load").textContent = fmt(R("trucks.import.loading") + R("trucks.export.loading"));
   $("#lg-queue").textContent = fmt(R("trucks.inQueue"));
-  $("#lg-ret").textContent = fmt(R("trucks.returning"));
-  $("#lg-idle").textContent = fmt(R("trucks.available"));
+  $("#lg-ret").textContent = fmt(R("trucks.import.returning") + R("trucks.export.returning"));
+  $("#lg-idle").textContent = fmt(R("trucks.heavy.available"));
+  $("#lg-lm").textContent = `${R("trucks.lastMile.enRoute")} · ${R("trucks.lastMile.returning")}`;
+  $("#lg-lmidle").textContent = `${R("trucks.lastMile.loading")} · ${R("trucks.lastMile.available")}`;
+  $("#lg-band").textContent = `${R("lastMile.unitsAbove")} · ${R("lastMile.unitsBelow")}`;
+  $("#lg-addr").textContent = `${R("trips.pending")} · ${R("trips.done")} · ${R("trips.unscheduled")}`;
   $("#lg-off").textContent = `${offMap}`;
   renderExplain();
+}
+
+const pad4 = (n) => String(n).padStart(4, "0"), lmName = (u) => `LM-${String(u).padStart(2, "0")}`;
+function renderLastMile() {
+  const done = R("trips.done"), total = R("trips.total");
+  $("#lm-done").textContent = `${fmt(done)} / ${fmt(total)}`;
+  $("#bar-lm-i").style.width = pct(R("trips.doneShare"));
+  $("#lm-kv").innerHTML =
+    row("trips.pending · active", "rule · fact", `${fmt(R("trips.pending"))} · ${fmt(R("trips.active"))}`) +
+    row("trips.unscheduled (can't fit today)", "fact", fmt(R("trips.unscheduled"))) +
+    row("trips.perUnitAvg (assigned)", "rule", fmt(R("trips.perUnitAvg"))) +
+    row("trips.perUnitDoneAvg", "rule", fmt(R("trips.perUnitDoneAvg"))) +
+    row("trips.unitMax · unitMin", "adapter aggregate", `${R("trips.unitMax")} · ${R("trips.unitMin")}`) +
+    row("trips.bandLow – bandHigh (±15%)", "rules", `${fmt(R("trips.bandLow"))} – ${fmt(R("trips.bandHigh"))}`) +
+    row("lastMile.unitsAbove · Within · Below", "adapter → facts", `${R("lastMile.unitsAbove")} · ${R("lastMile.unitsWithin")} · ${R("lastMile.unitsBelow")}`) +
+    row("lastMile.unitsOk · trips.balanced", "rules", `${R("lastMile.unitsOk")} · ${R("trips.balanced")}`) +
+    row("trips.redirects", "fact", fmt(R("trips.redirects"))) +
+    row("localDelivery.remainingKg", "fact", `${fmt(R("localDelivery.remainingKg"))} kg`);
+  $("#lm-feed").innerHTML = T && T.feed.length
+    ? T.feed.slice(0, 6).map((f) => `<li>${clock(f.t)} · trip #${pad4(f.trip)} · ${lmName(f.from)} → ${lmName(f.to)}</li>`).join("")
+    : `<li class="empty">no redirects yet</li>`;
+  drawStrip();
+}
+// per-unit strip (adapter view): one bar per unit = done (bright) + still assigned (dim); band lines from the kernel
+function drawStrip() {
+  const c = $("#lm-strip"); if (!c || !T) return;
+  const w = c.clientWidth || 320, hgt = 46, dpr = Math.min(2, window.devicePixelRatio || 1);
+  if (c.width !== Math.round(w * dpr)) { c.width = Math.round(w * dpr); c.height = Math.round(hgt * dpr); }
+  const g = c.getContext("2d"); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, w, hgt);
+  const max = Math.max(1, R("trips.unitMax"), Math.ceil(R("trips.bandHigh")) + 1), bw = w / T.units.length, sy = (hgt - 4) / max;
+  for (const u of T.units) {
+    const x = (u.unit - 1) * bw, a = u.done, L = a + u.plan.length + (u.trip && u.trip.st === "active" ? 1 : 0);
+    g.fillStyle = u.band === "above" ? "#6a5530" : u.band === "below" ? "#2c4f5c" : "#3a2c36"; g.fillRect(x + 0.3, hgt - L * sy, bw - 0.6, L * sy);
+    g.fillStyle = "#e58fc0"; g.fillRect(x + 0.3, hgt - a * sy, bw - 0.6, a * sy);
+  }
+  g.strokeStyle = "#7eb8c9"; g.setLineDash([3, 3]); g.lineWidth = 1;
+  for (const v of [R("trips.bandHigh"), R("trips.bandLow")]) { const y = Math.round(hgt - v * sy) + 0.5; g.beginPath(); g.moveTo(0, y); g.lineTo(w, y); g.stroke(); }
+  g.setLineDash([]);
+}
+function renderEstimate() {
+  if (!T) return;
+  const end = T.lmEstimate(), left = Math.max(0, end - T.simTime);
+  $("#lm-est").textContent = R("trips.pending") === 0
+    ? `all last-mile trips settled · ${fmt(R("trips.done"))} done`
+    : `≈ ${clock(end)} sim · ≈ ${realDur(left / speed)} real at ×${speed}`;
 }
 
 function renderExplain() {
@@ -944,10 +1037,10 @@ function renderWrites() {
     const rec = w.recomputed.length
       ? w.recomputed.map((p) => (w.changed.includes(p) ? `<span class="chg">${esc(p)}</span>` : esc(p))).join(", ")
       : "no dependents";
-    const note = w.hauls ? `// ${sgn(w.delta)} · ${w.hauls} haul${w.hauls > 1 ? "s" : ""}` : `// ${sgn(w.delta)}`;
+    const note = w.note ? `// ${w.note}` : w.hauls ? `// ${sgn(w.delta)} · ${w.hauls} ${w.source.startsWith("trips.") || w.source.startsWith("localDelivery.") ? "deliver" + (w.hauls > 1 ? "ies" : "y") : "haul" + (w.hauls > 1 ? "s" : "")}` : `// ${sgn(w.delta)}`;
     return `<li><code>${esc(w.code)}</code><span class="wk">k=${w.k}</span><span class="wc">${esc(note)}</span><span class="wr">recomputed: ${rec}</span></li>`;
   }).join("");
-  $("#flush-meta").textContent = `flush #${lastFlush.idx} · sim ${lastFlush.sim.toFixed(1)} s · ${lastFlush.writes.length} real writes (one per changed fact) · k ${lastFlush.writes.map((w) => w.k).join("·")}`;
+  $("#flush-meta").textContent = `flush #${lastFlush.idx} · sim ${clock(lastFlush.sim)} · ${lastFlush.writes.length} real writes (one per changed fact) · k ${lastFlush.writes.map((w) => w.k).join("·")}`;
 }
 
 function renderStats(now) {
@@ -987,14 +1080,19 @@ function resize() {
 new ResizeObserver(resize).observe(wrap);
 resize();
 
-const COLORS = { enRouteImp: "#7eb8c9", enRouteExp: "#c9b87e", loading: "#7ec99a", queued: "#b39ddb", returning: "#5f6b78", idle: "#4a535e" };
-const DRAW_ORDER = ["idle", "returning", "queued", "enRouteExp", "enRouteImp", "loading"];
-const MOVING = new Set(["impToQueue", "impToBerth", "impOut", "expOut", "expIn", "expToTrain", "toDepotImp", "toDepotExp"]);
-const OFFMAP = new Set(["impAway", "impBack", "expAway"]);
+const COLORS = { enRouteImp: "#7eb8c9", enRouteExp: "#c9b87e", loading: "#7ec99a", queued: "#b39ddb", returning: "#5f6b78", idle: "#4a535e",
+  lmEnRoute: "#e58fc0", lmReturning: "#9a6585", lmLoading: "#e58fc0", lmIdle: "#6a4a5e" };
+const DRAW_ORDER = ["idle", "returning", "queued", "enRouteExp", "enRouteImp", "loading", "lmIdle", "lmReturning", "lmLoading", "lmEnRoute"];
+const MOVING = new Set(["impToQueue", "impToBerth", "impOut", "expOut", "expIn", "expToTrain", "toDepotImp", "toDepotExp", "lmOut", "lmBack"]);
 const jit = (id, k) => ((Math.sin(id * 12.9898 + k * 78.233) * 43758.5453) % 1) * 1.6;   // lane offset per truck
-const POOL = { x: 474, y: 478, cols: 25, gap: 3.2 };
+const POOL = { x: 470, y: 478, cols: 20, gap: 3.2 };
+const LM_POOL = [{ x: 540, y: 478 }, { x: CEDIS[1].pt[0] - 14, y: CEDIS[1].pt[1] + 14 }];
 const BERTH_OFF = (slot) => [-12 + (slot % 8) * 4.2, -2 + Math.floor(slot / 8) * 4.2];
 const buckets = Object.fromEntries(DRAW_ORDER.map((k) => [k, []]));
+const ADDR = { planned: "#4a3a45", unassigned: "#4a3a45", active: "#b0789a", done: "#f4e6b8", unscheduled: "#8a3a3a" };
+const ADDR_ORDER = ["planned", "unassigned", "unscheduled", "active", "done"];
+const addrB = Object.fromEntries(ADDR_ORDER.map((k) => [k, []]));
+const ringAbove = [], ringBelow = [];
 
 function draw() {
   const { s, ox, oy, dpr } = view;
@@ -1004,8 +1102,20 @@ function draw() {
   ctx.setTransform(dpr * s, 0, 0, dpr * s, dpr * ox, dpr * oy);
   ctx.save();
   ctx.beginPath(); ctx.rect(0, 0, 1200, 800); ctx.clip();   // trucks vanish at the map edge
+  // 1,000 address points: dim until delivered
+  for (const k of ADDR_ORDER) addrB[k].length = 0;
+  for (const tp of T.trips) addrB[tp.st].push(tp.x, tp.y);
+  for (const k of ADDR_ORDER) {
+    const b = addrB[k]; if (!b.length) continue;
+    const r = k === "done" ? 1.4 : 1.1;
+    ctx.fillStyle = ADDR[k]; ctx.globalAlpha = k === "done" ? 0.9 : 0.8;
+    for (let i = 0; i < b.length; i += 2) ctx.fillRect(b[i] - r, b[i + 1] - r, 2 * r, 2 * r);
+  }
+  ctx.globalAlpha = 1;
   for (const k of DRAW_ORDER) buckets[k].length = 0;
+  ringAbove.length = 0; ringBelow.length = 0;
   moving = 0; offMap = 0;
+  const lmPoolIdx = [0, 0];
   for (const tr of T.trucks) {
     const vis = VIS_OF[tr.st];
     if (!vis) { offMap++; continue; }
@@ -1014,23 +1124,32 @@ function draw() {
     let x, y;
     if (tr.st === "pool") { x = POOL.x + (tr.id % POOL.cols) * POOL.gap; y = POOL.y + Math.floor(tr.id / POOL.cols) * POOL.gap; }
     else if (tr.st === "impLoading") { const b = KEY[`berth${tr.ship}`], o = BERTH_OFF(tr.slot); x = b[0] + o[0]; y = b[1] + o[1]; }
-    else if (tr.st === "expUnloading") { x = KEY.train[0] - 19 + tr.slot * 4.2; y = KEY.train[1] + 13; }
+    else if (tr.st === "expUnloading") { x = KEY.train[0] - 38 + (tr.slot % 20) * 4; y = KEY.train[1] + 13; }
+    else if (tr.st === "lmPool") { const p = LM_POOL[tr.home], i = lmPoolIdx[tr.home]++; x = p.x + (i % 8) * 3.2; y = p.y + Math.floor(i / 8) * 3.2; }
+    else if (tr.st === "lmLoading") { const c = CEDIS[tr.home].pt; x = c[0] - 12 + (tr.slot % 6) * 4; y = c[1] - 16 - Math.floor(tr.slot / 6) * 4; }
     else { x = tr.x + jit(tr.id, 1); y = tr.y + jit(tr.id, 2); }
     buckets[vis].push(x, y);
+    if (tr.cat === "lastMile" && tr.band !== "within") (tr.band === "above" ? ringAbove : ringBelow).push(x, y);
   }
   const lay = (q, node) => q.forEach((tr, i) => buckets.queued.push(node[0] - 14 + (i % 10) * 3.6, node[1] + 17 + Math.floor(i / 10) * 3.6));
   lay(T.queues.impQ, KEY.qimp); lay(T.queues.expQ, KEY.qexp);
   if (moving > maxMoving) maxMoving = moving;
   for (const k of DRAW_ORDER) {
     const b = buckets[k]; if (!b.length) continue;
-    const r = k === "idle" ? 1.2 : 2.2;
+    const r = k === "idle" ? 1.2 : k.startsWith("lm") ? (k === "lmIdle" ? 1.1 : 1.9) : 2.2;
     ctx.fillStyle = COLORS[k];
-    ctx.globalAlpha = k === "returning" ? 0.85 : 1;
+    ctx.globalAlpha = k === "returning" || k === "lmReturning" ? 0.85 : 1;
     ctx.beginPath();
     for (let i = 0; i < b.length; i += 2) { ctx.moveTo(b[i] + r, b[i + 1]); ctx.arc(b[i], b[i + 1], r, 0, 6.2832); }
     ctx.fill();
   }
-  ctx.globalAlpha = 1;
+  ctx.globalAlpha = 1; ctx.lineWidth = 0.9;
+  for (const [b, col] of [[ringAbove, "#e0a050"], [ringBelow, "#5ec8e0"]]) {
+    if (!b.length) continue;
+    ctx.strokeStyle = col; ctx.beginPath();
+    for (let i = 0; i < b.length; i += 2) { ctx.moveTo(b[i] + 3, b[i + 1]); ctx.arc(b[i], b[i + 1], 3, 0, 6.2832); }
+    ctx.stroke();
+  }
   ctx.restore();
 }
 
@@ -1043,7 +1162,7 @@ function frame(now) {
   frameLog.push(now); if (frameLog.length > 240) frameLog = frameLog.filter((t) => now - t <= 1000);
   if (running && T) {
     let sim = dtReal * speed;
-    while (sim > 1e-9) { const d = Math.min(0.1, sim); T.step(d); sim -= d; }
+    while (sim > 1e-9) { const d = Math.min(0.5, sim); T.step(d); sim -= d; }
     const writes = T.flush();                 // ← real kernel writes happen here
     if (writes.length) onFlush(writes, now);
     if (T.done()) setRunning(false, true);
@@ -1052,6 +1171,7 @@ function frame(now) {
   if (now - lastUi > 250) {
     lastUi = now;
     if (P) { render(); renderWrites(); renderStats(now); lightHits(); }
+    if (P && now - lastSlow > 1000) { lastSlow = now; renderEstimate(); }
   }
 }
 requestAnimationFrame(frame);
@@ -1065,26 +1185,42 @@ function setRunning(on, finished = false) {
 
 function resetKernel() {
   P = createPortKernel(ME);
-  T = createTraffic({ kernel: P, ROUTES, KEY });
+  T = createTraffic({ kernel: P, ROUTES, KEY, PROJ });
   flushLog = []; lastFlush = null; flushCount = 0; writeCount = 0; maxMoving = 0; hitPaths.clear();
   $("#seed-code").textContent = P.seedLog.join("\n");
-  $("#verify-out").textContent = "Flushes, then rebuilds a fresh kernel from the current facts + same formulas, compares every derived path, Σ counters = fleet, and adapter truck states vs kernel counters.";
+  $("#verify-out").textContent = "Flushes, then rebuilds a fresh kernel from the current facts + same formulas and compares every derived path; checks Σ counters = 500, trips done + pending + unscheduled = 1,000, above + within + below = 100, band limits, and adapter states vs kernel counters.";
   $("#verify-out").className = "verify-out";
   setRunning(false);
-  render(); renderWrites(); renderStats(performance.now());
+  render(); renderWrites(); renderStats(performance.now()); renderEstimate();
 }
 
+// adapter-vs-kernel cross-checks passed to verifyFromScratch (after a flush)
+function adapterChecks() {
+  const ac = T.adapterCounters();
+  const hi = P.read("trips.bandHigh"), lo = P.read("trips.bandLow");
+  const n = { above: 0, within: 0, below: 0 }; let mx = 0, mn = Infinity;
+  for (const u of T.units) { n[T.classify(u, hi, lo)]++; const L = u.done + u.plan.length + (u.trip && u.trip.st === "active" ? 1 : 0); mx = Math.max(mx, L); mn = Math.min(mn, L); }
+  return [
+    ...[...COUNTERS, ...TRIP_COUNTERS].map((c) => [`adapter vs kernel ${c}`, P.read(c), ac[c] || 0]),
+    ...UNIT_IDS.map((i) => [`adapter vs kernel lastMile.units[${i}].done`, P.read(`lastMile.units.${i}.done`), ac[`lastMile.units.${i}.done`]]),
+    ["band: unitsAbove = adapter recount", P.read("lastMile.unitsAbove"), n.above],
+    ["band: unitsWithin = adapter recount", P.read("lastMile.unitsWithin"), n.within],
+    ["band: unitsBelow = adapter recount", P.read("lastMile.unitsBelow"), n.below],
+    ["trips.unitMax = adapter recount", P.read("trips.unitMax"), mx],
+    ["trips.unitMin = adapter recount", P.read("trips.unitMin"), mn],
+    ["trips.redirects = adapter count", P.read("trips.redirects"), T.redirects],
+  ];
+}
 function verifyNow() {
   const writes = T.flush();
   if (writes.length) onFlush(writes, performance.now());
-  const ac = T.adapterCounters();
-  return P.verifyFromScratch(COUNTERS.map((c) => [`adapter vs kernel ${c}`, P.read(c), ac[c] || 0]));
+  return P.verifyFromScratch(adapterChecks());
 }
 function verify() {
   const v = verifyNow();
   $("#verify-out").className = "verify-out " + (v.ok ? "ok" : "bad");
   $("#verify-out").textContent = v.ok
-    ? `✓ ${v.checked} checks pass: every derived path matches a from-scratch kernel rebuild, Σ counters = ${FLEET}, adapter states = kernel counters (sim ${T.simTime.toFixed(0)} s, ${fmt(writeCount)} writes).`
+    ? `✓ ${v.checked} checks pass: every derived path matches a fresh kernel rebuild (none undefined); Σ counters = ${FLEET} (${HEAVY} heavy + ${LAST_MILE} last-mile); trips done + pending + unscheduled = ${TRIP_COUNT}; above + within + below = ${LAST_MILE}; bandHigh/bandLow = avg × 1.15 / × 0.85; adapter states = kernel counters (sim ${clock(T.simTime)}, ${fmt(writeCount)} writes).`
     : `✗ mismatches: ${JSON.stringify(v.mismatches)}`;
   render();
   return v;
@@ -1117,19 +1253,21 @@ function verify() {
 
 // ── Tutorial ──
 const TOUR = [null,
-  { title: "1 · Port overview", body: "You are at the <strong>Port of Veracruz</strong>. Three ships unload (import), one train loads (export), and <strong>500 trucks</strong> circulate on real OpenStreetMap roads — every dot is one truck. Every number on the right is read live from a real <strong>this.me@4.1.0</strong> kernel.",
+  { title: "1 · Port overview", body: "You are at the <strong>Port of Veracruz</strong>. Three ships unload (import), one train loads (export), and <strong>500 trucks</strong> — 400 heavy, 100 last-mile — circulate on real OpenStreetMap roads; every dot is one truck. Every number on the right is read live from a real <strong>this.me@4.1.0</strong> kernel.",
     hlNodes: ["n-port", "n-ship1", "n-ship2", "n-ship3", "n-train"], hlEdges: ["e-ship1-q", "e-ship2-q", "e-ship3-q", "e-qexp-train"], hlPanels: [] },
-  { title: "2 · Stocks (facts)", body: "<strong>me.cargo.coffee(100000)</strong>, sugar(200000), containers(5000), <strong>me.trucks.fleet(500)</strong>. A fact changes only when a write says so. <strong>cargo.bulkTons</strong> is a kernel rule: coffee + sugar. Idle trucks wait in the pool next to the yard.",
+  { title: "2 · Stocks (facts)", body: "<strong>me.cargo.coffee(100000)</strong>, sugar(200000), containers(5000), <strong>me.trucks.fleet(500)</strong> = heavy.fleet(400) + lastMile.fleet(100). A fact changes only when a write says so. <strong>cargo.bulkTons</strong> is a kernel rule: coffee + sugar.",
     hlNodes: ["n-yard"], hlEdges: ["e-port-yard"], hlPanels: ["panel-stocks"] },
   { title: "3 · Ships unloading", body: "Each ship has facts <strong>total, remaining, tonsPerUnit</strong>. Kernel rules: <strong>remainingTons = remaining * tonsPerUnit</strong>, and <strong>importRemaining</strong> = the explicit sum over ships[1], [2], [3]. Laden import trucks (blue) leave Veracruz over the highways, off the map edge.",
     hlNodes: ["n-ship1", "n-ship2", "n-ship3", "n-qimp"], hlEdges: ["e-ship1-q", "e-ship2-q", "e-ship3-q"], hlPanels: ["panel-ships"] },
   { title: "4 · Train loading", body: "<strong>train[1].remainingToLoad</strong> is a fact; <strong>flows.exportRemaining</strong> and <strong>train[1].progress</strong> are kernel rules. Export trucks (amber) come in from outside the map with sugar and unload into the train.",
     hlNodes: ["n-train", "n-qexp", "n-yard"], hlEdges: ["e-yard-qexp", "e-qexp-train"], hlPanels: ["panel-train"] },
-  { title: "5 · Trucks by state", body: "Every truck state is a counter fact: <strong>trucks.available</strong>, <strong>queues.import.length</strong>, <strong>trucks.import.loading / enRoute / returning</strong>, same for export. Kernel rules sum them: <strong>trucks.working</strong>, <strong>trucks.accounted</strong>, <strong>trucks.balanced = accounted == fleet</strong>. <em>Where</em> each truck drives is adapter logic (dashed panel).",
+  { title: "5 · Trucks by state", body: "Every truck state is a counter fact (<strong>trucks.heavy.available</strong>, <strong>queues.import.length</strong>, <strong>trucks.import.enRoute</strong>, <strong>trucks.lastMile.loading</strong>…). Kernel rules sum them: <strong>trucks.working</strong>, <strong>trucks.accounted</strong>, <strong>trucks.balanced = accounted == fleet</strong>. <em>Where</em> each truck drives is adapter logic (dashed panel).",
     hlNodes: ["n-qimp", "n-qexp", "n-port", "n-yard"], hlEdges: ["e-qimp-port", "e-qexp-train"], hlPanels: ["panel-queues", "panel-adapter"] },
-  { title: "6 · Live traffic", body: "Press <strong>Start traffic</strong>. Each animation tick the adapter flushes what happened as <strong>real writes</strong> — one call per changed fact (a ship's remaining, a stock, a counter). The list shows the exact calls of the latest flush with the kernel's own <strong>k</strong>; writes/s and recent k are live.",
+  { title: "6 · Last-mile dispatch", body: "100 small trucks (pink) run an example schedule of <strong>1,000 trips</strong> from CEDIS A (cargo yard) and CEDIS B (example site) to addresses on OSM streets; address points light up when delivered. A greedy plan fills each unit's shift, then units are rebalanced to <strong>avg ± 15%</strong> (amber ring above, cyan below). Trip counters, band limits and per-unit sums are kernel; the heuristic is adapter.",
+    hlNodes: ["n-yard", "n-cedisb"], hlEdges: [], hlPanels: ["panel-lastmile"] },
+  { title: "7 · Live traffic", body: "Press <strong>Start traffic</strong>. Speeds are assumptions (heavy 25 km/h, last-mile 22 km/h, travel time from route metres); playback ×10 by default. Each animation tick the adapter flushes <strong>real writes</strong> — one call per changed fact — listed exactly with the kernel's own <strong>k</strong>.",
     hlNodes: ["n-qimp", "n-ship2", "n-port", "n-yard"], hlEdges: ["e-ship2-q", "e-qimp-port"], hlPanels: ["panel-mutate"] },
-  { title: "7 · Explain why", body: "<strong>me.explain(\"flows.importRemaining\")</strong> returns the expression, every input with its value, and <strong>sourcePath</strong> — the write that last recomputed it. <strong>Verify</strong> rebuilds a fresh kernel from the facts and compares everything.",
+  { title: "8 · Explain why", body: "<strong>me.explain(\"trips.bandHigh\")</strong> returns the expression, every input with its value, and <strong>sourcePath</strong> — the write that last recomputed it. <strong>Verify</strong> rebuilds a fresh kernel from the facts and compares everything.",
     hlNodes: ["n-port", "n-ship1", "n-ship2", "n-ship3"], hlEdges: ["e-ship1-q", "e-ship2-q", "e-ship3-q"], hlPanels: ["panel-explain", "panel-adapter"] },
 ];
 
@@ -1165,14 +1303,14 @@ function applyTour(step) {
 $("#btn-next").addEventListener("click", () => applyTour(tourStep >= TOUR.length - 1 ? 1 : tourStep + 1));
 $("#btn-prev").addEventListener("click", () => tourStep > 1 && applyTour(tourStep - 1));
 $("#btn-run").addEventListener("click", () => setRunning(!running));
-$("#sel-speed").addEventListener("change", (e) => { speed = Number(e.target.value) || 4; });
+$("#sel-speed").addEventListener("change", (e) => { speed = Number(e.target.value) || 10; renderEstimate(); });
 $("#btn-reset").addEventListener("click", resetKernel);
 $("#btn-verify").addEventListener("click", verify);
 $("#ex-select").addEventListener("change", renderExplain);
 
 const params = new URLSearchParams(location.search);
 applyTour(Math.min(TOUR.length - 1, Math.max(1, parseInt(params.get("step") || "1", 10) || 1)));
-if (params.get("speed")) { speed = Number(params.get("speed")) || 4; $("#sel-speed").value = String(speed); }
+if (params.get("speed")) { speed = Number(params.get("speed")) || 10; $("#sel-speed").value = String(speed); }
 
 try {
   const { mod, host, hash } = await loadKernel();
@@ -1187,11 +1325,11 @@ try {
     verify,
     pause: () => setRunning(false),
     // run the same adapter + flush loop synchronously to completion (no animation)
-    drain({ dt = 0.1, stepsPerFlush = 3, verifyEvery = 250 } = {}) {
+    drain({ dt = 1, stepsPerFlush = 2, verifyEvery = 1000 } = {}) {
       setRunning(false);
       const t0 = performance.now();
       let flushes = 0, writes = 0, checks = 0, failures = [], kMax = 0, kSum = 0;
-      while (!T.done() && T.simTime < 20000) {
+      while (!T.done() && T.simTime < 200000) {
         for (let i = 0; i < stepsPerFlush; i++) T.step(dt);
         const w = T.flush();
         if (!w.length) continue;
@@ -1202,10 +1340,18 @@ try {
       const wallMs = performance.now() - t0;
       const final = verify();
       setRunning(false, true); render(); renderWrites();
-      return { done: T.done(), simTime: T.simTime, flushes, writes, hauls: T.totalHauls, wallMs, writesPerSec: Math.round(writes / (wallMs / 1000)), kMax, kAvg: kSum / writes, periodicChecks: checks, failures, final: { ok: final.ok, checked: final.checked, mismatches: final.mismatches } };
+      return { done: T.done(), simTime: T.simTime, simClock: clock(T.simTime), flushes, writes, hauls: T.totalHauls,
+        trips: { done: P.read("trips.done"), unscheduled: P.read("trips.unscheduled"), pending: P.read("trips.pending"), redirects: P.read("trips.redirects"), perUnitDoneAvg: P.read("trips.perUnitDoneAvg"), max: P.read("trips.unitMax"), min: P.read("trips.unitMin"), band: [P.read("lastMile.unitsAbove"), P.read("lastMile.unitsWithin"), P.read("lastMile.unitsBelow")] }, wallMs, writesPerSec: Math.round(writes / (wallMs / 1000)), kMax, kAvg: kSum / writes, periodicChecks: checks, failures, final: { ok: final.ok, checked: final.checked, mismatches: final.mismatches } };
+    },
+    // fast-forward `simSec` simulated seconds with the same step + flush loop (no animation)
+    advance(simSec, dt = 1) {
+      const end = T.simTime + simSec;
+      while (!T.done() && T.simTime < end) { T.step(dt); const w = T.flush(); if (w.length) onFlush(w, performance.now()); }
+      render(); renderWrites(); renderEstimate();
+      return { simClock: clock(T.simTime), tripsDone: P.read("trips.done"), band: [P.read("lastMile.unitsAbove"), P.read("lastMile.unitsWithin"), P.read("lastMile.unitsBelow")] };
     },
     // real-time animated run for `ms`; returns fps and kernel writes/s actually achieved
-    realtime(ms = 5000, spd = 4) {
+    realtime(ms = 5000, spd = 10) {
       speed = spd; $("#sel-speed").value = String(spd); setRunning(true);
       const w0 = writeCount, f0 = flushCount, t0 = performance.now(); let frames = 0, worst = 0, last = t0; maxMoving = 0;
       return new Promise((resolve) => {
@@ -1213,7 +1359,7 @@ try {
           frames++; worst = Math.max(worst, now - last); last = now;
           if (now - t0 < ms) return requestAnimationFrame(tick);
           const sec = (now - t0) / 1000;
-          resolve({ seconds: sec, fps: frames / sec, worstFrameMs: worst, writesPerSec: (writeCount - w0) / sec, flushesPerSec: (flushCount - f0) / sec, maxMovingDots: maxMoving, simTime: T.simTime, working: P.read("trucks.working"), balanced: P.read("trucks.balanced") });
+          resolve({ simClock: clock(T.simTime), tripsDone: P.read("trips.done"), redirects: P.read("trips.redirects"), band: [P.read("lastMile.unitsAbove"), P.read("lastMile.unitsWithin"), P.read("lastMile.unitsBelow")], seconds: sec, fps: frames / sec, worstFrameMs: worst, writesPerSec: (writeCount - w0) / sec, flushesPerSec: (flushCount - f0) / sec, maxMovingDots: maxMoving, simTime: T.simTime, working: P.read("trucks.working"), balanced: P.read("trucks.balanced") });
         })(t0);
       });
     },

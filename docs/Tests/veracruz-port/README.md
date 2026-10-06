@@ -12,11 +12,49 @@ If the hash does not match, the page refuses to run.
 
 ## 500 trucks, one kernel
 
-All 500 trucks circulate at once. Each dot on the canvas overlay is one truck, coloured by its state: en route laden (import blue / export amber), loading or unloading, queued, returning empty, idle in the pool next to the yard. Trucks off the map (delivering inland / picking up export cargo) are not drawn.
+All 500 trucks circulate at once, split (assumption) into **400 heavy trucks** (ships / train) and **100 small last-mile trucks** (CEDIS → addresses in the city). Each dot on the canvas overlay is one truck; last-mile trucks are smaller pink dots. Trucks off the map (delivering inland / picking up export cargo) are not drawn.
 
-- **Import**: pool or exit road → `Q.IMPORT` → one of 16 berth slots per ship (4–7 s loading) → laden over a real OSM route out of the frame (NW: Dr. Rafael Cuervo → Hwy 180 to Cardel; S: Díaz Mirón → Xalapa; S: Ávila Camacho → Boca del Río) → off map → comes back in.
-- **Export**: a free truck drives out (or is already outside), picks up sugar, comes **in from the map edge** → `Q.EXPORT` → one of 10 train slots → next job.
-- A truck picks the flow with more open work per truck; the pool releases ~6 trucks per sim second, so traffic builds up gradually instead of all at once.
+- **Import (heavy)**: pool or exit road → `Q.IMPORT` → one of 20 berth slots per ship → laden over a real OSM route out of the frame (NW: Dr. Rafael Cuervo → Hwy 180 to Cardel; S: Díaz Mirón → Xalapa; S: Ávila Camacho → Boca del Río) → off map → comes back in.
+- **Export (heavy)**: a free truck drives out (or is already outside), picks up sugar, comes **in from the map edge** → `Q.EXPORT` → one of 20 train slots → next job.
+- **Last-mile**: 1,000 scheduled trips from 2 CEDIS to addresses (below).
+
+### Speeds and durations: assumptions, not sourced statistics
+
+Named constants in `port-traffic.js`:
+
+| Constant | Value | Assumption |
+|---|---|---|
+| `HEAVY_TRUCK_KMH` | 25 km/h (±15% per truck) | heavy trucks in the urban port area average roughly 20–30 km/h including stops, gates and lights |
+| `LAST_MILE_KMH` | 22 km/h (±15% per truck) | small delivery trucks in city traffic roughly 20–25 km/h |
+| berth loading / train unloading | 8–15 min / 6–10 min per heavy truck | order of magnitude for a believable rhythm |
+| off-map leg | 15–30 min each way | delivery / pickup in the metro area beyond the frame |
+| `LM.loadMinAvg` / `LM.dropMin` | ~10 min at the CEDIS / 5–8 min at the address | |
+| shift | 08:00–17:00 (9 h) | the simulation clock starts at 08:00 |
+| CEDIS loading bays | 12 (A) / 10 (B) | |
+| gate release | one heavy truck every 2 s at start | several gate lanes; staggered start |
+
+Travel time comes from the **route length in metres**: each OSM polyline is converted back to lon/lat (inverse of the page's equirectangular projection, `PROJ` in `port-routes.js`) and measured with the haversine formula. Playback is shown in the UI: **×10 by default** (1 s real = 10 s simulated), ×1 real time and ×60 available; the HUD shows the simulated clock.
+
+### Last-mile: 1,000 scheduled trips (example data)
+
+`build_lastmile.py` generates `port-lastmile.js` (seeded, deterministic):
+
+- **CEDIS A** = the cargo yard/warehouse by the port; **CEDIS B** = an *example* second distribution centre on Calle Esteban Morales (hypothetical site, not a real facility).
+- **1,000 addresses** sampled on OSM residential / tertiary / secondary street segments inside the visible frame (Centro and nearby neighbourhoods), weighted by segment length. Each trip is served from the CEDIS with the shorter road distance (550 A / 450 B).
+- Each trip has a **3 h window** starting on the hour between 08:00 and 14:00 and a load of 150–900 kg (example values), and a **route on real road geometry** (shortest path on the OSM road graph, exported as one shortest-path tree per CEDIS).
+- Units: 55 based at CEDIS A, 45 at CEDIS B (≈ share of trips).
+
+**Assignment heuristic (adapter, not a solver):**
+
+1. **Greedy initial plan**: unit by unit, each unit repeatedly takes the pending trip of its CEDIS that it can *finish earliest* (estimated with the averages: load + travel at 22 km/h, waiting if the window is not open yet, + drop), as long as it arrives within the window and is back before 17:00. This maximises trips per unit, so the first units are packed (up to ~31 trips) and later ones are nearly empty. Trips no unit can fit are "can't fit today".
+2. **Continuous rebalancing** around the average, every 20 sim seconds, up to 25 redirects per pass:
+   - avg trips per unit = `trips.assigned / trucks.lastMile.fleet` (assigned = planned + active + done), **band = avg ± 15%** (`trips.bandHigh`, `trips.bandLow`, kernel formulas).
+   - Units **above** the band (amber ring) give pending trips to units **below** it (cyan ring), nearest to the receiver's next stop first, only if the receiver's whole plan still fits its shift and windows. When only one side is out of band, the move goes to / comes from in-band units that stay in band.
+   - Units only trade within their CEDIS; done trips never move. It stops when everyone is within the band or no feasible move remains.
+   - Each redirect is logged in the UI feed: `08:08 · trip #0314 · LM-71 → LM-84`.
+3. **Execution**: an idle unit starts its next planned trip when the window allows and a CEDIS bay is free. Actual times vary around the averages; if a trip no longer fits when its turn comes, it becomes "can't fit today".
+
+Result of the default run (seed fixed): initial plan 36 units above / 1 within / 63 below → after ~590 redirects **100 / 100 within the band** by ~08:10; at the end ~960–965 trips done, ~35–40 can't fit today, ~9.6 trips done per unit (max 11, min 5–7). Exact numbers vary slightly with playback (frame timing changes the random draws).
 
 ### Writes: what is real
 
@@ -26,22 +64,23 @@ Each animation tick the adapter **flushes** its pending deltas: **one real kerne
 me.ships[2].remaining(56350)          // −50 · 1 haul (ship → truck, loading done)
 me.cargo.coffee(97200)                // −50 · 1 haul (truck left the map)
 me.train[1].remainingToLoad(48400)    // −50 · 1 haul (truck unloaded into the train)
-me.queues.import.length(42)           // +1
+me.localDelivery.remainingKg(367580)  // −640 · 1 delivery
+me.trips.done(304)                    // +1 · 1 delivery
+me.lastMile.units[37].done(4)         // +1
 me.trucks.import.enRoute(156)         // +2
+me.lastMile.unitsWithin(100)          // adapter classification
 ```
 
-The page lists the exact calls of the latest flush, each with the kernel's own `k` and recomputed paths. Totals (`flows.*`, `trucks.working`, `trucks.balanced`, `port.busy`…) are kernel formulas, never written.
-
-Truck counters (facts): `trucks.available`, `queues.import.length`, `trucks.import.loading|enRoute|returning`, `queues.export.length`, `trucks.export.loading|enRoute|returning`. The kernel sums them: `trucks.inQueue`, `trucks.loading`, `trucks.enRoute`, `trucks.returning`, `trucks.working`, `trucks.accounted`, `trucks.balanced = trucks.accounted == trucks.fleet`.
+The page lists the exact calls of the latest flush, each with the kernel's own `k` and recomputed paths. Totals, averages, band limits and flags are kernel formulas, never written.
 
 ## Kernel vs adapter
 
-| Kernel (this.me@4.1.0) | Adapter (plain JS, `port-traffic.js`, dashed panel in the UI) |
+| Kernel (this.me@4.1.0) | Adapter (plain JS, `port-traffic.js`, dashed panel / "adapter" tags in the UI) |
 |---|---|
-| Every fact: ships, train, cargo stocks, fleet, all truck/queue counters | Each truck's state machine, route, berth/train slot and timers |
-| Every derived value (`=` formulas below) | Which flow a free truck joins; queue order; pool release rate |
-| The wave: `k`, `recomputed`, `changed` per write, read from `me.explain(path).meta` | Pending deltas, turned into writes at each flush (value = kernel read + delta) |
-| The WHY panel: raw `me.explain(path)` output | Dot positions, canvas drawing, speed, fps/writes-per-second stats |
+| Facts: ships, train, cargo stocks, `localDelivery.totalKg/remainingKg`, fleets (500 = 400 + 100), all truck/queue counters, trip state counters (`trips.unassigned/planned/active/done/unscheduled`), `trips.redirects`, `trips.band` (0.15), per-unit `lastMile.units[i].done` | Each truck's state machine, route, berth/train/bay slot and timers; which flow a heavy truck joins |
+| Derived (`=` formulas below): flows, progress, `trucks.*` sums and `balanced` flags, `trips.pending/assigned/accounted/balanced`, `trips.perUnitAvg`, `trips.bandHigh/bandLow`, `lastMile.unitDoneSum` (explicit 100-term sum), `lastMile.unitsCounted/unitsOk` | Last-mile greedy plan, rebalancing redirects, per-unit band classification |
+| Adapter-written facts, labelled in the UI: `lastMile.unitsAbove/Within/Below` (classified with the kernel's bandHigh/bandLow), `trips.unitMax/unitMin` ("adapter aggregate": the kernel has no `min()`/`max()`) | Pending deltas → writes at each flush (value = kernel read + delta); completion estimate; redirect log |
+| The wave: `k`, `recomputed`, `changed` per write; the WHY panel: raw `me.explain(path)` | Dot/address positions, canvas drawing, playback speed, fps / writes-per-second stats |
 
 `port-sim.js` → `write()` builds the call text from the same segments it executes, so the listed `me.…` lines are the executed calls.
 
@@ -60,16 +99,37 @@ me.flows["="]("importHasWork", "importRemaining > 0")
 me.flows["="]("exportRemaining", "train[1].remainingToLoad")
 me.flows["="]("exportHasWork", "exportRemaining > 0")
 me.queues.import["="]("busy", "length > 0")                       // same for export
+me.localDelivery["="]("deliveredKg", "totalKg - remainingKg")
+me.localDelivery["="]("progress", "1 - remainingKg / totalKg")
+me.trips["="]("pending", "trips.unassigned + trips.planned + trips.active")
+me.trips["="]("assigned", "trips.planned + trips.active + trips.done")
+me.trips["="]("accounted", "trips.done + trips.pending + trips.unscheduled")
+me.trips["="]("balanced", "trips.accounted == trips.total")
+me.trips["="]("doneShare", "trips.done / trips.total")
+me.trips["="]("perUnitAvg", "trips.assigned / trucks.lastMile.fleet")
+me.trips["="]("perUnitDoneAvg", "trips.done / trucks.lastMile.fleet")
+me.trips["="]("bandHigh", "trips.perUnitAvg + trips.perUnitAvg * trips.band")
+me.trips["="]("bandLow", "trips.perUnitAvg - trips.perUnitAvg * trips.band")
+me.lastMile["="]("unitDoneSum", "lastMile.units[1].done + lastMile.units[2].done + … + lastMile.units[100].done")   // explicit
+me.lastMile["="]("unitSumOk", "lastMile.unitDoneSum == trips.done")
+me.lastMile["="]("unitsCounted", "lastMile.unitsAbove + lastMile.unitsWithin + lastMile.unitsBelow")
+me.lastMile["="]("unitsOk", "lastMile.unitsCounted == trucks.lastMile.fleet")
+me.trucks.heavy["="]("working", "queues.import.length + queues.export.length + trucks.import.loading + … + trucks.export.returning")
+me.trucks.heavy["="]("balanced", "trucks.heavy.working + trucks.heavy.available == trucks.heavy.fleet")
+me.trucks.lastMile["="]("working", "trucks.lastMile.loading + trucks.lastMile.enRoute + trucks.lastMile.returning")
+me.trucks.lastMile["="]("balanced", "trucks.lastMile.working + trucks.lastMile.available == trucks.lastMile.fleet")
 me.trucks["="]("inQueue", "queues.import.length + queues.export.length")
-me.trucks["="]("loading", "trucks.import.loading + trucks.export.loading")   // same for enRoute, returning
+me.trucks["="]("loading", "trucks.import.loading + trucks.export.loading + trucks.lastMile.loading")   // same for enRoute, returning
+me.trucks["="]("available", "trucks.heavy.available + trucks.lastMile.available")
 me.trucks["="]("working", "trucks.inQueue + trucks.loading + trucks.enRoute + trucks.returning")
 me.trucks["="]("accounted", "trucks.working + trucks.available")
 me.trucks["="]("balanced", "trucks.accounted == trucks.fleet")
+me.trucks["="]("splitOk", "trucks.heavy.fleet + trucks.lastMile.fleet == trucks.fleet")
 me.cargo["="]("bulkTons", "coffee + sugar")
-me.port["="]("busy", "flows.importRemaining + flows.exportRemaining + trucks.working > 0")
+me.port["="]("busy", "flows.importRemaining + flows.exportRemaining + trips.pending + trucks.working > 0")
 ```
 
-Queues and truck states are counter facts, batched per flush. There is no dynamic count.
+Queues, truck states and trip states are counter facts, batched per flush. There is no dynamic count.
 
 ## Kernel probe (Node, this.me@4.1.0), what works and what doesn't
 
@@ -92,22 +152,31 @@ How the page gets k for a write: the kernel stores the last recompute wave on ev
 
 ## Correctness check and performance
 
-"Verify" (UI) flushes, then `verifyFromScratch()` rebuilds a fresh kernel from the current facts plus the same formulas and runs 39 checks: all 28 derived paths, a plain-arithmetic cross-check of `importRemaining`, Σ counters = 500 with `trucks.balanced`, and the adapter's truck states vs each of the 9 kernel counters.
+"Verify" (UI) flushes, then `verifyFromScratch()` rebuilds a fresh kernel from the current facts plus the same formulas and runs **241 checks**:
+
+- All 49 derived paths match the fresh rebuild, and none is `undefined`.
+- Arithmetic cross-checks: `importRemaining`, `deliveredKg`, and `bandHigh` / `bandLow` = avg × 1.15 / × 0.85.
+- Σ counters = 500, Σ heavy = 400, Σ last-mile = 100, with all `balanced` flags and `splitOk`.
+- **trips done + pending + unscheduled = 1,000**, and the trip state counters sum to 1,000.
+- Σ `units[i].done` = `trips.done`; **unitsAbove + unitsWithin + unitsBelow = 100**.
+- The adapter's own states vs every kernel counter (heavy, last-mile, trips, per-unit done), band counts recomputed with the kernel's thresholds, unitMax/unitMin, and redirects.
 
 Headless Chrome (puppeteer, 1600×1000, this box):
 
 | Run | Result |
 |---|---|
-| Real-time ×4, 20 s | 60 fps, worst frame 16.8 ms, ~120 kernel writes/s, ~42 flushes/s, up to 274 dots moving at once |
-| Real-time ×16, 4 s | 60 fps, ~330 writes/s, ~60 flushes/s (one per frame) |
-| Full drain (`__port.drain()`, no animation) | 4,000 hauls, ~15k writes, ~7.9k writes/s, k max 7 / avg 4.6, 13 periodic + final verify all pass, no console errors |
+| Default ×10, first 8 s after load | 60 fps, ~12 kernel writes/s |
+| Default ×10, steady state (10:00 sim) | 60 fps (worst frame 16.8 ms), ~14–15 kernel writes/s, ~5 flushes/s |
+| ×60 | 60 fps, ~73 writes/s, ~23 flushes/s |
+| Full drain (`__port.drain()`, no animation) | 08:00 → ~22:00 sim; 4,000 hauls + ~960 deliveries; ~32k writes at ~3.9k writes/s; k max 9; 10 periodic + final verify all pass; no console errors |
 
 ## Routes
 
-`build_routes.py` builds `port-routes.js` from the same Overpass data: shortest paths (Dijkstra, faster weights for primary/secondary roads) on the OSM road graph between the berths, queues, train, yard and three exits. Exit routes are cut 140 px beyond the frame so trucks visibly leave the map. Docks and rail sidings have no public OSM road in the data used, so the last few metres to a berth/queue are straight connectors to the nearest road node.
+`build_lastmile.py` builds `port-lastmile.js` (CEDIS, 1,000 trips, shortest-path trees). `build_routes.py` builds `port-routes.js` from the same Overpass data: shortest paths (Dijkstra, faster weights for primary/secondary roads) on the OSM road graph between the berths, queues, train, yard and three exits. Exit routes are cut 140 px beyond the frame so trucks visibly leave the map. Docks and rail sidings have no public OSM road in the data used, so the last few metres to a berth/queue are straight connectors to the nearest road node.
 
 ```bash
-python3 build_routes.py overpass_raw.json   # wider bbox 19.175..19.215 / -96.165..-96.105
+python3 build_routes.py overpass_raw.json     # wider bbox 19.175..19.215 / -96.165..-96.105
+python3 build_lastmile.py overpass_raw.json   # 2 CEDIS + 1,000 seeded trips
 ```
 
 ## Basemap
@@ -128,7 +197,8 @@ python3 build_basemap.py
 |---|---|
 | `../veracruz-port.html` | Page: tutorial, map, UI, kernel loader |
 | `port-sim.js` | Kernel wiring: seed facts, formulas, write/wave helper, verify |
-| `port-traffic.js` | Adapter: 500 truck agents, slots, timers, deltas → flush (real writes) |
+| `port-traffic.js` | Adapter: 500 truck agents, speeds (assumptions), slots, timers, last-mile plan + rebalancing, deltas → flush (real writes) |
+| `port-lastmile.js`, `build_lastmile.py` | Last-mile example data: 2 CEDIS, 1,000 trips, road trees (generated) |
 | `port-routes.js`, `build_routes.py` | Truck routes on OSM road geometry (generated) |
 | `basemap.svg`, `build_basemap.py`, `overpass_query.txt` | OSM basemap build |
 

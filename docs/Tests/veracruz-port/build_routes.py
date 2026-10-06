@@ -2,7 +2,7 @@
 """Truck routes for the Veracruz port demo, computed on OSM road geometry.
 
 Input : overpass_raw.json (same Overpass response as build_basemap.py; not committed)
-Output: port-routes.js  (export const ROUTES, KEY, EXITS) in page SVG coordinates
+Output: port-routes.js  (export const ROUTES, KEY, EXITS, PROJ) in page SVG coordinates
 
 Routing: Dijkstra on the undirected OSM road graph (primary/secondary/tertiary/
 residential), cost = length x class factor (prefers main roads; one-way tags are
@@ -151,6 +151,8 @@ OUT.write_text(
     "// Page SVG coordinates (1200×800 frame); exit routes extend beyond the frame edge.\n"
     f"export const KEY = {json.dumps(KEY)};\n"
     f"export const EXITS = {json.dumps({k: v['label'] for k, v in EXITS.items()})};\n"
+    f"// equirectangular page projection (for haversine route lengths in metres)\n"
+    f"export const PROJ = {json.dumps({'south': SOUTH, 'west': WEST, 'north': NORTH, 'east': EAST, 'W': W, 'H': H, 'PAD': PAD})};\n"
     f"export const ROUTES = {json.dumps(ROUTES, separators=(',', ':'))};\n")
 print("routes:", len(ROUTES), "bytes:", OUT.stat().st_size)
 for k, v in sorted(meta.items()): print(f"  {k:14s} {v:6d}px  pts={len(ROUTES[k])}  start={ROUTES[k][0]} end={ROUTES[k][-1]}")
