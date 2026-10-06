@@ -140,7 +140,7 @@ const EDGE_ENDS = {
 
 // ── Tour ──
 const TOUR = [null,
-  { title: "1 · Port overview", body: "You are at the <strong>Port of Veracruz</strong>. Three ships unload (import), one train loads (export), and <strong>500 trucks</strong> (400 heavy, 100 last-mile) circulate on real OpenStreetMap roads; every dot is one truck. Every number on the right is a <strong>.GUI</strong> component subscribed to a path of a real <strong>this.me@4.1.0</strong> kernel.",
+  { title: "1 · Port overview", body: "You are at the <strong>Port of Veracruz</strong>. Three ships unload (import), one train loads (export), and <strong>500 trucks</strong> (400 heavy, 100 last-mile) circulate on real OpenStreetMap roads; every dot is one truck. Every number on the right reads a path of the real kernel.",
     hlNodes: ["n-port", "n-ship1", "n-ship2", "n-ship3", "n-train"], hlEdges: ["e-ship1-q", "e-ship2-q", "e-ship3-q", "e-qexp-train"], hlPanels: [] },
   { title: "2 · Stocks (facts)", body: "<strong>me.cargo.coffee(100000)</strong>, sugar(200000), containers(5000), <strong>me.trucks.fleet(500)</strong> = heavy.fleet(400) + lastMile.fleet(100). A fact changes only when a write says so. <strong>cargo.bulkTons</strong> is a kernel rule: coffee + sugar.",
     hlNodes: ["n-yard"], hlEdges: ["e-port-yard"], hlPanels: ["panel-stocks"] },
@@ -250,14 +250,25 @@ function KernelLink(p) {
     sx: { display: "inline-block", minWidth: `${minCh}ch`, whiteSpace: "nowrap", color: ok ? "primary.main" : k.state === "loading" ? "text.secondary" : "error.main" } }, label);
 }
 
+// Everything about the UI layer lives here (version, where the build is served from, its hash check, docs).
+const GUI_DOCS = [[".GUI docs", "https://neurons-me.github.io/GUI/docs/"], ["GUI.mount", "https://neurons-me.github.io/GUI/docs/doc.html?f=GUI-Mount.md"], ["Storybook", "https://neurons-me.github.io/GUI/storybook/"]];
+function GuiBuildInfo() {
+  const { gui } = useStore(ui);
+  const a = (href, text, title) => h(Link, { href, target: "_blank", rel: "noopener", underline: "hover", title }, text);
+  const check = gui?.state === "ok" ? h("b", { key: "v" }, "verified") : gui?.state === "error" ? h(Box, { component: "span", sx: { color: "error.main" } }, "check failed") : "checking…";
+  return h(React.Fragment, null,
+    "UI: ", a(GUI_PIN.pr, `this.gui@${GUI_PIN.short}`, `${GUI_PIN.label}: unreleased branch build (PR #3)`), " (branch ", h("code", { key: "b" }, GUI_PIN.branch), ", not on npm yet). Build served from this site: ",
+    a(GUI_PIN.url, `this.gui-${GUI_PIN.short}.umd.js`, `sha256 ${GUI_PIN.sha256}`), " · sha256 ", GUI_PIN.sha256.slice(0, 12), "… ", check, ".",
+    h("br"), "Docs: ", ...GUI_DOCS.flatMap(([t, u], i) => [i ? " · " : "", a(u, t)]));
+}
 const GLOSSARY = [
-  ["What is this?", ["Port of Veracruz on the real .me kernel: ships, train, 500 trucks (400 heavy + 100 last-mile, 1,000 example trips) and stocks are facts; totals, averages and flags are kernel formulas. The interface is .GUI; OSM is just the map."]],
+  ["What is this?", ["Port of Veracruz on the real .me kernel: ships, train, 500 trucks (400 heavy + 100 last-mile, 1,000 example trips) and stocks are facts; totals, averages and flags are kernel formulas. OSM is just the map."]],
   ["fact", ["A value you write: ", h("code", { key: 1 }, "me.cargo.coffee(100000)"), ". It never computes itself."]],
   ["rule / derived", ["A kernel ", h("code", { key: 1 }, "="), " formula: ", h("code", { key: 2 }, "importRemaining = ships[1].remainingTons + ships[2].remainingTons + ships[3].remainingTons"), "."]],
   ["mutation", ["Each animation tick the traffic adapter flushes its batch: one real kernel write per changed fact. Each write recomputes only its dependents."]],
   ["k", ["How many derived paths the kernel recomputed for a write (its affected set), read from the kernel, not counted by the UI."]],
   ["explain", [h("code", { key: 1 }, "me.explain(path)"), ": expression, inputs with values, and the write (sourcePath) that last recomputed it."]],
-  [".GUI binding", ["Each readout is a spec node with ", h("code", { key: 1 }, "{ read: \"me/<path>\" }"), ", resolved by ", h("code", { key: 2 }, "GUI.mount"), " through the page's .GUI runtime. After each flush the adapter announces the paths the kernel reported (written + recomputed); only those nodes re-read the kernel."]],
+  [".GUI binding", [h(GuiBuildInfo, { key: 1 })]],
 ];
 function GlossaryItem(p) {
   const [label, body] = GLOSSARY[p.idx];
@@ -715,8 +726,7 @@ function titleStripSpec(s = "title") {
     N("Typography", `${s}/address`, { sx: { fontFamily: MONO, fontSize: 12, color: "primary.main" } }, "me://port"),
     TAG(`${s}/tag`, "adapter", "port operations · 500 trucks · guided"),
     N("Typography", `${s}/builds`, { sx: { ml: "auto", fontFamily: MONO, fontSize: 11, color: "text.secondary" } }, [
-      "UI: ", LINK(`${s}/builds:gui`, { href: GUI_PIN.pr, target: "_blank", rel: "noopener", underline: "hover", title: `${GUI_PIN.label} (unreleased branch build)\nsha256 ${GUI_PIN.sha256}` }, `this.gui@${GUI_PIN.short}`),
-      " · kernel: ", N("PortKernelLink", `${s}/builds:kernel`, { id: "kver-top", minCh: 31 }),
+      "kernel: ", N("PortKernelLink", `${s}/builds:kernel`, { id: "kver-top", minCh: 31 }),
     ]),
   ]);
 }
@@ -943,7 +953,7 @@ mountPage();
 try {
   const [{ mod, host, hash, url, version }, guiHash] = await Promise.all([loadKernel(), verifyGuiBuild()]);
   ME = mod.default || mod.ME;
-  ui.set({ kernel: { state: "ok", version, hash, url, text: `Kernel <b>this.me@${version.replace(/[&<>"]/g, "")}</b> · dist/me.es.js from ${host} · sha256 ${hash.slice(0, 12)}… <b>verified</b> · unmodified · UI <b>${GUI_PIN.label}</b> (unreleased branch build, <a href="${GUI_PIN.pr}" target="_blank" rel="noopener">PR #3</a>) · sha256 ${guiHash.slice(0, 12)}… <b>verified</b>` } });
+  ui.set({ kernel: { state: "ok", version, hash, url, text: `Kernel <b>this.me@${version.replace(/[&<>"]/g, "")}</b> · dist/me.es.js from ${host} · sha256 ${hash.slice(0, 12)}… <b>verified</b> · unmodified` }, gui: { state: "ok", hash: guiHash } });
   resetKernel();
   if (params.get("autostart") !== "0") setRunning(true);
   // hooks for headless checks
@@ -1006,6 +1016,7 @@ try {
 } catch (e) {
   const msg = String(e?.message || e).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   const guiFail = /^\.GUI build/.test(String(e?.message || ""));
+  if (guiFail) ui.set({ gui: { state: "error" } });
   if (!ME) ui.set({ kernel: { state: "error", mismatch: !!e?.mismatch && !guiFail, detail: String(e?.message || e), text: `<b>${guiFail ? ".GUI build check failed" : "Kernel failed to load"}</b>: ${msg}. Nothing on this page runs without it.` } });
   setTourOpen(true, false);
   window.__portError = String(e?.message || e);
