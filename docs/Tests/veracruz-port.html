@@ -315,7 +315,20 @@
   .lm-strip { width: 100%; height: 46px; display: block; margin-top: 3px; background: #0a0c0f; border: 1px solid #151a20; border-radius: 3px; }
   .lm-feed { list-style: none; font-family: var(--mono); font-size: 9px; color: var(--muted); margin-top: 2px; max-height: 84px; overflow: hidden; }
   .lm-feed li { padding: 1px 0; } .lm-feed li.empty { color: var(--dim); }
-  .writes { max-height: 300px; overflow: auto; }
+  /* fixed-height live cards: streaming updates never change a card's height, so nothing below moves */
+  .flush-meta { height: 24px; line-height: 12px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; word-break: break-word; }
+  .flush-meta .held { color: var(--warn); }
+  .writes { height: 240px; overflow-y: auto; overflow-anchor: none; contain: strict; scrollbar-gutter: stable; border-top: 1px solid #151a21; }
+  .stats div b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .explain-grid .val.one, .explain-grid .val .in { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .explain-grid .val .in { display: block; }
+  .explain-grid .val.wave { height: 57px; overflow-y: auto; overflow-anchor: none; word-break: break-word; }
+  .formula em.fv { display: inline-block; min-width: 7ch; text-align: right; white-space: nowrap; }
+  .lm-feed { height: 78px; max-height: none; contain: strict; }
+  .lm-sub.lm-est-row { height: 25.2px; overflow: hidden; }
+  .kv li .k { min-width: 0; }
+  .kv li .v { white-space: nowrap; flex-shrink: 0; text-align: right; }
+  #btn-run { min-height: calc(4.05em + 18px); }
 </style>
 </head>
 <body data-tour="1">
@@ -761,7 +774,7 @@
           <h2>Ships · unloading (import) <span class="src-tag kernel">kernel</span></h2>
           <div class="panel" id="panel-ships">
             <ul class="kv" id="ships-kv"></ul>
-            <div class="formula">flows.importRemaining = ships[1].remainingTons + ships[2].remainingTons + ships[3].remainingTons = <em id="f-imp">—</em> t</div>
+            <div class="formula">flows.importRemaining = ships[1].remainingTons + ships[2].remainingTons + ships[3].remainingTons = <em class="fv" id="f-imp">—</em> t</div>
             <div class="bar" id="bar-imp"><i id="bar-imp-i"></i></div>
           </div>
         </div>
@@ -770,7 +783,7 @@
           <h2>Train · loading (export) <span class="src-tag kernel">kernel</span></h2>
           <div class="panel" id="panel-train">
             <ul class="kv" id="train-kv"></ul>
-            <div class="formula">flows.exportRemaining = train[1].remainingToLoad = <em id="f-exp">—</em> t</div>
+            <div class="formula">flows.exportRemaining = train[1].remainingToLoad = <em class="fv" id="f-exp">—</em> t</div>
             <div class="bar exp" id="bar-exp"><i id="bar-exp-i"></i></div>
           </div>
         </div>
@@ -791,7 +804,7 @@
             <ul class="kv" id="lm-kv" style="margin-top:6px"></ul>
             <div class="lm-sub">per unit (adapter view): bright = done, dim = assigned · dashed = kernel bandLow/bandHigh</div>
             <canvas id="lm-strip" class="lm-strip" height="46"></canvas>
-            <div class="lm-sub">est. completion <span class="src-tag adapter">adapter estimate</span> <b id="lm-est">—</b></div>
+            <div class="lm-sub lm-est-row">est. completion <span class="src-tag adapter">adapter estimate</span> <b id="lm-est">—</b></div>
             <div class="lm-sub">redirects <span class="src-tag adapter">adapter log</span></div>
             <ul class="lm-feed" id="lm-feed"></ul>
             <div class="formula">trips.bandHigh = trips.perUnitAvg + trips.perUnitAvg * trips.band · trips.perUnitAvg = trips.assigned / trucks.lastMile.fleet · lastMile.unitDoneSum = units[1].done + … + units[100].done (explicit) · trips.balanced = trips.accounted == trips.total</div>
@@ -900,7 +913,13 @@ const EDGE_ENDS = {
 
 const R = (p) => P.read(p);
 const tag = (kind) => `<span class="tag">${kind}</span>`;
-const row = (k, kind, v) => `<li><span class="k">${k} ${tag(kind)}</span><span class="v">${v}</span></li>`;
+// kv values keep the widest width they have shown (numbers pre-padded to 3 digits), so a key never re-wraps as digits change
+const vReserve = new Map();
+const reserveCh = (key, v, minCh = 0) => {
+  const n = [...String(v).replace(/<[^>]*>/g, "").replace(/\d[\d,.]*/g, (d) => d.padStart(3, "0")).replace(/\btrue\b/g, "false")].length;
+  const r = Math.max(vReserve.get(key) || minCh, n); vReserve.set(key, r); return r;
+};
+const row = (k, kind, v, minCh) => `<li><span class="k">${k} ${tag(kind)}</span><span class="v" style="min-width:${reserveCh(k + "|" + kind, v, minCh)}ch">${v}</span></li>`;
 
 function render() {
   if (!P) return;
@@ -991,7 +1010,7 @@ function renderLastMile() {
     row("trips.perUnitAvg (assigned)", "rule", fmt(R("trips.perUnitAvg"))) +
     row("trips.perUnitDoneAvg", "rule", fmt(R("trips.perUnitDoneAvg"))) +
     row("trips.unitMax · unitMin", "adapter aggregate", `${R("trips.unitMax")} · ${R("trips.unitMin")}`) +
-    row("trips.bandLow – bandHigh (±15%)", "rules", `${fmt(R("trips.bandLow"))} – ${fmt(R("trips.bandHigh"))}`) +
+    row("trips.bandLow – bandHigh (±15%)", "rules", `${fmt(R("trips.bandLow"))} – ${fmt(R("trips.bandHigh"))}`, 13) +
     row("lastMile.unitsAbove · Within · Below", "adapter → facts", `${R("lastMile.unitsAbove")} · ${R("lastMile.unitsWithin")} · ${R("lastMile.unitsBelow")}`) +
     row("lastMile.unitsOk · trips.balanced", "rules", `${R("lastMile.unitsOk")} · ${R("trips.balanced")}`) +
     row("trips.redirects", "fact", fmt(R("trips.redirects"))) +
@@ -1030,7 +1049,7 @@ function renderExplain() {
   let ex;
   try { ex = P.me.explain(path); } catch (e) { $("#explain-grid").textContent = "explain failed: " + (e?.message || e); return; }
   const m = ex?.meta || {};
-  const inputs = (ex?.derivation?.inputs || []).map((i) => `${esc(i.label)} = <em>${esc(fmt(i.value))}</em>`).join("<br/>") || "—";
+  const inputs = (ex?.derivation?.inputs || []).map((i) => `<span class="in" title="${esc(i.label)} = ${esc(fmt(i.value))}">${esc(i.label)} = <em>${esc(fmt(i.value))}</em></span>`).join("") || "—";
   const wave = m.sourcePath
     ? `write to <em>${esc(m.sourcePath)}</em> · k=${m.k} · recomputed: ${esc((m.recomputed || []).join(", "))}`
     : "not recomputed yet (no write has reached it since seed)";
@@ -1041,15 +1060,32 @@ function renderExplain() {
     ["inputs", inputs],
     ["dependsOn", esc((m.dependsOn || []).join(", ") || "—")],
     ["last wave", wave],
-  ].map(([l, v]) => `<div class="row"><span class="lbl">${l}</span><span class="val">${v}</span></div>`).join("");
+  ].map(([l, v]) => `<div class="row"><span class="lbl">${l}</span><span class="val${l === "value" ? " one" : l === "last wave" ? " wave" : ""}">${v}</span></div>`).join("");
   $("#explain-code").textContent = `me.explain(${JSON.stringify(path)})`;
   if ($("#explain-raw").closest("details").open) $("#explain-raw").textContent = JSON.stringify(ex, null, 2);
 }
 
 const sgn = (n) => (n > 0 ? "+" : "−") + fmt(Math.abs(n));
+// The list never auto-scrolls; while the pointer is over it or it was just scrolled, its content is held
+// (the shown flush stays put) so it can be read and scrolled. Fixed height: no layout shift either way.
+let writesHover = false, writesHoldUntil = 0, writesTopAfterRender = 0, shownFlush = null;
+{
+  const ul = $("#writes"), hold = (ms) => { writesHoldUntil = Math.max(writesHoldUntil, performance.now() + ms); };
+  ul.addEventListener("pointerenter", (e) => { if (e.pointerType === "mouse") writesHover = true; });
+  ul.addEventListener("pointerleave", () => { writesHover = false; hold(600); });
+  ul.addEventListener("touchstart", () => hold(4000), { passive: true });
+  ul.addEventListener("wheel", () => hold(2500), { passive: true });
+  ul.addEventListener("scroll", () => { if (ul.scrollTop !== writesTopAfterRender) hold(2500); }, { passive: true });
+}
+const flushMetaText = (f) => `flush #${f.idx} · sim ${clock(f.sim)} · ${f.writes.length} real writes (one per changed fact) · k ${f.writes.map((w) => w.k).join("·")}`;
 function renderWrites() {
-  const ul = $("#writes");
-  if (!lastFlush) { ul.innerHTML = `<li class="empty">No writes yet — press Start.</li>`; return; }
+  const ul = $("#writes"), meta = $("#flush-meta");
+  if (!lastFlush) { shownFlush = null; ul.innerHTML = `<li class="empty">No writes yet — press Start.</li>`; writesTopAfterRender = ul.scrollTop; return; }
+  if (shownFlush && shownFlush !== lastFlush && (writesHover || performance.now() < writesHoldUntil)) {
+    meta.innerHTML = `<span class="held">held while you read · latest #${lastFlush.idx}</span> · ${esc(flushMetaText(shownFlush))}`;
+    return;
+  }
+  shownFlush = lastFlush;
   ul.innerHTML = lastFlush.writes.map((w) => {
     const rec = w.recomputed.length
       ? w.recomputed.map((p) => (w.changed.includes(p) ? `<span class="chg">${esc(p)}</span>` : esc(p))).join(", ")
@@ -1057,7 +1093,8 @@ function renderWrites() {
     const note = w.note ? `// ${w.note}` : w.hauls ? `// ${sgn(w.delta)} · ${w.hauls} ${w.source.startsWith("trips.") || w.source.startsWith("localDelivery.") ? "deliver" + (w.hauls > 1 ? "ies" : "y") : "haul" + (w.hauls > 1 ? "s" : "")}` : `// ${sgn(w.delta)}`;
     return `<li><code>${esc(w.code)}</code><span class="wk">k=${w.k}</span><span class="wc">${esc(note)}</span><span class="wr">recomputed: ${rec}</span></li>`;
   }).join("");
-  $("#flush-meta").textContent = `flush #${lastFlush.idx} · sim ${clock(lastFlush.sim)} · ${lastFlush.writes.length} real writes (one per changed fact) · k ${lastFlush.writes.map((w) => w.k).join("·")}`;
+  writesTopAfterRender = ul.scrollTop;
+  meta.textContent = flushMetaText(lastFlush); meta.title = meta.textContent;
 }
 
 function renderStats(now) {

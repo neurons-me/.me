@@ -157,16 +157,28 @@ const J = (...parts) => parts.flatMap((p, i) => (i ? [" · ", p] : [p]));
 const V = (path, opts = {}) => h(Val, { key: path, path, ...opts });
 const S = String;
 
-function Row({ k, kind, children }) {
+// A value keeps the widest width it has shown (numbers pre-padded to 3 digits), so its key never re-wraps
+// as digits change: rows keep a constant height while values stream in.
+const reserveChars = (text) => [...text.replace(/\d[\d,.]*/g, (d) => d.padStart(3, "0")).replace(/\btrue\b/g, "false")].length;
+function Row({ k, kind, children, minCh = 0 }) {
+  const ref = React.useRef(null);
+  React.useLayoutEffect(() => {
+    const el = ref.current; if (!el) return;
+    let max = 0;
+    const fit = () => { const n = Math.max(minCh, reserveChars(el.textContent)); if (n > max) { max = n; el.style.minWidth = n + "ch"; } };
+    fit();
+    const mo = new MutationObserver(fit); mo.observe(el, { childList: true, characterData: true, subtree: true });
+    return () => mo.disconnect();
+  }, [minCh]);
   return h(Box, { sx: { display: "flex", justifyContent: "space-between", gap: 1, py: "3px", borderBottom: 1, borderColor: "divider", fontFamily: MONO, fontSize: 10.5, "&:last-of-type": { borderBottom: 0 } } },
-    h(Box, { component: "span", sx: { color: "text.secondary" } }, k, h(Box, { component: "span", sx: kindSx }, kind)),
-    h(Box, { component: "span", sx: { color: "primary.main", textAlign: "right", whiteSpace: "nowrap" } }, children));
+    h(Box, { component: "span", sx: { color: "text.secondary", minWidth: 0 } }, k, h(Box, { component: "span", sx: kindSx }, kind)),
+    h(Box, { component: "span", ref, sx: { color: "primary.main", textAlign: "right", whiteSpace: "nowrap", flexShrink: 0 } }, children));
 }
 function BoundBar({ path, color = "primary" }) {
   const v = G.useMeValue(path);
   return h(Progress, { variant: "determinate", color, value: Math.max(0, Math.min(100, (Number(v) || 0) * 100)), "data-me-path": path, sx: { height: 4, borderRadius: 2, mt: .5 } });
 }
-const Formula = ({ children }) => h(Box, { sx: { fontFamily: MONO, fontSize: 9.5, color: "text.secondary", mt: .75, p: "5px 7px", bgcolor: "background.default", border: 1, borderColor: "divider", borderRadius: "3px", lineHeight: 1.45, "& b": { color: "primary.main", fontWeight: 500 } } }, children);
+const Formula = ({ children }) => h(Box, { sx: { fontFamily: MONO, fontSize: 9.5, color: "text.secondary", mt: .75, p: "5px 7px", bgcolor: "background.default", border: 1, borderColor: "divider", borderRadius: "3px", lineHeight: 1.45, "& b": { color: "primary.main", fontWeight: 500, display: "inline-block", minWidth: "7ch", textAlign: "right", whiteSpace: "nowrap" } } }, children);
 const Sub = ({ children, sx }) => h(Typography, { component: "div", sx: { fontFamily: MONO, fontSize: 9, color: "text.secondary", mt: .75, lineHeight: 1.4, ...sx } }, children);
 
 function Panel({ id, title, tags = [], adapter = false, children }) {
@@ -252,7 +264,7 @@ function RunControls() {
   const { running: on, finished, speed, me } = useStore(ui);
   const label = finished ? ["All work done ✓", "Reset to replay"] : on ? ["Pause ■", "500 trucks · real me.… writes"] : ["Start traffic ▸", "500 trucks · real me.… writes"];
   return h(Box, { sx: { display: "flex", gap: .75, flexWrap: "wrap", alignItems: "stretch" } },
-    h(Button, { id: "btn-run", variant: "outlined", disabled: !me, onClick: () => setRunning(!running), sx: { flex: 1, fontFamily: MONO, fontSize: 10.5, textTransform: "none", textAlign: "left", lineHeight: 1.35, display: "block", py: 1 } },
+    h(Button, { id: "btn-run", variant: "outlined", disabled: !me, onClick: () => setRunning(!running), sx: { flex: 1, fontFamily: MONO, fontSize: 10.5, textTransform: "none", textAlign: "left", lineHeight: 1.35, display: "block", py: 1, minHeight: "calc(4.05em + 18px)" } },
       label[0], h("br"), h(Box, { component: "span", sx: { color: "text.secondary", fontSize: 9 } }, label[1])),
     h(TextField, { id: "sel-speed", select: true, size: "small", value: String(speed), onChange: (e) => ui.set({ speed: Number(e.target.value) || 10 }), inputProps: { "aria-label": "Playback speed (1 s real = N s simulated)" }, title: "Playback: 1 s real = N s simulated",
       sx: { minWidth: 96, "& .MuiInputBase-root": { fontFamily: MONO, fontSize: 10.5, height: "100%" } } },
@@ -261,7 +273,7 @@ function RunControls() {
 }
 function Stat({ id, label, value, adapter }) {
   return h(Box, { sx: { fontFamily: MONO, fontSize: 9, color: "text.secondary", border: 1, borderColor: "divider", borderRadius: "3px", p: "4px 5px", bgcolor: "background.default", borderStyle: adapter ? "dashed" : "solid" } },
-    label, h(Box, { id, component: "b", sx: (t) => ({ display: "block", fontSize: 12, fontWeight: 500, color: adapter ? accentColor(t, "ember") : t.palette.primary.main }) }, value));
+    label, h(Box, { id, component: "b", sx: (t) => ({ display: "block", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", fontSize: 12, fontWeight: 500, color: adapter ? accentColor(t, "ember") : t.palette.primary.main }) }, value));
 }
 function Stats() {
   useStore(sim);
@@ -274,10 +286,20 @@ function Stats() {
     h(Stat, { id: "st-fps", label: "fps (page)", value: fmt(frameLog.filter((t) => now - t <= 1000).length), adapter: true }),
     h(Stat, { id: "st-moving", label: "moving dots", value: fmt(moving), adapter: true }));
 }
+// The writes list has a fixed height and never auto-scrolls. While the pointer is over it or it was just
+// scrolled, its content is held (the shown flush stays put) so it can be read; the header says so.
+const wHold = { hover: false, until: 0, topAfterRender: 0, shown: null };
+const holdWrites = (ms) => { wHold.until = Math.max(wHold.until, performance.now() + ms); };
+const flushMetaText = (f) => `flush #${f.idx} · sim ${clock(f.sim)} · ${f.writes.length} real writes (one per changed fact) · k ${f.writes.map((w) => w.k).join("·")}`;
 function Writes() {
   useStore(sim);
-  const meta = lastFlush ? `flush #${lastFlush.idx} · sim ${clock(lastFlush.sim)} · ${lastFlush.writes.length} real writes (one per changed fact) · k ${lastFlush.writes.map((w) => w.k).join("·")}` : "Each animation tick the adapter flushes its pending deltas: one real write per changed fact.";
-  const items = lastFlush ? lastFlush.writes.map((w, i) => {
+  const ulRef = React.useRef(null);
+  const held = !!(lastFlush && wHold.shown && wHold.shown !== lastFlush && (wHold.hover || performance.now() < wHold.until));
+  if (!lastFlush) wHold.shown = null; else if (!held) wHold.shown = lastFlush;
+  const shown = wHold.shown;
+  React.useLayoutEffect(() => { if (ulRef.current) wHold.topAfterRender = ulRef.current.scrollTop; });
+  const meta = shown ? flushMetaText(shown) : "Each animation tick the adapter flushes its pending deltas: one real write per changed fact.";
+  const items = shown ? shown.writes.map((w, i) => {
     const note = w.note ? `// ${w.note}` : w.hauls ? `// ${sgn(w.delta)} · ${w.hauls} ${w.source.startsWith("trips.") || w.source.startsWith("localDelivery.") ? "deliver" + (w.hauls > 1 ? "ies" : "y") : "haul" + (w.hauls > 1 ? "s" : "")}` : `// ${sgn(w.delta)}`;
     return h(Box, { component: "li", key: i, sx: { py: .5, borderBottom: 1, borderColor: "divider", "&:last-of-type": { borderBottom: 0 } } },
       h(Box, { component: "code", sx: { color: "text.primary" } }, w.code), h(Box, { component: "span", sx: { color: "warning.main", ml: .75 } }, `k=${w.k}`), h(Box, { component: "span", sx: { color: "text.disabled", ml: .75 } }, note),
@@ -285,8 +307,14 @@ function Writes() {
         w.recomputed.length ? w.recomputed.flatMap((p, j) => [j ? ", " : "", w.changed.includes(p) ? h(Box, { component: "span", key: p, sx: { color: "primary.main" } }, p) : p]) : "no dependents"));
   }) : [h(Box, { component: "li", key: "e", sx: { color: "text.disabled" } }, "No writes yet: press Start.")];
   return h(React.Fragment, null,
-    h(Sub, { sx: { color: "text.disabled" } }, h("span", { id: "flush-meta" }, meta)),
-    h(Box, { component: "ul", id: "writes", sx: { listStyle: "none", m: 0, p: 0, fontFamily: MONO, fontSize: 9.5, mt: .75, maxHeight: 300, overflow: "auto" } }, ...items));
+    h(Sub, { sx: { color: "text.disabled", height: 24, lineHeight: "12px", overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", wordBreak: "break-word" } },
+      h("span", { id: "flush-meta", title: meta }, held ? h(Box, { component: "span", sx: { color: "warning.main" } }, `held while you read · latest #${lastFlush.idx}`) : null, held ? " · " : null, meta)),
+    h(Box, { component: "ul", id: "writes", ref: ulRef,
+      onPointerEnter: (e) => { if (e.pointerType === "mouse") wHold.hover = true; },
+      onPointerLeave: () => { wHold.hover = false; holdWrites(600); },
+      onTouchStart: () => holdWrites(4000), onWheel: () => holdWrites(2500),
+      onScroll: (e) => { if (e.currentTarget.scrollTop !== wHold.topAfterRender) holdWrites(2500); },
+      sx: { listStyle: "none", m: 0, p: 0, fontFamily: MONO, fontSize: 9.5, mt: .75, height: 240, overflowY: "auto", overflowAnchor: "none", contain: "strict", scrollbarGutter: "stable", borderTop: 1, borderColor: "divider" } }, ...items));
 }
 
 const EXPLAIN_PATHS = ["flows.importRemaining", "flows.exportRemaining", "flows.importProgress", "trips.bandHigh", "trips.perUnitAvg", "trips.balanced", "lastMile.unitsOk", "trucks.working", "trucks.balanced", "trucks.inQueue", "queues.import.busy", "port.busy", "cargo.bulkTons"];
@@ -295,6 +323,7 @@ function useWave(path) {   // re-render when the kernel reports `path` in a wave
   const [, setN] = React.useState(0);
   React.useEffect(() => runtime?.subscribe?.(path, () => setN((x) => x + 1)), [runtime, path]);
 }
+const ONE_LINE = { display: "block", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" };
 function ExplainView({ path }) {
   useWave(path);
   const { me } = G.useMe();
@@ -307,14 +336,14 @@ function ExplainView({ path }) {
   const inputs = ex?.derivation?.inputs || [];
   const rows = [
     ["path", ex.path], ["value", em(fmt(ex.value))], ["expression", ex.expr ?? "— (fact)"],
-    ["inputs", inputs.length ? inputs.flatMap((i, j) => [j ? h("br", { key: "b" + j }) : null, h(React.Fragment, { key: j }, `${i.label} = `, em(fmt(i.value)))]) : "—"],
+    ["inputs", inputs.length ? inputs.map((i, j) => h(Box, { component: "span", key: j, title: `${i.label} = ${fmt(i.value)}`, sx: ONE_LINE }, `${i.label} = `, em(fmt(i.value)))) : "—"],
     ["dependsOn", (m.dependsOn || []).join(", ") || "—"],
     ["last wave", m.sourcePath ? h(React.Fragment, null, "write to ", em(m.sourcePath), ` · k=${m.k} · recomputed: ${(m.recomputed || []).join(", ")}`) : "not recomputed yet (no write has reached it since seed)"],
   ];
   return h(React.Fragment, null,
     h(Box, { id: "explain-grid", sx: { fontFamily: MONO, fontSize: 9.5, lineHeight: 1.5 } }, ...rows.map(([l, v]) =>
       h(Box, { key: l, sx: { display: "grid", gridTemplateColumns: "78px 1fr", gap: .5, py: .25, borderBottom: 1, borderColor: "divider", "&:last-of-type": { borderBottom: 0 } } },
-        h(Box, { component: "span", sx: { color: "text.disabled" } }, l), h(Box, { component: "span", sx: { wordBreak: "break-word" } }, v)))),
+        h(Box, { component: "span", sx: { color: "text.disabled" } }, l), h(Box, { component: "span", sx: l === "value" ? ONE_LINE : l === "last wave" ? { wordBreak: "break-word", height: 57, overflowY: "auto", overflowAnchor: "none" } : { wordBreak: "break-word" } }, v)))),
     h(Formula, null, h("span", { id: "explain-code" }, `me.explain(${JSON.stringify(path)})`)),
     h(Button, { size: "small", onClick: () => setRaw(!raw), sx: { mt: .5, p: 0, minWidth: 0, fontFamily: MONO, fontSize: 9.5, textTransform: "none", color: "text.secondary" } }, (raw ? "▾ " : "▸ ") + "raw explain() JSON"),
     h(Collapse, { in: raw, unmountOnExit: true }, h(Box, { component: "pre", id: "explain-raw", sx: { fontFamily: MONO, fontSize: 9, color: "text.secondary", whiteSpace: "pre-wrap", wordBreak: "break-all", maxHeight: 220, overflow: "auto", bgcolor: "background.default", border: 1, borderColor: "divider", borderRadius: "3px", p: .75, mt: .5 } }, JSON.stringify(ex, null, 2))));
@@ -388,7 +417,7 @@ function LmEstimate() {
 function LmFeed() {
   useStore(sim);
   const items = T && T.feed.length ? T.feed.slice(0, 6).map((f, i) => h(Box, { component: "li", key: i, sx: { py: "1px" } }, `${clock(f.t)} · trip #${pad4(f.trip)} · ${lmName(f.from)} → ${lmName(f.to)}`)) : [h(Box, { component: "li", key: "e", sx: { color: "text.disabled" } }, "no redirects yet")];
-  return h(Box, { component: "ul", id: "lm-feed", sx: { listStyle: "none", m: 0, p: 0, fontFamily: MONO, fontSize: 9, color: "text.secondary", mt: .25, maxHeight: 84, overflow: "hidden" } }, ...items);
+  return h(Box, { component: "ul", id: "lm-feed", sx: { listStyle: "none", m: 0, p: 0, fontFamily: MONO, fontSize: 9, color: "text.secondary", mt: .25, height: 84, overflow: "hidden", contain: "strict" } }, ...items);
 }
 const LastMilePanel = () => h(Panel, { id: "panel-lastmile", title: "Last-mile · 1,000 scheduled trips", tags: [["kernel", "kernel"], ["adapter", "dispatch = adapter"]] },
   h(Box, { sx: { display: "flex", justifyContent: "space-between", fontFamily: MONO, fontSize: 10.5, color: "text.secondary" } }, h("span", null, "trips.done"),
@@ -400,14 +429,14 @@ const LastMilePanel = () => h(Panel, { id: "panel-lastmile", title: "Last-mile �
     h(Row, { k: "trips.perUnitAvg (assigned)", kind: "rule" }, V("trips.perUnitAvg")),
     h(Row, { k: "trips.perUnitDoneAvg", kind: "rule" }, V("trips.perUnitDoneAvg")),
     h(Row, { k: "trips.unitMax · unitMin", kind: "adapter aggregate" }, J(V("trips.unitMax"), V("trips.unitMin"))),
-    h(Row, { k: "trips.bandLow – bandHigh (±15%)", kind: "rules" }, V("trips.bandLow"), " – ", V("trips.bandHigh")),
+    h(Row, { k: "trips.bandLow – bandHigh (±15%)", kind: "rules", minCh: 13 }, V("trips.bandLow"), " – ", V("trips.bandHigh")),
     h(Row, { k: "lastMile.unitsAbove · Within · Below", kind: "adapter → facts" }, J(V("lastMile.unitsAbove"), V("lastMile.unitsWithin"), V("lastMile.unitsBelow"))),
     h(Row, { k: "lastMile.unitsOk · trips.balanced", kind: "rules" }, J(V("lastMile.unitsOk", { f: S }), V("trips.balanced", { f: S }))),
     h(Row, { k: "trips.redirects", kind: "fact" }, V("trips.redirects")),
     h(Row, { k: "localDelivery.remainingKg", kind: "fact" }, V("localDelivery.remainingKg", { suffix: " kg" }))),
   h(Sub, null, "per unit (adapter view): bright = done, dim = assigned · dashed = kernel bandLow/bandHigh"),
   h(LmStrip),
-  h(Sub, { sx: { display: "flex", alignItems: "center", gap: .75, flexWrap: "wrap" } }, "est. completion", h(SrcTag, { kind: "adapter", label: "adapter estimate" }), h(LmEstimate)),
+  h(Sub, { sx: { display: "flex", alignItems: "center", gap: .75, flexWrap: "wrap", height: "25.2px", overflow: "hidden" } }, "est. completion", h(SrcTag, { kind: "adapter", label: "adapter estimate" }), h(LmEstimate)),
   h(Sub, { sx: { display: "flex", alignItems: "center", gap: .75 } }, "redirects", h(SrcTag, { kind: "adapter", label: "adapter log" })),
   h(LmFeed),
   h(Formula, null, "trips.bandHigh = trips.perUnitAvg + trips.perUnitAvg * trips.band · trips.perUnitAvg = trips.assigned / trucks.lastMile.fleet · lastMile.unitDoneSum = units[1].done + … + units[100].done (explicit) · trips.balanced = trips.accounted == trips.total"),
