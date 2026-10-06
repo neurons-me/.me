@@ -1,18 +1,15 @@
 # Demos
 
-Live runnable examples that show the kernel in action beyond unit tests.
+Live examples of the `.me` kernel in the world.
 
-Each demo is a self-contained script you can run directly with `node`.
+Published at:
 
----
+- https://neurons-me.github.io/.me/Demos/
+- https://neurons-me.github.io/.me/docs/Demos/
 
-## Planned
+## Now
 
-- `identity.demo.ts` — seed → identityHash derivation, reconstruction proof
-- `reactive-graph.demo.ts` — price/quantity/total live recompute
-- `secret-tree.demo.ts` — encrypted branch write + read + stealth behavior
-- `snapshot-round-trip.demo.ts` — export → hydrate → verify
-- `social-graph.demo.ts` — users, relationships, derived predicates
-- `vector-search.demo.ts` — exact scan vs IVF approximate search
+- **Smart Cities** → https://neurons-me.github.io/smart-cities/ (`me://Demos/SmartCities`)
+- **Robots** → https://neurons-me.github.io/robots/ (`me://Demos/Robots`)
 
-Add demos here as runnable `.ts` or `.mjs` files.
+Port of Veracruz lives under Smart Cities: `me://Demos/SmartCities/Veracruz.Port`.

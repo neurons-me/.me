@@ -725,9 +725,9 @@ function mapSpec(live) {
 
 // One brand line: cerebrito + navigable me:// path (SmartCity → hub). Smart Cities left the right menu.
 const PATH_SEGMENTS = [
-  { text: "me://", href: "https://neurons-me.github.io/", title: "neurons.me" },
-  { text: "SmartCity", href: "https://neurons-me.github.io/smart-cities/", title: "Smart Cities hub" },
-  { text: "Demo", href: "https://neurons-me.github.io/.me/docs/Tests/", title: ".me demos & tests" },
+  { text: "me://", href: "https://neurons-me.github.io/.me/", title: ".me" },
+  { text: "Demos", href: "https://neurons-me.github.io/.me/Demos/", title: ".me demos" },
+  { text: "SmartCities", href: "https://neurons-me.github.io/smart-cities/", title: "Smart Cities hub" },
   { text: "Veracruz.Port", href: null, title: "This page" },
 ];
 function brandBarSpec(s = "brand") {
