@@ -4,10 +4,10 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>Port of Veracruz — live operations · .me</title>
-<meta name="description" content="Port of Veracruz as a .me semantic nervous system: ships unloading, a train loading, truck queues — facts, rules, mutation, wave and explain() over a real OpenStreetMap basemap."/>
+<meta name="description" content="Port of Veracruz as a .me semantic nervous system: 500 trucks circulating on real OpenStreetMap roads, ships unloading, a train loading — every haul a real kernel write, with wave and explain()."/>
 <link rel="canonical" href="https://neurons-me.github.io/.me/docs/Tests/veracruz-port.html"/>
 <meta property="og:title" content="Port of Veracruz — live operations · .me"/>
-<meta property="og:description" content="Ships, train and truck queues as live .me paths. Mutate one truck cycle, watch the wave, ask explain()."/>
+<meta property="og:description" content="500 trucks on real OSM roads, ships, train and queues as live .me paths. Every haul is a real kernel write; watch k, ask explain()."/>
 <meta property="og:image" content="https://neurons-me.github.io/.me/docs/assets/VERACRUZ-PORT-ME.png"/>
 <meta property="og:url" content="https://neurons-me.github.io/.me/docs/Tests/veracruz-port.html"/>
 <meta property="og:type" content="website"/>
@@ -275,6 +275,29 @@
   .verify-out.ok { color: var(--ok); } .verify-out.bad { color: var(--hot); }
   .node .node-meta, .node .node-label { paint-order: stroke; stroke: #0b0d10; stroke-width: 3px; }
   .glossary code { font-size: 9.5px; color: var(--accent); }
+  /* 500-truck traffic overlay */
+  .map-wrap canvas.traffic { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+  #edges .edge { opacity: 0.2; stroke-dasharray: 2 5; stroke-width: 1.1; }
+  #edges .edge.hl { opacity: 0.42; stroke-width: 1.3; filter: none; }
+  #edges .edge.dimmed { opacity: 0.06; }
+  #edges .edge.wave { opacity: 0.55; stroke-width: 1.4; filter: none; }
+  .node.hit .node-core { stroke: #dce8ef; filter: drop-shadow(0 0 5px rgba(126,184,201,0.55)); }
+  .exit-label { font-family: var(--mono); font-size: 11px; fill: #8a94a0; paint-order: stroke; stroke: #0b0d10; stroke-width: 3px; letter-spacing: .03em; }
+  .exit-tick { fill: none; stroke: #8a94a0; stroke-width: 1.2; opacity: .8; }
+  .legend { position: absolute; top: 10px; right: 12px; pointer-events: none; font-family: var(--mono); font-size: 10px; background: rgba(11,13,16,0.86); border: 1px solid var(--border); border-radius: 3px; padding: 6px 8px; color: var(--muted); line-height: 1.55; min-width: 196px; }
+  .legend .lg-row { display: flex; align-items: center; gap: 6px; }
+  .legend .lg-row b { margin-left: auto; color: var(--text); font-weight: 500; }
+  .legend i { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
+  .legend .lg-h { font-size: 8.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--dim); margin-bottom: 2px; }
+  .legend .lg-foot { border-top: 1px solid #1c222b; margin-top: 4px; padding-top: 3px; font-size: 9px; color: var(--dim); }
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; margin-top: 6px; }
+  .stats div { font-family: var(--mono); font-size: 9px; color: var(--dim); border: 1px solid #151a21; border-radius: 3px; padding: 4px 5px; background: #0a0c0f; }
+  .stats div b { display: block; font-size: 12px; color: var(--accent); font-weight: 500; }
+  .stats div.ad b { color: var(--warn); }
+  select.speed { background: #0a0c0f; color: var(--muted); border: 1px solid var(--border); font-family: var(--mono); font-size: 10.5px; padding: 0 6px; border-radius: 3px; }
+  .writes .wc { color: var(--dim); margin-left: 6px; }
+  .flush-meta { font-family: var(--mono); font-size: 9px; color: var(--dim); margin-top: 6px; }
+  .writes { max-height: 300px; overflow: auto; }
 </style>
 </head>
 <body data-tour="1">
@@ -282,7 +305,7 @@
     <span class="title">VERACRUZ</span>
     <span class="sep">|</span>
     <span class="ns">me://port</span>
-    <span class="tag">port operations · guided</span>
+    <span class="tag">port operations · 500 trucks · guided</span>
     <span class="hint">runs on this.me@4.1.0 · facts · rules · wave · explain · <a href="https://neurons-me.github.io/smart-cities/" style="color:var(--accent);text-decoration:none">Smart Cities ↗</a></span>
   </header>
 
@@ -293,7 +316,7 @@
     </details>
     <details><summary>fact</summary><p>A value you write — <code>me.cargo.coffee(100000)</code>. It never computes itself.</p></details>
     <details><summary>rule / derived</summary><p>A kernel <code>=</code> formula — <code>importRemaining = ships[1].remainingTons + ships[2].remainingTons + ships[3].remainingTons</code>.</p></details>
-    <details><summary>mutation</summary><p>One truck cycle = a few real kernel writes. Each write recomputes only its dependents.</p></details>
+    <details><summary>mutation</summary><p>Each animation tick the traffic adapter flushes its batch: one real kernel write per changed fact. Each write recomputes only its dependents.</p></details>
     <details><summary>k</summary><p>How many derived paths the kernel recomputed for a write (its affected set) — read from the kernel, not counted by the UI.</p></details>
     <details><summary>explain</summary><p><code>me.explain(path)</code>: expression, inputs with values, and the write (sourcePath) that last recomputed it.</p></details>
   </div>
@@ -556,8 +579,7 @@
           <path class="edge" id="e-port-train" d="M600.0,255.4 L340.8,342.2"/>
         </g>
 
-        <g id="waves"></g>
-        <g id="truck-anim"></g>
+        <g id="exit-labels"></g>
         <circle class="spotlight" id="spotlight" cx="0" cy="0" r="30" visibility="hidden"/>
 
         <g id="nodes">
@@ -618,11 +640,23 @@
           </g>
         </g>
       </svg>
+      <canvas class="traffic" id="traffic" aria-hidden="true"></canvas>
+      <div class="legend" id="legend">
+        <div class="lg-h">500 trucks · each dot one truck</div>
+        <div class="lg-row"><i style="background:#7eb8c9"></i>en route · import (laden)<b id="lg-enimp">—</b></div>
+        <div class="lg-row"><i style="background:#c9b87e"></i>en route · export (laden)<b id="lg-enexp">—</b></div>
+        <div class="lg-row"><i style="background:#7ec99a"></i>loading / unloading<b id="lg-load">—</b></div>
+        <div class="lg-row"><i style="background:#b39ddb"></i>queued<b id="lg-queue">—</b></div>
+        <div class="lg-row"><i style="background:#5f6b78"></i>returning (empty)<b id="lg-ret">—</b></div>
+        <div class="lg-row"><i style="background:#3a424e;border:1px solid #6a7380"></i>idle in pool<b id="lg-idle">—</b></div>
+        <div class="lg-foot">counts = kernel counters · <span id="lg-off">—</span> off-map</div>
+      </div>
       <div class="hud">
         <div class="hud-chip">import left <strong class="imp" id="hud-imp">—</strong></div>
         <div class="hud-chip">export left <strong class="exp" id="hud-exp">—</strong></div>
-        <div class="hud-chip">trucks <strong id="hud-trucks">—</strong></div>
-        <div class="hud-chip">cycle <strong id="hud-tick">0</strong> <span style="color:var(--warn)">(adapter)</span></div>
+        <div class="hud-chip">trucks.working <strong id="hud-trucks">—</strong></div>
+        <div class="hud-chip">trucks.balanced <strong id="hud-bal">—</strong></div>
+        <div class="hud-chip">sim <strong id="hud-tick">0 s</strong> <span style="color:var(--warn)">(adapter)</span></div>
       </div>
     </div>
 
@@ -641,18 +675,23 @@
 
       <div class="aside-scroll">
         <div>
-          <h2>Mutate · truck cycle <span class="src-tag kernel">kernel writes</span></h2>
+          <h2>Mutate · live traffic <span class="src-tag kernel">kernel writes</span></h2>
           <div class="panel" id="panel-mutate">
             <div class="btn-row">
-              <button type="button" class="primary" id="btn-tick" disabled>Run 1 truck cycle<br/><span class="sub">real me.… writes</span></button>
-              <button type="button" class="ghost" id="btn-auto" disabled>Auto ▸</button>
+              <button type="button" class="primary" id="btn-run" disabled>Start traffic ▸<br/><span class="sub">500 trucks · real me.… writes</span></button>
+              <select class="speed" id="sel-speed" aria-label="Simulation speed"><option value="1">×1</option><option value="4" selected>×4</option><option value="16">×16</option></select>
               <button type="button" class="ghost" id="btn-reset" disabled>Reset</button>
             </div>
-            <div class="status-row">
-              <span class="k-badge" id="k-badge">k —</span>
-              <span class="chip" id="chip-wave">no writes yet</span>
+            <div class="stats">
+              <div>writes/s<b id="st-wps">0</b></div>
+              <div>flushes/s<b id="st-fps-flush">0</b></div>
+              <div>recent k<b id="st-k">—</b></div>
+              <div>total writes<b id="st-writes">0</b></div>
+              <div class="ad">fps<b id="st-fps">—</b></div>
+              <div class="ad">moving dots<b id="st-moving">0</b></div>
             </div>
-            <ul class="writes" id="writes"><li class="empty">Executed calls appear here, each with the kernel's own k and recomputed paths.</li></ul>
+            <div class="flush-meta" id="flush-meta">Each animation tick the adapter flushes its pending deltas: one real write per changed fact.</div>
+            <ul class="writes" id="writes"><li class="empty">Executed calls of the latest flush appear here, each with the kernel's own k and recomputed paths.</li></ul>
           </div>
         </div>
 
@@ -663,6 +702,8 @@
               <option value="flows.importRemaining">flows.importRemaining</option>
               <option value="flows.exportRemaining">flows.exportRemaining</option>
               <option value="flows.importProgress">flows.importProgress</option>
+              <option value="trucks.working">trucks.working</option>
+              <option value="trucks.balanced">trucks.balanced</option>
               <option value="trucks.inQueue">trucks.inQueue</option>
               <option value="queues.import.busy">queues.import.busy</option>
               <option value="port.busy">port.busy</option>
@@ -693,10 +734,10 @@
         </div>
 
         <div>
-          <h2>Queues · trucks <span class="src-tag kernel">kernel</span></h2>
+          <h2>Trucks · by state <span class="src-tag kernel">kernel</span></h2>
           <div class="panel" id="panel-queues">
             <ul class="kv" id="queues-kv"></ul>
-            <div class="formula">queues.*.busy = length &gt; 0 · trucks.inQueue = queues.import.length + queues.export.length</div>
+            <div class="formula">trucks.working = trucks.inQueue + trucks.loading + trucks.enRoute + trucks.returning · trucks.balanced = trucks.accounted == trucks.fleet</div>
           </div>
         </div>
 
@@ -711,9 +752,9 @@
         <div>
           <h2>Adapter · plain JS <span class="src-tag adapter">not kernel</span></h2>
           <div class="panel adapter" id="panel-adapter">
-            <p style="font-size:11px;line-height:1.45;color:var(--muted)">The scheduler decides <em>what to write</em>; the kernel holds every value and decides <em>what recomputes</em>. Adapter only: alternate import/export, pick the ship with most <code>remainingTons</code>, compute the next value (current − haul, queue ±1), rejoin the queue or return to the pool, animate, Auto timer.</p>
+            <p style="font-size:11px;line-height:1.45;color:var(--muted)">The traffic model (<code>port-traffic.js</code>) decides <em>what to write</em>; the kernel holds every value and decides <em>what recomputes</em>. Adapter only: each truck's route over OSM roads, berth/train slots, timers, which flow it joins, dot positions, and the pending deltas it flushes. Totals, flags, k and explain() are kernel.</p>
             <div class="btn-row" style="margin-top:8px"><button type="button" class="ghost" id="btn-verify" disabled>Verify: rebuild kernel from facts</button></div>
-            <div class="verify-out" id="verify-out">Rebuilds a fresh kernel from the current facts + same formulas and compares every derived path.</div>
+            <div class="verify-out" id="verify-out">Flushes, then rebuilds a fresh kernel from the current facts + same formulas, compares every derived path, Σ counters = fleet, and adapter truck states vs kernel counters.</div>
           </div>
         </div>
       </div>
@@ -727,7 +768,9 @@
 
 <script type="module">
 // ── Kernel: published this.me@4.1.0, unmodified, hash-pinned ──
-import { createPortKernel, SHIPS, TRAIN } from "./veracruz-port/port-sim.js";
+import { createPortKernel, SHIPS, TRAIN, COUNTERS, FLEET } from "./veracruz-port/port-sim.js";
+import { createTraffic, VIS_OF, CONFIG } from "./veracruz-port/port-traffic.js";
+import { ROUTES, KEY, EXITS } from "./veracruz-port/port-routes.js";
 
 const KERNEL = {
   version: "4.1.0",
@@ -769,13 +812,22 @@ async function loadKernel() {
   throw new Error("Could not load this.me@" + KERNEL.version + " — " + errors.join(" | "));
 }
 
-let ME = null, P = null, animating = false, autoTimer = null, tourStep = 1;
-let lastCycle = null;
+let ME = null, P = null, T = null, tourStep = 1;
+let running = false, speed = 4;
+
+// ── stats (page-side bookkeeping of what the kernel returned) ──
+let flushLog = [];          // { t, n, kMax } for the last ~2 s of non-empty flushes
+let frameLog = [];          // frame timestamps, last ~1 s
+let lastFlush = null;       // { writes, idx, sim }
+let flushCount = 0, writeCount = 0;
+let hitPaths = new Set();   // kernel paths written/recomputed since the last UI refresh
+let lastUi = 0, maxMoving = 0, moving = 0, offMap = 0;
 
 // Map kernel paths → map nodes (for lighting the kernel's affected set)
 const NODE_PREFIX = [
   ["ships.1.", "n-ship1"], ["ships.2.", "n-ship2"], ["ships.3.", "n-ship3"], ["train.1.", "n-train"],
-  ["queues.import.", "n-qimp"], ["queues.export.", "n-qexp"], ["cargo.", "n-yard"],
+  ["queues.import.", "n-qimp"], ["queues.export.", "n-qexp"], ["trucks.import.", "n-qimp"], ["trucks.export.", "n-qexp"],
+  ["cargo.", "n-yard"], ["trucks.available", "n-yard"],
   ["flows.", "n-port"], ["port.", "n-port"], ["trucks.", "n-port"],
 ];
 const nodeOfPath = (p) => (NODE_PREFIX.find(([pre]) => p.startsWith(pre)) || [])[1];
@@ -806,12 +858,23 @@ function render() {
   $("#bar-exp-i").style.width = pct(R("train.1.progress"));
 
   $("#queues-kv").innerHTML =
-    row("queues.import.length", "fact", fmt(R("queues.import.length"))) +
-    row("queues.export.length", "fact", fmt(R("queues.export.length"))) +
-    row("queues.import.busy", "rule", String(R("queues.import.busy"))) +
-    row("queues.export.busy", "rule", String(R("queues.export.busy"))) +
     row("trucks.available", "fact", fmt(R("trucks.available"))) +
+    row("queues.import.length", "fact", fmt(R("queues.import.length"))) +
+    row("trucks.import.loading", "fact", fmt(R("trucks.import.loading"))) +
+    row("trucks.import.enRoute", "fact", fmt(R("trucks.import.enRoute"))) +
+    row("trucks.import.returning", "fact", fmt(R("trucks.import.returning"))) +
+    row("queues.export.length", "fact", fmt(R("queues.export.length"))) +
+    row("trucks.export.loading", "fact", fmt(R("trucks.export.loading"))) +
+    row("trucks.export.enRoute", "fact", fmt(R("trucks.export.enRoute"))) +
+    row("trucks.export.returning", "fact", fmt(R("trucks.export.returning"))) +
     row("trucks.inQueue", "rule", fmt(R("trucks.inQueue"))) +
+    row("trucks.loading", "rule", fmt(R("trucks.loading"))) +
+    row("trucks.enRoute", "rule", fmt(R("trucks.enRoute"))) +
+    row("trucks.returning", "rule", fmt(R("trucks.returning"))) +
+    row("trucks.working", "rule", fmt(R("trucks.working"))) +
+    row("trucks.accounted", "rule", fmt(R("trucks.accounted"))) +
+    row("trucks.balanced", "rule", String(R("trucks.balanced"))) +
+    row("queues.import.busy", "rule", String(R("queues.import.busy"))) +
     row("port.busy", "rule", String(R("port.busy")));
 
   $("#stocks-kv").innerHTML =
@@ -831,15 +894,24 @@ function render() {
   $("#train-meta").textContent = `${tw ? "loading" : "done"} · ${fmt(R("train.1.remainingToLoad"))} t`;
   $("#n-train").classList.toggle("done", !tw);
   $("#n-train").classList.toggle("busy", !!tw);
-  $("#qimp-meta").textContent = `${R("queues.import.length")} trucks${R("queues.import.busy") ? "" : " · idle"}`;
-  $("#qexp-meta").textContent = `${R("queues.export.length")} trucks${R("queues.export.busy") ? "" : " · idle"}`;
-  $("#yard-meta").textContent = `coffee ${fmt(R("cargo.coffee"))} · sugar ${fmt(R("cargo.sugar"))}`;
+  $("#qimp-meta").textContent = `${R("queues.import.length")} queued${R("queues.import.busy") ? "" : " · idle"}`;
+  $("#qexp-meta").textContent = `${R("queues.export.length")} queued${R("queues.export.busy") ? "" : " · idle"}`;
+  $("#yard-meta").textContent = `pool ${fmt(R("trucks.available"))} · sugar ${fmt(R("cargo.sugar"))}`;
   $("#port-status").textContent = R("port.busy") ? "port.busy = true" : "port.busy = false";
 
   $("#hud-imp").textContent = fmt(R("flows.importRemaining")) + " t";
   $("#hud-exp").textContent = fmt(R("flows.exportRemaining")) + " t";
-  $("#hud-trucks").textContent = `${fmt(R("trucks.available"))} free / ${fmt(R("trucks.inQueue"))} queued`;
-  $("#hud-tick").textContent = String(P.tick);
+  $("#hud-trucks").textContent = `${fmt(R("trucks.working"))} / ${fmt(R("trucks.fleet"))}`;
+  $("#hud-bal").textContent = String(R("trucks.balanced"));
+  $("#hud-tick").textContent = `${T ? T.simTime.toFixed(0) : 0} s ×${speed}`;
+
+  $("#lg-enimp").textContent = fmt(R("trucks.import.enRoute"));
+  $("#lg-enexp").textContent = fmt(R("trucks.export.enRoute"));
+  $("#lg-load").textContent = fmt(R("trucks.loading"));
+  $("#lg-queue").textContent = fmt(R("trucks.inQueue"));
+  $("#lg-ret").textContent = fmt(R("trucks.returning"));
+  $("#lg-idle").textContent = fmt(R("trucks.available"));
+  $("#lg-off").textContent = `${offMap}`;
   renderExplain();
 }
 
@@ -861,130 +933,204 @@ function renderExplain() {
     ["last wave", wave],
   ].map(([l, v]) => `<div class="row"><span class="lbl">${l}</span><span class="val">${v}</span></div>`).join("");
   $("#explain-code").textContent = `me.explain(${JSON.stringify(path)})`;
-  $("#explain-raw").textContent = JSON.stringify(ex, null, 2);
+  if ($("#explain-raw").closest("details").open) $("#explain-raw").textContent = JSON.stringify(ex, null, 2);
 }
 
-function renderWrites(c) {
+const sgn = (n) => (n > 0 ? "+" : "−") + fmt(Math.abs(n));
+function renderWrites() {
   const ul = $("#writes");
-  if (!c || !c.writes.length) { ul.innerHTML = `<li class="empty">${c?.done ? "No work left — nothing to write." : "No writes yet."}</li>`; return; }
-  ul.innerHTML = c.writes.map((w) => {
+  if (!lastFlush) { ul.innerHTML = `<li class="empty">No writes yet — press Start.</li>`; return; }
+  ul.innerHTML = lastFlush.writes.map((w) => {
     const rec = w.recomputed.length
       ? w.recomputed.map((p) => (w.changed.includes(p) ? `<span class="chg">${esc(p)}</span>` : esc(p))).join(", ")
       : "no dependents";
-    return `<li><code>${esc(w.code)}</code><span class="wk">k=${w.k}</span><span class="wr">recomputed: ${rec}</span></li>`;
+    const note = w.hauls ? `// ${sgn(w.delta)} · ${w.hauls} haul${w.hauls > 1 ? "s" : ""}` : `// ${sgn(w.delta)}`;
+    return `<li><code>${esc(w.code)}</code><span class="wk">k=${w.k}</span><span class="wc">${esc(note)}</span><span class="wr">recomputed: ${rec}</span></li>`;
   }).join("");
-  const ks = c.writes.map((w) => w.k);
-  const union = new Set(c.writes.flatMap((w) => w.recomputed));
-  $("#k-badge").textContent = `k per write: ${ks.join(" · ")}  |  distinct recomputed: ${union.size}`;
-  $("#chip-wave").textContent = c.done ? "work done" : `cycle ${c.tick} · ${c.kind}`;
+  $("#flush-meta").textContent = `flush #${lastFlush.idx} · sim ${lastFlush.sim.toFixed(1)} s · ${lastFlush.writes.length} real writes (one per changed fact) · k ${lastFlush.writes.map((w) => w.k).join("·")}`;
 }
 
-// ── visual wave: adapter animation along edges, then light the kernel's affected set ──
-function pointOnPath(el, t) { const L = el.getTotalLength(); return el.getPointAtLength(Math.max(0, Math.min(1, t)) * L); }
-function animateDot(edgeId, ms, color) {
-  return new Promise((resolve) => {
-    const el = document.getElementById(edgeId);
-    if (!el) return resolve();
-    const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-    c.setAttribute("r", "4"); c.setAttribute("class", "truck-dot"); c.setAttribute("fill", color);
-    $("#truck-anim").appendChild(c);
-    const t0 = performance.now();
-    (function frame(now) {
-      const u = Math.min(1, (now - t0) / ms);
-      const p = pointOnPath(el, u);
-      c.setAttribute("cx", p.x); c.setAttribute("cy", p.y);
-      c.style.opacity = String(0.3 + 0.7 * Math.sin(Math.PI * u));
-      if (u < 1) requestAnimationFrame(frame); else { c.remove(); resolve(); }
-    })(t0);
-  });
-}
-function clearWave() {
-  $$(".edge.wave").forEach((e) => e.classList.remove("wave"));
-  $$(".node.pulse").forEach((n) => n.classList.remove("pulse"));
-}
-function lightKernelSet(c) {
-  clearWave();
-  const paths = new Set(c.writes.flatMap((w) => [w.source, ...w.recomputed]));
-  const lit = new Set([...paths].map(nodeOfPath).filter(Boolean));
-  lit.forEach((id) => document.getElementById(id)?.classList.add("pulse", "hl"));
-  for (const [eid, [a, b]] of Object.entries(EDGE_ENDS)) if (lit.has(a) && lit.has(b)) document.getElementById(eid)?.classList.add("wave");
+function renderStats(now) {
+  const win = flushLog.filter((f) => now - f.t <= 1000);
+  $("#st-wps").textContent = fmt(win.reduce((a, f) => a + f.n, 0));
+  $("#st-fps-flush").textContent = fmt(win.length);
+  $("#st-k").textContent = win.length ? `${lastFlush.writes[lastFlush.writes.length - 1].k}·max ${Math.max(...win.map((f) => f.kMax))}` : "—";
+  $("#st-writes").textContent = fmt(writeCount);
+  $("#st-fps").textContent = fmt(frameLog.filter((t) => now - t <= 1000).length);
+  $("#st-moving").textContent = fmt(moving);
 }
 
-async function runCycle({ animate = true } = {}) {
-  if (!P || animating) return null;
-  const c = P.cycle();            // ← real kernel writes happen here
-  lastCycle = c;
-  render();
-  renderWrites(c);
-  if (c.done) { stopAuto(); return c; }
-  if (!animate) { lightKernelSet(c); return c; }
-  animating = true;
-  if (c.kind === "import") {
-    await animateDot(`e-ship${c.target.ship}-q`, 380, "#7eb8c9");
-    await animateDot("e-qimp-port", 260, "#7eb8c9");
-  } else {
-    await animateDot("e-yard-qexp", 320, "#c9b87e");
-    await animateDot("e-qexp-train", 300, "#c9b87e");
+function lightHits() {
+  const lit = new Set([...hitPaths].map(nodeOfPath).filter(Boolean));
+  hitPaths.clear();
+  $$("#nodes .node").forEach((n) => n.classList.toggle("hit", lit.has(n.id)));
+  for (const [eid, [a, b]] of Object.entries(EDGE_ENDS)) document.getElementById(eid)?.classList.toggle("wave", lit.has(a) && lit.has(b));
+}
+
+function onFlush(writes, now) {
+  flushCount++; writeCount += writes.length;
+  lastFlush = { writes, idx: flushCount, sim: T.simTime };
+  flushLog.push({ t: now, n: writes.length, kMax: Math.max(...writes.map((w) => w.k)) });
+  if (flushLog.length > 400) flushLog = flushLog.filter((f) => now - f.t <= 2000);
+  for (const w of writes) { hitPaths.add(w.source); for (const p of w.recomputed) hitPaths.add(p); }
+}
+
+// ── canvas overlay: one dot per truck, in SVG viewBox coordinates ──
+const canvas = $("#traffic"), ctx = canvas.getContext("2d"), wrap = $(".map-wrap");
+let view = { s: 1, ox: 0, oy: 0, dpr: 1, w: 0, h: 0 };
+function resize() {
+  const r = wrap.getBoundingClientRect(), dpr = Math.min(2, window.devicePixelRatio || 1);
+  canvas.width = Math.round(r.width * dpr); canvas.height = Math.round(r.height * dpr);
+  const s = Math.min(r.width / 1200, r.height / 800);   // matches preserveAspectRatio="xMidYMid meet"
+  view = { s, ox: (r.width - 1200 * s) / 2, oy: (r.height - 800 * s) / 2, dpr, w: r.width, h: r.height };
+}
+new ResizeObserver(resize).observe(wrap);
+resize();
+
+const COLORS = { enRouteImp: "#7eb8c9", enRouteExp: "#c9b87e", loading: "#7ec99a", queued: "#b39ddb", returning: "#5f6b78", idle: "#4a535e" };
+const DRAW_ORDER = ["idle", "returning", "queued", "enRouteExp", "enRouteImp", "loading"];
+const MOVING = new Set(["impToQueue", "impToBerth", "impOut", "expOut", "expIn", "expToTrain", "toDepotImp", "toDepotExp"]);
+const OFFMAP = new Set(["impAway", "impBack", "expAway"]);
+const jit = (id, k) => ((Math.sin(id * 12.9898 + k * 78.233) * 43758.5453) % 1) * 1.6;   // lane offset per truck
+const POOL = { x: 474, y: 478, cols: 25, gap: 3.2 };
+const BERTH_OFF = (slot) => [-12 + (slot % 8) * 4.2, -2 + Math.floor(slot / 8) * 4.2];
+const buckets = Object.fromEntries(DRAW_ORDER.map((k) => [k, []]));
+
+function draw() {
+  const { s, ox, oy, dpr } = view;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, view.w, view.h);
+  if (!T) return;
+  ctx.setTransform(dpr * s, 0, 0, dpr * s, dpr * ox, dpr * oy);
+  ctx.save();
+  ctx.beginPath(); ctx.rect(0, 0, 1200, 800); ctx.clip();   // trucks vanish at the map edge
+  for (const k of DRAW_ORDER) buckets[k].length = 0;
+  moving = 0; offMap = 0;
+  for (const tr of T.trucks) {
+    const vis = VIS_OF[tr.st];
+    if (!vis) { offMap++; continue; }
+    if (vis === "queued") continue;   // laid out from the queue arrays below
+    if (MOVING.has(tr.st)) moving++;
+    let x, y;
+    if (tr.st === "pool") { x = POOL.x + (tr.id % POOL.cols) * POOL.gap; y = POOL.y + Math.floor(tr.id / POOL.cols) * POOL.gap; }
+    else if (tr.st === "impLoading") { const b = KEY[`berth${tr.ship}`], o = BERTH_OFF(tr.slot); x = b[0] + o[0]; y = b[1] + o[1]; }
+    else if (tr.st === "expUnloading") { x = KEY.train[0] - 19 + tr.slot * 4.2; y = KEY.train[1] + 13; }
+    else { x = tr.x + jit(tr.id, 1); y = tr.y + jit(tr.id, 2); }
+    buckets[vis].push(x, y);
   }
-  lightKernelSet(c);
-  setTimeout(() => { clearWave(); applyTourHighlights(); }, 650);
-  animating = false;
-  return c;
+  const lay = (q, node) => q.forEach((tr, i) => buckets.queued.push(node[0] - 14 + (i % 10) * 3.6, node[1] + 17 + Math.floor(i / 10) * 3.6));
+  lay(T.queues.impQ, KEY.qimp); lay(T.queues.expQ, KEY.qexp);
+  if (moving > maxMoving) maxMoving = moving;
+  for (const k of DRAW_ORDER) {
+    const b = buckets[k]; if (!b.length) continue;
+    const r = k === "idle" ? 1.2 : 2.2;
+    ctx.fillStyle = COLORS[k];
+    ctx.globalAlpha = k === "returning" ? 0.85 : 1;
+    ctx.beginPath();
+    for (let i = 0; i < b.length; i += 2) { ctx.moveTo(b[i] + r, b[i + 1]); ctx.arc(b[i], b[i + 1], r, 0, 6.2832); }
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+  ctx.restore();
 }
 
-function startAuto() {
-  if (autoTimer) return stopAuto();
-  $("#btn-auto").textContent = "Auto ■";
-  if (tourStep !== 6) applyTour(6);
-  autoTimer = setInterval(() => { if (!animating) runCycle(); }, 1100);
+// ── main loop: adapter steps → one flush per animation tick → kernel writes ──
+let lastNow = 0;
+function frame(now) {
+  requestAnimationFrame(frame);
+  const dtReal = lastNow ? Math.min(0.1, (now - lastNow) / 1000) : 0;
+  lastNow = now;
+  frameLog.push(now); if (frameLog.length > 240) frameLog = frameLog.filter((t) => now - t <= 1000);
+  if (running && T) {
+    let sim = dtReal * speed;
+    while (sim > 1e-9) { const d = Math.min(0.1, sim); T.step(d); sim -= d; }
+    const writes = T.flush();                 // ← real kernel writes happen here
+    if (writes.length) onFlush(writes, now);
+    if (T.done()) setRunning(false, true);
+  }
+  draw();
+  if (now - lastUi > 250) {
+    lastUi = now;
+    if (P) { render(); renderWrites(); renderStats(now); lightHits(); }
+  }
 }
-function stopAuto() {
-  if (autoTimer) clearInterval(autoTimer);
-  autoTimer = null;
-  $("#btn-auto").textContent = "Auto ▸";
+requestAnimationFrame(frame);
+
+function setRunning(on, finished = false) {
+  running = on && !(T && T.done());
+  const b = $("#btn-run");
+  if (finished || (T && T.done())) b.innerHTML = `All work done ✓<br/><span class="sub">Reset to replay</span>`;
+  else b.innerHTML = running ? `Pause ■<br/><span class="sub">500 trucks · real me.… writes</span>` : `Start traffic ▸<br/><span class="sub">500 trucks · real me.… writes</span>`;
 }
 
 function resetKernel() {
-  stopAuto();
-  clearWave();
-  $("#truck-anim").innerHTML = "";
   P = createPortKernel(ME);
-  lastCycle = null;
+  T = createTraffic({ kernel: P, ROUTES, KEY });
+  flushLog = []; lastFlush = null; flushCount = 0; writeCount = 0; maxMoving = 0; hitPaths.clear();
   $("#seed-code").textContent = P.seedLog.join("\n");
-  $("#k-badge").textContent = "k —";
-  $("#chip-wave").textContent = "fresh kernel · seeded";
-  renderWrites(null);
-  $("#verify-out").textContent = "Rebuilds a fresh kernel from the current facts + same formulas and compares every derived path.";
+  $("#verify-out").textContent = "Flushes, then rebuilds a fresh kernel from the current facts + same formulas, compares every derived path, Σ counters = fleet, and adapter truck states vs kernel counters.";
   $("#verify-out").className = "verify-out";
-  render();
-  applyTour(tourStep);
+  setRunning(false);
+  render(); renderWrites(); renderStats(performance.now());
 }
 
+function verifyNow() {
+  const writes = T.flush();
+  if (writes.length) onFlush(writes, performance.now());
+  const ac = T.adapterCounters();
+  return P.verifyFromScratch(COUNTERS.map((c) => [`adapter vs kernel ${c}`, P.read(c), ac[c] || 0]));
+}
 function verify() {
-  const v = P.verifyFromScratch();
+  const v = verifyNow();
   $("#verify-out").className = "verify-out " + (v.ok ? "ok" : "bad");
   $("#verify-out").textContent = v.ok
-    ? `✓ ${v.checked} derived paths match a from-scratch kernel rebuild (after ${P.tick} cycles).`
+    ? `✓ ${v.checked} checks pass: every derived path matches a from-scratch kernel rebuild, Σ counters = ${FLEET}, adapter states = kernel counters (sim ${T.simTime.toFixed(0)} s, ${fmt(writeCount)} writes).`
     : `✗ mismatches: ${JSON.stringify(v.mismatches)}`;
+  render();
   return v;
 }
 
+// exit labels where the routes cross the frame edge
+(function exitLabels() {
+  const g = $("#exit-labels"), NS = "http://www.w3.org/2000/svg";
+  for (const ex of CONFIG.exits) {
+    const r = ROUTES[`berth1>${ex}`];
+    let cross = null;
+    for (let i = 1; i < r.length && !cross; i++) {
+      const [x1, y1] = r[i - 1], [x2, y2] = r[i];
+      if (x2 < 0 || x2 > 1200 || y2 < 0 || y2 > 800) {
+        const u = Math.min(...[[-x1, x2 - x1], [1200 - x1, x2 - x1], [-y1, y2 - y1], [800 - y1, y2 - y1]].map(([n, d]) => (d ? n / d : Infinity)).filter((t) => t >= 0 && t <= 1));
+        cross = [x1 + (x2 - x1) * u, y1 + (y2 - y1) * u];
+      }
+    }
+    if (!cross) continue;
+    const top = cross[1] < 400, left = cross[0] < 600;
+    const t = document.createElementNS(NS, "text");
+    t.setAttribute("class", "exit-label");
+    t.setAttribute("x", (cross[0] + (left ? 8 : -8)).toFixed(1));
+    t.setAttribute("y", (top ? 16 : 728).toFixed(1));
+    t.setAttribute("text-anchor", left ? "start" : "end");
+    t.textContent = (top ? "↖ " : "↓ ") + EXITS[ex] + " · off map";
+    g.appendChild(t);
+  }
+})();
+
 // ── Tutorial ──
 const TOUR = [null,
-  { title: "1 · Port overview", body: "You are at the <strong>Port of Veracruz</strong>. Three ships unload (import), one train loads (export), trucks move between them. Every number on the right is read live from a real <strong>this.me@4.1.0</strong> kernel.",
+  { title: "1 · Port overview", body: "You are at the <strong>Port of Veracruz</strong>. Three ships unload (import), one train loads (export), and <strong>500 trucks</strong> circulate on real OpenStreetMap roads — every dot is one truck. Every number on the right is read live from a real <strong>this.me@4.1.0</strong> kernel.",
     hlNodes: ["n-port", "n-ship1", "n-ship2", "n-ship3", "n-train"], hlEdges: ["e-ship1-q", "e-ship2-q", "e-ship3-q", "e-qexp-train"], hlPanels: [] },
-  { title: "2 · Stocks (facts)", body: "<strong>me.cargo.coffee(100000)</strong>, sugar(200000), containers(5000), <strong>me.trucks.fleet(500)</strong>. A fact changes only when a write says so. <strong>cargo.bulkTons</strong> is a kernel rule: coffee + sugar.",
+  { title: "2 · Stocks (facts)", body: "<strong>me.cargo.coffee(100000)</strong>, sugar(200000), containers(5000), <strong>me.trucks.fleet(500)</strong>. A fact changes only when a write says so. <strong>cargo.bulkTons</strong> is a kernel rule: coffee + sugar. Idle trucks wait in the pool next to the yard.",
     hlNodes: ["n-yard"], hlEdges: ["e-port-yard"], hlPanels: ["panel-stocks"] },
-  { title: "3 · Ships unloading", body: "Each ship has facts <strong>total, remaining, tonsPerUnit</strong>. Kernel rules: <strong>remainingTons = remaining * tonsPerUnit</strong>, and <strong>importRemaining</strong> = the explicit sum over ships[1], [2], [3].",
+  { title: "3 · Ships unloading", body: "Each ship has facts <strong>total, remaining, tonsPerUnit</strong>. Kernel rules: <strong>remainingTons = remaining * tonsPerUnit</strong>, and <strong>importRemaining</strong> = the explicit sum over ships[1], [2], [3]. Laden import trucks (blue) leave Veracruz over the highways, off the map edge.",
     hlNodes: ["n-ship1", "n-ship2", "n-ship3", "n-qimp"], hlEdges: ["e-ship1-q", "e-ship2-q", "e-ship3-q"], hlPanels: ["panel-ships"] },
-  { title: "4 · Train loading", body: "<strong>train[1].remainingToLoad</strong> is a fact; <strong>flows.exportRemaining</strong> and <strong>train[1].progress</strong> are kernel rules. Export trucks take sugar from the yard to the train.",
+  { title: "4 · Train loading", body: "<strong>train[1].remainingToLoad</strong> is a fact; <strong>flows.exportRemaining</strong> and <strong>train[1].progress</strong> are kernel rules. Export trucks (amber) come in from outside the map with sugar and unload into the train.",
     hlNodes: ["n-train", "n-qexp", "n-yard"], hlEdges: ["e-yard-qexp", "e-qexp-train"], hlPanels: ["panel-train"] },
-  { title: "5 · Truck queues", body: "A queue is a counter fact: <strong>queues.import.length</strong>. Kernel rules: <strong>busy = length &gt; 0</strong>, <strong>trucks.inQueue</strong> = both lengths. <em>Who</em> goes next is adapter logic (dashed panel).",
-    hlNodes: ["n-qimp", "n-qexp", "n-port"], hlEdges: ["e-qimp-port", "e-qexp-train"], hlPanels: ["panel-queues", "panel-adapter"] },
-  { title: "6 · Mutate one truck cycle", body: "Press <strong>Run 1 truck cycle</strong>: dispatch (length − 1), haul (remaining − haul), stock (cargo − haul), return (rejoin or pool). Each line is the exact call executed; <strong>k</strong> is the kernel's own recompute count.",
+  { title: "5 · Trucks by state", body: "Every truck state is a counter fact: <strong>trucks.available</strong>, <strong>queues.import.length</strong>, <strong>trucks.import.loading / enRoute / returning</strong>, same for export. Kernel rules sum them: <strong>trucks.working</strong>, <strong>trucks.accounted</strong>, <strong>trucks.balanced = accounted == fleet</strong>. <em>Where</em> each truck drives is adapter logic (dashed panel).",
+    hlNodes: ["n-qimp", "n-qexp", "n-port", "n-yard"], hlEdges: ["e-qimp-port", "e-qexp-train"], hlPanels: ["panel-queues", "panel-adapter"] },
+  { title: "6 · Live traffic", body: "Press <strong>Start traffic</strong>. Each animation tick the adapter flushes what happened as <strong>real writes</strong> — one call per changed fact (a ship's remaining, a stock, a counter). The list shows the exact calls of the latest flush with the kernel's own <strong>k</strong>; writes/s and recent k are live.",
     hlNodes: ["n-qimp", "n-ship2", "n-port", "n-yard"], hlEdges: ["e-ship2-q", "e-qimp-port"], hlPanels: ["panel-mutate"] },
-  { title: "7 · Explain why", body: "<strong>me.explain(\"flows.importRemaining\")</strong> returns the expression, every input with its value, and <strong>sourcePath</strong> — the write that last recomputed it. That is why the number changed.",
-    hlNodes: ["n-port", "n-ship1", "n-ship2", "n-ship3"], hlEdges: ["e-ship1-q", "e-ship2-q", "e-ship3-q"], hlPanels: ["panel-explain"] },
+  { title: "7 · Explain why", body: "<strong>me.explain(\"flows.importRemaining\")</strong> returns the expression, every input with its value, and <strong>sourcePath</strong> — the write that last recomputed it. <strong>Verify</strong> rebuilds a fresh kernel from the facts and compares everything.",
+    hlNodes: ["n-port", "n-ship1", "n-ship2", "n-ship3"], hlEdges: ["e-ship1-q", "e-ship2-q", "e-ship3-q"], hlPanels: ["panel-explain", "panel-adapter"] },
 ];
 
 function applyTourHighlights() {
@@ -1008,36 +1154,69 @@ function applyTour(step) {
   applyTourHighlights();
 }
 (function buildSteps() {
-  const wrap = $("#tour-steps");
+  const wrapSteps = $("#tour-steps");
   for (let i = 1; i < TOUR.length; i++) {
     const b = document.createElement("button");
     b.type = "button"; b.textContent = String(i); b.title = TOUR[i].title;
     b.addEventListener("click", () => applyTour(i));
-    wrap.appendChild(b);
+    wrapSteps.appendChild(b);
   }
 })();
 $("#btn-next").addEventListener("click", () => applyTour(tourStep >= TOUR.length - 1 ? 1 : tourStep + 1));
 $("#btn-prev").addEventListener("click", () => tourStep > 1 && applyTour(tourStep - 1));
-$("#btn-tick").addEventListener("click", () => { if (tourStep !== 6) applyTour(6); runCycle(); });
-$("#btn-auto").addEventListener("click", startAuto);
+$("#btn-run").addEventListener("click", () => setRunning(!running));
+$("#sel-speed").addEventListener("change", (e) => { speed = Number(e.target.value) || 4; });
 $("#btn-reset").addEventListener("click", resetKernel);
 $("#btn-verify").addEventListener("click", verify);
 $("#ex-select").addEventListener("change", renderExplain);
 
 const params = new URLSearchParams(location.search);
 applyTour(Math.min(TOUR.length - 1, Math.max(1, parseInt(params.get("step") || "1", 10) || 1)));
+if (params.get("speed")) { speed = Number(params.get("speed")) || 4; $("#sel-speed").value = String(speed); }
 
 try {
   const { mod, host, hash } = await loadKernel();
   ME = mod.default || mod.ME;
   $("#kernel-status").innerHTML = `Kernel <b>this.me@${KERNEL.version}</b> · dist/me.es.js from ${host} · sha256 ${hash.slice(0, 12)}… <b>verified</b> · unmodified`;
   resetKernel();
-  ["#btn-tick", "#btn-auto", "#btn-reset", "#btn-verify"].forEach((s) => ($(s).disabled = false));
+  ["#btn-run", "#btn-reset", "#btn-verify"].forEach((s) => ($(s).disabled = false));
+  if (params.get("autostart") !== "0") setRunning(true);
   // hooks for headless checks
   window.__port = {
-    get P() { return P; },
-    cycleNoAnim: () => runCycle({ animate: false }),
+    get P() { return P; }, get T() { return T; },
     verify,
+    pause: () => setRunning(false),
+    // run the same adapter + flush loop synchronously to completion (no animation)
+    drain({ dt = 0.1, stepsPerFlush = 3, verifyEvery = 250 } = {}) {
+      setRunning(false);
+      const t0 = performance.now();
+      let flushes = 0, writes = 0, checks = 0, failures = [], kMax = 0, kSum = 0;
+      while (!T.done() && T.simTime < 20000) {
+        for (let i = 0; i < stepsPerFlush; i++) T.step(dt);
+        const w = T.flush();
+        if (!w.length) continue;
+        onFlush(w, performance.now()); flushes++; writes += w.length;
+        for (const x of w) { kMax = Math.max(kMax, x.k); kSum += x.k; }
+        if (flushes % verifyEvery === 0) { const v = verifyNow(); checks++; if (!v.ok) failures.push({ sim: T.simTime, mismatches: v.mismatches }); }
+      }
+      const wallMs = performance.now() - t0;
+      const final = verify();
+      setRunning(false, true); render(); renderWrites();
+      return { done: T.done(), simTime: T.simTime, flushes, writes, hauls: T.totalHauls, wallMs, writesPerSec: Math.round(writes / (wallMs / 1000)), kMax, kAvg: kSum / writes, periodicChecks: checks, failures, final: { ok: final.ok, checked: final.checked, mismatches: final.mismatches } };
+    },
+    // real-time animated run for `ms`; returns fps and kernel writes/s actually achieved
+    realtime(ms = 5000, spd = 4) {
+      speed = spd; $("#sel-speed").value = String(spd); setRunning(true);
+      const w0 = writeCount, f0 = flushCount, t0 = performance.now(); let frames = 0, worst = 0, last = t0; maxMoving = 0;
+      return new Promise((resolve) => {
+        (function tick(now) {
+          frames++; worst = Math.max(worst, now - last); last = now;
+          if (now - t0 < ms) return requestAnimationFrame(tick);
+          const sec = (now - t0) / 1000;
+          resolve({ seconds: sec, fps: frames / sec, worstFrameMs: worst, writesPerSec: (writeCount - w0) / sec, flushesPerSec: (flushCount - f0) / sec, maxMovingDots: maxMoving, simTime: T.simTime, working: P.read("trucks.working"), balanced: P.read("trucks.balanced") });
+        })(t0);
+      });
+    },
   };
   window.__portReady = true;
 } catch (e) {
@@ -1045,7 +1224,6 @@ try {
   $("#kernel-status").innerHTML = `<b>Kernel failed to load</b> — ${esc(e?.message || e)}. Nothing on this page runs without it.`;
   window.__portError = String(e?.message || e);
 }
-
 </script>
 </body>
 </html>
