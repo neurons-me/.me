@@ -495,7 +495,7 @@ const pageType = (type, C) => ({ type, resolve: (spec) => { const { key: _k, ...
 const PAGE_TYPES = Object.fromEntries([
   ["PortValue", ValView], ["PortSum", SumView], ["PortBar", BarView], ["PortRow", Row], ["PortFormula", Formula], ["PortPanel", Panel],
   ["PortLegendRow", LgRow], ["PortHudChip", HudChip], ["PortSvgGroup", SvgGroup],
-  ["PortTour", TourStrip], ["PortKernelStrip", KernelStrip], ["PortKernelLink", KernelLink], ["PortRunControls", RunControls], ["PortStats", Stats], ["PortWrites", Writes],
+  ["PortTour", TourStrip], ["PortKernelStrip", KernelStrip], ["PortBrandLogo", BrandLogo], ["PortBrandActions", BrandActions], ["PortKernelLink", KernelLink], ["PortRunControls", RunControls], ["PortStats", Stats], ["PortWrites", Writes],
   ["PortExplain", ExplainLeaf], ["PortLmStrip", LmStrip], ["PortLmEstimate", LmEstimate], ["PortLmFeed", LmFeed], ["PortSeed", SeedCode],
   ["PortVerifyOut", VerifyOut], ["PortKernelWait", KernelWait], ["PortOffMap", OffMap], ["PortSimClock", SimClock],
 ].map(([t, C]) => [t, pageType(t, C)]).concat([
@@ -723,25 +723,50 @@ function mapSpec(live) {
   ]);
 }
 
-function topBarSpec() {
-  return N("TopBar", "GUI.bars.top", {
-    title: ".me", logo: LOGO, homeTo: "https://neurons-me.github.io/", position: "static",
-    sx: { "& img": { height: 34, width: 34, objectFit: "contain" } },
-    elementsRight: [
-      // Opt-in .GUI Semantic Inspector (off by default; hidden at ≤1100 px, where its 440 px side panel has no room).
-      { type: "action", props: { element: INSPECTOR_ACTION } },
-      { type: "link", props: { label: "Smart Cities", href: "https://neurons-me.github.io/smart-cities/", "data-gui-node-id": "GUI.bars.top.link.smart-cities" } },
-      { type: "link", props: { label: "Docs", href: "https://neurons-me.github.io/.me/docs/", "data-gui-node-id": "GUI.bars.top.link.docs" } },
-      { type: "link", props: { label: "GitHub", href: "https://github.com/neurons-me/.me", "data-gui-node-id": "GUI.bars.top.link.github" } },
-    ],
-  });
-}
-function titleStripSpec(s = "title") {
-  return N("Box", s, { sx: { display: "flex", alignItems: "center", gap: 1.25, flexWrap: "wrap", px: 2, py: 1, borderBottom: 1, borderColor: "divider" } }, [
-    N("Typography", `${s}/name`, { component: "h1", sx: { fontWeight: 600, fontSize: 14, letterSpacing: ".04em" } }, "VERACRUZ"),
-    N("Typography", `${s}/address`, { sx: { fontFamily: MONO, fontSize: 12, color: "primary.main" } }, "me://port"),
+// One brand line: cerebrito + navigable me:// path (SmartCity → hub). Smart Cities left the right menu.
+const PATH_SEGMENTS = [
+  { text: "me://", href: "https://neurons-me.github.io/", title: "neurons.me" },
+  { text: "SmartCity", href: "https://neurons-me.github.io/smart-cities/", title: "Smart Cities hub" },
+  { text: "Demo", href: "https://neurons-me.github.io/.me/docs/Tests/", title: ".me demos & tests" },
+  { text: "Veracruz.Port", href: null, title: "This page" },
+];
+function brandBarSpec(s = "brand") {
+  const crumb = (seg, i) => {
+    const id = `${s}/path:${seg.text.replace(/[^A-Za-z0-9]+/g, "-")}`;
+    // After me:// no slash; between later segments use /
+    const needSlash = i > 0 && !PATH_SEGMENTS[i - 1].text.endsWith("://");
+    const sep = needSlash ? N("Typography", `${s}/sep:${i}`, { component: "span", sx: { color: "text.disabled", mx: .15 } }, "/") : null;
+    const node = seg.href
+      ? LINK(id, { href: seg.href, underline: "hover", title: seg.title, sx: { color: "primary.main", fontFamily: MONO, fontSize: 13 } }, seg.text)
+      : N("Typography", id, { component: "span", title: seg.title, sx: { color: "text.primary", fontFamily: MONO, fontSize: 13, fontWeight: 600 } }, seg.text);
+    return sep ? [sep, node] : [node];
+  };
+  return N("Box", s, {
+    component: "header",
+    sx: { display: "flex", alignItems: "center", gap: 1.25, flexWrap: "wrap", px: 1.75, py: .85, borderBottom: 1, borderColor: "divider", bgcolor: "background.paper" },
+  }, [
+    N("PortBrandLogo", `${s}/logo`),
+    N("Box", `${s}/path`, { component: "nav", "aria-label": "me path", sx: { display: "inline-flex", alignItems: "center", flexWrap: "wrap", minWidth: 0 } },
+      PATH_SEGMENTS.flatMap(crumb)),
     TAG(`${s}/tag`, "adapter", "port operations · 500 trucks · guided"),
+    N("Box", `${s}/actions`, { sx: { ml: "auto", display: "inline-flex", alignItems: "center", gap: 1.25, flexWrap: "wrap" } }, [
+      // Spec can't hold a live React element; PortBrandActions mounts the inspector + Docs / GitHub.
+      N("PortBrandActions", `${s}/actions:nav`),
+    ]),
   ]);
+}
+function BrandLogo(p) {
+  return h(Link, { ...nodeAttrs(p), href: "https://neurons-me.github.io/", title: "neurons.me", underline: "none",
+    sx: { display: "inline-flex", alignItems: "center", flexShrink: 0, lineHeight: 0 } },
+    h("img", { src: LOGO, alt: ".me", width: 34, height: 34, style: { display: "block", objectFit: "contain" } }));
+}
+function BrandActions(p) {
+  return h(Box, { ...nodeAttrs(p), sx: { display: "inline-flex", alignItems: "center", gap: 1.25 } },
+    INSPECTOR_ACTION,
+    h(Link, { href: "https://neurons-me.github.io/.me/docs/", underline: "hover", "data-gui-node-id": "brand/link.docs",
+      sx: { fontFamily: MONO, fontSize: 12, color: "text.secondary" } }, "Docs"),
+    h(Link, { href: "https://github.com/neurons-me/.me", underline: "hover", "data-gui-node-id": "brand/link.github",
+      sx: { fontFamily: MONO, fontSize: 12, color: "text.secondary" } }, "GitHub"));
 }
 function asideSpec(live) {
   return N("Box", "aside", { component: "aside", sx: { bgcolor: "background.paper", display: "flex", flexDirection: "column", overflow: "hidden", minHeight: 0, borderLeft: 1, borderColor: "divider" } }, [
@@ -763,7 +788,7 @@ const footerSpec = (s = "footer") => N("Box", s, { component: "footer", sx: { px
 ]);
 function pageSpec(live) {
   return N("Box", "page", { sx: { display: "flex", flexDirection: "column", height: "100vh", minHeight: 640, bgcolor: "background.default", color: "text.primary", "@media (max-width:1000px)": { height: "auto" } } }, [
-    topBarSpec(), titleStripSpec(),
+    brandBarSpec(),
     N("Box", "layout", { className: "layout", sx: { flex: 1, display: "grid", gridTemplateColumns: "1fr 380px", minHeight: 0, "@media (max-width:1000px)": { gridTemplateColumns: "1fr", gridTemplateRows: "minmax(300px, 42vh) auto" } } },
       [mapPanelSpec(live), asideSpec(live)]),
     footerSpec(),
