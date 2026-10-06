@@ -256,6 +256,11 @@
   .src-tag.kernel { color: var(--accent); border: 1px solid #2a4550; }
   .src-tag.adapter { color: var(--warn); border: 1px dashed #5a4a30; }
   .panel.adapter { border-style: dashed; border-color: #3a3024; }
+  /* kernel link: text comes from the loaded, hash-checked kernel file; width reserved so it never jumps */
+  a.kver { display: inline-block; text-decoration: none; white-space: nowrap; }
+  #kver-top { min-width: 39ch; } #kver-foot { min-width: 44ch; }
+  a.kver.ok { color: var(--accent); } a.kver.verifying { color: var(--muted); } a.kver.mismatch, a.kver.failed { color: var(--hot); }
+  a.kver:hover { text-decoration: underline; }
   .tour-wrap { flex-shrink: 0; border-bottom: 1px solid var(--border); }
   .tour-wrap.collapsed #tour-panel { display: none; }
   .tour-toggle { appearance: none; width: 100%; display: flex; align-items: center; gap: 6px; padding: 7px 12px; background: #0b0e12; border: none; cursor: pointer; font-family: var(--mono); font-size: 10px; color: var(--muted); text-align: left; white-space: nowrap; overflow: hidden; }
@@ -337,7 +342,7 @@
     <span class="sep">|</span>
     <span class="ns">me://port</span>
     <span class="tag">port operations · 500 trucks · guided</span>
-    <span class="hint">runs on this.me@4.1.0 · <a href="https://neurons-me.github.io/smart-cities/" style="color:var(--accent);text-decoration:none">Smart Cities ↗</a></span>
+    <span class="hint"><a class="kver verifying" id="kver-top" href="https://www.npmjs.com/package/this.me" target="_blank" rel="noopener" title="Checking the kernel file's sha256 in this browser…">runs on this.me · verifying…</a> · <a href="https://neurons-me.github.io/smart-cities/" style="color:var(--accent);text-decoration:none;white-space:nowrap">Smart Cities ↗</a></span>
   </header>
 
   <div class="glossary" id="glossary">
@@ -833,7 +838,7 @@
 
   <footer>
     <span>© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors · static SVG basemap · no live tiles</span>
-    <span>this.me@4.1.0 (unmodified) · <a href="veracruz-port/">build notes</a></span>
+    <span><a class="kver verifying" id="kver-foot" href="https://www.npmjs.com/package/this.me" target="_blank" rel="noopener" title="Checking the kernel file's sha256 in this browser…">this.me · verifying…</a> · <a href="veracruz-port/">build notes</a></span>
   </footer>
 
 <script type="module">
@@ -875,12 +880,33 @@ async function loadKernel() {
       const blobUrl = URL.createObjectURL(new Blob([text], { type: "text/javascript" }));
       const mod = await import(blobUrl);
       URL.revokeObjectURL(blobUrl);
-      return { mod, host: new URL(url).host, hash };
+      // The module exports no version, so the version shown is read from the final URL of the response
+      // whose bytes just passed the sha256 check above (not from a page constant).
+      const loadedUrl = res.url || url, version = (loadedUrl.match(/\/this\.me@([0-9]+\.[0-9]+\.[0-9]+[0-9A-Za-z.+-]*)\//) || [])[1] || "?";
+      return { mod, host: new URL(loadedUrl).host, hash, url: loadedUrl, version };
     } catch (e) {
       errors.push(`${url}: ${e?.message || e}`);
     }
   }
-  throw new Error("Could not load this.me@" + KERNEL.version + " — " + errors.join(" | "));
+  const err = new Error("Could not load this.me@" + KERNEL.version + " — " + errors.join(" | "));
+  err.mismatch = errors.some((x) => x.includes("sha256 mismatch"));
+  throw err;
+}
+// topbar + footer kernel links: state and text from the running kernel's in-browser check
+const NPM_KERNEL = "https://www.npmjs.com/package/this.me";
+function setKernelLinks(k) {   // k: { state: "verifying" | "ok" | "mismatch" | "failed", version, hash, url, detail }
+  for (const [id, before, after] of [["#kver-top", "runs on ", ""], ["#kver-foot", "", " (unmodified)"]]) {
+    const a = $(id); if (!a) continue;
+    a.className = "kver " + k.state;
+    if (k.state === "ok") {
+      a.textContent = `${before}this.me@${k.version} · sha256 ${k.hash.slice(0, 8)}${after}`;
+      a.href = `${NPM_KERNEL}/v/${encodeURIComponent(k.version)}`;
+      a.title = `sha256 ${k.hash} (verified in this browser)\nloaded: ${k.url}`;
+    } else {
+      a.textContent = `${before}this.me · ${k.state === "verifying" ? "verifying…" : k.state === "mismatch" ? "sha256 mismatch" : "not loaded"}`;
+      a.href = NPM_KERNEL; a.title = k.detail || "Checking the kernel file's sha256 in this browser…";
+    }
+  }
 }
 
 let ME = null, P = null, T = null, tourStep = 1;
@@ -1383,10 +1409,11 @@ applyTour(Math.min(TOUR.length - 1, Math.max(1, parseInt(params.get("step") || "
 if (params.get("speed")) { speed = Number(params.get("speed")) || 10; $("#sel-speed").value = String(speed); }
 
 try {
-  const { mod, host, hash } = await loadKernel();
+  const { mod, host, hash, url, version } = await loadKernel();
   ME = mod.default || mod.ME;
-  $("#kernel-status").innerHTML = `Kernel <b>this.me@${KERNEL.version}</b> · dist/me.es.js from ${host} · sha256 ${hash.slice(0, 12)}… <b>verified</b> · unmodified`;
-  $("#tt-kernel").innerHTML = `<b>✓</b> this.me@${KERNEL.version} verified`;
+  setKernelLinks({ state: "ok", version, hash, url });
+  $("#kernel-status").innerHTML = `Kernel <b>this.me@${esc(version)}</b> · dist/me.es.js from ${host} · sha256 ${hash.slice(0, 12)}… <b>verified</b> · unmodified`;
+  $("#tt-kernel").innerHTML = `<b>✓</b> this.me@${esc(version)} verified`;
   resetKernel();
   ["#btn-run", "#btn-reset", "#btn-verify"].forEach((s) => ($(s).disabled = false));
   if (params.get("autostart") !== "0") setRunning(true);
@@ -1437,6 +1464,7 @@ try {
   };
   window.__portReady = true;
 } catch (e) {
+  if (!ME) setKernelLinks({ state: e?.mismatch ? "mismatch" : "failed", detail: String(e?.message || e) });
   $("#kernel-status").classList.add("err");
   $("#tt-kernel").classList.add("err"); $("#tt-kernel").innerHTML = `<b>✗</b> kernel failed`;
   setTourOpen(true, false);

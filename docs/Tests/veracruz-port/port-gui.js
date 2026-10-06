@@ -50,10 +50,15 @@ async function loadKernel() {
       const blobUrl = URL.createObjectURL(new Blob([text], { type: "text/javascript" }));
       const mod = await import(blobUrl);
       URL.revokeObjectURL(blobUrl);
-      return { mod, host: new URL(url).host, hash };
+      // The module exports no version, so the version shown is read from the final URL of the response
+      // whose bytes just passed the sha256 check above (not from a page constant).
+      const loadedUrl = res.url || url, version = (loadedUrl.match(/\/this\.me@([0-9]+\.[0-9]+\.[0-9]+[0-9A-Za-z.+-]*)\//) || [])[1] || "?";
+      return { mod, host: new URL(loadedUrl).host, hash, url: loadedUrl, version };
     } catch (e) { errors.push(`${url}: ${e?.message || e}`); }
   }
-  throw new Error("Could not load this.me@" + KERNEL.version + " — " + errors.join(" | "));
+  const err = new Error("Could not load this.me@" + KERNEL.version + " — " + errors.join(" | "));
+  err.mismatch = errors.some((x) => x.includes("sha256 mismatch"));
+  throw err;
 }
 
 // ── tiny external stores for page/adapter state (React useSyncExternalStore; not kernel) ──
@@ -202,13 +207,24 @@ const TOPBAR = G.registry.TopBar.resolve({ type: "TopBar", props: {
   ],
 } }, {});
 
+// Kernel link (top bar + footer): text, target and title come from the running kernel's in-browser check.
+const NPM_KERNEL = "https://www.npmjs.com/package/this.me";
+function KernelLink({ before = "", after = "", id, minCh }) {
+  const { kernel: k } = useStore(ui);
+  const ok = k.state === "ok", label = ok ? `${before}this.me@${k.version} · sha256 ${k.hash.slice(0, 8)}${after}`
+    : `${before}this.me · ${k.state === "loading" ? "verifying…" : k.mismatch ? "sha256 mismatch" : "not loaded"}`;
+  return h(Link, { id, className: "kver " + (ok ? "ok" : k.state === "loading" ? "verifying" : k.mismatch ? "mismatch" : "failed"),
+    href: ok ? `${NPM_KERNEL}/v/${encodeURIComponent(k.version)}` : NPM_KERNEL, target: "_blank", rel: "noopener", underline: "hover",
+    title: ok ? `sha256 ${k.hash} (verified in this browser)\nloaded: ${k.url}` : k.detail || "Checking the kernel file's sha256 in this browser…",
+    sx: { display: "inline-block", minWidth: `${minCh}ch`, whiteSpace: "nowrap", color: ok ? "primary.main" : k.state === "loading" ? "text.secondary" : "error.main" } }, label);
+}
 function TitleStrip() {
   return h(Box, { sx: { display: "flex", alignItems: "center", gap: 1.25, flexWrap: "wrap", px: 2, py: 1, borderBottom: 1, borderColor: "divider" } },
     h(Typography, { component: "h1", sx: { fontWeight: 600, fontSize: 14, letterSpacing: ".04em" } }, "VERACRUZ"),
     h(Typography, { sx: { fontFamily: MONO, fontSize: 12, color: "primary.main" } }, "me://port"),
     h(SrcTag, { kind: "adapter", label: "port operations · 500 trucks · guided" }),
     h(Typography, { sx: { ml: "auto", fontFamily: MONO, fontSize: 11, color: "text.secondary" } },
-      `UI: this.gui@${GUI_PIN.version} · kernel: this.me@${KERNEL.version} · `,
+      `UI: this.gui@${GUI_PIN.version} · kernel: `, h(KernelLink, { id: "kver-top", minCh: 31 }), " · ",
       h(Link, { href: "veracruz-port.html", underline: "hover" }, "classic page")));
 }
 
@@ -234,7 +250,7 @@ const Glossary = () => h(Box, { id: "glossary", sx: { display: "flex", flexWrap:
 function KernelLine({ compact }) {
   const { kernel } = useStore(ui);
   const ok = kernel.state === "ok", err = kernel.state === "error";
-  if (compact) return h(Box, { component: "span", id: "tt-kernel", sx: { color: ok ? "success.main" : err ? "error.main" : "text.secondary" } }, ok ? `✓ this.me@${KERNEL.version} verified` : err ? "✗ kernel failed" : "kernel loading…");
+  if (compact) return h(Box, { component: "span", id: "tt-kernel", sx: { color: ok ? "success.main" : err ? "error.main" : "text.secondary" } }, ok ? `✓ this.me@${kernel.version} verified` : err ? "✗ kernel failed" : "kernel loading…");
   return h(Typography, { id: "kernel-status", component: "div", sx: { fontFamily: MONO, fontSize: 9.5, color: err ? "error.main" : "text.secondary", px: 1.5, py: .75, borderBottom: 1, borderColor: "divider", lineHeight: 1.4, "& b": { color: err ? "error.main" : "success.main", fontWeight: 500 } }, dangerouslySetInnerHTML: { __html: kernel.text } });
 }
 function TourStrip() {
@@ -532,7 +548,7 @@ function MapPanel() {
 
 const Footer = () => h(Box, { component: "footer", sx: { px: 2, py: .9, borderTop: 1, borderColor: "divider", fontFamily: MONO, fontSize: 10, color: "text.disabled", display: "flex", justifyContent: "space-between", gap: 1.25, flexWrap: "wrap", "& a": { color: "text.secondary" } } },
   h("span", null, "© ", h(Link, { href: "https://www.openstreetmap.org/copyright", target: "_blank", rel: "noopener", underline: "hover" }, "OpenStreetMap"), " contributors · static SVG basemap · no live tiles"),
-  h("span", null, `this.me@${KERNEL.version} (unmodified) · this.gui@${GUI_PIN.version} (pinned, SRI) · `, h(Link, { href: "veracruz-port/", underline: "hover" }, "build notes")));
+  h("span", null, h(KernelLink, { id: "kver-foot", after: " (unmodified)", minCh: 44 }), ` · this.gui@${GUI_PIN.version} (pinned, SRI) · `, h(Link, { href: "veracruz-port/", underline: "hover" }, "build notes")));
 
 function App() {
   return h(G.Theme, { initialThemeId: "neurons.me", initialMode: "dark" },
@@ -773,9 +789,9 @@ const params = new URLSearchParams(location.search);
 ReactDOM.createRoot(document.getElementById("root")).render(h(App));
 
 try {
-  const { mod, host, hash } = await loadKernel();
+  const { mod, host, hash, url, version } = await loadKernel();
   ME = mod.default || mod.ME;
-  ui.set({ kernel: { state: "ok", text: `Kernel <b>this.me@${KERNEL.version}</b> · dist/me.es.js from ${host} · sha256 ${hash.slice(0, 12)}… <b>verified</b> · unmodified · UI <b>this.gui@${G.version}</b> (UMD, SRI-pinned)` } });
+  ui.set({ kernel: { state: "ok", version, hash, url, text: `Kernel <b>this.me@${version.replace(/[&<>"]/g, "")}</b> · dist/me.es.js from ${host} · sha256 ${hash.slice(0, 12)}… <b>verified</b> · unmodified · UI <b>this.gui@${G.version}</b> (UMD, SRI-pinned)` } });
   resetKernel();
   if (params.get("autostart") !== "0") setRunning(true);
   // hooks for headless checks
@@ -836,7 +852,7 @@ try {
   window.__portReady = true;
 } catch (e) {
   const msg = String(e?.message || e).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-  ui.set({ kernel: { state: "error", text: `<b>Kernel failed to load</b>: ${msg}. Nothing on this page runs without it.` } });
+  if (!ME) ui.set({ kernel: { state: "error", mismatch: !!e?.mismatch, detail: String(e?.message || e), text: `<b>Kernel failed to load</b>: ${msg}. Nothing on this page runs without it.` } });
   setTourOpen(true, false);
   window.__portError = String(e?.message || e);
 }
