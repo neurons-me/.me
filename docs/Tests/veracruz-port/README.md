@@ -10,6 +10,31 @@ dist/me.es.js  sha256 47cc8f9a9b5ee2921a59023d400e694d6c9b9f80a0782db850b06156cb
 
 If the hash does not match, the page refuses to run.
 
+## .GUI version (`veracruz-port-gui.html`)
+
+Page: [veracruz-port-gui.html](../veracruz-port-gui.html) · <https://neurons-me.github.io/.me/docs/Tests/veracruz-port-gui.html>. The classic page above is unchanged.
+
+The same kernel (`this.me@4.1.0`, sha256-checked as above), traffic adapter and map, with the chrome and panels rendered by **.GUI** (`this.gui`, neurons.me's Generative User Interface, a React + MUI component library) instead of hand-written HTML/CSS.
+
+**Pinned dependencies.** Exact versions from jsDelivr, each with Subresource Integrity (the browser refuses a file whose hash differs):
+
+| File | sha256 | SRI |
+|---|---|---|
+| `this.gui@4.0.0/dist/this.gui.umd.js` | `42491c246d8cfbd3ed27ab606c040ce02c48196d1ee91ffbbcba2784bc478fa7` | `sha384-pB2ENZfg4OzWQRcfI2yjTof3wt4zUjStqPBfSLF/dnx2kXBCKNQk3WklnRi7IuTj` |
+| `this.gui@4.0.0/dist/material-symbols.css` | `717649f90831db7a1447191f0d46c15a5b9bf2bb93d65bd4cd069a785600b53b` | `sha384-dvUfVVY6nb2ef6F+dRTsSozZpefoOvMox4Ay4fQP86bSU+6yHovoYYKaRtwS+mca` |
+| `react@18.3.1/umd/react.production.min.js` | `d949f1c3687aedadcedac85261865f29b17cd273997e7f6b2bfc53b2f9d4c4dd` | `sha384-DGyLxAyjq0f9SPpVevD6IgztCFlnMF6oW/XQGmfe+IsZ8TqEiDrcHkMLKI6fiB/Z` |
+| `react-dom@18.3.1/umd/react-dom.production.min.js` | `35f4f974f4b2bcd44da73963347f8952e341f83909e4498227d4e26b98f66f0d` | `sha384-gTGxhz21lVGYNMcdJOyq01Edg0jhn/c22nsx0kyqP0TxaV5WVdsSH1fSDUf5YJj1` |
+
+The jsDelivr `this.gui.umd.js` is byte-identical to the file in the npm tarball `this.gui-4.0.0.tgz`. The UMD expects `window.React` and `window.ReactDOM`; React 18.3.1 is the last React release with UMD builds.
+
+**What .GUI renders** (`port-gui.js`): `Theme` (neurons.me, dark), the topbar (`registry.TopBar`: neurons.me logo + `.me` linking to <https://neurons-me.github.io/>), the title strip, the glossary (`Button` + `Collapse`, all collapsed), the kernel/tour strip (collapsible, remembered in `localStorage`; `?step=N` opens it at step N), the 1–8 stepper and Back/Next, every panel (`Paper`, `Typography`, `Chip` tags: kernel tags use the *aurora* accent, adapter tags the *ember* accent), the speed and explain selects (`TextField select` + `MenuItem`), Start/Reset/Verify (`Button`), the progress bars (`Progress`), and the map legend + HUD chips.
+
+**How the kernel drives re-render.** All kernel readouts sit under `GUI.MeRuntimeProvider({ me, subscribe })`, and each one is a `GUI.useMeValue(path)` subscription whose snapshot is the kernel read `me(path)`. After each flush, the adapter collects the paths the kernel itself reported for every write: the written fact plus `explain().meta.recomputed`. On the UI tick (4 Hz) it notifies only those paths' subscribers, and React re-renders only the components whose value changed. The explain panel also re-renders when its path shows up in a wave whose value didn't change. While traffic runs, readouts can lag the kernel by up to 250 ms (the 4 Hz tick, same cadence as the classic page). Headless check, pausing and taking one tick each time: all 81 bound readouts (63 distinct paths) match a direct `P.read(path)` at load, mid-run, after fast-forward and at the end (`window.__port.consistency()`).
+
+**Do not let .GUI auto-detect `me.subscribe`.** With no `subscribe` bridge, `this.gui@4.0.0` calls `me.subscribe(path, cb)` whenever `typeof me.subscribe === "function"`. On a `this.me@4.1.0` proxy that is always true, and the call **writes a kernel fact** named `subscribe`. The page therefore always passes its own bridge. The headless check confirms `me("subscribe")` stays undefined.
+
+**Still manual (adapter, labeled):** the basemap SVG and the 500-dot canvas (GUI has no map component). The SVG lives in a `<template>`, is mounted once and reads the kernel at the UI tick. Also manual: the per-unit last-mile strip canvas, the SVG node labels, page stats (fps, moving dots), the sim clock, the redirect feed, the completion estimate, and the path-notification schedule.
+
 ## 500 trucks, one kernel
 
 All 500 trucks circulate at once, split (assumption) into **400 heavy trucks** (ships / train) and **100 small last-mile trucks** (CEDIS → addresses in the city). Each dot on the canvas overlay is one truck; last-mile trucks are smaller pink dots. Trucks off the map (delivering inland / picking up export cargo) are not drawn.
@@ -196,6 +221,7 @@ python3 build_basemap.py
 | File | Role |
 |---|---|
 | `../veracruz-port.html` | Page: tutorial, map, UI, kernel loader |
+| `../veracruz-port-gui.html`, `port-gui.js` | .GUI version: same kernel/adapter/map; chrome + panels as this.gui@4.0.0 components bound to kernel paths |
 | `port-sim.js` | Kernel wiring: seed facts, formulas, write/wave helper, verify |
 | `port-traffic.js` | Adapter: 500 truck agents, speeds (assumptions), slots, timers, last-mile plan + rebalancing, deltas → flush (real writes) |
 | `port-lastmile.js`, `build_lastmile.py` | Last-mile example data: 2 CEDIS, 1,000 trips, road trees (generated) |
