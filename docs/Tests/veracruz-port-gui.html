@@ -23,9 +23,9 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/this.gui@4.0.0/dist/material-symbols.css" integrity="sha384-dvUfVVY6nb2ef6F+dRTsSozZpefoOvMox4Ay4fQP86bSU+6yHovoYYKaRtwS+mca" crossorigin="anonymous"/>
 <script src="https://cdn.jsdelivr.net/npm/react@18.3.1/umd/react.production.min.js" integrity="sha384-DGyLxAyjq0f9SPpVevD6IgztCFlnMF6oW/XQGmfe+IsZ8TqEiDrcHkMLKI6fiB/Z" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/react-dom@18.3.1/umd/react-dom.production.min.js" integrity="sha384-gTGxhz21lVGYNMcdJOyq01Edg0jhn/c22nsx0kyqP0TxaV5WVdsSH1fSDUf5YJj1" crossorigin="anonymous"></script>
-<!-- .GUI: unreleased branch build of this.gui (neurons-me/GUI feat/openstreetmap @46197d9, PR #3: https://github.com/neurons-me/GUI/pull/3), self-hosted here because it is not on npm.
+<!-- .GUI: unreleased branch build of this.gui (neurons-me/GUI feat/openstreetmap @ed06869, PR #3: https://github.com/neurons-me/GUI/pull/3), self-hosted here because it is not on npm.
      SRI-pinned below; port-gui.js also re-checks its sha256 in the browser before the page runs (same as the kernel). -->
-<script src="veracruz-port/vendor/this.gui-46197d9.umd.js" integrity="sha384-SMmypABpjcJ9UyR5+Y4YLjVW+wLDj+rVdQqZPXXR+RbyKBl5tlRNQBZX6ydU0P/W" crossorigin="anonymous"></script>
+<script src="veracruz-port/vendor/this.gui-ed06869.umd.js" integrity="sha384-LXkXfVwL5RIcJ3MHsgVViBYklGX0njWyjo6N/jxEQYFDL4Coy8qiWGxKUfCSQmfA" crossorigin="anonymous"></script>
 <style>
   /* Page shell + map overlay styling (GUI.OpenStreetMap renders the basemap, markers and canvas). Everything else is styled by .GUI (Theme + sx). */
   :root {
@@ -96,7 +96,7 @@
 </head>
 <body>
 <div id="root"></div>
-<div id="boot-error">.GUI (this.gui branch build @46197d9) or React failed to load, so this page cannot render. The <a href="veracruz-port.html" style="color:var(--accent)">classic page</a> runs without .GUI.</div>
+<div id="boot-error">.GUI (this.gui branch build @ed06869) or React failed to load, so this page cannot render. The <a href="veracruz-port.html" style="color:var(--accent)">classic page</a> runs without .GUI.</div>
 <!-- Basemap data: the existing output of veracruz-port/build_basemap.py (same geometry as basemap.svg), kept as data.
      GUI.OpenStreetMap presents it; the page only reads it into layers. -->
 <template id="basemap-tpl">

@@ -1,13 +1,15 @@
-// Port of Veracruz: .GUI interface (this.gui feat/openstreetmap @46197d9, unreleased branch build, self-hosted UMD,
+// Port of Veracruz: .GUI interface (this.gui feat/openstreetmap @ed06869, unreleased branch build, self-hosted UMD,
 // SRI-pinned in the HTML and sha256-checked in the browser below). The map is GUI.OpenStreetMap.
 // over the real, unmodified this.me@4.1.0 kernel (sha256-checked here before import).
 //
 // Who owns what:
 //   KERNEL (this.me): every fact, every derived value, k, recomputed sets, explain().
-//   .GUI (this.gui):  topbar, panels, collapsibles, stepper, buttons, selects, progress bars and readouts;
-//                     GUI.mount + the opt-in Semantic Inspector (map markers are inspector nodes with kernel paths).
-//                     Every kernel readout is a GUI.useMeValue(path) subscription. A component re-reads
-//                     me(path) whenever that path is written or recomputed.
+//   .GUI (this.gui):  the whole view is ONE spec tree resolved by GUI.mount (topbar, panels, rows, readouts,
+//                     progress bars, legend, HUD, the OpenStreetMap with its markers and canvas layer), so every
+//                     node is a .GUI node for the opt-in Semantic Inspector (Spec, provenance, Explain).
+//                     Every kernel readout is a { read: "me/<path>" } prop, resolved and subscribed by GUI's
+//                     renderer through the page's single .GUI runtime; it re-reads me(path) whenever that
+//                     path is written or recomputed.
 //   ADAPTER (plain JS, not kernel): the traffic model (port-traffic.js), the animation loop, the canvas dots,
 //                     the SVG map labels, page stats (fps, writes/s), the redirect feed, the completion
 //                     estimate, and the notification schedule (which kernel paths to re-announce, and when).
@@ -23,9 +25,9 @@ const KERNEL = {
   urls: ["https://cdn.jsdelivr.net/npm/this.me@4.1.0/dist/me.es.js", "https://unpkg.com/this.me@4.1.0/dist/me.es.js"],
 };
 // .GUI build: not on npm yet, so the exact UMD built from the PR head commit is self-hosted next to this file.
-const GUI_PIN = { label: "this.gui feat/openstreetmap @46197d9", branch: "feat/openstreetmap", commit: "46197d9c7ba04a9a6eb516c90b7be0cb6ec5f355", short: "46197d9",
-  pr: "https://github.com/neurons-me/GUI/pull/3", url: new URL("vendor/this.gui-46197d9.umd.js", import.meta.url).href,
-  sha256: "3e3ec1f4df69112064a5ee50437cc6048b401a3e487a6c52a815c677482d64a7", sri: "sha384-SMmypABpjcJ9UyR5+Y4YLjVW+wLDj+rVdQqZPXXR+RbyKBl5tlRNQBZX6ydU0P/W" };
+const GUI_PIN = { label: "this.gui feat/openstreetmap @ed06869", branch: "feat/openstreetmap", commit: "ed06869b65a6ee921ce7b51b371e35015886af1f", short: "ed06869",
+  pr: "https://github.com/neurons-me/GUI/pull/3", url: new URL("vendor/this.gui-ed06869.umd.js", import.meta.url).href,
+  sha256: "d5b256370f999fcae68f9c6ccef3ad0b09528f0bd8378c6e1bb58966d62e668a", sri: "sha384-LXkXfVwL5RIcJ3MHsgVViBYklGX0njWyjo6N/jxEQYFDL4Coy8qiWGxKUfCSQmfA" };
 
 const G = window.GUI, h = React.createElement;
 const { Box, Button, Typography, Chip, Progress, Paper, Link, TextField } = G.Atoms;
@@ -86,16 +88,20 @@ const ui = createStore({ step: 1, tourOpen: false, running: false, finished: fal
 const sim = createStore({});   // bumped by the adapter at ~4 Hz: sim clock, page stats, feeds
 
 // ── kernel → .GUI subscribe bridge (adapter schedule, kernel values) ──
-// GUI.MeRuntimeProvider takes `subscribe(path, cb)`. this.me@4.1.0 has no per-instance change events,
+// The .GUI runtime (GUI.createMeRuntime) takes `subscribe(path, cb)`. this.me@4.1.0 has no per-instance change events,
 // and on its proxy `me.subscribe(...)` would WRITE a fact named "subscribe". So this bridge is passed
 // explicitly. The adapter announces exactly the paths the kernel reported for each write
 // (the written fact + explain().meta.recomputed), batched to the UI tick. Components then re-read me(path).
+// Keys are dotted kernel paths: a spec's { read: "me/ships.1.remaining" } subscribes as "me/ships.1.remaining",
+// a hook as "ships.1.remaining"; both land on the key the adapter announces ("ships.1.remaining").
 const kListeners = new Map();
 const bridgeCallbacks = () => { let n = 0; for (const s of kListeners.values()) n += s.size; return n; };
+const bridgeKey = (path) => { const p = String(path); return p.startsWith("me/") ? p.slice(3).replace(/\//g, ".") : p; };
 function kernelSubscribe(path, cb) {
-  let s = kListeners.get(path); if (!s) kListeners.set(path, (s = new Set()));
+  const key = bridgeKey(path);
+  let s = kListeners.get(key); if (!s) kListeners.set(key, (s = new Set()));
   s.add(cb);
-  return () => { s.delete(cb); if (!s.size) kListeners.delete(path); };
+  return () => { s.delete(cb); if (!s.size) kListeners.delete(key); };
 }
 let pendingPaths = new Set(), announced = 0;
 function announceKernelPaths() {
@@ -106,9 +112,9 @@ function announceKernelPaths() {
 function announceAll() { pendingPaths.clear(); for (const s of [...kListeners.values()]) [...s].forEach((cb) => cb()); }
 
 let ME = null, P = null, T = null;
-// ONE .GUI runtime per kernel instance, built once over the explicit bridge above and handed to every
-// GUI.MeRuntimeProvider and to GUI.mount (which feeds the Semantic Inspector), so nothing builds a second
-// runtime or subscribes twice, and nothing lets .GUI duck-type me.subscribe.
+// ONE .GUI runtime per kernel instance, built once over the explicit bridge above and handed to GUI.mount
+// (spec reads, hooks and the Semantic Inspector all use it), so nothing builds a second runtime or
+// subscribes twice, and nothing lets .GUI duck-type me.subscribe.
 let RT = null;
 let running = false;
 const speedOf = () => ui.state.speed;
@@ -159,32 +165,45 @@ function setTourOpen(open, persist = true) {
 }
 const setStep = (step) => ui.set({ step: Math.min(STEPS, Math.max(1, step)) });
 
-// ══════════════════════════ .GUI components ══════════════════════════
+// ══════════════════════════ .GUI view: ONE spec tree resolved by GUI.mount ══════════════════════════
+// The page is a spec ({ type, props, children, provenance }) that GUI.mount resolves through the GUI
+// registry: every node gets data-gui-node-id and is recorded (Spec / provenance) for the Semantic
+// Inspector, and Layout Grid outlines it. Kernel readouts are { read: "me/<path>" } props: the renderer
+// resolves them through RT and subscribes through RT → the explicit bridge above. mount() puts the same
+// me + RT in the runtime environment (useMe / useMeValue read it there), so the page needs no
+// MeRuntimeProvider. Page-local registry types (PAGE_TYPES, below) render the page's own components;
+// specialized leaves (tour, sim clock, kernel link, verify output, run controls, writes list, explain,
+// last-mile strip/estimate/feed, truck canvas) stay internal components: each is a node (id + Spec),
+// its insides are not. Decorative nodes carry an id + Spec only; provenance.semanticPath is set only
+// where a node shows one kernel path.
 const accentColor = (t, accent) => t.palette[t.visuals?.accents?.[accent]?.chip]?.main || t.palette.text.secondary;
+const nodeAttrs = (p) => ({ "data-gui-node-id": p["data-gui-node-id"], "data-gui-component": p["data-gui-component"] });
 
+const srcTagSx = (kind) => (t) => { const accent = kind === "adapter" ? "ember" : "aurora"; return { height: 16, fontSize: 8, fontFamily: MONO, letterSpacing: ".08em", textTransform: "uppercase", borderRadius: "3px", color: accentColor(t, accent), borderColor: accentColor(t, accent), borderStyle: kind === "adapter" ? "dashed" : "solid", "& .MuiChip-label": { px: "5px" } }; };
 function SrcTag({ kind, label }) {   // kernel → aurora accent; adapter → ember accent
-  const accent = kind === "adapter" ? "ember" : "aurora";
-  return h(Chip, { size: "small", variant: "outlined", label, sx: (t) => ({ height: 16, fontSize: 8, fontFamily: MONO, letterSpacing: ".08em", textTransform: "uppercase", borderRadius: "3px", color: accentColor(t, accent), borderColor: accentColor(t, accent), borderStyle: kind === "adapter" ? "dashed" : "solid", "& .MuiChip-label": { px: "5px" } }) });
+  return h(Chip, { size: "small", variant: "outlined", label, sx: srcTagSx(kind) });
 }
 const kindSx = { fontSize: 7.5, color: "text.disabled", letterSpacing: ".06em", textTransform: "uppercase", ml: .5, border: 1, borderColor: "divider", px: "3px", borderRadius: "2px" };
 
-// One kernel readout = one GUI subscription to one .me path.
-function Val({ path, f = fmt, suffix = "" }) {
-  const v = G.useMeValue(path);
-  return h(Box, { component: "span", "data-me-path": path, "data-me-value": String(v) }, f(v) + suffix);
+// One kernel readout = one spec node with value: { read: "me/<path>" } (resolved + subscribed by GUI's renderer).
+function ValView(p) {
+  const { path, value: v, f = fmt, suffix = "", wrap } = p;
+  const el = h(Box, { component: "span", ...nodeAttrs(p), "data-me-path": path, "data-me-value": String(v) }, f(v) + suffix);
+  return wrap ? h(wrap, null, el) : el;
 }
-function Sum({ paths }) {   // display-side sum of two kernel reads (legend only)
-  const vals = paths.map((p) => G.useMeValue(p));
-  return h(Box, { component: "span" }, fmt(vals.reduce((a, b) => a + b, 0)));
+function SumView(p) {   // display-side sum of two kernel reads (legend only)
+  return h(Box, { component: "span", ...nodeAttrs(p) }, fmt((p.values || []).reduce((a, b) => a + b, 0)));
 }
-const J = (...parts) => parts.flatMap((p, i) => (i ? [" · ", p] : [p]));
-const V = (path, opts = {}) => h(Val, { key: path, path, ...opts });
-const S = String;
+function BarView(p) {
+  const v = p.value;
+  return h(Progress, { ...nodeAttrs(p), variant: "determinate", color: p.color || "primary", value: Math.max(0, Math.min(100, (Number(v) || 0) * 100)), "data-me-path": p.path, sx: { height: 4, borderRadius: 2, mt: .5 } });
+}
 
 // A value keeps the widest width it has shown (numbers pre-padded to 3 digits), so its key never re-wraps
 // as digits change: rows keep a constant height while values stream in.
 const reserveChars = (text) => [...text.replace(/\d[\d,.]*/g, (d) => d.padStart(3, "0")).replace(/\btrue\b/g, "false")].length;
-function Row({ k, kind, children, minCh = 0 }) {
+function Row(p) {
+  const { k, kind, children, minCh = 0 } = p;
   const ref = React.useRef(null);
   React.useLayoutEffect(() => {
     const el = ref.current; if (!el) return;
@@ -194,21 +213,18 @@ function Row({ k, kind, children, minCh = 0 }) {
     const mo = new MutationObserver(fit); mo.observe(el, { childList: true, characterData: true, subtree: true });
     return () => mo.disconnect();
   }, [minCh]);
-  return h(Box, { sx: { display: "flex", justifyContent: "space-between", gap: 1, py: "3px", borderBottom: 1, borderColor: "divider", fontFamily: MONO, fontSize: 10.5, "&:last-of-type": { borderBottom: 0 } } },
+  return h(Box, { ...nodeAttrs(p), sx: { display: "flex", justifyContent: "space-between", gap: 1, py: "3px", borderBottom: 1, borderColor: "divider", fontFamily: MONO, fontSize: 10.5, "&:last-of-type": { borderBottom: 0 } } },
     h(Box, { component: "span", sx: { color: "text.secondary", minWidth: 0 } }, k, h(Box, { component: "span", sx: kindSx }, kind)),
     h(Box, { component: "span", ref, sx: { color: "primary.main", textAlign: "right", whiteSpace: "nowrap", flexShrink: 0 } }, children));
 }
-function BoundBar({ path, color = "primary" }) {
-  const v = G.useMeValue(path);
-  return h(Progress, { variant: "determinate", color, value: Math.max(0, Math.min(100, (Number(v) || 0) * 100)), "data-me-path": path, sx: { height: 4, borderRadius: 2, mt: .5 } });
-}
-const Formula = ({ children }) => h(Box, { sx: { fontFamily: MONO, fontSize: 9.5, color: "text.secondary", mt: .75, p: "5px 7px", bgcolor: "background.default", border: 1, borderColor: "divider", borderRadius: "3px", lineHeight: 1.45, "& b": { color: "primary.main", fontWeight: 500, display: "inline-block", minWidth: "7ch", textAlign: "right", whiteSpace: "nowrap" } } }, children);
-const Sub = ({ children, sx }) => h(Typography, { component: "div", sx: { fontFamily: MONO, fontSize: 9, color: "text.secondary", mt: .75, lineHeight: 1.4, ...sx } }, children);
+const Formula = (p) => h(Box, { ...nodeAttrs(p), sx: { fontFamily: MONO, fontSize: 9.5, color: "text.secondary", mt: .75, p: "5px 7px", bgcolor: "background.default", border: 1, borderColor: "divider", borderRadius: "3px", lineHeight: 1.45, "& b": { color: "primary.main", fontWeight: 500, display: "inline-block", minWidth: "7ch", textAlign: "right", whiteSpace: "nowrap" } } }, p.children);
+const SUB_SX = { fontFamily: MONO, fontSize: 9, color: "text.secondary", mt: .75, lineHeight: 1.4 };
 
-function Panel({ id, title, tags = [], adapter = false, children }) {
+function Panel(p) {
+  const { id, title, tags = [], adapter = false, children } = p;
   const { step } = useStore(ui);
   const hl = !!TOUR[step]?.hlPanels.includes(id);
-  return h(Box, null,
+  return h(Box, nodeAttrs(p),
     h(Typography, { component: "h2", sx: { fontSize: 9.5, fontWeight: 600, letterSpacing: ".14em", textTransform: "uppercase", color: "text.secondary", mb: .75, display: "flex", alignItems: "center", gap: .75, flexWrap: "wrap" } },
       title, ...tags.map(([kind, label]) => h(SrcTag, { key: label, kind, label }))),
     h(Paper, { id, variant: "outlined", "data-hl": hl ? "1" : "0", sx: (t) => ({ p: "8px 10px", borderRadius: "4px", borderStyle: adapter ? "dashed" : "solid", borderColor: hl ? t.palette.primary.main : adapter ? accentColor(t, "ember") : t.palette.divider, background: hl ? t.visuals.accents.aurora.soft : t.visuals.accents.neutral.soft, transition: "border-color .2s, background .2s" }) }, children));
@@ -216,40 +232,22 @@ function Panel({ id, title, tags = [], adapter = false, children }) {
 
 // ── chrome ──
 const LOGO = "https://res.cloudinary.com/dkwnxf6gm/image/upload/v1760629064/neurons.me_b50f6a.png";
-const TOPBAR = G.registry.TopBar.resolve({ type: "TopBar", props: {
-  title: ".me", logo: LOGO, homeTo: "https://neurons-me.github.io/", position: "static",
-  sx: { "& img": { height: 34, width: 34, objectFit: "contain" } },
-  elementsRight: [
-    // Opt-in .GUI Semantic Inspector (off by default; hidden at ≤1100 px, where its 440 px side panel has no room).
-    { type: "action", props: { element: h(Box, { component: "span", sx: { display: "inline-flex", "@media (max-width:1100px)": { display: "none" } } },
-      h(G.InspectorToggle, { id: "inspector-toggle", "data-gui-inspector-control": true, show: "both", label: "Inspector", onText: "on", offText: "off", size: "small", variant: "button",
-        title: "Semantic Inspector (.GUI devtools): turn on, click a map node, then Explain. Clicks inspect instead of acting while it is on.",
-        sx: { minWidth: 0, py: .25, px: 1, lineHeight: 1.4, fontFamily: MONO, fontSize: 11, textTransform: "none", color: "text.secondary", borderColor: "divider" } })) } },
-    { type: "link", props: { label: "Smart Cities", href: "https://neurons-me.github.io/smart-cities/" } },
-    { type: "link", props: { label: "Docs", href: "https://neurons-me.github.io/.me/docs/" } },
-    { type: "link", props: { label: "GitHub", href: "https://github.com/neurons-me/.me" } },
-  ],
-} }, {});
+const INSPECTOR_ACTION = h(Box, { component: "span", sx: { display: "inline-flex", "@media (max-width:1100px)": { display: "none" } } },
+  h(G.InspectorToggle, { id: "inspector-toggle", "data-gui-inspector-control": true, show: "both", label: "Inspector", onText: "on", offText: "off", size: "small", variant: "button",
+    title: "Semantic Inspector (.GUI devtools): turn on, click a map node, then Explain. Clicks inspect instead of acting while it is on.",
+    sx: { minWidth: 0, py: .25, px: 1, lineHeight: 1.4, fontFamily: MONO, fontSize: 11, textTransform: "none", color: "text.secondary", borderColor: "divider" } }));
 
 // Kernel link (top bar + footer): text, target and title come from the running kernel's in-browser check.
 const NPM_KERNEL = "https://www.npmjs.com/package/this.me";
-function KernelLink({ before = "", after = "", id, minCh }) {
+function KernelLink(p) {
+  const { before = "", after = "", id, minCh } = p;
   const { kernel: k } = useStore(ui);
   const ok = k.state === "ok", label = ok ? `${before}this.me@${k.version} · sha256 ${k.hash.slice(0, 8)}${after}`
     : `${before}this.me · ${k.state === "loading" ? "verifying…" : k.mismatch ? "sha256 mismatch" : "not loaded"}`;
-  return h(Link, { id, className: "kver " + (ok ? "ok" : k.state === "loading" ? "verifying" : k.mismatch ? "mismatch" : "failed"),
+  return h(Link, { id, ...nodeAttrs(p), className: "kver " + (ok ? "ok" : k.state === "loading" ? "verifying" : k.mismatch ? "mismatch" : "failed"),
     href: ok ? `${NPM_KERNEL}/v/${encodeURIComponent(k.version)}` : NPM_KERNEL, target: "_blank", rel: "noopener", underline: "hover",
     title: ok ? `sha256 ${k.hash} (verified in this browser)\nloaded: ${k.url}` : k.detail || "Checking the kernel file's sha256 in this browser…",
     sx: { display: "inline-block", minWidth: `${minCh}ch`, whiteSpace: "nowrap", color: ok ? "primary.main" : k.state === "loading" ? "text.secondary" : "error.main" } }, label);
-}
-function TitleStrip() {
-  return h(Box, { sx: { display: "flex", alignItems: "center", gap: 1.25, flexWrap: "wrap", px: 2, py: 1, borderBottom: 1, borderColor: "divider" } },
-    h(Typography, { component: "h1", sx: { fontWeight: 600, fontSize: 14, letterSpacing: ".04em" } }, "VERACRUZ"),
-    h(Typography, { sx: { fontFamily: MONO, fontSize: 12, color: "primary.main" } }, "me://port"),
-    h(SrcTag, { kind: "adapter", label: "port operations · 500 trucks · guided" }),
-    h(Typography, { sx: { ml: "auto", fontFamily: MONO, fontSize: 11, color: "text.secondary" } },
-      "UI: ", h(Link, { href: GUI_PIN.pr, target: "_blank", rel: "noopener", underline: "hover", title: `${GUI_PIN.label} (unreleased branch build)\nsha256 ${GUI_PIN.sha256}` }, `this.gui@${GUI_PIN.short}`), " · kernel: ", h(KernelLink, { id: "kver-top", minCh: 31 }), " · ",
-      h(Link, { href: "veracruz-port.html", underline: "hover" }, "classic page")));
 }
 
 const GLOSSARY = [
@@ -259,17 +257,16 @@ const GLOSSARY = [
   ["mutation", ["Each animation tick the traffic adapter flushes its batch: one real kernel write per changed fact. Each write recomputes only its dependents."]],
   ["k", ["How many derived paths the kernel recomputed for a write (its affected set), read from the kernel, not counted by the UI."]],
   ["explain", [h("code", { key: 1 }, "me.explain(path)"), ": expression, inputs with values, and the write (sourcePath) that last recomputed it."]],
-  [".GUI binding", ["Each readout is ", h("code", { key: 1 }, "GUI.useMeValue(path)"), " under ", h("code", { key: 2 }, "GUI.MeRuntimeProvider"), ". After each flush the adapter announces the paths the kernel reported (written + recomputed); only those components re-read the kernel."]],
+  [".GUI binding", ["Each readout is a spec node with ", h("code", { key: 1 }, "{ read: \"me/<path>\" }"), ", resolved by ", h("code", { key: 2 }, "GUI.mount"), " through the page's .GUI runtime. After each flush the adapter announces the paths the kernel reported (written + recomputed); only those nodes re-read the kernel."]],
 ];
-function GlossaryItem({ label, body }) {
+function GlossaryItem(p) {
+  const [label, body] = GLOSSARY[p.idx];
   const [open, setOpen] = React.useState(false);
-  return h(Box, { sx: { flex: "1 1 140px", minWidth: 120, borderRight: 1, borderColor: "divider", px: 1.25, py: .5, "&:last-of-type": { borderRight: 0 } } },
+  return h(Box, { ...nodeAttrs(p), sx: { flex: "1 1 140px", minWidth: 120, borderRight: 1, borderColor: "divider", px: 1.25, py: .5, "&:last-of-type": { borderRight: 0 } } },
     h(Button, { size: "small", onClick: () => setOpen(!open), "aria-expanded": open, sx: { p: 0, minWidth: 0, fontFamily: MONO, fontSize: 9, letterSpacing: ".06em", color: open ? "primary.main" : "text.secondary", justifyContent: "flex-start" } }, (open ? "▾ " : "▸ ") + label),
     h(Collapse, { in: open },
       h(Typography, { component: "p", sx: { mt: .4, fontFamily: MONO, fontSize: 10, lineHeight: 1.35, "& code": { fontSize: 9.5, color: "primary.main" } } }, ...body)));
 }
-const Glossary = () => h(Box, { id: "glossary", sx: { display: "flex", flexWrap: "wrap", borderBottom: 1, borderColor: "divider", bgcolor: "background.default" } },
-  ...GLOSSARY.map(([label, body]) => h(GlossaryItem, { key: label, label, body })));
 
 function KernelLine({ compact }) {
   const { kernel } = useStore(ui);
@@ -277,10 +274,10 @@ function KernelLine({ compact }) {
   if (compact) return h(Box, { component: "span", id: "tt-kernel", sx: { color: ok ? "success.main" : err ? "error.main" : "text.secondary" } }, ok ? `✓ this.me@${kernel.version} verified` : err ? "✗ kernel failed" : "kernel loading…");
   return h(Typography, { id: "kernel-status", component: "div", sx: { fontFamily: MONO, fontSize: 9.5, color: err ? "error.main" : "text.secondary", px: 1.5, py: .75, borderBottom: 1, borderColor: "divider", lineHeight: 1.4, "& b": { color: err ? "error.main" : "success.main", fontWeight: 500 } }, dangerouslySetInnerHTML: { __html: kernel.text } });
 }
-function TourStrip() {
+function TourStrip(p) {
   const { step, tourOpen } = useStore(ui);
   const t = TOUR[step];
-  return h(Box, { id: "tour-wrap", "data-open": tourOpen ? "1" : "0", sx: { flexShrink: 0, borderBottom: 1, borderColor: "divider" } },
+  return h(Box, { id: "tour-wrap", ...nodeAttrs(p), "data-open": tourOpen ? "1" : "0", sx: { flexShrink: 0, borderBottom: 1, borderColor: "divider" } },
     h(Button, { id: "tour-toggle", fullWidth: true, onClick: () => setTourOpen(!tourOpen), "aria-expanded": tourOpen, "aria-controls": "tour-panel", title: "Show / hide kernel status and the guided tour",
       sx: { justifyContent: "flex-start", gap: .75, px: 1.5, py: .9, borderRadius: 0, fontFamily: MONO, fontSize: 10, textTransform: "none", color: "text.secondary", whiteSpace: "nowrap", overflow: "hidden", borderBottom: tourOpen ? 1 : 0, borderColor: "divider" } },
       h(KernelLine, { compact: true }), h(Box, { component: "span", sx: { color: "text.disabled" } }, "·"),
@@ -299,11 +296,11 @@ function TourStrip() {
           h(Typography, { id: "step-label", sx: { ml: "auto", fontFamily: MONO, fontSize: 10, color: "text.disabled" } }, `${step} / ${STEPS}`)))));
 }
 
-// ── panels ──
-function RunControls() {
+// ── panel leaves (page state, not kernel paths) ──
+function RunControls(p) {
   const { running: on, finished, speed, me } = useStore(ui);
   const label = finished ? ["All work done ✓", "Reset to replay"] : on ? ["Pause ■", "500 trucks · real me.… writes"] : ["Start traffic ▸", "500 trucks · real me.… writes"];
-  return h(Box, { sx: { display: "flex", gap: .75, flexWrap: "wrap", alignItems: "stretch" } },
+  return h(Box, { ...nodeAttrs(p), sx: { display: "flex", gap: .75, flexWrap: "wrap", alignItems: "stretch" } },
     h(Button, { id: "btn-run", variant: "outlined", disabled: !me, onClick: () => setRunning(!running), sx: { flex: 1, fontFamily: MONO, fontSize: 10.5, textTransform: "none", textAlign: "left", lineHeight: 1.35, display: "block", py: 1, minHeight: "calc(4.05em + 18px)" } },
       label[0], h("br"), h(Box, { component: "span", sx: { color: "text.secondary", fontSize: 9 } }, label[1])),
     h(TextField, { id: "sel-speed", select: true, size: "small", value: String(speed), onChange: (e) => ui.set({ speed: Number(e.target.value) || 10 }), inputProps: { "aria-label": "Playback speed (1 s real = N s simulated)" }, title: "Playback: 1 s real = N s simulated",
@@ -315,10 +312,10 @@ function Stat({ id, label, value, adapter }) {
   return h(Box, { sx: { fontFamily: MONO, fontSize: 9, color: "text.secondary", border: 1, borderColor: "divider", borderRadius: "3px", p: "4px 5px", bgcolor: "background.default", borderStyle: adapter ? "dashed" : "solid" } },
     label, h(Box, { id, component: "b", sx: (t) => ({ display: "block", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", fontSize: 12, fontWeight: 500, color: adapter ? accentColor(t, "ember") : t.palette.primary.main }) }, value));
 }
-function Stats() {
+function Stats(p) {
   useStore(sim);
   const now = performance.now(), win = flushLog.filter((f) => now - f.t <= 1000);
-  return h(Box, { sx: { display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: .5, mt: .75 } },
+  return h(Box, { ...nodeAttrs(p), sx: { display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: .5, mt: .75 } },
     h(Stat, { id: "st-wps", label: "writes/s", value: fmt(win.reduce((a, f) => a + f.n, 0)) }),
     h(Stat, { id: "st-fps-flush", label: "flushes/s", value: fmt(win.length) }),
     h(Stat, { id: "st-k", label: "recent k", value: win.length && lastFlush ? `${lastFlush.writes[lastFlush.writes.length - 1].k}·max ${Math.max(...win.map((f) => f.kMax))}` : "—" }),
@@ -331,7 +328,7 @@ function Stats() {
 const wHold = { hover: false, until: 0, topAfterRender: 0, shown: null };
 const holdWrites = (ms) => { wHold.until = Math.max(wHold.until, performance.now() + ms); };
 const flushMetaText = (f) => `flush #${f.idx} · sim ${clock(f.sim)} · ${f.writes.length} real writes (one per changed fact) · k ${f.writes.map((w) => w.k).join("·")}`;
-function Writes() {
+function Writes(p) {   // node id on the list itself (the header line above it belongs to it)
   useStore(sim);
   const ulRef = React.useRef(null);
   const held = !!(lastFlush && wHold.shown && wHold.shown !== lastFlush && (wHold.hover || performance.now() < wHold.until));
@@ -347,9 +344,9 @@ function Writes() {
         w.recomputed.length ? w.recomputed.flatMap((p, j) => [j ? ", " : "", w.changed.includes(p) ? h(Box, { component: "span", key: p, sx: { color: "primary.main" } }, p) : p]) : "no dependents"));
   }) : [h(Box, { component: "li", key: "e", sx: { color: "text.disabled" } }, "No writes yet: press Start.")];
   return h(React.Fragment, null,
-    h(Sub, { sx: { color: "text.disabled", height: 24, lineHeight: "12px", overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", wordBreak: "break-word" } },
+    h(Typography, { component: "div", sx: { ...SUB_SX, color: "text.disabled", height: 24, lineHeight: "12px", overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", wordBreak: "break-word" } },
       h("span", { id: "flush-meta", title: meta }, held ? h(Box, { component: "span", sx: { color: "warning.main" } }, `held while you read · latest #${lastFlush.idx}`) : null, held ? " · " : null, meta)),
-    h(Box, { component: "ul", id: "writes", ref: ulRef,
+    h(Box, { component: "ul", id: "writes", ref: ulRef, ...nodeAttrs(p),
       onPointerEnter: (e) => { if (e.pointerType === "mouse") wHold.hover = true; },
       onPointerLeave: () => { wHold.hover = false; holdWrites(600); },
       onTouchStart: () => holdWrites(4000), onWheel: () => holdWrites(2500),
@@ -364,13 +361,13 @@ function useWave(path) {   // re-render when the kernel reports `path` in a wave
   React.useEffect(() => runtime?.subscribe?.(path, () => setN((x) => x + 1)), [runtime, path]);
 }
 const ONE_LINE = { display: "block", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" };
-function ExplainView({ path }) {
+function ExplainView({ path, na }) {
   useWave(path);
   const { me } = G.useMe();
   const [raw, setRaw] = React.useState(false);
   let ex, err = null;
   try { ex = me.explain(path); } catch (e) { err = e?.message || String(e); }
-  if (err) return h(Typography, { sx: { fontFamily: MONO, fontSize: 9.5, color: "error.main" } }, "explain failed: " + err);
+  if (err) return h(Typography, { ...na, sx: { fontFamily: MONO, fontSize: 9.5, color: "error.main" } }, "explain failed: " + err);
   const m = ex?.meta || {};
   const em = (s) => h(Box, { component: "span", sx: { color: "primary.main" } }, s);
   const inputs = ex?.derivation?.inputs || [];
@@ -381,54 +378,22 @@ function ExplainView({ path }) {
     ["last wave", m.sourcePath ? h(React.Fragment, null, "write to ", em(m.sourcePath), ` · k=${m.k} · recomputed: ${(m.recomputed || []).join(", ")}`) : "not recomputed yet (no write has reached it since seed)"],
   ];
   return h(React.Fragment, null,
-    h(Box, { id: "explain-grid", sx: { fontFamily: MONO, fontSize: 9.5, lineHeight: 1.5 } }, ...rows.map(([l, v]) =>
+    h(Box, { id: "explain-grid", ...na, sx: { fontFamily: MONO, fontSize: 9.5, lineHeight: 1.5 } }, ...rows.map(([l, v]) =>
       h(Box, { key: l, sx: { display: "grid", gridTemplateColumns: "78px 1fr", gap: .5, py: .25, borderBottom: 1, borderColor: "divider", "&:last-of-type": { borderBottom: 0 } } },
         h(Box, { component: "span", sx: { color: "text.disabled" } }, l), h(Box, { component: "span", sx: l === "value" ? ONE_LINE : l === "last wave" ? { wordBreak: "break-word", height: 57, overflowY: "auto", overflowAnchor: "none" } : { wordBreak: "break-word" } }, v)))),
     h(Formula, null, h("span", { id: "explain-code" }, `me.explain(${JSON.stringify(path)})`)),
     h(Button, { size: "small", onClick: () => setRaw(!raw), sx: { mt: .5, p: 0, minWidth: 0, fontFamily: MONO, fontSize: 9.5, textTransform: "none", color: "text.secondary" } }, (raw ? "▾ " : "▸ ") + "raw explain() JSON"),
     h(Collapse, { in: raw, unmountOnExit: true }, h(Box, { component: "pre", id: "explain-raw", sx: { fontFamily: MONO, fontSize: 9, color: "text.secondary", whiteSpace: "pre-wrap", wordBreak: "break-all", maxHeight: 220, overflow: "auto", bgcolor: "background.default", border: 1, borderColor: "divider", borderRadius: "3px", p: .75, mt: .5 } }, JSON.stringify(ex, null, 2))));
 }
-function ExplainPanel() {
+function ExplainLeaf(p) {   // path picker + me.explain() view (component state); node id on the explain grid
   const [path, setPath] = React.useState(EXPLAIN_PATHS[0]);
-  return h(Panel, { id: "panel-explain", title: "Explain · why", tags: [["kernel", "me.explain()"]] },
+  return h(React.Fragment, null,
     h(TextField, { id: "ex-select", select: true, size: "small", fullWidth: true, value: path, onChange: (e) => setPath(e.target.value), inputProps: { "aria-label": "Path to explain" }, sx: { mb: .75, "& .MuiInputBase-root": { fontFamily: MONO, fontSize: 10 } } },
-      ...EXPLAIN_PATHS.map((p) => h(MenuItem, { key: p, value: p, sx: { fontFamily: MONO, fontSize: 11 } }, p))),
-    h(ExplainView, { path }));
+      ...EXPLAIN_PATHS.map((x) => h(MenuItem, { key: x, value: x, sx: { fontFamily: MONO, fontSize: 11 } }, x))),
+    h(ExplainView, { path, na: nodeAttrs(p) }));
 }
 
-const SHIPS_META = [{ i: 1, unit: "t" }, { i: 2, unit: "t" }, { i: 3, unit: "TEU" }];
-const ShipsPanel = () => h(Panel, { id: "panel-ships", title: "Ships · unloading (import)", tags: [["kernel", "kernel"]] },
-  ...SHIPS_META.flatMap((s) => [
-    h(Row, { key: `r${s.i}`, k: `ships[${s.i}].remaining`, kind: "fact" }, V(`ships.${s.i}.remaining`, { suffix: " " + s.unit })),
-    h(Row, { key: `p${s.i}`, k: `ships[${s.i}].progress`, kind: "rule" }, V(`ships.${s.i}.progress`, { f: pct })),
-  ]),
-  h(Formula, null, "flows.importRemaining = ships[1].remainingTons + ships[2].remainingTons + ships[3].remainingTons = ", h("b", null, V("flows.importRemaining")), " t"),
-  h(BoundBar, { path: "flows.importProgress" }));
-const TrainPanel = () => h(Panel, { id: "panel-train", title: "Train · loading (export)", tags: [["kernel", "kernel"]] },
-  h(Row, { k: "train[1].remainingToLoad", kind: "fact" }, V("train.1.remainingToLoad", { suffix: " t" })),
-  h(Row, { k: "train[1].progress", kind: "rule" }, V("train.1.progress", { f: pct })),
-  h(Row, { k: "train[1].hasWork", kind: "rule" }, V("train.1.hasWork", { f: S })),
-  h(Formula, null, "flows.exportRemaining = train[1].remainingToLoad = ", h("b", null, V("flows.exportRemaining")), " t"),
-  h(BoundBar, { path: "train.1.progress", color: "warning" }));
-const TrucksPanel = () => h(Panel, { id: "panel-queues", title: "Trucks · by state", tags: [["kernel", "kernel"]] },
-  h(Row, { k: "trucks.heavy.available", kind: "fact" }, V("trucks.heavy.available")),
-  h(Row, { k: "queues.import.length", kind: "fact" }, V("queues.import.length")),
-  h(Row, { k: "trucks.import.loading · enRoute · returning", kind: "facts" }, J(V("trucks.import.loading"), V("trucks.import.enRoute"), V("trucks.import.returning"))),
-  h(Row, { k: "queues.export.length", kind: "fact" }, V("queues.export.length")),
-  h(Row, { k: "trucks.export.loading · enRoute · returning", kind: "facts" }, J(V("trucks.export.loading"), V("trucks.export.enRoute"), V("trucks.export.returning"))),
-  h(Row, { k: "trucks.lastMile.available", kind: "fact" }, V("trucks.lastMile.available")),
-  h(Row, { k: "trucks.lastMile.loading · enRoute · returning", kind: "facts" }, J(V("trucks.lastMile.loading"), V("trucks.lastMile.enRoute"), V("trucks.lastMile.returning"))),
-  h(Row, { k: "trucks.heavy.working · balanced", kind: "rules" }, J(V("trucks.heavy.working"), V("trucks.heavy.balanced", { f: S }))),
-  h(Row, { k: "trucks.lastMile.working · balanced", kind: "rules" }, J(V("trucks.lastMile.working"), V("trucks.lastMile.balanced", { f: S }))),
-  h(Row, { k: "trucks.inQueue · loading · enRoute · returning", kind: "rules" }, J(V("trucks.inQueue"), V("trucks.loading"), V("trucks.enRoute"), V("trucks.returning"))),
-  h(Row, { k: "trucks.available · working", kind: "rules" }, J(V("trucks.available"), V("trucks.working"))),
-  h(Row, { k: "trucks.accounted", kind: "rule" }, V("trucks.accounted")),
-  h(Row, { k: "trucks.balanced", kind: "rule" }, V("trucks.balanced", { f: S })),
-  h(Row, { k: "trucks.splitOk", kind: "rule" }, V("trucks.splitOk", { f: S })),
-  h(Row, { k: "port.busy", kind: "rule" }, V("port.busy", { f: S })),
-  h(Formula, null, "trucks.working = trucks.inQueue + trucks.loading + trucks.enRoute + trucks.returning · trucks.balanced = trucks.accounted == trucks.fleet"));
-
-function LmStrip() {   // per-unit strip (adapter view); band lines read from the kernel
+function LmStrip(p) {   // per-unit strip (adapter view); band lines read from the kernel
   useStore(sim);
   const ref = React.useRef(null);
   React.useEffect(() => {
@@ -446,117 +411,203 @@ function LmStrip() {   // per-unit strip (adapter view); band lines read from th
     for (const v of [R("trips.bandHigh"), R("trips.bandLow")]) { const y = Math.round(hgt - v * sy) + 0.5; g.beginPath(); g.moveTo(0, y); g.lineTo(w, y); g.stroke(); }
     g.setLineDash([]);
   });
-  return h(Box, { component: "canvas", ref, id: "lm-strip", height: 46, sx: { width: "100%", height: 46, display: "block", mt: .4, bgcolor: "background.default", border: 1, borderColor: "divider", borderRadius: "3px" } });
+  return h(Box, { component: "canvas", ref, id: "lm-strip", ...nodeAttrs(p), height: 46, sx: { width: "100%", height: 46, display: "block", mt: .4, bgcolor: "background.default", border: 1, borderColor: "divider", borderRadius: "3px" } });
 }
-function LmEstimate() {
+function LmEstimate(p) {
   useStore(sim);
-  if (!T || !P) return h("b", { id: "lm-est" }, "—");
+  if (!T || !P) return h("b", { id: "lm-est", ...nodeAttrs(p) }, "—");
   const end = T.lmEstimate(), left = Math.max(0, end - T.simTime);
-  return h(Box, { component: "b", id: "lm-est", sx: { color: "text.primary", fontWeight: 500 } }, P.read("trips.pending") === 0 ? `all last-mile trips settled · ${fmt(P.read("trips.done"))} done` : `≈ ${clock(end)} sim · ≈ ${realDur(left / speedOf())} real at ×${speedOf()}`);
+  return h(Box, { component: "b", id: "lm-est", ...nodeAttrs(p), sx: { color: "text.primary", fontWeight: 500 } }, P.read("trips.pending") === 0 ? `all last-mile trips settled · ${fmt(P.read("trips.done"))} done` : `≈ ${clock(end)} sim · ≈ ${realDur(left / speedOf())} real at ×${speedOf()}`);
 }
-function LmFeed() {
+function LmFeed(p) {
   useStore(sim);
   const items = T && T.feed.length ? T.feed.slice(0, 6).map((f, i) => h(Box, { component: "li", key: i, sx: { py: "1px" } }, `${clock(f.t)} · trip #${pad4(f.trip)} · ${lmName(f.from)} → ${lmName(f.to)}`)) : [h(Box, { component: "li", key: "e", sx: { color: "text.disabled" } }, "no redirects yet")];
-  return h(Box, { component: "ul", id: "lm-feed", sx: { listStyle: "none", m: 0, p: 0, fontFamily: MONO, fontSize: 9, color: "text.secondary", mt: .25, height: 84, overflow: "hidden", contain: "strict" } }, ...items);
+  return h(Box, { component: "ul", id: "lm-feed", ...nodeAttrs(p), sx: { listStyle: "none", m: 0, p: 0, fontFamily: MONO, fontSize: 9, color: "text.secondary", mt: .25, height: 84, overflow: "hidden", contain: "strict" } }, ...items);
 }
-const LastMilePanel = () => h(Panel, { id: "panel-lastmile", title: "Last-mile · 1,000 scheduled trips", tags: [["kernel", "kernel"], ["adapter", "dispatch = adapter"]] },
-  h(Box, { sx: { display: "flex", justifyContent: "space-between", fontFamily: MONO, fontSize: 10.5, color: "text.secondary" } }, h("span", null, "trips.done"),
-    h(Box, { component: "b", id: "lm-done", sx: { color: "#f4e6b8", fontSize: 14, fontWeight: 500 } }, V("trips.done"), " / ", V("trips.total"))),
-  h(BoundBar, { path: "trips.doneShare", color: "secondary" }),
-  h(Box, { sx: { mt: .75 } },
-    h(Row, { k: "trips.pending · active", kind: "rule · fact" }, J(V("trips.pending"), V("trips.active"))),
-    h(Row, { k: "trips.unscheduled (can't fit today)", kind: "fact" }, V("trips.unscheduled")),
-    h(Row, { k: "trips.perUnitAvg (assigned)", kind: "rule" }, V("trips.perUnitAvg")),
-    h(Row, { k: "trips.perUnitDoneAvg", kind: "rule" }, V("trips.perUnitDoneAvg")),
-    h(Row, { k: "trips.unitMax · unitMin", kind: "adapter aggregate" }, J(V("trips.unitMax"), V("trips.unitMin"))),
-    h(Row, { k: "trips.bandLow – bandHigh (±15%)", kind: "rules", minCh: 13 }, V("trips.bandLow"), " – ", V("trips.bandHigh")),
-    h(Row, { k: "lastMile.unitsAbove · Within · Below", kind: "adapter → facts" }, J(V("lastMile.unitsAbove"), V("lastMile.unitsWithin"), V("lastMile.unitsBelow"))),
-    h(Row, { k: "lastMile.unitsOk · trips.balanced", kind: "rules" }, J(V("lastMile.unitsOk", { f: S }), V("trips.balanced", { f: S }))),
-    h(Row, { k: "trips.redirects", kind: "fact" }, V("trips.redirects")),
-    h(Row, { k: "localDelivery.remainingKg", kind: "fact" }, V("localDelivery.remainingKg", { suffix: " kg" }))),
-  h(Sub, null, "per unit (adapter view): bright = done, dim = assigned · dashed = kernel bandLow/bandHigh"),
-  h(LmStrip),
-  h(Sub, { sx: { display: "flex", alignItems: "center", gap: .75, flexWrap: "wrap", height: "25.2px", overflow: "hidden" } }, "est. completion", h(SrcTag, { kind: "adapter", label: "adapter estimate" }), h(LmEstimate)),
-  h(Sub, { sx: { display: "flex", alignItems: "center", gap: .75 } }, "redirects", h(SrcTag, { kind: "adapter", label: "adapter log" })),
-  h(LmFeed),
-  h(Formula, null, "trips.bandHigh = trips.perUnitAvg + trips.perUnitAvg * trips.band · trips.perUnitAvg = trips.assigned / trucks.lastMile.fleet · lastMile.unitDoneSum = units[1].done + … + units[100].done (explicit) · trips.balanced = trips.accounted == trips.total"),
-  h(Sub, null, "Assumed averages (not sourced): 22 km/h, load at CEDIS ~10 min, drop 5–8 min, shift 08:00–17:00, band ±15%. Plan: each unit greedily takes the trip it can finish earliest until its shift is full; then trips move from units above the band to units below (nearest to the receiver's next stop, only if its shift and windows still fit)."));
-
-function SeedCode() {
+function SeedCode(p) {   // node id on the toggle (the collapsible code belongs to it)
   const { seed } = useStore(ui);
   const [open, setOpen] = React.useState(false);
   return h(React.Fragment, null,
-    h(Button, { size: "small", onClick: () => setOpen(!open), sx: { mt: .5, p: 0, minWidth: 0, fontFamily: MONO, fontSize: 9.5, textTransform: "none", color: "text.secondary" } }, (open ? "▾ " : "▸ ") + "seed: exact calls run at load / reset"),
+    h(Button, { ...nodeAttrs(p), size: "small", onClick: () => setOpen(!open), sx: { mt: .5, p: 0, minWidth: 0, fontFamily: MONO, fontSize: 9.5, textTransform: "none", color: "text.secondary" } }, (open ? "▾ " : "▸ ") + "seed: exact calls run at load / reset"),
     h(Collapse, { in: open }, h(Box, { component: "pre", id: "seed-code", sx: { fontFamily: MONO, fontSize: 9, color: "text.secondary", maxHeight: 160, overflow: "auto", whiteSpace: "pre", mt: .75, bgcolor: "background.default", border: 1, borderColor: "divider", borderRadius: "3px", p: "6px 7px" } }, seed)));
 }
-const StocksPanel = () => h(Panel, { id: "panel-stocks", title: "Stocks · me.cargo", tags: [["kernel", "kernel"]] },
-  h(Row, { k: "cargo.coffee", kind: "fact" }, V("cargo.coffee", { suffix: " t" })),
-  h(Row, { k: "cargo.sugar", kind: "fact" }, V("cargo.sugar", { suffix: " t" })),
-  h(Row, { k: "cargo.containers", kind: "fact" }, V("cargo.containers")),
-  h(Row, { k: "cargo.bulkTons", kind: "rule" }, V("cargo.bulkTons", { suffix: " t" })),
-  h(Row, { k: "trucks.fleet", kind: "fact" }, V("trucks.fleet")),
-  h(Row, { k: "trucks.heavy.fleet · trucks.lastMile.fleet", kind: "facts" }, J(V("trucks.heavy.fleet"), V("trucks.lastMile.fleet"))),
-  h(SeedCode));
-
-function VerifyOut() {
+function VerifyOut(p) {
   const { verify: v } = useStore(ui);
-  return h(Typography, { id: "verify-out", "data-tone": v.tone, sx: { fontFamily: MONO, fontSize: 9.5, mt: .75, color: v.tone === "ok" ? "success.main" : v.tone === "bad" ? "error.main" : "text.secondary" } }, v.text);
+  return h(Typography, { id: "verify-out", ...nodeAttrs(p), "data-tone": v.tone, sx: { fontFamily: MONO, fontSize: 9.5, mt: .75, color: v.tone === "ok" ? "success.main" : v.tone === "bad" ? "error.main" : "text.secondary" } }, v.text);
 }
-function VerifyButton() {
-  const { me } = useStore(ui);
-  return h(Button, { id: "btn-verify", variant: "outlined", size: "small", disabled: !me, onClick: verify, sx: { mt: 1, fontFamily: MONO, fontSize: 10.5, textTransform: "none", color: "text.secondary", borderColor: "divider" } }, "Verify: rebuild kernel from facts");
-}
-const AdapterPanel = () => h(Panel, { id: "panel-adapter", title: "Adapter · plain JS", tags: [["adapter", "not kernel"]], adapter: true },
-  h(Typography, { sx: { fontSize: 11, lineHeight: 1.45, color: "text.secondary", "& code": { fontFamily: MONO, fontSize: 10 } } },
-    "The traffic model (", h("code", null, "port-traffic.js"), ") decides ", h("em", null, "what to write"), "; the kernel holds every value and decides ", h("em", null, "what recomputes"),
-    ". Adapter only: each truck's route over OSM roads, berth/train/bay slots, timers, which flow it joins, the last-mile greedy plan, band classification and redirects, dot positions, the pending deltas it flushes, and the schedule that tells the .GUI components which kernel paths changed (the paths themselves come from the kernel's own wave). Totals, averages, band limits, flags, k and explain() are kernel. Speeds and durations are assumptions (named constants in ",
-    h("code", null, "port-traffic.js"), ")."),
-  h(VerifyButton), h(VerifyOut));
-const MutatePanel = () => h(Panel, { id: "panel-mutate", title: "Mutate · live traffic", tags: [["kernel", "kernel writes"]] }, h(RunControls), h(Stats), h(Writes));
-
-function Aside() {
-  const { me, runtime, kernel } = useStore(ui);
-  return h(Box, { component: "aside", sx: { bgcolor: "background.paper", display: "flex", flexDirection: "column", overflow: "hidden", minHeight: 0, borderLeft: 1, borderColor: "divider" } },
-    h(TourStrip),
-    h(Box, { sx: { flex: 1, overflowY: "auto", p: "10px 12px 14px", display: "flex", flexDirection: "column", gap: 1.25 } },
-      me ? h(G.MeRuntimeProvider, { me, runtime, subscribe: kernelSubscribe },
-        h(MutatePanel), h(ExplainPanel), h(ShipsPanel), h(TrainPanel), h(TrucksPanel), h(LastMilePanel), h(StocksPanel), h(AdapterPanel))
-        : h(Typography, { sx: { fontFamily: MONO, fontSize: 11, color: "text.secondary" } }, kernel.state === "error" ? "Nothing on this page runs without the kernel." : "Waiting for the kernel…")));
+function KernelWait(p) {   // aside placeholder before the kernel is loaded
+  const { kernel } = useStore(ui);
+  return h(Typography, { ...nodeAttrs(p), sx: { fontFamily: MONO, fontSize: 11, color: "text.secondary" } }, kernel.state === "error" ? "Nothing on this page runs without the kernel." : "Waiting for the kernel…");
 }
 
-// ── map overlays (GUI, kernel-bound) ──
-function LgRow({ dot, label, children }) {
-  return h(Box, { sx: { display: "flex", alignItems: "center", gap: .75 } },
+// ── map overlays ──
+function LgRow(p) {
+  const { dot, label, children } = p;
+  return h(Box, { ...nodeAttrs(p), sx: { display: "flex", alignItems: "center", gap: .75 } },
     h(Box, { component: "i", sx: { width: 7, height: 7, borderRadius: "50%", display: "inline-block", flexShrink: 0, ...dot } }), label,
     h(Box, { component: "b", sx: { ml: "auto", color: "text.primary", fontWeight: 500 } }, children));
 }
-function OffMap() { useStore(sim); return h("span", { id: "lg-off" }, String(offMap)); }
-const LgH = ({ children, sx }) => h(Box, { sx: { fontSize: 8.5, letterSpacing: ".1em", textTransform: "uppercase", color: "text.disabled", mb: .25, ...sx } }, children);
-const Legend = () => h(Paper, { id: "legend", variant: "outlined", sx: { position: "absolute", top: 10, right: 12, pointerEvents: "none", fontFamily: MONO, fontSize: 9.5, bgcolor: "rgba(11,13,16,0.86)", borderRadius: "3px", p: "5px 7px", color: "text.secondary", lineHeight: 1.5, width: 200 } },
-  h(LgH, null, "heavy · 400"),
-  h(LgRow, { dot: { bgcolor: "#7eb8c9" }, label: "import, laden" }, V("trucks.import.enRoute")),
-  h(LgRow, { dot: { bgcolor: "#c9b87e" }, label: "export, laden" }, V("trucks.export.enRoute")),
-  h(LgRow, { dot: { bgcolor: "#7ec99a" }, label: "load / unload" }, h(Sum, { paths: ["trucks.import.loading", "trucks.export.loading"] })),
-  h(LgRow, { dot: { bgcolor: "#b39ddb" }, label: "queued" }, V("trucks.inQueue")),
-  h(LgRow, { dot: { bgcolor: "#5f6b78" }, label: "returning" }, h(Sum, { paths: ["trucks.import.returning", "trucks.export.returning"] })),
-  h(LgRow, { dot: { bgcolor: "#3a424e", border: "1px solid #6a7380" }, label: "pool" }, V("trucks.heavy.available")),
-  h(LgH, { sx: { mt: .4 } }, "last-mile · 100"),
-  h(LgRow, { dot: { bgcolor: "#e58fc0", width: 5, height: 5 }, label: "out · back" }, J(V("trucks.lastMile.enRoute"), V("trucks.lastMile.returning"))),
-  h(LgRow, { dot: { bgcolor: "#6a4a5e", width: 5, height: 5 }, label: "load · idle" }, J(V("trucks.lastMile.loading"), V("trucks.lastMile.available"))),
-  h(LgRow, { dot: { border: "1px solid #e0a050", boxShadow: "4px 0 0 -2px #5ec8e0" }, label: "band ↑ · ↓" }, J(V("lastMile.unitsAbove"), V("lastMile.unitsBelow"))),
-  h(LgRow, { dot: { bgcolor: "#f4e6b8", borderRadius: 0, width: 4, height: 4 }, label: "trips ○ · ✓ · ✗" }, J(V("trips.pending"), V("trips.done"), V("trips.unscheduled"))),
-  h(Box, { sx: { borderTop: 1, borderColor: "divider", mt: .5, pt: .4, fontSize: 9, color: "text.disabled" } }, "kernel counts · ", h(OffMap), " off-map (adapter)"));
-function SimClock() { useStore(sim); const { speed } = useStore(ui); return h("strong", { id: "hud-tick" }, `${T ? clock(T.simTime) : clock(0)} · ×${speed}`); }
-const HudChip = ({ label, children, adapter }) => h(Chip, { size: "small", variant: "outlined", label: h(React.Fragment, null, label, " ", children),
-  sx: (t) => ({ fontFamily: MONO, fontSize: 10, bgcolor: "rgba(11,13,16,0.88)", borderRadius: "3px", color: "text.secondary", borderStyle: adapter ? "dashed" : "solid", borderColor: adapter ? accentColor(t, "ember") : t.palette.divider, "& strong": { color: "text.primary", fontWeight: 500 } }) });
+function OffMap(p) { useStore(sim); return h("span", { id: "lg-off", ...nodeAttrs(p) }, String(offMap)); }
+const LGH_SX = { fontSize: 8.5, letterSpacing: ".1em", textTransform: "uppercase", color: "text.disabled", mb: .25 };
+function SimClock(p) { useStore(sim); const { speed } = useStore(ui); return h("strong", { id: "hud-tick", ...nodeAttrs(p) }, `${T ? clock(T.simTime) : clock(0)} · ×${speed}`); }
+function HudChip(p) {   // strong: wrap the children in <strong> (with strongSx: a styled one); otherwise children as given
+  const { label, children, adapter, strong, strongSx } = p;
+  const value = !strong ? children : strongSx ? h(Box, { component: "strong", sx: strongSx }, children) : h("strong", null, children);
+  return h(Chip, { ...nodeAttrs(p), size: "small", variant: "outlined", label: h(React.Fragment, null, label, " ", value),
+    sx: (t) => ({ fontFamily: MONO, fontSize: 10, bgcolor: "rgba(11,13,16,0.88)", borderRadius: "3px", color: "text.secondary", borderStyle: adapter ? "dashed" : "solid", borderColor: adapter ? accentColor(t, "ember") : t.palette.divider, "& strong": { color: "text.primary", fontWeight: 500 } }) });
+}
+const SvgGroup = (p) => { const { children, "data-gui-component": _c, ...rest } = p; return h("g", rest, children); };
+
+// ── page-local registry types (rendered by GUI's renderer like any registry entry; no new GUI types) ──
+const pageType = (type, C) => ({ type, resolve: (spec) => { const { key: _k, ...p } = spec.props || {}; return h(C, p); } });
+const PAGE_TYPES = Object.fromEntries([
+  ["PortValue", ValView], ["PortSum", SumView], ["PortBar", BarView], ["PortRow", Row], ["PortFormula", Formula], ["PortPanel", Panel],
+  ["PortLegendRow", LgRow], ["PortHudChip", HudChip], ["PortSvgGroup", SvgGroup], ["PortGlossaryItem", GlossaryItem],
+  ["PortTour", TourStrip], ["PortKernelLink", KernelLink], ["PortRunControls", RunControls], ["PortStats", Stats], ["PortWrites", Writes],
+  ["PortExplain", ExplainLeaf], ["PortLmStrip", LmStrip], ["PortLmEstimate", LmEstimate], ["PortLmFeed", LmFeed], ["PortSeed", SeedCode],
+  ["PortVerifyOut", VerifyOut], ["PortKernelWait", KernelWait], ["PortOffMap", OffMap], ["PortSimClock", SimClock],
+].map(([t, C]) => [t, pageType(t, C)]).concat([
+  // GUI's registered Link resolver drops target / rel / title / data-gui-node-id, so links use GUI.Atoms.Link as is
+  ["PortLink", Link],
+]));
+
+// ── spec builders ──
+// N(type, nodeId, props, children, provenance): one spec node; nodeId → data-gui-node-id (the DOM id is untouched).
+const N = (type, id, props = {}, children, provenance) => ({ type, props: { ...props, "data-gui-node-id": id }, ...(children !== undefined ? { children: [].concat(children) } : {}), ...(provenance ? { provenance } : {}) });
+const V = (scope, path, opts = {}) => N("PortValue", `${scope}/${path}`, { path, value: { read: `me/${path}` }, ...opts }, undefined, { semanticPath: path });
+const BAR = (scope, path, color) => N("PortBar", `${scope}/bar:${path}`, { path, value: { read: `me/${path}` }, ...(color ? { color } : {}) }, undefined, { semanticPath: path });
+const SUM = (scope, paths) => N("PortSum", `${scope}/sum:${paths.join("+")}`, { values: paths.map((p) => ({ read: `me/${p}` })) });
+const J = (...parts) => parts.flatMap((p, i) => (i ? [" · ", p] : [p]));
+const S = String;
+const ROW = (scope, k, kind, children, minCh) => N("PortRow", `${scope}/row:${k}`, { k, kind, ...(minCh ? { minCh } : {}) }, children);
+const FORMULA = (scope, name, children) => N("PortFormula", `${scope}/formula:${name}`, {}, children);
+const SUB = (id, children, sx) => N("Typography", id, { component: "div", sx: { ...SUB_SX, ...sx } }, children);
+const TAG = (id, kind, label) => N("Chip", id, { size: "small", variant: "outlined", label, sx: srcTagSx(kind) });
+const PANEL = (id, title, tags, children, adapter) => N("PortPanel", id, { id, title, tags, ...(adapter ? { adapter } : {}) }, children);
+const LINK = (id, props, children) => N("PortLink", id, props, children);
+
+const SHIPS_META = [{ i: 1, unit: "t" }, { i: 2, unit: "t" }, { i: 3, unit: "TEU" }];
+function shipsPanel(s = "panel-ships") {
+  return PANEL(s, "Ships · unloading (import)", [["kernel", "kernel"]], [
+    ...SHIPS_META.flatMap((m) => [
+      ROW(s, `ships[${m.i}].remaining`, "fact", V(s, `ships.${m.i}.remaining`, { suffix: " " + m.unit })),
+      ROW(s, `ships[${m.i}].progress`, "rule", V(s, `ships.${m.i}.progress`, { f: pct })),
+    ]),
+    FORMULA(s, "flows.importRemaining", ["flows.importRemaining = ships[1].remainingTons + ships[2].remainingTons + ships[3].remainingTons = ", V(s, "flows.importRemaining", { wrap: "b" }), " t"]),
+    BAR(s, "flows.importProgress"),
+  ]);
+}
+function trainPanel(s = "panel-train") {
+  return PANEL(s, "Train · loading (export)", [["kernel", "kernel"]], [
+    ROW(s, "train[1].remainingToLoad", "fact", V(s, "train.1.remainingToLoad", { suffix: " t" })),
+    ROW(s, "train[1].progress", "rule", V(s, "train.1.progress", { f: pct })),
+    ROW(s, "train[1].hasWork", "rule", V(s, "train.1.hasWork", { f: S })),
+    FORMULA(s, "flows.exportRemaining", ["flows.exportRemaining = train[1].remainingToLoad = ", V(s, "flows.exportRemaining", { wrap: "b" }), " t"]),
+    BAR(s, "train.1.progress", "warning"),
+  ]);
+}
+function trucksPanel(s = "panel-queues") {
+  return PANEL(s, "Trucks · by state", [["kernel", "kernel"]], [
+    ROW(s, "trucks.heavy.available", "fact", V(s, "trucks.heavy.available")),
+    ROW(s, "queues.import.length", "fact", V(s, "queues.import.length")),
+    ROW(s, "trucks.import.loading · enRoute · returning", "facts", J(V(s, "trucks.import.loading"), V(s, "trucks.import.enRoute"), V(s, "trucks.import.returning"))),
+    ROW(s, "queues.export.length", "fact", V(s, "queues.export.length")),
+    ROW(s, "trucks.export.loading · enRoute · returning", "facts", J(V(s, "trucks.export.loading"), V(s, "trucks.export.enRoute"), V(s, "trucks.export.returning"))),
+    ROW(s, "trucks.lastMile.available", "fact", V(s, "trucks.lastMile.available")),
+    ROW(s, "trucks.lastMile.loading · enRoute · returning", "facts", J(V(s, "trucks.lastMile.loading"), V(s, "trucks.lastMile.enRoute"), V(s, "trucks.lastMile.returning"))),
+    ROW(s, "trucks.heavy.working · balanced", "rules", J(V(s, "trucks.heavy.working"), V(s, "trucks.heavy.balanced", { f: S }))),
+    ROW(s, "trucks.lastMile.working · balanced", "rules", J(V(s, "trucks.lastMile.working"), V(s, "trucks.lastMile.balanced", { f: S }))),
+    ROW(s, "trucks.inQueue · loading · enRoute · returning", "rules", J(V(s, "trucks.inQueue"), V(s, "trucks.loading"), V(s, "trucks.enRoute"), V(s, "trucks.returning"))),
+    ROW(s, "trucks.available · working", "rules", J(V(s, "trucks.available"), V(s, "trucks.working"))),
+    ROW(s, "trucks.accounted", "rule", V(s, "trucks.accounted")),
+    ROW(s, "trucks.balanced", "rule", V(s, "trucks.balanced", { f: S })),
+    ROW(s, "trucks.splitOk", "rule", V(s, "trucks.splitOk", { f: S })),
+    ROW(s, "port.busy", "rule", V(s, "port.busy", { f: S })),
+    FORMULA(s, "trucks.working", "trucks.working = trucks.inQueue + trucks.loading + trucks.enRoute + trucks.returning · trucks.balanced = trucks.accounted == trucks.fleet"),
+  ]);
+}
+function lastMilePanel(s = "panel-lastmile") {
+  return PANEL(s, "Last-mile · 1,000 scheduled trips", [["kernel", "kernel"], ["adapter", "dispatch = adapter"]], [
+    N("Box", `${s}/done`, { sx: { display: "flex", justifyContent: "space-between", fontFamily: MONO, fontSize: 10.5, color: "text.secondary" } }, [
+      h("span", { key: "l" }, "trips.done"),
+      N("Box", `${s}/done:value`, { component: "b", id: "lm-done", sx: { color: "#f4e6b8", fontSize: 14, fontWeight: 500 } }, [V(s, "trips.done"), " / ", V(s, "trips.total")]),
+    ]),
+    BAR(s, "trips.doneShare", "secondary"),
+    N("Box", `${s}/rows`, { sx: { mt: .75 } }, [
+      ROW(s, "trips.pending · active", "rule · fact", J(V(s, "trips.pending"), V(s, "trips.active"))),
+      ROW(s, "trips.unscheduled (can't fit today)", "fact", V(s, "trips.unscheduled")),
+      ROW(s, "trips.perUnitAvg (assigned)", "rule", V(s, "trips.perUnitAvg")),
+      ROW(s, "trips.perUnitDoneAvg", "rule", V(s, "trips.perUnitDoneAvg")),
+      ROW(s, "trips.unitMax · unitMin", "adapter aggregate", J(V(s, "trips.unitMax"), V(s, "trips.unitMin"))),
+      ROW(s, "trips.bandLow – bandHigh (±15%)", "rules", [V(s, "trips.bandLow"), " – ", V(s, "trips.bandHigh")], 13),
+      ROW(s, "lastMile.unitsAbove · Within · Below", "adapter → facts", J(V(s, "lastMile.unitsAbove"), V(s, "lastMile.unitsWithin"), V(s, "lastMile.unitsBelow"))),
+      ROW(s, "lastMile.unitsOk · trips.balanced", "rules", J(V(s, "lastMile.unitsOk", { f: S }), V(s, "trips.balanced", { f: S }))),
+      ROW(s, "trips.redirects", "fact", V(s, "trips.redirects")),
+      ROW(s, "localDelivery.remainingKg", "fact", V(s, "localDelivery.remainingKg", { suffix: " kg" })),
+    ]),
+    SUB(`${s}/note:strip`, "per unit (adapter view): bright = done, dim = assigned · dashed = kernel bandLow/bandHigh"),
+    N("PortLmStrip", `${s}/units-strip`),
+    SUB(`${s}/estimate`, ["est. completion", TAG(`${s}/estimate:tag`, "adapter", "adapter estimate"), N("PortLmEstimate", `${s}/estimate:value`)], { display: "flex", alignItems: "center", gap: .75, flexWrap: "wrap", height: "25.2px", overflow: "hidden" }),
+    SUB(`${s}/redirects`, ["redirects", TAG(`${s}/redirects:tag`, "adapter", "adapter log")], { display: "flex", alignItems: "center", gap: .75 }),
+    N("PortLmFeed", `${s}/redirects:feed`),
+    FORMULA(s, "trips.bandHigh", "trips.bandHigh = trips.perUnitAvg + trips.perUnitAvg * trips.band · trips.perUnitAvg = trips.assigned / trucks.lastMile.fleet · lastMile.unitDoneSum = units[1].done + … + units[100].done (explicit) · trips.balanced = trips.accounted == trips.total"),
+    SUB(`${s}/note:assumptions`, "Assumed averages (not sourced): 22 km/h, load at CEDIS ~10 min, drop 5–8 min, shift 08:00–17:00, band ±15%. Plan: each unit greedily takes the trip it can finish earliest until its shift is full; then trips move from units above the band to units below (nearest to the receiver's next stop, only if its shift and windows still fit)."),
+  ]);
+}
+function stocksPanel(s = "panel-stocks") {
+  return PANEL(s, "Stocks · me.cargo", [["kernel", "kernel"]], [
+    ROW(s, "cargo.coffee", "fact", V(s, "cargo.coffee", { suffix: " t" })),
+    ROW(s, "cargo.sugar", "fact", V(s, "cargo.sugar", { suffix: " t" })),
+    ROW(s, "cargo.containers", "fact", V(s, "cargo.containers")),
+    ROW(s, "cargo.bulkTons", "rule", V(s, "cargo.bulkTons", { suffix: " t" })),
+    ROW(s, "trucks.fleet", "fact", V(s, "trucks.fleet")),
+    ROW(s, "trucks.heavy.fleet · trucks.lastMile.fleet", "facts", J(V(s, "trucks.heavy.fleet"), V(s, "trucks.lastMile.fleet"))),
+    N("PortSeed", `${s}/seed`),
+  ]);
+}
+function adapterPanel(live, s = "panel-adapter") {
+  return PANEL(s, "Adapter · plain JS", [["adapter", "not kernel"]], [
+    N("Typography", `${s}/text`, { sx: { fontSize: 11, lineHeight: 1.45, color: "text.secondary", "& code": { fontFamily: MONO, fontSize: 10 } } }, [
+      "The traffic model (", h("code", { key: 1 }, "port-traffic.js"), ") decides ", h("em", { key: 2 }, "what to write"), "; the kernel holds every value and decides ", h("em", { key: 3 }, "what recomputes"),
+      ". Adapter only: each truck's route over OSM roads, berth/train/bay slots, timers, which flow it joins, the last-mile greedy plan, band classification and redirects, dot positions, the pending deltas it flushes, and the schedule that tells the .GUI components which kernel paths changed (the paths themselves come from the kernel's own wave). Totals, averages, band limits, flags, k and explain() are kernel. Speeds and durations are assumptions (named constants in ",
+      h("code", { key: 4 }, "port-traffic.js"), ")."]),
+    N("Button", `${s}/verify`, { id: "btn-verify", variant: "outlined", color: "primary", size: "small", disabled: !live, onClick: verify, sx: { mt: 1, fontFamily: MONO, fontSize: 10.5, textTransform: "none", color: "text.secondary", borderColor: "divider" } }, "Verify: rebuild kernel from facts"),
+    N("PortVerifyOut", `${s}/verify:result`),
+  ], true);
+}
+const mutatePanel = (s = "panel-mutate") => PANEL(s, "Mutate · live traffic", [["kernel", "kernel writes"]], [N("PortRunControls", `${s}/run`), N("PortStats", `${s}/stats`), N("PortWrites", `${s}/writes`)]);
+const explainPanel = (s = "panel-explain") => PANEL(s, "Explain · why", [["kernel", "me.explain()"]], [N("PortExplain", `${s}/explain`)]);
+
+function legend(s = "legend") {
+  const LR = (label, dot, children) => N("PortLegendRow", `${s}/${label}`, { label, dot }, children);
+  return N("Paper", s, { id: "legend", variant: "outlined", sx: { position: "absolute", top: 10, right: 12, pointerEvents: "none", fontFamily: MONO, fontSize: 9.5, bgcolor: "rgba(11,13,16,0.86)", borderRadius: "3px", p: "5px 7px", color: "text.secondary", lineHeight: 1.5, width: 200 } }, [
+    N("Box", `${s}/heavy`, { sx: LGH_SX }, "heavy · 400"),
+    LR("import, laden", { bgcolor: "#7eb8c9" }, V(s, "trucks.import.enRoute")),
+    LR("export, laden", { bgcolor: "#c9b87e" }, V(s, "trucks.export.enRoute")),
+    LR("load / unload", { bgcolor: "#7ec99a" }, SUM(s, ["trucks.import.loading", "trucks.export.loading"])),
+    LR("queued", { bgcolor: "#b39ddb" }, V(s, "trucks.inQueue")),
+    LR("returning", { bgcolor: "#5f6b78" }, SUM(s, ["trucks.import.returning", "trucks.export.returning"])),
+    LR("pool", { bgcolor: "#3a424e", border: "1px solid #6a7380" }, V(s, "trucks.heavy.available")),
+    N("Box", `${s}/last-mile`, { sx: { ...LGH_SX, mt: .4 } }, "last-mile · 100"),
+    LR("out · back", { bgcolor: "#e58fc0", width: 5, height: 5 }, J(V(s, "trucks.lastMile.enRoute"), V(s, "trucks.lastMile.returning"))),
+    LR("load · idle", { bgcolor: "#6a4a5e", width: 5, height: 5 }, J(V(s, "trucks.lastMile.loading"), V(s, "trucks.lastMile.available"))),
+    LR("band ↑ · ↓", { border: "1px solid #e0a050", boxShadow: "4px 0 0 -2px #5ec8e0" }, J(V(s, "lastMile.unitsAbove"), V(s, "lastMile.unitsBelow"))),
+    LR("trips ○ · ✓ · ✗", { bgcolor: "#f4e6b8", borderRadius: 0, width: 4, height: 4 }, J(V(s, "trips.pending"), V(s, "trips.done"), V(s, "trips.unscheduled"))),
+    N("Box", `${s}/foot`, { sx: { borderTop: 1, borderColor: "divider", mt: .5, pt: .4, fontSize: 9, color: "text.disabled" } }, ["kernel counts · ", N("PortOffMap", `${s}/off-map`), " off-map (adapter)"]),
+  ]);
+}
 // HUD sits 24 px up so the map's OSM attribution strip (bottom-right, 17 px) never sits under a chip
-const Hud = () => h(Box, { sx: { position: "absolute", left: 12, bottom: 24, right: 12, display: "flex", flexWrap: "wrap", gap: 1, pointerEvents: "none" } },
-  h(HudChip, { label: "import left" }, h(Box, { component: "strong", sx: { color: "#7eb8c9 !important" } }, V("flows.importRemaining", { suffix: " t" }))),
-  h(HudChip, { label: "export left" }, h(Box, { component: "strong", sx: { color: "#c9b87e !important" } }, V("flows.exportRemaining", { suffix: " t" }))),
-  h(HudChip, { label: "trucks.working" }, h("strong", null, V("trucks.working"), " / ", V("trucks.fleet"))),
-  h(HudChip, { label: "trucks.balanced" }, h("strong", null, V("trucks.balanced", { f: S }))),
-  h(HudChip, { label: "sim (adapter)", adapter: true }, h(SimClock)),
-  h(HudChip, { label: "assumed: heavy", adapter: true }, h("strong", null, "25 km/h"), " · last-mile ", h("strong", null, "22 km/h")));
+function hud(s = "hud") {
+  const CHIP = (label, props, children) => N("PortHudChip", `${s}/${label}`, { label, ...props }, children);
+  return N("Box", s, { sx: { position: "absolute", left: 12, bottom: 24, right: 12, display: "flex", flexWrap: "wrap", gap: 1, pointerEvents: "none" } }, [
+    CHIP("import left", { strong: true, strongSx: { color: "#7eb8c9 !important" } }, V(s, "flows.importRemaining", { suffix: " t" })),
+    CHIP("export left", { strong: true, strongSx: { color: "#c9b87e !important" } }, V(s, "flows.exportRemaining", { suffix: " t" })),
+    CHIP("trucks.working", { strong: true }, [V(s, "trucks.working"), " / ", V(s, "trucks.fleet")]),
+    CHIP("trucks.balanced", { strong: true }, V(s, "trucks.balanced", { f: S })),
+    CHIP("sim (adapter)", { adapter: true }, N("PortSimClock", `${s}/sim-clock`)),
+    CHIP("assumed: heavy", { adapter: true }, [h("strong", { key: "a" }, "25 km/h"), " · last-mile ", h("strong", { key: "b" }, "22 km/h")]),
+  ]);
+}
 
 // ── map: GUI.OpenStreetMap over the EXISTING build_basemap.py output (GUI presents; this adapter only reads it) ──
 const OSM = G.OpenStreetMap;
@@ -605,14 +656,13 @@ function exitLabelData() {
 const EXIT_LABELS = exitLabelData();
 
 // node meta lines: GUI subscriptions to kernel paths (re-read when the bridge announces those paths)
-function NeedsKernel({ C, ...p }) { const c = G.useOptionalMeRuntimeContext(); return c && c.me ? h(C, p) : "—"; }
 function ShipMeta({ s }) { const work = G.useMeValue(`ships.${s.i}.hasWork`), rem = G.useMeValue(`ships.${s.i}.remaining`); return `${work ? "unloading" : "done"} · ${fmt(rem)} ${s.unit}`; }
 function TrainMeta() { const work = G.useMeValue("train.1.hasWork"), rem = G.useMeValue("train.1.remainingToLoad"); return `${work ? "loading" : "done"} · ${fmt(rem)} t`; }
 function QueueMeta({ q }) { const n = G.useMeValue(`queues.${q}.length`), busy = G.useMeValue(`queues.${q}.busy`); return `${n} queued${busy ? "" : " · idle"}`; }
 function YardMeta() { useStore(sim); const heavy = G.useMeValue("trucks.heavy.available"); return `pool: ${fmt(heavy)} heavy · ${T ? T.units.filter((u) => u.home === 0 && u.st === "lmPool").length : 0} small (adapter)`; }
 function PortMeta() { const busy = G.useMeValue("port.busy"); return busy ? "port.busy = true" : "port.busy = false"; }
 // node positions are the page's existing map pixels, converted to lat/lon with the map's own projection.
-// `path` = the derived kernel path each marker is registered with (provenance.semanticPath) for the inspector.
+// `path` = the derived kernel path each marker carries as provenance.semanticPath (Explain in the inspector).
 const NODES = [
   { id: "n-port", kind: "port", path: "port.busy", x: 600.0, y: 255.4, shape: "circle", size: 28, gap: 7, icon: "anchor", color: "#7eb8c9", label: "VERACRUZ", Meta: PortMeta },
   ...SHIPS_META.map((s, i) => ({ id: `n-ship${s.i}`, kind: "ship", path: `ships.${s.i}.hasWork`, x: [801.6, 888.0, 945.6][i], y: [168.6, 284.3, 382.6][i], shape: "rect", w: 32, hh: 18, gap: 5, icon: "directions_boat", color: "#6a9bb0", label: `SHIP[${s.i}] ${["coffee", "sugar", "TEU"][i]}`, Meta: ShipMeta, mp: { s } })),
@@ -622,44 +672,82 @@ const NODES = [
   { id: "n-yard", kind: "yard", path: "cargo.bulkTons", x: 513.6, y: 457.8, shape: "square", size: 28, gap: 7, icon: "warehouse", color: "#7a9a7a", label: "CARGO YARD · CEDIS A", Meta: YardMeta },
   { id: "n-cedisb", kind: "yard", path: "trips.pending", x: 220.7, y: 529.8, shape: "square", size: 18, gap: 5, icon: "inventory_2", color: "#7a9a7a", label: "CEDIS B", meta: "example site" },
 ].map((n) => ({ ...n, ...OSM_PROJ.unproject(n.x, n.y) }));
-const NodeMarker = React.memo(function NodeMarker({ n }) {
-  return h(OSM.Marker, { id: n.id, nodeId: `map.${n.id}`, provenance: { semanticPath: n.path }, className: `node ${n.kind}`, lat: n.lat, lon: n.lon, shape: n.shape, size: n.size, width: n.w, height: n.hh,
-    color: n.color, icon: n.icon, iconColor: n.color, label: n.label, labelPlacement: n.place || "right", labelOffset: n.gap,
-    meta: n.Meta ? h(NeedsKernel, { C: n.Meta, ...(n.mp || {}) }) : n.meta });
-});
+const markerSpec = (n, live) => N("OpenStreetMapMarker", `map.${n.id}`, { id: n.id, className: `node ${n.kind}`, lat: n.lat, lon: n.lon, shape: n.shape, size: n.size, width: n.w, height: n.hh,
+  color: n.color, icon: n.icon, iconColor: n.color, label: n.label, labelPlacement: n.place || "right", labelOffset: n.gap,
+  meta: n.Meta ? (live ? h(n.Meta, n.mp || {}) : "—") : n.meta }, undefined, { semanticPath: n.path });
 let mapMounted = false;
-const MapLayer = React.memo(function MapLayer({ me, runtime }) {
+function MapLifecycle() {   // no element: marks the map as mounted for the adapter's DOM highlights
   React.useEffect(() => { mapMounted = true; lastHlStep = 0; applyMapHighlights(); renderMapLabels(); return () => { mapMounted = false; }; }, []);
-  return h(G.MeRuntimeProvider, { me, runtime, subscribe: kernelSubscribe },
-    h(OSM, { ...FRAME, basemap: BASEMAP, source: OSM_SOURCE, ariaLabel: "Veracruz port operations", attribution: { position: "bottom-right" } },
-      h("g", { id: "edges" }, EDGES.map(([id, cls, d]) => h("path", { key: id, id, className: cls, d }))),
-      h("g", { id: "exit-labels" }, EXIT_LABELS.map((l) => h("text", { key: l.key, className: "exit-label", x: l.x, y: l.y, textAnchor: l.anchor }, l.text))),
-      h("circle", { className: "spotlight", id: "spotlight", cx: 0, cy: 0, r: 30, visibility: "hidden" }),
-      h("g", { id: "nodes" }, NODES.map((n) => h(NodeMarker, { key: n.id, n }))),
-      h(OSM.Canvas, { id: "traffic", className: "traffic", onFrame: onMapFrame })));
-});
-function MapPanel() {
-  const { me, runtime } = useStore(ui);
-  return h(Box, { className: "map-wrap", sx: { position: "relative", overflow: "hidden", bgcolor: "#0b0d10", minHeight: 300 } },
-    h(MapLayer, { me, runtime }),
-    me ? h(G.MeRuntimeProvider, { me, runtime, subscribe: kernelSubscribe }, h(Legend), h(Hud)) : null);
+  return null;
+}
+function mapSpec(live) {
+  return N("OpenStreetMap", "map", { ...FRAME, basemap: BASEMAP, source: OSM_SOURCE, ariaLabel: "Veracruz port operations", attribution: { position: "bottom-right" } }, [
+    N("PortSvgGroup", "map.edges", { id: "edges" }, EDGES.map(([id, cls, d]) => h("path", { key: id, id, className: cls, d }))),
+    N("PortSvgGroup", "map.exit-labels", { id: "exit-labels" }, EXIT_LABELS.map((l) => h("text", { key: l.key, className: "exit-label", x: l.x, y: l.y, textAnchor: l.anchor }, l.text))),
+    h("circle", { key: "spotlight", className: "spotlight", id: "spotlight", cx: 0, cy: 0, r: 30, visibility: "hidden" }),
+    N("PortSvgGroup", "map.nodes", { id: "nodes" }, NODES.map((n) => markerSpec(n, live))),
+    { type: MapLifecycle },
+    N(OSM.Canvas, "map.traffic", { id: "traffic", className: "traffic", onFrame: onMapFrame }),
+  ]);
 }
 
-const Footer = () => h(Box, { component: "footer", sx: { px: 2, py: .9, borderTop: 1, borderColor: "divider", fontFamily: MONO, fontSize: 10, color: "text.disabled", display: "flex", justifyContent: "space-between", gap: 1.25, flexWrap: "wrap", "& a": { color: "text.secondary" } } },
-  h("span", null, "© ", h(Link, { href: "https://www.openstreetmap.org/copyright", target: "_blank", rel: "noopener", underline: "hover" }, "OpenStreetMap"), " contributors · static SVG basemap · no live tiles"),
-  h("span", null, h(KernelLink, { id: "kver-foot", after: " (unmodified)", minCh: 44 }), " · ", h(Link, { href: GUI_PIN.pr, target: "_blank", rel: "noopener", underline: "hover" }, `${GUI_PIN.label}`), " (unreleased branch build, self-hosted, SRI + sha256) · ", h(Link, { href: "veracruz-port/", underline: "hover" }, "build notes")));
+function topBarSpec() {
+  return N("TopBar", "GUI.bars.top", {
+    title: ".me", logo: LOGO, homeTo: "https://neurons-me.github.io/", position: "static",
+    sx: { "& img": { height: 34, width: 34, objectFit: "contain" } },
+    elementsRight: [
+      // Opt-in .GUI Semantic Inspector (off by default; hidden at ≤1100 px, where its 440 px side panel has no room).
+      { type: "action", props: { element: INSPECTOR_ACTION } },
+      { type: "link", props: { label: "Smart Cities", href: "https://neurons-me.github.io/smart-cities/", "data-gui-node-id": "GUI.bars.top.link.smart-cities" } },
+      { type: "link", props: { label: "Docs", href: "https://neurons-me.github.io/.me/docs/", "data-gui-node-id": "GUI.bars.top.link.docs" } },
+      { type: "link", props: { label: "GitHub", href: "https://github.com/neurons-me/.me", "data-gui-node-id": "GUI.bars.top.link.github" } },
+    ],
+  });
+}
+function titleStripSpec(s = "title") {
+  return N("Box", s, { sx: { display: "flex", alignItems: "center", gap: 1.25, flexWrap: "wrap", px: 2, py: 1, borderBottom: 1, borderColor: "divider" } }, [
+    N("Typography", `${s}/name`, { component: "h1", sx: { fontWeight: 600, fontSize: 14, letterSpacing: ".04em" } }, "VERACRUZ"),
+    N("Typography", `${s}/address`, { sx: { fontFamily: MONO, fontSize: 12, color: "primary.main" } }, "me://port"),
+    TAG(`${s}/tag`, "adapter", "port operations · 500 trucks · guided"),
+    N("Typography", `${s}/builds`, { sx: { ml: "auto", fontFamily: MONO, fontSize: 11, color: "text.secondary" } }, [
+      "UI: ", LINK(`${s}/builds:gui`, { href: GUI_PIN.pr, target: "_blank", rel: "noopener", underline: "hover", title: `${GUI_PIN.label} (unreleased branch build)\nsha256 ${GUI_PIN.sha256}` }, `this.gui@${GUI_PIN.short}`),
+      " · kernel: ", N("PortKernelLink", `${s}/builds:kernel`, { id: "kver-top", minCh: 31 }), " · ",
+      LINK(`${s}/builds:classic`, { href: "veracruz-port.html", underline: "hover" }, "classic page"),
+    ]),
+  ]);
+}
+const glossarySpec = () => N("Box", "glossary", { id: "glossary", sx: { display: "flex", flexWrap: "wrap", borderBottom: 1, borderColor: "divider", bgcolor: "background.default" } },
+  GLOSSARY.map(([label], idx) => N("PortGlossaryItem", `glossary/${label}`, { idx })));
+function asideSpec(live) {
+  return N("Box", "aside", { component: "aside", sx: { bgcolor: "background.paper", display: "flex", flexDirection: "column", overflow: "hidden", minHeight: 0, borderLeft: 1, borderColor: "divider" } }, [
+    N("PortTour", "aside/tour"),
+    N("Box", "aside/panels", { sx: { flex: 1, overflowY: "auto", p: "10px 12px 14px", display: "flex", flexDirection: "column", gap: 1.25 } },
+      live ? [mutatePanel(), explainPanel(), shipsPanel(), trainPanel(), trucksPanel(), lastMilePanel(), stocksPanel(), adapterPanel(live)] : [N("PortKernelWait", "aside/waiting")]),
+  ]);
+}
+const mapPanelSpec = (live) => N("Box", "map-panel", { className: "map-wrap", sx: { position: "relative", overflow: "hidden", bgcolor: "#0b0d10", minHeight: 300 } },
+  live ? [mapSpec(true), legend(), hud()] : [mapSpec(false)]);
+const footerSpec = (s = "footer") => N("Box", s, { component: "footer", sx: { px: 2, py: .9, borderTop: 1, borderColor: "divider", fontFamily: MONO, fontSize: 10, color: "text.disabled", display: "flex", justifyContent: "space-between", gap: 1.25, flexWrap: "wrap", "& a": { color: "text.secondary" } } }, [
+  N("Box", `${s}/osm`, { component: "span" }, ["© ", LINK(`${s}/osm:link`, { href: "https://www.openstreetmap.org/copyright", target: "_blank", rel: "noopener", underline: "hover" }, "OpenStreetMap"), " contributors · static SVG basemap · no live tiles"]),
+  N("Box", `${s}/builds`, { component: "span" }, [
+    N("PortKernelLink", `${s}/builds:kernel`, { id: "kver-foot", after: " (unmodified)", minCh: 44 }), " · ",
+    LINK(`${s}/builds:gui`, { href: GUI_PIN.pr, target: "_blank", rel: "noopener", underline: "hover" }, `${GUI_PIN.label}`),
+    " (unreleased branch build, self-hosted, SRI + sha256) · ", LINK(`${s}/builds:notes`, { href: "veracruz-port/", underline: "hover" }, "build notes"),
+  ]),
+]);
+function pageSpec(live) {
+  return N("Box", "page", { sx: { display: "flex", flexDirection: "column", height: "100vh", minHeight: 640, bgcolor: "background.default", color: "text.primary", "@media (max-width:1000px)": { height: "auto" } } }, [
+    topBarSpec(), titleStripSpec(), glossarySpec(),
+    N("Box", "layout", { className: "layout", sx: { flex: 1, display: "grid", gridTemplateColumns: "1fr 380px", minHeight: 0, "@media (max-width:1000px)": { gridTemplateColumns: "1fr", gridTemplateRows: "minmax(300px, 42vh) auto" } } },
+      [mapPanelSpec(live), asideSpec(live)]),
+    footerSpec(),
+  ]);
+}
+// Built once: the same spec objects are handed to every mount() call (before / after the kernel loads).
+const SPEC_BOOT = pageSpec(false), SPEC_LIVE = pageSpec(true);
 
-// The page theme is handed to GUI.mount (which wraps the tree, inspector included, in gui.Theme), so the
-// App itself carries no second Theme.
+// The page theme is handed to GUI.mount (which wraps the tree, inspector included, in gui.Theme).
 const PageTheme = ({ children }) => h(G.Theme, { initialThemeId: "neurons.me", initialMode: "dark" }, children);
-function App() {
-  return (
-    h(Box, { sx: { display: "flex", flexDirection: "column", height: "100vh", minHeight: 640, bgcolor: "background.default", color: "text.primary", "@media (max-width:1000px)": { height: "auto" } } },
-      TOPBAR, h(TitleStrip), h(Glossary),
-      h(Box, { className: "layout", sx: { flex: 1, display: "grid", gridTemplateColumns: "1fr 380px", minHeight: 0, "@media (max-width:1000px)": { gridTemplateColumns: "1fr", gridTemplateRows: "minmax(300px, 42vh) auto" } } },
-        h(MapPanel), h(Aside)),
-      h(Footer)));
-}
 
 // ══════════════════════════ adapter: map layer, loop, kernel lifecycle ══════════════════════════
 const $ = (s) => document.querySelector(s), $$ = (s) => [...document.querySelectorAll(s)];
@@ -836,15 +924,16 @@ const params = new URLSearchParams(location.search);
   setTourOpen(params.has("step") || stored === "1", params.has("step"));
   if (params.get("speed")) ui.set({ speed: Number(params.get("speed")) || 10 });
 }
-// GUI.mount instead of ReactDOM.createRoot: same App, plus .GUI's Semantic Inspector (lazy, opt-in).
-// Re-called after each kernel reset so the inspector sees the current kernel and the SAME runtime (RT).
-const SPEC = { type: App }, ROOT = document.getElementById("root"), MOUNT_GUI = { ...G, Theme: PageTheme };
+// GUI.mount resolves the page spec (SPEC_BOOT until the kernel is loaded, then SPEC_LIVE) through the GUI
+// registry + the page-local types, with .GUI's Semantic Inspector (lazy, opt-in).
+// Re-called after each kernel reset so readouts and the inspector use the current kernel and the SAME runtime (RT).
+const ROOT = document.getElementById("root"), MOUNT_GUI = { ...G, Theme: PageTheme, registry: { ...G.registry, ...PAGE_TYPES } };
 const INSPECTOR_ON = params.get("inspector") === "1";
 // The top-bar toggle reads GUI's stored preference: align it with the real start state (off unless ?inspector=1).
 if (G.getInspectorEnabled() !== INSPECTOR_ON) G.setInspectorEnabled(INSPECTOR_ON);
 const DEVTOOLS = { enabled: true, inspector: INSPECTOR_ON, adminView: false, inspectorToggleVisible: false };
 let mountHandle = null;
-function mountPage() { mountHandle = G.mount(SPEC, ROOT, RT ? { gui: MOUNT_GUI, me: P.me, runtime: RT, devtools: DEVTOOLS } : { gui: MOUNT_GUI, devtools: DEVTOOLS }); }
+function mountPage() { mountHandle = G.mount(RT ? SPEC_LIVE : SPEC_BOOT, ROOT, RT ? { gui: MOUNT_GUI, me: P.me, runtime: RT, devtools: DEVTOOLS } : { gui: MOUNT_GUI, devtools: DEVTOOLS }); }
 mountPage();
 
 try {
