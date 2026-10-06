@@ -605,7 +605,7 @@ function hud(s = "hud") {
     CHIP("trucks.working", { strong: true }, [V(s, "trucks.working"), " / ", V(s, "trucks.fleet")]),
     CHIP("trucks.balanced", { strong: true }, V(s, "trucks.balanced", { f: S })),
     CHIP("sim (adapter)", { adapter: true }, N("PortSimClock", `${s}/sim-clock`)),
-    CHIP("assumed: heavy", { adapter: true }, [h("strong", { key: "a" }, "25 km/h"), " · last-mile ", h("strong", { key: "b" }, "22 km/h")]),
+    CHIP("Average Speed · Heavy Load:", { adapter: true }, [h("strong", { key: "a" }, "25 km/h"), " · Last-Mile: ", h("strong", { key: "b" }, "22 km/h")]),
   ]);
 }
 
