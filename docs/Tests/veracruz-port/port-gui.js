@@ -283,16 +283,16 @@ function KernelLine({ compact }) {
   const { kernel } = useStore(ui);
   const ok = kernel.state === "ok", err = kernel.state === "error";
   if (compact) return h(Box, { component: "span", id: "tt-kernel", sx: { color: ok ? "success.main" : err ? "error.main" : "text.secondary" } }, ok ? `✓ this.me@${kernel.version} verified` : err ? "✗ kernel failed" : "kernel loading…");
+  if (ok) return null;
   return h(Typography, { id: "kernel-status", component: "div", sx: { fontFamily: MONO, fontSize: 9.5, color: err ? "error.main" : "text.secondary", px: 1.5, py: .75, borderBottom: 1, borderColor: "divider", lineHeight: 1.4, "& b": { color: err ? "error.main" : "success.main", fontWeight: 500 } }, dangerouslySetInnerHTML: { __html: kernel.text } });
 }
 function TourStrip(p) {
   const { step, tourOpen } = useStore(ui);
   const t = TOUR[step];
   return h(Box, { id: "tour-wrap", ...nodeAttrs(p), "data-open": tourOpen ? "1" : "0", sx: { flexShrink: 0, borderBottom: 1, borderColor: "divider" } },
-    h(Button, { id: "tour-toggle", fullWidth: true, onClick: () => setTourOpen(!tourOpen), "aria-expanded": tourOpen, "aria-controls": "tour-panel", title: "Show / hide kernel status and the guided tour",
+    h(Button, { id: "tour-toggle", fullWidth: true, onClick: () => setTourOpen(!tourOpen), "aria-expanded": tourOpen, "aria-controls": "tour-panel", title: "Show / hide the guided tour",
       sx: { justifyContent: "flex-start", gap: .75, px: 1.5, py: .9, borderRadius: 0, fontFamily: MONO, fontSize: 10, textTransform: "none", color: "text.secondary", whiteSpace: "nowrap", overflow: "hidden", borderBottom: tourOpen ? 1 : 0, borderColor: "divider" } },
-      h(KernelLine, { compact: true }), h(Box, { component: "span", sx: { color: "text.disabled" } }, "·"),
-      h(Box, { component: "span", id: "tt-step", sx: { color: "primary.main", overflow: "hidden", textOverflow: "ellipsis", minWidth: 0 } }, t.title),
+      h(Box, { component: "span", id: "tt-step", sx: { color: "primary.main", fontSize: 12.5, fontWeight: 500, letterSpacing: ".02em", overflow: "hidden", textOverflow: "ellipsis", minWidth: 0 } }, t.title),
       h(Box, { component: "span", id: "tt-caret", sx: { ml: "auto", color: "text.disabled", flexShrink: 0 } }, tourOpen ? "▾ hide" : "▸ tour")),
     h(Collapse, { in: tourOpen, id: "tour-panel" },
       h(KernelLine),
