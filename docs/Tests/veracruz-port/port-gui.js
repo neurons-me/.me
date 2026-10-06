@@ -1,10 +1,11 @@
-// Port of Veracruz: .GUI interface (this.gui feat/openstreetmap @27d7307, unreleased branch build, self-hosted UMD,
+// Port of Veracruz: .GUI interface (this.gui feat/openstreetmap @46197d9, unreleased branch build, self-hosted UMD,
 // SRI-pinned in the HTML and sha256-checked in the browser below). The map is GUI.OpenStreetMap.
 // over the real, unmodified this.me@4.1.0 kernel (sha256-checked here before import).
 //
 // Who owns what:
 //   KERNEL (this.me): every fact, every derived value, k, recomputed sets, explain().
-//   .GUI (this.gui):  topbar, panels, collapsibles, stepper, buttons, selects, progress bars and readouts.
+//   .GUI (this.gui):  topbar, panels, collapsibles, stepper, buttons, selects, progress bars and readouts;
+//                     GUI.mount + the opt-in Semantic Inspector (map markers are inspector nodes with kernel paths).
 //                     Every kernel readout is a GUI.useMeValue(path) subscription. A component re-reads
 //                     me(path) whenever that path is written or recomputed.
 //   ADAPTER (plain JS, not kernel): the traffic model (port-traffic.js), the animation loop, the canvas dots,
@@ -22,9 +23,9 @@ const KERNEL = {
   urls: ["https://cdn.jsdelivr.net/npm/this.me@4.1.0/dist/me.es.js", "https://unpkg.com/this.me@4.1.0/dist/me.es.js"],
 };
 // .GUI build: not on npm yet, so the exact UMD built from the PR head commit is self-hosted next to this file.
-const GUI_PIN = { label: "this.gui feat/openstreetmap @27d7307", branch: "feat/openstreetmap", commit: "27d7307416b5232e0438071fb0328d45a7e648b9", short: "27d7307",
-  pr: "https://github.com/neurons-me/GUI/pull/3", url: new URL("vendor/this.gui-27d7307.umd.js", import.meta.url).href,
-  sha256: "7bdda6da1a0346bc685ccc229ebf15655d1e7422a56438d3254dc73827178ce1", sri: "sha384-HZNIHttir3YhnR/I1bk7GPZ3hEcZLeB7AGPBww+ywFkzLV5FkSDVaSa6k3PTktnZ" };
+const GUI_PIN = { label: "this.gui feat/openstreetmap @46197d9", branch: "feat/openstreetmap", commit: "46197d9c7ba04a9a6eb516c90b7be0cb6ec5f355", short: "46197d9",
+  pr: "https://github.com/neurons-me/GUI/pull/3", url: new URL("vendor/this.gui-46197d9.umd.js", import.meta.url).href,
+  sha256: "3e3ec1f4df69112064a5ee50437cc6048b401a3e487a6c52a815c677482d64a7", sri: "sha384-SMmypABpjcJ9UyR5+Y4YLjVW+wLDj+rVdQqZPXXR+RbyKBl5tlRNQBZX6ydU0P/W" };
 
 const G = window.GUI, h = React.createElement;
 const { Box, Button, Typography, Chip, Progress, Paper, Link, TextField } = G.Atoms;
@@ -81,7 +82,7 @@ function createStore(state) {
 }
 const useStore = (s) => { React.useSyncExternalStore(s.subscribe, s.version); return s.state; };
 const VERIFY_HINT = "Flushes, then rebuilds a fresh kernel from the current facts + same formulas and compares every derived path; checks Σ counters = 500, trips done + pending + unscheduled = 1,000, above + within + below = 100, band limits, and adapter states vs kernel counters.";
-const ui = createStore({ step: 1, tourOpen: false, running: false, finished: false, speed: 10, me: null, kernel: { state: "loading", text: `Loading this.me@${KERNEL.version}…` }, verify: { tone: "", text: VERIFY_HINT }, seed: "—" });
+const ui = createStore({ step: 1, tourOpen: false, running: false, finished: false, speed: 10, me: null, runtime: null, kernel: { state: "loading", text: `Loading this.me@${KERNEL.version}…` }, verify: { tone: "", text: VERIFY_HINT }, seed: "—" });
 const sim = createStore({});   // bumped by the adapter at ~4 Hz: sim clock, page stats, feeds
 
 // ── kernel → .GUI subscribe bridge (adapter schedule, kernel values) ──
@@ -90,6 +91,7 @@ const sim = createStore({});   // bumped by the adapter at ~4 Hz: sim clock, pag
 // explicitly. The adapter announces exactly the paths the kernel reported for each write
 // (the written fact + explain().meta.recomputed), batched to the UI tick. Components then re-read me(path).
 const kListeners = new Map();
+const bridgeCallbacks = () => { let n = 0; for (const s of kListeners.values()) n += s.size; return n; };
 function kernelSubscribe(path, cb) {
   let s = kListeners.get(path); if (!s) kListeners.set(path, (s = new Set()));
   s.add(cb);
@@ -104,6 +106,10 @@ function announceKernelPaths() {
 function announceAll() { pendingPaths.clear(); for (const s of [...kListeners.values()]) [...s].forEach((cb) => cb()); }
 
 let ME = null, P = null, T = null;
+// ONE .GUI runtime per kernel instance, built once over the explicit bridge above and handed to every
+// GUI.MeRuntimeProvider and to GUI.mount (which feeds the Semantic Inspector), so nothing builds a second
+// runtime or subscribes twice, and nothing lets .GUI duck-type me.subscribe.
+let RT = null;
 let running = false;
 const speedOf = () => ui.state.speed;
 
@@ -214,6 +220,11 @@ const TOPBAR = G.registry.TopBar.resolve({ type: "TopBar", props: {
   title: ".me", logo: LOGO, homeTo: "https://neurons-me.github.io/", position: "static",
   sx: { "& img": { height: 34, width: 34, objectFit: "contain" } },
   elementsRight: [
+    // Opt-in .GUI Semantic Inspector (off by default; hidden at ≤1100 px, where its 440 px side panel has no room).
+    { type: "action", props: { element: h(Box, { component: "span", sx: { display: "inline-flex", "@media (max-width:1100px)": { display: "none" } } },
+      h(G.InspectorToggle, { id: "inspector-toggle", "data-gui-inspector-control": true, show: "both", label: "Inspector", onText: "on", offText: "off", size: "small", variant: "button",
+        title: "Semantic Inspector (.GUI devtools): turn on, click a map node, then Explain. Clicks inspect instead of acting while it is on.",
+        sx: { minWidth: 0, py: .25, px: 1, lineHeight: 1.4, fontFamily: MONO, fontSize: 11, textTransform: "none", color: "text.secondary", borderColor: "divider" } })) } },
     { type: "link", props: { label: "Smart Cities", href: "https://neurons-me.github.io/smart-cities/" } },
     { type: "link", props: { label: "Docs", href: "https://neurons-me.github.io/.me/docs/" } },
     { type: "link", props: { label: "GitHub", href: "https://github.com/neurons-me/.me" } },
@@ -504,11 +515,11 @@ const AdapterPanel = () => h(Panel, { id: "panel-adapter", title: "Adapter · pl
 const MutatePanel = () => h(Panel, { id: "panel-mutate", title: "Mutate · live traffic", tags: [["kernel", "kernel writes"]] }, h(RunControls), h(Stats), h(Writes));
 
 function Aside() {
-  const { me, kernel } = useStore(ui);
+  const { me, runtime, kernel } = useStore(ui);
   return h(Box, { component: "aside", sx: { bgcolor: "background.paper", display: "flex", flexDirection: "column", overflow: "hidden", minHeight: 0, borderLeft: 1, borderColor: "divider" } },
     h(TourStrip),
     h(Box, { sx: { flex: 1, overflowY: "auto", p: "10px 12px 14px", display: "flex", flexDirection: "column", gap: 1.25 } },
-      me ? h(G.MeRuntimeProvider, { me, subscribe: kernelSubscribe },
+      me ? h(G.MeRuntimeProvider, { me, runtime, subscribe: kernelSubscribe },
         h(MutatePanel), h(ExplainPanel), h(ShipsPanel), h(TrainPanel), h(TrucksPanel), h(LastMilePanel), h(StocksPanel), h(AdapterPanel))
         : h(Typography, { sx: { fontFamily: MONO, fontSize: 11, color: "text.secondary" } }, kernel.state === "error" ? "Nothing on this page runs without the kernel." : "Waiting for the kernel…")));
 }
@@ -600,25 +611,26 @@ function TrainMeta() { const work = G.useMeValue("train.1.hasWork"), rem = G.use
 function QueueMeta({ q }) { const n = G.useMeValue(`queues.${q}.length`), busy = G.useMeValue(`queues.${q}.busy`); return `${n} queued${busy ? "" : " · idle"}`; }
 function YardMeta() { useStore(sim); const heavy = G.useMeValue("trucks.heavy.available"); return `pool: ${fmt(heavy)} heavy · ${T ? T.units.filter((u) => u.home === 0 && u.st === "lmPool").length : 0} small (adapter)`; }
 function PortMeta() { const busy = G.useMeValue("port.busy"); return busy ? "port.busy = true" : "port.busy = false"; }
-// node positions are the page's existing map pixels, converted to lat/lon with the map's own projection
+// node positions are the page's existing map pixels, converted to lat/lon with the map's own projection.
+// `path` = the derived kernel path each marker is registered with (provenance.semanticPath) for the inspector.
 const NODES = [
-  { id: "n-port", kind: "port", x: 600.0, y: 255.4, shape: "circle", size: 28, gap: 7, icon: "anchor", color: "#7eb8c9", label: "VERACRUZ", Meta: PortMeta },
-  ...SHIPS_META.map((s, i) => ({ id: `n-ship${s.i}`, kind: "ship", x: [801.6, 888.0, 945.6][i], y: [168.6, 284.3, 382.6][i], shape: "rect", w: 32, hh: 18, gap: 5, icon: "directions_boat", color: "#6a9bb0", label: `SHIP[${s.i}] ${["coffee", "sugar", "TEU"][i]}`, Meta: ShipMeta, mp: { s } })),
-  { id: "n-train", kind: "train", x: 340.8, y: 342.2, shape: "rect", w: 36, hh: 16, gap: 5, place: "left", icon: "train", color: "#b0a06a", label: "TRAIN[1]", Meta: TrainMeta },
-  { id: "n-qimp", kind: "queue", x: 686.4, y: 313.2, shape: "circle", size: 24, gap: 4, icon: "local_shipping", color: "#7a7a90", label: "Q.IMPORT", Meta: QueueMeta, mp: { q: "import" } },
-  { id: "n-qexp", kind: "queue", x: 484.8, y: 284.3, shape: "circle", size: 24, gap: 4, place: "left", icon: "local_shipping", color: "#7a7a90", label: "Q.EXPORT", Meta: QueueMeta, mp: { q: "export" } },
-  { id: "n-yard", kind: "yard", x: 513.6, y: 457.8, shape: "square", size: 28, gap: 7, icon: "warehouse", color: "#7a9a7a", label: "CARGO YARD · CEDIS A", Meta: YardMeta },
-  { id: "n-cedisb", kind: "yard", x: 220.7, y: 529.8, shape: "square", size: 18, gap: 5, icon: "inventory_2", color: "#7a9a7a", label: "CEDIS B", meta: "example site" },
+  { id: "n-port", kind: "port", path: "port.busy", x: 600.0, y: 255.4, shape: "circle", size: 28, gap: 7, icon: "anchor", color: "#7eb8c9", label: "VERACRUZ", Meta: PortMeta },
+  ...SHIPS_META.map((s, i) => ({ id: `n-ship${s.i}`, kind: "ship", path: `ships.${s.i}.hasWork`, x: [801.6, 888.0, 945.6][i], y: [168.6, 284.3, 382.6][i], shape: "rect", w: 32, hh: 18, gap: 5, icon: "directions_boat", color: "#6a9bb0", label: `SHIP[${s.i}] ${["coffee", "sugar", "TEU"][i]}`, Meta: ShipMeta, mp: { s } })),
+  { id: "n-train", kind: "train", path: "train.1.hasWork", x: 340.8, y: 342.2, shape: "rect", w: 36, hh: 16, gap: 5, place: "left", icon: "train", color: "#b0a06a", label: "TRAIN[1]", Meta: TrainMeta },
+  { id: "n-qimp", kind: "queue", path: "queues.import.busy", x: 686.4, y: 313.2, shape: "circle", size: 24, gap: 4, icon: "local_shipping", color: "#7a7a90", label: "Q.IMPORT", Meta: QueueMeta, mp: { q: "import" } },
+  { id: "n-qexp", kind: "queue", path: "queues.export.busy", x: 484.8, y: 284.3, shape: "circle", size: 24, gap: 4, place: "left", icon: "local_shipping", color: "#7a7a90", label: "Q.EXPORT", Meta: QueueMeta, mp: { q: "export" } },
+  { id: "n-yard", kind: "yard", path: "cargo.bulkTons", x: 513.6, y: 457.8, shape: "square", size: 28, gap: 7, icon: "warehouse", color: "#7a9a7a", label: "CARGO YARD · CEDIS A", Meta: YardMeta },
+  { id: "n-cedisb", kind: "yard", path: "trips.pending", x: 220.7, y: 529.8, shape: "square", size: 18, gap: 5, icon: "inventory_2", color: "#7a9a7a", label: "CEDIS B", meta: "example site" },
 ].map((n) => ({ ...n, ...OSM_PROJ.unproject(n.x, n.y) }));
 const NodeMarker = React.memo(function NodeMarker({ n }) {
-  return h(OSM.Marker, { id: n.id, className: `node ${n.kind}`, lat: n.lat, lon: n.lon, shape: n.shape, size: n.size, width: n.w, height: n.hh,
+  return h(OSM.Marker, { id: n.id, nodeId: `map.${n.id}`, provenance: { semanticPath: n.path }, className: `node ${n.kind}`, lat: n.lat, lon: n.lon, shape: n.shape, size: n.size, width: n.w, height: n.hh,
     color: n.color, icon: n.icon, iconColor: n.color, label: n.label, labelPlacement: n.place || "right", labelOffset: n.gap,
     meta: n.Meta ? h(NeedsKernel, { C: n.Meta, ...(n.mp || {}) }) : n.meta });
 });
 let mapMounted = false;
-const MapLayer = React.memo(function MapLayer({ me }) {
+const MapLayer = React.memo(function MapLayer({ me, runtime }) {
   React.useEffect(() => { mapMounted = true; lastHlStep = 0; applyMapHighlights(); renderMapLabels(); return () => { mapMounted = false; }; }, []);
-  return h(G.MeRuntimeProvider, { me, subscribe: kernelSubscribe },
+  return h(G.MeRuntimeProvider, { me, runtime, subscribe: kernelSubscribe },
     h(OSM, { ...FRAME, basemap: BASEMAP, source: OSM_SOURCE, ariaLabel: "Veracruz port operations", attribution: { position: "bottom-right" } },
       h("g", { id: "edges" }, EDGES.map(([id, cls, d]) => h("path", { key: id, id, className: cls, d }))),
       h("g", { id: "exit-labels" }, EXIT_LABELS.map((l) => h("text", { key: l.key, className: "exit-label", x: l.x, y: l.y, textAnchor: l.anchor }, l.text))),
@@ -627,18 +639,21 @@ const MapLayer = React.memo(function MapLayer({ me }) {
       h(OSM.Canvas, { id: "traffic", className: "traffic", onFrame: onMapFrame })));
 });
 function MapPanel() {
-  const { me } = useStore(ui);
+  const { me, runtime } = useStore(ui);
   return h(Box, { className: "map-wrap", sx: { position: "relative", overflow: "hidden", bgcolor: "#0b0d10", minHeight: 300 } },
-    h(MapLayer, { me }),
-    me ? h(G.MeRuntimeProvider, { me, subscribe: kernelSubscribe }, h(Legend), h(Hud)) : null);
+    h(MapLayer, { me, runtime }),
+    me ? h(G.MeRuntimeProvider, { me, runtime, subscribe: kernelSubscribe }, h(Legend), h(Hud)) : null);
 }
 
 const Footer = () => h(Box, { component: "footer", sx: { px: 2, py: .9, borderTop: 1, borderColor: "divider", fontFamily: MONO, fontSize: 10, color: "text.disabled", display: "flex", justifyContent: "space-between", gap: 1.25, flexWrap: "wrap", "& a": { color: "text.secondary" } } },
   h("span", null, "© ", h(Link, { href: "https://www.openstreetmap.org/copyright", target: "_blank", rel: "noopener", underline: "hover" }, "OpenStreetMap"), " contributors · static SVG basemap · no live tiles"),
   h("span", null, h(KernelLink, { id: "kver-foot", after: " (unmodified)", minCh: 44 }), " · ", h(Link, { href: GUI_PIN.pr, target: "_blank", rel: "noopener", underline: "hover" }, `${GUI_PIN.label}`), " (unreleased branch build, self-hosted, SRI + sha256) · ", h(Link, { href: "veracruz-port/", underline: "hover" }, "build notes")));
 
+// The page theme is handed to GUI.mount (which wraps the tree, inspector included, in gui.Theme), so the
+// App itself carries no second Theme.
+const PageTheme = ({ children }) => h(G.Theme, { initialThemeId: "neurons.me", initialMode: "dark" }, children);
 function App() {
-  return h(G.Theme, { initialThemeId: "neurons.me", initialMode: "dark" },
+  return (
     h(Box, { sx: { display: "flex", flexDirection: "column", height: "100vh", minHeight: 640, bgcolor: "background.default", color: "text.primary", "@media (max-width:1000px)": { height: "auto" } } },
       TOPBAR, h(TitleStrip), h(Glossary),
       h(Box, { className: "layout", sx: { flex: 1, display: "grid", gridTemplateColumns: "1fr 380px", minHeight: 0, "@media (max-width:1000px)": { gridTemplateColumns: "1fr", gridTemplateRows: "minmax(300px, 42vh) auto" } } },
@@ -774,9 +789,11 @@ function setRunning(on, finished = false) {
 function resetKernel() {
   P = createPortKernel(ME);
   T = createTraffic({ kernel: P, ROUTES, KEY, PROJ });
+  RT = G.createMeRuntime(P.me, { subscribe: kernelSubscribe });
   flushLog = []; lastFlush = null; flushCount = 0; writeCount = 0; maxMoving = 0; hitPaths.clear(); pendingPaths.clear();
   running = false;
-  ui.set({ me: P.me, seed: P.seedLog.join("\n"), verify: { tone: "", text: VERIFY_HINT }, running: false, finished: false });
+  mountPage();
+  ui.set({ me: P.me, runtime: RT, seed: P.seedLog.join("\n"), verify: { tone: "", text: VERIFY_HINT }, running: false, finished: false });
   uiRefreshAll();
 }
 // adapter-vs-kernel cross-checks passed to verifyFromScratch (after a flush)
@@ -819,7 +836,16 @@ const params = new URLSearchParams(location.search);
   setTourOpen(params.has("step") || stored === "1", params.has("step"));
   if (params.get("speed")) ui.set({ speed: Number(params.get("speed")) || 10 });
 }
-ReactDOM.createRoot(document.getElementById("root")).render(h(App));
+// GUI.mount instead of ReactDOM.createRoot: same App, plus .GUI's Semantic Inspector (lazy, opt-in).
+// Re-called after each kernel reset so the inspector sees the current kernel and the SAME runtime (RT).
+const SPEC = { type: App }, ROOT = document.getElementById("root"), MOUNT_GUI = { ...G, Theme: PageTheme };
+const INSPECTOR_ON = params.get("inspector") === "1";
+// The top-bar toggle reads GUI's stored preference: align it with the real start state (off unless ?inspector=1).
+if (G.getInspectorEnabled() !== INSPECTOR_ON) G.setInspectorEnabled(INSPECTOR_ON);
+const DEVTOOLS = { enabled: true, inspector: INSPECTOR_ON, adminView: false, inspectorToggleVisible: false };
+let mountHandle = null;
+function mountPage() { mountHandle = G.mount(SPEC, ROOT, RT ? { gui: MOUNT_GUI, me: P.me, runtime: RT, devtools: DEVTOOLS } : { gui: MOUNT_GUI, devtools: DEVTOOLS }); }
+mountPage();
 
 try {
   const [{ mod, host, hash, url, version }, guiHash] = await Promise.all([loadKernel(), verifyGuiBuild()]);
@@ -832,7 +858,8 @@ try {
     get P() { return P; }, get T() { return T; },
     verify,
     pause: () => setRunning(false),
-    gui: { version: G.version, build: GUI_PIN, get announced() { return announced; }, listeners: () => kListeners.size },
+    gui: { version: G.version, build: GUI_PIN, get announced() { return announced; }, listeners: () => kListeners.size, callbacks: bridgeCallbacks,
+      get runtime() { return RT; }, unmount: () => mountHandle?.unmount(), remount: () => mountPage() },
     // every GUI readout bound to a .me path, compared with a direct kernel read (after React commits)
     // (UI ticks at 4 Hz, so while traffic runs the readouts trail the kernel by up to 250 ms: pause first)
     async consistency() {
