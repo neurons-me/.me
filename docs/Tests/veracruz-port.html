@@ -251,6 +251,30 @@
     display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap;
   }
   footer a { color: var(--muted); text-decoration: none; }
+  /* kernel vs adapter labels */
+  .src-tag { font-family: var(--mono); font-size: 8px; letter-spacing: .08em; text-transform: uppercase; padding: 1px 5px; border-radius: 2px; margin-left: 6px; vertical-align: middle; }
+  .src-tag.kernel { color: var(--accent); border: 1px solid #2a4550; }
+  .src-tag.adapter { color: var(--warn); border: 1px dashed #5a4a30; }
+  .panel.adapter { border-style: dashed; border-color: #3a3024; }
+  .kernel-status { font-family: var(--mono); font-size: 9.5px; color: var(--muted); padding: 6px 12px; border-bottom: 1px solid var(--border); background: #0b0e12; line-height: 1.4; }
+  .kernel-status b { color: var(--ok); font-weight: 500; }
+  .kernel-status.err b { color: var(--hot); }
+  .writes { list-style: none; font-family: var(--mono); font-size: 9.5px; margin-top: 6px; }
+  .writes li { padding: 4px 0; border-bottom: 1px solid #151a21; }
+  .writes li:last-child { border-bottom: none; }
+  .writes code { color: #dce8ef; }
+  .writes .wk { color: var(--warn); margin-left: 6px; }
+  .writes .wr { display: block; color: var(--dim); margin-top: 2px; word-break: break-all; }
+  .writes .wr .chg { color: var(--accent); }
+  .writes li.empty { color: var(--dim); }
+  pre.seed { font-family: var(--mono); font-size: 9px; color: var(--muted); max-height: 160px; overflow: auto; white-space: pre; margin-top: 6px; background: #0a0c0f; border: 1px solid #151a20; border-radius: 3px; padding: 6px 7px; }
+  details.raw summary { cursor: pointer; font-family: var(--mono); font-size: 9.5px; color: var(--muted); margin-top: 6px; }
+  details.raw pre { font-family: var(--mono); font-size: 9px; color: var(--muted); white-space: pre-wrap; word-break: break-all; max-height: 220px; overflow: auto; background: #0a0c0f; border: 1px solid #151a20; border-radius: 3px; padding: 6px; margin-top: 4px; }
+  select.ex-select { background: #0a0c0f; color: var(--text); border: 1px solid var(--border); font-family: var(--mono); font-size: 10px; padding: 3px 5px; border-radius: 3px; margin-bottom: 6px; width: 100%; }
+  .verify-out { font-family: var(--mono); font-size: 9.5px; color: var(--muted); margin-top: 6px; }
+  .verify-out.ok { color: var(--ok); } .verify-out.bad { color: var(--hot); }
+  .node .node-meta, .node .node-label { paint-order: stroke; stroke: #0b0d10; stroke-width: 3px; }
+  .glossary code { font-size: 9.5px; color: var(--accent); }
 </style>
 </head>
 <body data-tour="1">
@@ -259,19 +283,19 @@
     <span class="sep">|</span>
     <span class="ns">me://port</span>
     <span class="tag">port operations · guided</span>
-    <span class="hint">facts · rules · mutation · wave · explain · <a href="https://neurons-me.github.io/smart-cities/" style="color:var(--accent);text-decoration:none">Smart Cities ↗</a></span>
+    <span class="hint">runs on this.me@4.1.0 · facts · rules · wave · explain · <a href="https://neurons-me.github.io/smart-cities/" style="color:var(--accent);text-decoration:none">Smart Cities ↗</a></span>
   </header>
 
   <div class="glossary">
     <details open>
       <summary>What is this?</summary>
-      <p>Port of Veracruz as a .me nervous system: stocks, ships, train, truck queues — geography is OSM; meaning is paths.</p>
+      <p>Port of Veracruz on the real .me kernel: ships, train, truck queues and stocks are facts; totals and flags are kernel formulas. OSM is just the map.</p>
     </details>
-    <details><summary>fact</summary><p>A stated value you write — e.g. cargo.coffee = 100000. It does not compute itself.</p></details>
-    <details><summary>rule / derived</summary><p>Computed from facts — e.g. importRemaining = sum(ships.remainingTons); busy = queueLength &gt; 0.</p></details>
-    <details><summary>mutation</summary><p>One truck cycle changes facts; derived paths update only along the dependency wave.</p></details>
-    <details><summary>k</summary><p>Size of the affected set for a mutation — only those paths light up, not the whole port.</p></details>
-    <details><summary>explain</summary><p>Why a derived value changed: expression, inputs, and the mutation that caused it.</p></details>
+    <details><summary>fact</summary><p>A value you write — <code>me.cargo.coffee(100000)</code>. It never computes itself.</p></details>
+    <details><summary>rule / derived</summary><p>A kernel <code>=</code> formula — <code>importRemaining = ships[1].remainingTons + ships[2].remainingTons + ships[3].remainingTons</code>.</p></details>
+    <details><summary>mutation</summary><p>One truck cycle = a few real kernel writes. Each write recomputes only its dependents.</p></details>
+    <details><summary>k</summary><p>How many derived paths the kernel recomputed for a write (its affected set) — read from the kernel, not counted by the UI.</p></details>
+    <details><summary>explain</summary><p><code>me.explain(path)</code>: expression, inputs with values, and the write (sourcePath) that last recomputed it.</p></details>
   </div>
 
   <div class="layout">
@@ -541,69 +565,69 @@
           <g class="node port" id="n-port" transform="translate(600.0,255.4)">
             <circle class="node-core" r="14"/>
             <text class="icon-txt" text-anchor="middle" y="3">PORT</text>
-            <text class="node-label" x="14" y="-6">VERACRUZ</text>
-            <text class="node-meta" x="14" y="6" id="port-status">3 ships · 1 train</text>
+            <text class="node-label" x="21" y="-6">VERACRUZ</text>
+            <text class="node-meta" x="21" y="6" id="port-status">3 ships · 1 train</text>
           </g>
 
           <!-- SHIPS -->
           <g class="node ship" id="n-ship1" transform="translate(801.6,168.6)">
             <rect class="node-core" x="-16" y="-9" width="32" height="18" rx="3"/>
             <text class="icon-txt" text-anchor="middle" y="3">SHIP1</text>
-            <text class="node-label" x="14" y="-4">SHIP[1] coffee</text>
-            <text class="node-meta" x="14" y="8" id="ship1-meta">unloading · —</text>
+            <text class="node-label" x="21" y="-4">SHIP[1] coffee</text>
+            <text class="node-meta" x="21" y="9" id="ship1-meta">unloading · —</text>
           </g>
           <g class="node ship" id="n-ship2" transform="translate(888.0,284.3)">
             <rect class="node-core" x="-16" y="-9" width="32" height="18" rx="3"/>
             <text class="icon-txt" text-anchor="middle" y="3">SHIP2</text>
-            <text class="node-label" x="14" y="-4">SHIP[2] sugar</text>
-            <text class="node-meta" x="14" y="8" id="ship2-meta">unloading · —</text>
+            <text class="node-label" x="21" y="-4">SHIP[2] sugar</text>
+            <text class="node-meta" x="21" y="9" id="ship2-meta">unloading · —</text>
           </g>
           <g class="node ship" id="n-ship3" transform="translate(945.6,382.6)">
             <rect class="node-core" x="-16" y="-9" width="32" height="18" rx="3"/>
             <text class="icon-txt" text-anchor="middle" y="3">SHIP3</text>
-            <text class="node-label" x="14" y="-4">SHIP[3] TEU</text>
-            <text class="node-meta" x="14" y="8" id="ship3-meta">unloading · —</text>
+            <text class="node-label" x="21" y="-4">SHIP[3] TEU</text>
+            <text class="node-meta" x="21" y="9" id="ship3-meta">unloading · —</text>
           </g>
 
           <!-- TRAIN -->
           <g class="node train" id="n-train" transform="translate(340.8,342.2)">
             <rect class="node-core" x="-18" y="-8" width="36" height="16" rx="3"/>
             <text class="icon-txt" text-anchor="middle" y="3">TRAIN</text>
-            <text class="node-label" text-anchor="end" x="-16" y="-4">TRAIN[1]</text>
-            <text class="node-meta" text-anchor="end" x="-16" y="8" id="train-meta">loading · —</text>
+            <text class="node-label" text-anchor="end" x="-23" y="-4">TRAIN[1]</text>
+            <text class="node-meta" text-anchor="end" x="-23" y="8" id="train-meta">loading · —</text>
           </g>
 
           <!-- QUEUES -->
           <g class="node queue" id="n-qimp" transform="translate(686.4,313.2)">
             <circle class="node-core" r="12"/>
-            <text class="node-label" x="11" y="-4">Q.IMPORT</text>
-            <text class="node-meta" x="11" y="8" id="qimp-meta">0 trucks</text>
+            <text class="node-label" x="16" y="-4">Q.IMPORT</text>
+            <text class="node-meta" x="16" y="9" id="qimp-meta">0 trucks</text>
           </g>
           <g class="node queue" id="n-qexp" transform="translate(484.8,284.3)">
             <circle class="node-core" r="12"/>
-            <text class="node-label" text-anchor="end" x="-11" y="-4">Q.EXPORT</text>
-            <text class="node-meta" text-anchor="end" x="-11" y="8" id="qexp-meta">0 trucks</text>
+            <text class="node-label" text-anchor="end" x="-16" y="-4">Q.EXPORT</text>
+            <text class="node-meta" text-anchor="end" x="-16" y="9" id="qexp-meta">0 trucks</text>
           </g>
 
           <!-- YARD stocks -->
           <g class="node yard" id="n-yard" transform="translate(513.6,457.8)">
             <rect class="node-core" x="-14" y="-14" width="28" height="28" rx="3"/>
             <text class="icon-txt" text-anchor="middle" y="3">YARD</text>
-            <text class="node-label" x="14" y="-6">CARGO YARD</text>
-            <text class="node-meta" x="14" y="6" id="yard-meta">stocks</text>
+            <text class="node-label" x="21" y="-6">CARGO YARD</text>
+            <text class="node-meta" x="21" y="6" id="yard-meta">stocks</text>
           </g>
         </g>
       </svg>
-
       <div class="hud">
         <div class="hud-chip">import left <strong class="imp" id="hud-imp">—</strong></div>
         <div class="hud-chip">export left <strong class="exp" id="hud-exp">—</strong></div>
         <div class="hud-chip">trucks <strong id="hud-trucks">—</strong></div>
-        <div class="hud-chip">tick <strong id="hud-tick">0</strong></div>
+        <div class="hud-chip">cycle <strong id="hud-tick">0</strong> <span style="color:var(--warn)">(adapter)</span></div>
       </div>
     </div>
 
     <aside>
+      <div class="kernel-status" id="kernel-status">Loading this.me@4.1.0…</div>
       <div class="tour">
         <div class="tour-steps" id="tour-steps"></div>
         <div class="tour-title" id="tour-title">Step 1</div>
@@ -617,80 +641,79 @@
 
       <div class="aside-scroll">
         <div>
-          <h2>Stocks · me.cargo</h2>
-          <div class="panel" id="panel-stocks">
-            <ul class="kv">
-              <li><span class="k">coffee <span class="tag">fact</span></span><span class="v" id="v-coffee">100,000 t</span></li>
-              <li><span class="k">sugar <span class="tag">fact</span></span><span class="v" id="v-sugar">200,000 t</span></li>
-              <li><span class="k">containers <span class="tag">fact</span></span><span class="v" id="v-teu">5,000</span></li>
-              <li><span class="k">trucks.fleet <span class="tag">fact</span></span><span class="v" id="v-fleet">500</span></li>
-            </ul>
-            <div class="code-line">me.cargo.coffee(<em>100000</em>) · sugar(<em>200000</em>) · containers(<em>5000</em>)</div>
+          <h2>Mutate · truck cycle <span class="src-tag kernel">kernel writes</span></h2>
+          <div class="panel" id="panel-mutate">
+            <div class="btn-row">
+              <button type="button" class="primary" id="btn-tick" disabled>Run 1 truck cycle<br/><span class="sub">real me.… writes</span></button>
+              <button type="button" class="ghost" id="btn-auto" disabled>Auto ▸</button>
+              <button type="button" class="ghost" id="btn-reset" disabled>Reset</button>
+            </div>
+            <div class="status-row">
+              <span class="k-badge" id="k-badge">k —</span>
+              <span class="chip" id="chip-wave">no writes yet</span>
+            </div>
+            <ul class="writes" id="writes"><li class="empty">Executed calls appear here, each with the kernel's own k and recomputed paths.</li></ul>
           </div>
         </div>
 
         <div>
-          <h2>Ships · unloading (import)</h2>
+          <h2>Explain · why <span class="src-tag kernel">me.explain()</span></h2>
+          <div class="panel" id="panel-explain">
+            <select class="ex-select" id="ex-select" aria-label="Path to explain">
+              <option value="flows.importRemaining">flows.importRemaining</option>
+              <option value="flows.exportRemaining">flows.exportRemaining</option>
+              <option value="flows.importProgress">flows.importProgress</option>
+              <option value="trucks.inQueue">trucks.inQueue</option>
+              <option value="queues.import.busy">queues.import.busy</option>
+              <option value="port.busy">port.busy</option>
+              <option value="cargo.bulkTons">cargo.bulkTons</option>
+            </select>
+            <div class="explain-grid" id="explain-grid"></div>
+            <div class="code-line" id="explain-code">me.explain("flows.importRemaining")</div>
+            <details class="raw"><summary>raw explain() JSON</summary><pre id="explain-raw">—</pre></details>
+          </div>
+        </div>
+
+        <div>
+          <h2>Ships · unloading (import) <span class="src-tag kernel">kernel</span></h2>
           <div class="panel" id="panel-ships">
             <ul class="kv" id="ships-kv"></ul>
-            <div class="formula">importRemaining = Σ ships[i].remaining · <em id="f-imp">—</em></div>
+            <div class="formula">flows.importRemaining = ships[1].remainingTons + ships[2].remainingTons + ships[3].remainingTons = <em id="f-imp">—</em> t</div>
             <div class="bar" id="bar-imp"><i id="bar-imp-i"></i></div>
           </div>
         </div>
 
         <div>
-          <h2>Train · loading (export)</h2>
+          <h2>Train · loading (export) <span class="src-tag kernel">kernel</span></h2>
           <div class="panel" id="panel-train">
             <ul class="kv" id="train-kv"></ul>
-            <div class="formula">exportRemaining = train.remainingToLoad · <em id="f-exp">—</em></div>
+            <div class="formula">flows.exportRemaining = train[1].remainingToLoad = <em id="f-exp">—</em> t</div>
             <div class="bar exp" id="bar-exp"><i id="bar-exp-i"></i></div>
           </div>
         </div>
 
         <div>
-          <h2>Queues · trucks</h2>
+          <h2>Queues · trucks <span class="src-tag kernel">kernel</span></h2>
           <div class="panel" id="panel-queues">
-            <ul class="kv">
-              <li><span class="k">queues.import.length <span class="tag">rule</span></span><span class="v" id="v-qimp">0</span></li>
-              <li><span class="k">queues.export.length <span class="tag">rule</span></span><span class="v" id="v-qexp">0</span></li>
-              <li><span class="k">trucks.available <span class="tag">fact</span></span><span class="v" id="v-avail">0</span></li>
-              <li><span class="k">trucks.inQueue <span class="tag">rule</span></span><span class="v" id="v-inq">0</span></li>
-              <li><span class="k">busy <span class="tag">rule</span></span><span class="v" id="v-busy">false</span></li>
-            </ul>
-            <div class="formula">busy = (import.length + export.length) &gt; 0<br/>progress = 1 − remaining / total</div>
+            <ul class="kv" id="queues-kv"></ul>
+            <div class="formula">queues.*.busy = length &gt; 0 · trucks.inQueue = queues.import.length + queues.export.length</div>
           </div>
         </div>
 
         <div>
-          <h2>Mutate · truck cycle</h2>
-          <div class="panel" id="panel-mutate">
-            <div class="btn-row">
-              <button type="button" class="primary" id="btn-tick">
-                Step 1 truck cycle<br/><span class="sub">import or export haul</span>
-              </button>
-              <button type="button" class="ghost" id="btn-auto">Auto ▸</button>
-              <button type="button" class="ghost" id="btn-reset">Reset</button>
-            </div>
-            <div class="code-line" id="code-mutate">me.queues.import.nextTruck().complete()</div>
-            <div class="status-row">
-              <span class="k-badge">k ≤ 4</span>
-              <span class="chip" id="chip-wave">wave idle</span>
-            </div>
+          <h2>Stocks · me.cargo <span class="src-tag kernel">kernel</span></h2>
+          <div class="panel" id="panel-stocks">
+            <ul class="kv" id="stocks-kv"></ul>
+            <details class="raw"><summary>seed: exact calls run at load / reset</summary><pre class="seed" id="seed-code">—</pre></details>
           </div>
         </div>
 
         <div>
-          <h2>Explain · why</h2>
-          <div class="panel" id="panel-explain">
-            <div class="explain-grid">
-              <div class="row"><span class="lbl">watching</span><span class="val" id="ex-watch">flows.importRemaining</span></div>
-              <div class="row"><span class="lbl">value</span><span class="val" id="ex-value">—</span></div>
-              <div class="row"><span class="lbl">expression</span><span class="val">Σ ships[i].remainingTons</span></div>
-              <div class="row"><span class="lbl">depends on</span><span class="val" id="ex-deps">ships[*].remainingTons</span></div>
-              <div class="row"><span class="lbl">because</span><span class="val" id="ex-because">no mutation yet</span></div>
-              <div class="row"><span class="lbl">source</span><span class="val" id="ex-source">quiet</span></div>
-            </div>
-            <div class="code-line">me.flows.importRemaining.explain()</div>
+          <h2>Adapter · plain JS <span class="src-tag adapter">not kernel</span></h2>
+          <div class="panel adapter" id="panel-adapter">
+            <p style="font-size:11px;line-height:1.45;color:var(--muted)">The scheduler decides <em>what to write</em>; the kernel holds every value and decides <em>what recomputes</em>. Adapter only: alternate import/export, pick the ship with most <code>remainingTons</code>, compute the next value (current − haul, queue ±1), rejoin the queue or return to the pool, animate, Auto timer.</p>
+            <div class="btn-row" style="margin-top:8px"><button type="button" class="ghost" id="btn-verify" disabled>Verify: rebuild kernel from facts</button></div>
+            <div class="verify-out" id="verify-out">Rebuilds a fresh kernel from the current facts + same formulas and compares every derived path.</div>
           </div>
         </div>
       </div>
@@ -699,504 +722,329 @@
 
   <footer>
     <span>© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors · static SVG basemap · no live tiles</span>
-    <span>me://port · Veracruz operations tutorial · <a href="veracruz-port/README.html">build notes</a></span>
+    <span>this.me@4.1.0 (unmodified) · <a href="veracruz-port/README.html">build notes</a></span>
   </footer>
 
-<script>
+<script type="module">
+// ── Kernel: published this.me@4.1.0, unmodified, hash-pinned ──
+import { createPortKernel, SHIPS, TRAIN } from "./veracruz-port/port-sim.js";
 
-(function () {
-  const $ = (s) => document.querySelector(s);
-  const $$ = (s) => [...document.querySelectorAll(s)];
+const KERNEL = {
+  version: "4.1.0",
+  sha256: "47cc8f9a9b5ee2921a59023d400e694d6c9b9f80a0782db850b06156cbb46afa",
+  urls: [
+    "https://cdn.jsdelivr.net/npm/this.me@4.1.0/dist/me.es.js",
+    "https://unpkg.com/this.me@4.1.0/dist/me.es.js",
+  ],
+};
 
-  // ---- Initial .me state (facts) ----
-  function seed() {
-    return {
-      port: { name: "Veracruz" },
-      cargo: { coffee: 100000, sugar: 200000, containers: 5000 },
-      trucks: { fleet: 500, available: 500 },
-      ships: [
-        { id: 1, cargo: "coffee", unit: "t", total: 40000, remaining: 40000, haul: 200, status: "unloading" },
-        { id: 2, cargo: "sugar", unit: "t", total: 60000, remaining: 60000, haul: 200, status: "unloading" },
-        { id: 3, cargo: "containers", unit: "TEU", total: 2000, remaining: 2000, haul: 10, status: "unloading" }
-      ],
-      train: { id: 1, status: "loading", total: 50000, remaining: 50000, haul: 200, commodity: "sugar" },
-      queues: {
-        import: [], // truck ids waiting to haul from ships
-        export: []
-      },
-      tick: 0,
-      nextTruckId: 1,
-      lastMutation: null,
-      lastExplain: null
-    };
-  }
+const $ = (s) => document.querySelector(s);
+const $$ = (s) => [...document.querySelectorAll(s)];
+const fmt = (n) => (typeof n === "number" ? n.toLocaleString("en-US", { maximumFractionDigits: 2 }) : String(n));
+const pct = (x) => (typeof x === "number" ? (x * 100).toFixed(1) + "%" : "—");
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
-  let S = seed();
-  let animating = false;
-  let autoTimer = null;
-  let tourStep = 1;
+async function sha256Hex(text) {
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+  return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
 
-  // Derived rules
-  function rules(s) {
-    const importRemaining = s.ships.reduce((a, sh) => a + sh.remaining, 0);
-    const importTotal = s.ships.reduce((a, sh) => a + sh.total, 0);
-    const exportRemaining = s.train.remaining;
-    const exportTotal = s.train.total;
-    const qImp = s.queues.import.length;
-    const qExp = s.queues.export.length;
-    const inQueue = qImp + qExp;
-    const busy = inQueue > 0 || s.ships.some(sh => sh.remaining > 0 && sh.status === "unloading") || s.train.remaining > 0;
-    const importProgress = 1 - importRemaining / importTotal;
-    const exportProgress = 1 - exportRemaining / exportTotal;
-    return {
-      importRemaining, importTotal, exportRemaining, exportTotal,
-      qImp, qExp, inQueue, busy, importProgress, exportProgress,
-      available: s.trucks.available
-    };
-  }
-
-  function fmt(n) {
-    return n.toLocaleString("en-US");
-  }
-
-  function refillQueues() {
-    // Keep queues topped up while work remains — assign idle trucks into import/export
-    const R = rules(S);
-    const needImp = S.ships.some(sh => sh.remaining > 0);
-    const needExp = S.train.remaining > 0;
-    // Target queue depths
-    const targetImp = needImp ? 8 : 0;
-    const targetExp = needExp ? 6 : 0;
-    while (S.queues.import.length < targetImp && S.trucks.available > 0) {
-      S.trucks.available--;
-      S.queues.import.push({ id: S.nextTruckId++, kind: "import" });
-    }
-    while (S.queues.export.length < targetExp && S.trucks.available > 0) {
-      S.trucks.available--;
-      S.queues.export.push({ id: S.nextTruckId++, kind: "export" });
+async function loadKernel() {
+  const errors = [];
+  for (const url of KERNEL.urls) {
+    try {
+      const res = await fetch(url, { cache: "force-cache" });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const text = await res.text();
+      const hash = await sha256Hex(text);
+      if (hash !== KERNEL.sha256) throw new Error(`sha256 mismatch: got ${hash}`);
+      const blobUrl = URL.createObjectURL(new Blob([text], { type: "text/javascript" }));
+      const mod = await import(blobUrl);
+      URL.revokeObjectURL(blobUrl);
+      return { mod, host: new URL(url).host, hash };
+    } catch (e) {
+      errors.push(`${url}: ${e?.message || e}`);
     }
   }
+  throw new Error("Could not load this.me@" + KERNEL.version + " — " + errors.join(" | "));
+}
 
-  function render() {
-    const R = rules(S);
-    // stocks
-    $("#v-coffee").textContent = fmt(S.cargo.coffee) + " t";
-    $("#v-sugar").textContent = fmt(S.cargo.sugar) + " t";
-    $("#v-teu").textContent = fmt(S.cargo.containers);
-    $("#v-fleet").textContent = fmt(S.trucks.fleet);
-    $("#v-avail").textContent = fmt(S.trucks.available);
-    $("#v-qimp").textContent = String(R.qImp);
-    $("#v-qexp").textContent = String(R.qExp);
-    $("#v-inq").textContent = String(R.inQueue);
-    $("#v-busy").textContent = String(R.busy);
+let ME = null, P = null, animating = false, autoTimer = null, tourStep = 1;
+let lastCycle = null;
 
-    // ships panel
-    const sk = $("#ships-kv");
-    sk.innerHTML = S.ships.map(sh => {
-      const done = sh.remaining <= 0;
-      return `<li class="${done ? "" : ""}"><span class="k">ships[${sh.id}].remaining <span class="tag">fact</span></span><span class="v">${fmt(sh.remaining)} ${sh.unit}</span></li>`;
-    }).join("");
-    $("#f-imp").textContent = fmt(R.importRemaining);
-    $("#bar-imp-i").style.width = Math.round(R.importProgress * 100) + "%";
+// Map kernel paths → map nodes (for lighting the kernel's affected set)
+const NODE_PREFIX = [
+  ["ships.1.", "n-ship1"], ["ships.2.", "n-ship2"], ["ships.3.", "n-ship3"], ["train.1.", "n-train"],
+  ["queues.import.", "n-qimp"], ["queues.export.", "n-qexp"], ["cargo.", "n-yard"],
+  ["flows.", "n-port"], ["port.", "n-port"], ["trucks.", "n-port"],
+];
+const nodeOfPath = (p) => (NODE_PREFIX.find(([pre]) => p.startsWith(pre)) || [])[1];
+const EDGE_ENDS = {
+  "e-ship1-q": ["n-ship1", "n-qimp"], "e-ship2-q": ["n-ship2", "n-qimp"], "e-ship3-q": ["n-ship3", "n-qimp"],
+  "e-qimp-port": ["n-qimp", "n-port"], "e-yard-qexp": ["n-yard", "n-qexp"], "e-qexp-train": ["n-qexp", "n-train"],
+  "e-port-yard": ["n-port", "n-yard"], "e-port-train": ["n-port", "n-train"],
+};
 
-    // train
-    $("#train-kv").innerHTML = `
-      <li><span class="k">train[1].status <span class="tag">fact</span></span><span class="v">${S.train.remaining <= 0 ? "done" : S.train.status}</span></li>
-      <li><span class="k">train[1].remainingToLoad <span class="tag">fact</span></span><span class="v">${fmt(S.train.remaining)} t</span></li>
-      <li><span class="k">commodity</span><span class="v">${S.train.commodity}</span></li>`;
-    $("#f-exp").textContent = fmt(R.exportRemaining);
-    $("#bar-exp-i").style.width = Math.round(R.exportProgress * 100) + "%";
+const R = (p) => P.read(p);
+const tag = (kind) => `<span class="tag">${kind}</span>`;
+const row = (k, kind, v) => `<li><span class="k">${k} ${tag(kind)}</span><span class="v">${v}</span></li>`;
 
-    // map labels
-    S.ships.forEach(sh => {
-      const el = $("#ship" + sh.id + "-meta");
-      if (!el) return;
-      el.textContent = (sh.remaining <= 0 ? "done" : sh.status) + " · " + fmt(sh.remaining) + " " + sh.unit;
-      const node = $("#n-ship" + sh.id);
-      node.classList.toggle("done", sh.remaining <= 0);
-      node.classList.toggle("busy", sh.remaining > 0);
-    });
-    $("#train-meta").textContent = (S.train.remaining <= 0 ? "done" : "loading") + " · " + fmt(S.train.remaining) + " t";
-    $("#n-train").classList.toggle("done", S.train.remaining <= 0);
-    $("#n-train").classList.toggle("busy", S.train.remaining > 0);
-    $("#qimp-meta").textContent = R.qImp + " trucks";
-    $("#qexp-meta").textContent = R.qExp + " trucks";
-    $("#yard-meta").textContent = "coffee " + fmt(S.cargo.coffee) + " · sugar " + fmt(S.cargo.sugar);
-    $("#port-status").textContent = (R.busy ? "busy" : "quiet") + " · tick " + S.tick;
+function render() {
+  if (!P) return;
+  $("#ships-kv").innerHTML = SHIPS.map((s) =>
+    row(`ships[${s.i}].remaining`, "fact", `${fmt(R(`ships.${s.i}.remaining`))} ${s.unit}`) +
+    row(`ships[${s.i}].progress`, "rule", pct(R(`ships.${s.i}.progress`)))
+  ).join("");
+  $("#f-imp").textContent = fmt(R("flows.importRemaining"));
+  $("#bar-imp-i").style.width = pct(R("flows.importProgress"));
 
-    // HUD
-    $("#hud-imp").textContent = fmt(R.importRemaining);
-    $("#hud-exp").textContent = fmt(R.exportRemaining) + " t";
-    $("#hud-trucks").textContent = R.available + " free / " + R.inQueue + " queued";
-    $("#hud-tick").textContent = String(S.tick);
+  $("#train-kv").innerHTML =
+    row("train[1].remainingToLoad", "fact", `${fmt(R("train.1.remainingToLoad"))} t`) +
+    row("train[1].progress", "rule", pct(R("train.1.progress"))) +
+    row("train[1].hasWork", "rule", String(R("train.1.hasWork")));
+  $("#f-exp").textContent = fmt(R("flows.exportRemaining"));
+  $("#bar-exp-i").style.width = pct(R("train.1.progress"));
 
-    // explain
-    if (S.lastExplain) {
-      const e = S.lastExplain;
-      $("#ex-watch").textContent = e.watch;
-      $("#ex-value").innerHTML = "<em>" + e.value + "</em>";
-      $("#ex-deps").textContent = e.deps;
-      $("#ex-because").textContent = e.because;
-      $("#ex-source").innerHTML = e.source;
-    } else {
-      const R0 = R;
-      $("#ex-watch").textContent = "flows.importRemaining";
-      $("#ex-value").innerHTML = "<em>" + fmt(R0.importRemaining) + "</em>";
-      $("#ex-deps").textContent = "ships[*].remainingTons";
-      $("#ex-because").textContent = "no mutation yet — quiet state";
-      $("#ex-source").textContent = "quiet";
-    }
+  $("#queues-kv").innerHTML =
+    row("queues.import.length", "fact", fmt(R("queues.import.length"))) +
+    row("queues.export.length", "fact", fmt(R("queues.export.length"))) +
+    row("queues.import.busy", "rule", String(R("queues.import.busy"))) +
+    row("queues.export.busy", "rule", String(R("queues.export.busy"))) +
+    row("trucks.available", "fact", fmt(R("trucks.available"))) +
+    row("trucks.inQueue", "rule", fmt(R("trucks.inQueue"))) +
+    row("port.busy", "rule", String(R("port.busy")));
+
+  $("#stocks-kv").innerHTML =
+    row("cargo.coffee", "fact", `${fmt(R("cargo.coffee"))} t`) +
+    row("cargo.sugar", "fact", `${fmt(R("cargo.sugar"))} t`) +
+    row("cargo.containers", "fact", fmt(R("cargo.containers"))) +
+    row("cargo.bulkTons", "rule", `${fmt(R("cargo.bulkTons"))} t`) +
+    row("trucks.fleet", "fact", fmt(R("trucks.fleet")));
+
+  for (const s of SHIPS) {
+    const work = R(`ships.${s.i}.hasWork`);
+    $(`#ship${s.i}-meta`).textContent = `${work ? "unloading" : "done"} · ${fmt(R(`ships.${s.i}.remaining`))} ${s.unit}`;
+    $(`#n-ship${s.i}`).classList.toggle("done", !work);
+    $(`#n-ship${s.i}`).classList.toggle("busy", !!work);
   }
+  const tw = R("train.1.hasWork");
+  $("#train-meta").textContent = `${tw ? "loading" : "done"} · ${fmt(R("train.1.remainingToLoad"))} t`;
+  $("#n-train").classList.toggle("done", !tw);
+  $("#n-train").classList.toggle("busy", !!tw);
+  $("#qimp-meta").textContent = `${R("queues.import.length")} trucks${R("queues.import.busy") ? "" : " · idle"}`;
+  $("#qexp-meta").textContent = `${R("queues.export.length")} trucks${R("queues.export.busy") ? "" : " · idle"}`;
+  $("#yard-meta").textContent = `coffee ${fmt(R("cargo.coffee"))} · sugar ${fmt(R("cargo.sugar"))}`;
+  $("#port-status").textContent = R("port.busy") ? "port.busy = true" : "port.busy = false";
 
-  // ---- Wave visual ----
-  function clearWaves() {
-    $("#waves").innerHTML = "";
-    $$(".edge.wave").forEach(e => e.classList.remove("wave"));
-    $$(".node.pulse").forEach(n => n.classList.remove("pulse"));
-  }
+  $("#hud-imp").textContent = fmt(R("flows.importRemaining")) + " t";
+  $("#hud-exp").textContent = fmt(R("flows.exportRemaining")) + " t";
+  $("#hud-trucks").textContent = `${fmt(R("trucks.available"))} free / ${fmt(R("trucks.inQueue"))} queued`;
+  $("#hud-tick").textContent = String(P.tick);
+  renderExplain();
+}
 
-  function pointOnPath(pathEl, t) {
-    const len = pathEl.getTotalLength();
-    return pathEl.getPointAtLength(Math.max(0, Math.min(1, t)) * len);
-  }
+function renderExplain() {
+  const path = $("#ex-select").value;
+  let ex;
+  try { ex = P.me.explain(path); } catch (e) { $("#explain-grid").textContent = "explain failed: " + (e?.message || e); return; }
+  const m = ex?.meta || {};
+  const inputs = (ex?.derivation?.inputs || []).map((i) => `${esc(i.label)} = <em>${esc(fmt(i.value))}</em>`).join("<br/>") || "—";
+  const wave = m.sourcePath
+    ? `write to <em>${esc(m.sourcePath)}</em> · k=${m.k} · recomputed: ${esc((m.recomputed || []).join(", "))}`
+    : "not recomputed yet (no write has reached it since seed)";
+  $("#explain-grid").innerHTML = [
+    ["path", esc(ex.path)],
+    ["value", `<em>${esc(fmt(ex.value))}</em>`],
+    ["expression", esc(ex.expr ?? "— (fact)")],
+    ["inputs", inputs],
+    ["dependsOn", esc((m.dependsOn || []).join(", ") || "—")],
+    ["last wave", wave],
+  ].map(([l, v]) => `<div class="row"><span class="lbl">${l}</span><span class="val">${v}</span></div>`).join("");
+  $("#explain-code").textContent = `me.explain(${JSON.stringify(path)})`;
+  $("#explain-raw").textContent = JSON.stringify(ex, null, 2);
+}
 
-  function animateParticle(pathEl, duration) {
-    return new Promise(resolve => {
-      if (!pathEl) { resolve(); return; }
-      const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-      c.setAttribute("r", "3");
-      c.setAttribute("class", "wave-particle");
-      $("#waves").appendChild(c);
-      const t0 = performance.now();
-      function frame(now) {
-        const u = Math.min(1, (now - t0) / duration);
-        const p = pointOnPath(pathEl, u);
-        c.setAttribute("cx", p.x); c.setAttribute("cy", p.y);
-        c.style.opacity = String(0.2 + 0.8 * Math.sin(Math.PI * u));
-        if (u < 1) requestAnimationFrame(frame);
-        else { c.remove(); resolve(); }
-      }
-      requestAnimationFrame(frame);
-    });
-  }
+function renderWrites(c) {
+  const ul = $("#writes");
+  if (!c || !c.writes.length) { ul.innerHTML = `<li class="empty">${c?.done ? "No work left — nothing to write." : "No writes yet."}</li>`; return; }
+  ul.innerHTML = c.writes.map((w) => {
+    const rec = w.recomputed.length
+      ? w.recomputed.map((p) => (w.changed.includes(p) ? `<span class="chg">${esc(p)}</span>` : esc(p))).join(", ")
+      : "no dependents";
+    return `<li><code>${esc(w.code)}</code><span class="wk">k=${w.k}</span><span class="wr">recomputed: ${rec}</span></li>`;
+  }).join("");
+  const ks = c.writes.map((w) => w.k);
+  const union = new Set(c.writes.flatMap((w) => w.recomputed));
+  $("#k-badge").textContent = `k per write: ${ks.join(" · ")}  |  distinct recomputed: ${union.size}`;
+  $("#chip-wave").textContent = c.done ? "work done" : `cycle ${c.tick} · ${c.kind}`;
+}
 
-  function animateTruckDot(pathEl, duration, color) {
-    return new Promise(resolve => {
-      if (!pathEl) { resolve(); return; }
-      const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-      c.setAttribute("r", "3.5");
-      c.setAttribute("class", "truck-dot");
-      if (color) c.setAttribute("fill", color);
-      $("#truck-anim").appendChild(c);
-      const t0 = performance.now();
-      function frame(now) {
-        const u = Math.min(1, (now - t0) / duration);
-        const p = pointOnPath(pathEl, u);
-        c.setAttribute("cx", p.x); c.setAttribute("cy", p.y);
-        c.style.opacity = String(0.3 + 0.7 * Math.sin(Math.PI * u));
-        if (u < 1) requestAnimationFrame(frame);
-        else { c.remove(); resolve(); }
-      }
-      requestAnimationFrame(frame);
-    });
-  }
-
-  async function flashWave(edgeIds, nodeIds, kLabel) {
-    clearWaves();
-    $("#chip-wave").textContent = "wave · k=" + (nodeIds.length);
-    $("#chip-wave").classList.add("on");
-    edgeIds.forEach(id => { const e = document.getElementById(id); if (e) e.classList.add("wave"); });
-    nodeIds.forEach(id => { const n = document.getElementById(id); if (n) n.classList.add("pulse", "hl"); });
-    const first = document.getElementById(edgeIds[0]);
-    await animateParticle(first, 480);
-    for (let i = 1; i < edgeIds.length; i++) {
-      await animateParticle(document.getElementById(edgeIds[i]), 380);
-    }
-    $("#chip-wave").textContent = "wave settled · k=" + nodeIds.length;
-    $("#chip-wave").classList.remove("on");
-    $("#chip-wave").classList.add("hot");
-    setTimeout(() => {
-      clearWaves();
-      $$(".node.hl").forEach(n => { if (!n.classList.contains("keep-hl")) n.classList.remove("hl"); });
-      $("#chip-wave").classList.remove("hot");
-      $("#chip-wave").textContent = "wave idle";
-      applyTourHighlights();
-    }, 700);
-  }
-
-  // ---- Truck cycle mutation ----
-  async function truckCycle() {
-    if (animating) return;
-    refillQueues();
-    const R0 = rules(S);
-    // Prefer alternating: if both have work, pick by tick parity; else whichever has queue+work
-    const canImp = S.queues.import.length > 0 && S.ships.some(sh => sh.remaining > 0);
-    const canExp = S.queues.export.length > 0 && S.train.remaining > 0;
-    if (!canImp && !canExp) {
-      $("#code-mutate").innerHTML = "<em>// no work left — queues drain</em>";
-      // release queued trucks
-      while (S.queues.import.length) { S.queues.import.shift(); S.trucks.available++; }
-      while (S.queues.export.length) { S.queues.export.shift(); S.trucks.available++; }
-      render();
-      return;
-    }
-
-    animating = true;
-    $("#btn-tick").disabled = true;
-    S.tick++;
-
-    let kind;
-    if (canImp && canExp) kind = (S.tick % 2 === 1) ? "import" : "export";
-    else kind = canImp ? "import" : "export";
-
-    if (kind === "import") {
-      const truck = S.queues.import.shift();
-      // pick ship with most remaining
-      const ship = S.ships.filter(sh => sh.remaining > 0).sort((a,b) => b.remaining - a.remaining)[0];
-      const haul = Math.min(ship.haul, ship.remaining);
-      const beforeImp = rules(S).importRemaining;
-
-      // mutate facts
-      ship.remaining -= haul;
-      // Import outbound: truck leaves Veracruz with cargo — subtract yard stock
-      if (ship.cargo === "coffee") S.cargo.coffee = Math.max(0, S.cargo.coffee - haul);
-      if (ship.cargo === "sugar") S.cargo.sugar = Math.max(0, S.cargo.sugar - haul);
-      if (ship.cargo === "containers") S.cargo.containers = Math.max(0, S.cargo.containers - Math.min(haul, S.cargo.containers));
-      if (ship.remaining <= 0) ship.status = "done";
-      S.trucks.available++; // truck departed & freed after haul
-
-      const afterImp = rules(S).importRemaining;
-      S.lastMutation = {
-        kind: "import",
-        code: `me.queues.import.nextTruck().complete(/* ship[${ship.id}] -${haul} */)`,
-        shipId: ship.id,
-        haul,
-        truckId: truck.id
-      };
-      S.lastExplain = {
-        watch: "flows.importRemaining",
-        value: fmt(afterImp),
-        deps: `ships[${ship.id}].remainingTons, cargo.${ship.cargo}`,
-        because: `truck #${truck.id} hauled ${haul} ${ship.unit} from ship[${ship.id}] → ${fmt(beforeImp)} − ${haul} = ${fmt(afterImp)}`,
-        source: `mutation <em>queues.import.nextTruck().complete()</em>`
-      };
-      $("#code-mutate").innerHTML = `me.queues.import.nextTruck().complete()<br/><em>// ship[${ship.id}].remaining -= ${haul}</em>`;
-
-      const edge = "e-ship" + ship.id + "-q";
-      await animateTruckDot(document.getElementById(edge), 520, "#7eb8c9");
-      await animateTruckDot(document.getElementById("e-qimp-port"), 400, "#7eb8c9");
-      render();
-      await flashWave(
-        [edge, "e-qimp-port"],
-        ["n-ship" + ship.id, "n-qimp", "n-port", "n-yard"],
-        4
-      );
-    } else {
-      const truck = S.queues.export.shift();
-      const haul = Math.min(S.train.haul, S.train.remaining, S.cargo.sugar);
-      const beforeExp = S.train.remaining;
-      S.train.remaining -= haul;
-      S.cargo.sugar = Math.max(0, S.cargo.sugar - haul);
-      if (S.train.remaining <= 0) S.train.status = "done";
-      S.trucks.available++;
-
-      S.lastMutation = {
-        kind: "export",
-        code: `me.queues.export.nextTruck().complete(/* train[1] +${haul} */)`,
-        haul,
-        truckId: truck.id
-      };
-      S.lastExplain = {
-        watch: "flows.exportRemaining",
-        value: fmt(S.train.remaining) + " t",
-        deps: "train[1].remainingToLoad, cargo.sugar",
-        because: `truck #${truck.id} loaded ${haul} t sugar onto train[1] → ${fmt(beforeExp)} − ${haul} = ${fmt(S.train.remaining)}`,
-        source: `mutation <em>queues.export.nextTruck().complete()</em>`
-      };
-      $("#code-mutate").innerHTML = `me.queues.export.nextTruck().complete()<br/><em>// train[1].remainingToLoad -= ${haul}</em>`;
-
-      await animateTruckDot(document.getElementById("e-yard-qexp"), 480, "#c9b87e");
-      await animateTruckDot(document.getElementById("e-qexp-train"), 420, "#c9b87e");
-      render();
-      await flashWave(
-        ["e-yard-qexp", "e-qexp-train"],
-        ["n-yard", "n-qexp", "n-train", "n-port"],
-        4
-      );
-    }
-
-    refillQueues();
-    render();
-    animating = false;
-    $("#btn-tick").disabled = false;
-  }
-
-  function resetAll() {
-    stopAuto();
-    clearWaves();
-    $("#truck-anim").innerHTML = "";
-    S = seed();
-    refillQueues();
-    $("#chip-wave").textContent = "wave idle";
-    $("#chip-wave").classList.remove("on", "hot");
-    $("#code-mutate").innerHTML = "me.queues.import.nextTruck().complete()";
-    render();
-    applyTour(tourStep);
-  }
-
-  function startAuto() {
-    if (autoTimer) { stopAuto(); return; }
-    $("#btn-auto").textContent = "Auto ■";
-    autoTimer = setInterval(() => {
-      if (animating) return;
-      const R = rules(S);
-      if (R.importRemaining <= 0 && R.exportRemaining <= 0) { stopAuto(); return; }
-      truckCycle();
-    }, 1400);
-  }
-  function stopAuto() {
-    if (autoTimer) clearInterval(autoTimer);
-    autoTimer = null;
-    $("#btn-auto").textContent = "Auto ▸";
-  }
-
-  // ---- Tutorial ----
-  const TOUR = [
-    null,
-    {
-      title: "1 · Port overview",
-      body: "You are at the <strong>Port of Veracruz</strong>. Three ships unload (import). One train loads (export). Trucks move cargo. The dim lines are real OSM streets — the lit nodes are .me paths.",
-      hlNodes: ["n-port", "n-ship1", "n-ship2", "n-ship3", "n-train"],
-      hlEdges: ["e-ship1-q", "e-ship2-q", "e-ship3-q", "e-qexp-train"],
-      hlPanels: []
-    },
-    {
-      title: "2 · Stocks",
-      body: "Facts on the yard: <strong>100,000 t coffee</strong>, <strong>200,000 t sugar</strong>, <strong>5,000 containers</strong>, <strong>500 trucks</strong>. Written as <strong>me.cargo.*</strong> — they only change when a mutation says so.",
-      hlNodes: ["n-yard"],
-      hlEdges: ["e-port-yard"],
-      hlPanels: ["panel-stocks"]
-    },
-    {
-      title: "3 · Ships unloading",
-      body: "Ships <strong>[1..3]</strong> are unloading. Each has <strong>remainingTons</strong> (a fact). <strong>importRemaining</strong> is a rule: the sum of what still must leave the ships onto trucks.",
-      hlNodes: ["n-ship1", "n-ship2", "n-ship3", "n-qimp"],
-      hlEdges: ["e-ship1-q", "e-ship2-q", "e-ship3-q"],
-      hlPanels: ["panel-ships"]
-    },
-    {
-      title: "4 · Train loading",
-      body: "Train <strong>[1]</strong> is loading sugar for export. Trucks pull from the yard and load the train. <strong>exportRemaining</strong> shrinks as loading progresses.",
-      hlNodes: ["n-train", "n-qexp", "n-yard"],
-      hlEdges: ["e-yard-qexp", "e-qexp-train"],
-      hlPanels: ["panel-train"]
-    },
-    {
-      title: "5 · Truck queues",
-      body: "<strong>Q.IMPORT</strong> serves ships; <strong>Q.EXPORT</strong> serves the train. Rules: <strong>queueLength</strong>, <strong>busy = length &gt; 0</strong>, trucks.available. Watch the HUD counters update.",
-      hlNodes: ["n-qimp", "n-qexp", "n-port"],
-      hlEdges: ["e-qimp-port", "e-qexp-train"],
-      hlPanels: ["panel-queues"]
-    },
-    {
-      title: "6 · Mutate one truck cycle",
-      body: "Press <strong>Step 1 truck cycle</strong> (or Auto). One truck completes a haul: subtract from remaining work, decrement the queue, free the truck. The wave touches only <strong>k ≤ 4</strong> affected paths.",
-      hlNodes: ["n-qimp", "n-ship1", "n-port", "n-yard"],
-      hlEdges: ["e-ship1-q", "e-qimp-port"],
-      hlPanels: ["panel-mutate"]
-    },
-    {
-      title: "7 · Explain why",
-      body: "Open the inspector: <strong>me.flows.importRemaining.explain()</strong> shows the expression, dependencies, and which truck mutation changed the number. No cron story — just cause → wave → why.",
-      hlNodes: ["n-port", "n-ship1", "n-ship2", "n-ship3"],
-      hlEdges: ["e-ship1-q", "e-ship2-q", "e-ship3-q"],
-      hlPanels: ["panel-explain"]
-    }
-  ];
-
-  function clearHighlights() {
-    $$(".node.hl, .node.dimmed").forEach(n => n.classList.remove("hl", "dimmed"));
-    $$(".edge.hl, .edge.dimmed").forEach(e => e.classList.remove("hl", "dimmed"));
-    $$(".panel.hl-panel").forEach(p => p.classList.remove("hl-panel"));
-    $("#spotlight").setAttribute("visibility", "hidden");
-  }
-
-  function applyTourHighlights() {
-    const t = TOUR[tourStep];
-    if (!t) return;
-    clearHighlights();
-    const allNodes = $$("#nodes .node");
-    const allEdges = $$("#edges .edge");
-    if (t.hlNodes.length) {
-      allNodes.forEach(n => {
-        if (t.hlNodes.includes(n.id)) n.classList.add("hl");
-        else n.classList.add("dimmed");
-      });
-    }
-    if (t.hlEdges.length) {
-      allEdges.forEach(e => {
-        if (t.hlEdges.includes(e.id)) e.classList.add("hl");
-        else e.classList.add("dimmed");
-      });
-    }
-    (t.hlPanels || []).forEach(id => {
-      const el = document.getElementById(id);
-      if (el) el.classList.add("hl-panel");
-    });
-  }
-
-  function applyTour(step) {
-    tourStep = step;
-    document.body.dataset.tour = String(step);
-    const t = TOUR[step];
-    $("#tour-title").textContent = t.title;
-    $("#tour-body").innerHTML = t.body;
-    $("#step-label").textContent = step + " / " + (TOUR.length - 1);
-    $("#btn-prev").disabled = step <= 1;
-    $("#btn-next").textContent = step >= TOUR.length - 1 ? "Restart" : "Next";
-    $$("#tour-steps button").forEach((b, i) => {
-      const n = i + 1;
-      b.classList.toggle("active", n === step);
-      b.classList.toggle("done", n < step);
-    });
-    applyTourHighlights();
-  }
-
-  function buildStepButtons() {
-    const wrap = $("#tour-steps");
-    wrap.innerHTML = "";
-    for (let i = 1; i < TOUR.length; i++) {
-      const b = document.createElement("button");
-      b.type = "button";
-      b.textContent = String(i);
-      b.title = TOUR[i].title;
-      b.addEventListener("click", () => { if (!animating) applyTour(i); });
-      wrap.appendChild(b);
-    }
-  }
-
-  $("#btn-next").addEventListener("click", () => {
-    if (animating) return;
-    if (tourStep >= TOUR.length - 1) { applyTour(1); return; }
-    applyTour(tourStep + 1);
+// ── visual wave: adapter animation along edges, then light the kernel's affected set ──
+function pointOnPath(el, t) { const L = el.getTotalLength(); return el.getPointAtLength(Math.max(0, Math.min(1, t)) * L); }
+function animateDot(edgeId, ms, color) {
+  return new Promise((resolve) => {
+    const el = document.getElementById(edgeId);
+    if (!el) return resolve();
+    const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+    c.setAttribute("r", "4"); c.setAttribute("class", "truck-dot"); c.setAttribute("fill", color);
+    $("#truck-anim").appendChild(c);
+    const t0 = performance.now();
+    (function frame(now) {
+      const u = Math.min(1, (now - t0) / ms);
+      const p = pointOnPath(el, u);
+      c.setAttribute("cx", p.x); c.setAttribute("cy", p.y);
+      c.style.opacity = String(0.3 + 0.7 * Math.sin(Math.PI * u));
+      if (u < 1) requestAnimationFrame(frame); else { c.remove(); resolve(); }
+    })(t0);
   });
-  $("#btn-prev").addEventListener("click", () => {
-    if (!animating && tourStep > 1) applyTour(tourStep - 1);
-  });
-  $("#btn-tick").addEventListener("click", () => {
-    if (tourStep !== 6) applyTour(6);
-    truckCycle();
-  });
-  $("#btn-auto").addEventListener("click", startAuto);
-  $("#btn-reset").addEventListener("click", resetAll);
+}
+function clearWave() {
+  $$(".edge.wave").forEach((e) => e.classList.remove("wave"));
+  $$(".node.pulse").forEach((n) => n.classList.remove("pulse"));
+}
+function lightKernelSet(c) {
+  clearWave();
+  const paths = new Set(c.writes.flatMap((w) => [w.source, ...w.recomputed]));
+  const lit = new Set([...paths].map(nodeOfPath).filter(Boolean));
+  lit.forEach((id) => document.getElementById(id)?.classList.add("pulse", "hl"));
+  for (const [eid, [a, b]] of Object.entries(EDGE_ENDS)) if (lit.has(a) && lit.has(b)) document.getElementById(eid)?.classList.add("wave");
+}
 
-  buildStepButtons();
-  refillQueues();
+async function runCycle({ animate = true } = {}) {
+  if (!P || animating) return null;
+  const c = P.cycle();            // ← real kernel writes happen here
+  lastCycle = c;
   render();
-  const params = new URLSearchParams(location.search);
-  const startStep = Math.min(TOUR.length - 1, Math.max(1, parseInt(params.get("step") || "1", 10) || 1));
-  applyTour(startStep);
+  renderWrites(c);
+  if (c.done) { stopAuto(); return c; }
+  if (!animate) { lightKernelSet(c); return c; }
+  animating = true;
+  if (c.kind === "import") {
+    await animateDot(`e-ship${c.target.ship}-q`, 380, "#7eb8c9");
+    await animateDot("e-qimp-port", 260, "#7eb8c9");
+  } else {
+    await animateDot("e-yard-qexp", 320, "#c9b87e");
+    await animateDot("e-qexp-train", 300, "#c9b87e");
+  }
+  lightKernelSet(c);
+  setTimeout(() => { clearWave(); applyTourHighlights(); }, 650);
+  animating = false;
+  return c;
+}
+
+function startAuto() {
+  if (autoTimer) return stopAuto();
+  $("#btn-auto").textContent = "Auto ■";
+  if (tourStep !== 6) applyTour(6);
+  autoTimer = setInterval(() => { if (!animating) runCycle(); }, 1100);
+}
+function stopAuto() {
+  if (autoTimer) clearInterval(autoTimer);
+  autoTimer = null;
+  $("#btn-auto").textContent = "Auto ▸";
+}
+
+function resetKernel() {
+  stopAuto();
+  clearWave();
+  $("#truck-anim").innerHTML = "";
+  P = createPortKernel(ME);
+  lastCycle = null;
+  $("#seed-code").textContent = P.seedLog.join("\n");
+  $("#k-badge").textContent = "k —";
+  $("#chip-wave").textContent = "fresh kernel · seeded";
+  renderWrites(null);
+  $("#verify-out").textContent = "Rebuilds a fresh kernel from the current facts + same formulas and compares every derived path.";
+  $("#verify-out").className = "verify-out";
+  render();
+  applyTour(tourStep);
+}
+
+function verify() {
+  const v = P.verifyFromScratch();
+  $("#verify-out").className = "verify-out " + (v.ok ? "ok" : "bad");
+  $("#verify-out").textContent = v.ok
+    ? `✓ ${v.checked} derived paths match a from-scratch kernel rebuild (after ${P.tick} cycles).`
+    : `✗ mismatches: ${JSON.stringify(v.mismatches)}`;
+  return v;
+}
+
+// ── Tutorial ──
+const TOUR = [null,
+  { title: "1 · Port overview", body: "You are at the <strong>Port of Veracruz</strong>. Three ships unload (import), one train loads (export), trucks move between them. Every number on the right is read live from a real <strong>this.me@4.1.0</strong> kernel.",
+    hlNodes: ["n-port", "n-ship1", "n-ship2", "n-ship3", "n-train"], hlEdges: ["e-ship1-q", "e-ship2-q", "e-ship3-q", "e-qexp-train"], hlPanels: [] },
+  { title: "2 · Stocks (facts)", body: "<strong>me.cargo.coffee(100000)</strong>, sugar(200000), containers(5000), <strong>me.trucks.fleet(500)</strong>. A fact changes only when a write says so. <strong>cargo.bulkTons</strong> is a kernel rule: coffee + sugar.",
+    hlNodes: ["n-yard"], hlEdges: ["e-port-yard"], hlPanels: ["panel-stocks"] },
+  { title: "3 · Ships unloading", body: "Each ship has facts <strong>total, remaining, tonsPerUnit</strong>. Kernel rules: <strong>remainingTons = remaining * tonsPerUnit</strong>, and <strong>importRemaining</strong> = the explicit sum over ships[1], [2], [3].",
+    hlNodes: ["n-ship1", "n-ship2", "n-ship3", "n-qimp"], hlEdges: ["e-ship1-q", "e-ship2-q", "e-ship3-q"], hlPanels: ["panel-ships"] },
+  { title: "4 · Train loading", body: "<strong>train[1].remainingToLoad</strong> is a fact; <strong>flows.exportRemaining</strong> and <strong>train[1].progress</strong> are kernel rules. Export trucks take sugar from the yard to the train.",
+    hlNodes: ["n-train", "n-qexp", "n-yard"], hlEdges: ["e-yard-qexp", "e-qexp-train"], hlPanels: ["panel-train"] },
+  { title: "5 · Truck queues", body: "A queue is a counter fact: <strong>queues.import.length</strong>. Kernel rules: <strong>busy = length &gt; 0</strong>, <strong>trucks.inQueue</strong> = both lengths. <em>Who</em> goes next is adapter logic (dashed panel).",
+    hlNodes: ["n-qimp", "n-qexp", "n-port"], hlEdges: ["e-qimp-port", "e-qexp-train"], hlPanels: ["panel-queues", "panel-adapter"] },
+  { title: "6 · Mutate one truck cycle", body: "Press <strong>Run 1 truck cycle</strong>: dispatch (length − 1), haul (remaining − haul), stock (cargo − haul), return (rejoin or pool). Each line is the exact call executed; <strong>k</strong> is the kernel's own recompute count.",
+    hlNodes: ["n-qimp", "n-ship2", "n-port", "n-yard"], hlEdges: ["e-ship2-q", "e-qimp-port"], hlPanels: ["panel-mutate"] },
+  { title: "7 · Explain why", body: "<strong>me.explain(\"flows.importRemaining\")</strong> returns the expression, every input with its value, and <strong>sourcePath</strong> — the write that last recomputed it. That is why the number changed.",
+    hlNodes: ["n-port", "n-ship1", "n-ship2", "n-ship3"], hlEdges: ["e-ship1-q", "e-ship2-q", "e-ship3-q"], hlPanels: ["panel-explain"] },
+];
+
+function applyTourHighlights() {
+  const t = TOUR[tourStep]; if (!t) return;
+  $$(".node.hl, .node.dimmed").forEach((n) => n.classList.remove("hl", "dimmed"));
+  $$(".edge.hl, .edge.dimmed").forEach((e) => e.classList.remove("hl", "dimmed"));
+  $$(".panel.hl-panel").forEach((p) => p.classList.remove("hl-panel"));
+  $$("#nodes .node").forEach((n) => n.classList.add(t.hlNodes.includes(n.id) ? "hl" : "dimmed"));
+  $$("#edges .edge").forEach((e) => e.classList.add(t.hlEdges.includes(e.id) ? "hl" : "dimmed"));
+  t.hlPanels.forEach((id) => document.getElementById(id)?.classList.add("hl-panel"));
+}
+function applyTour(step) {
+  tourStep = step;
+  const t = TOUR[step];
+  $("#tour-title").textContent = t.title;
+  $("#tour-body").innerHTML = t.body;
+  $("#step-label").textContent = `${step} / ${TOUR.length - 1}`;
+  $("#btn-prev").disabled = step <= 1;
+  $("#btn-next").textContent = step >= TOUR.length - 1 ? "Restart" : "Next";
+  $$("#tour-steps button").forEach((b, i) => { b.classList.toggle("active", i + 1 === step); b.classList.toggle("done", i + 1 < step); });
+  applyTourHighlights();
+}
+(function buildSteps() {
+  const wrap = $("#tour-steps");
+  for (let i = 1; i < TOUR.length; i++) {
+    const b = document.createElement("button");
+    b.type = "button"; b.textContent = String(i); b.title = TOUR[i].title;
+    b.addEventListener("click", () => applyTour(i));
+    wrap.appendChild(b);
+  }
 })();
+$("#btn-next").addEventListener("click", () => applyTour(tourStep >= TOUR.length - 1 ? 1 : tourStep + 1));
+$("#btn-prev").addEventListener("click", () => tourStep > 1 && applyTour(tourStep - 1));
+$("#btn-tick").addEventListener("click", () => { if (tourStep !== 6) applyTour(6); runCycle(); });
+$("#btn-auto").addEventListener("click", startAuto);
+$("#btn-reset").addEventListener("click", resetKernel);
+$("#btn-verify").addEventListener("click", verify);
+$("#ex-select").addEventListener("change", renderExplain);
+
+const params = new URLSearchParams(location.search);
+applyTour(Math.min(TOUR.length - 1, Math.max(1, parseInt(params.get("step") || "1", 10) || 1)));
+
+try {
+  const { mod, host, hash } = await loadKernel();
+  ME = mod.default || mod.ME;
+  $("#kernel-status").innerHTML = `Kernel <b>this.me@${KERNEL.version}</b> · dist/me.es.js from ${host} · sha256 ${hash.slice(0, 12)}… <b>verified</b> · unmodified`;
+  resetKernel();
+  ["#btn-tick", "#btn-auto", "#btn-reset", "#btn-verify"].forEach((s) => ($(s).disabled = false));
+  // hooks for headless checks
+  window.__port = {
+    get P() { return P; },
+    cycleNoAnim: () => runCycle({ animate: false }),
+    verify,
+  };
+  window.__portReady = true;
+} catch (e) {
+  $("#kernel-status").classList.add("err");
+  $("#kernel-status").innerHTML = `<b>Kernel failed to load</b> — ${esc(e?.message || e)}. Nothing on this page runs without it.`;
+  window.__portError = String(e?.message || e);
+}
 
 </script>
 </body>
