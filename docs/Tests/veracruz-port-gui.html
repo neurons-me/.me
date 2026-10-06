@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>Port of Veracruz: live operations (.GUI) · .me</title>
-<meta name="description" content="Port of Veracruz on a .GUI interface (this.gui@4.0.0) over the real this.me@4.1.0 kernel: 500 trucks on real OpenStreetMap roads; every readout is a GUI component subscribed to a kernel path."/>
+<meta name="description" content="Port of Veracruz on a .GUI interface (this.gui feat/openstreetmap branch build, map = GUI.OpenStreetMap) over the real this.me@4.1.0 kernel: 500 trucks on real OpenStreetMap roads; every readout is a GUI component subscribed to a kernel path."/>
 <link rel="canonical" href="https://neurons-me.github.io/.me/docs/Tests/veracruz-port-gui.html"/>
 <meta property="og:title" content="Port of Veracruz: live operations (.GUI) · .me"/>
 <meta property="og:description" content="500 trucks on real OSM roads; .GUI components subscribed to live .me kernel paths. Every haul is a real kernel write; watch k, ask explain()."/>
@@ -23,9 +23,11 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/this.gui@4.0.0/dist/material-symbols.css" integrity="sha384-dvUfVVY6nb2ef6F+dRTsSozZpefoOvMox4Ay4fQP86bSU+6yHovoYYKaRtwS+mca" crossorigin="anonymous"/>
 <script src="https://cdn.jsdelivr.net/npm/react@18.3.1/umd/react.production.min.js" integrity="sha384-DGyLxAyjq0f9SPpVevD6IgztCFlnMF6oW/XQGmfe+IsZ8TqEiDrcHkMLKI6fiB/Z" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/react-dom@18.3.1/umd/react-dom.production.min.js" integrity="sha384-gTGxhz21lVGYNMcdJOyq01Edg0jhn/c22nsx0kyqP0TxaV5WVdsSH1fSDUf5YJj1" crossorigin="anonymous"></script>
-<script src="https://cdn.jsdelivr.net/npm/this.gui@4.0.0/dist/this.gui.umd.js" integrity="sha384-pB2ENZfg4OzWQRcfI2yjTof3wt4zUjStqPBfSLF/dnx2kXBCKNQk3WklnRi7IuTj" crossorigin="anonymous"></script>
+<!-- .GUI: unreleased branch build of this.gui (neurons-me/GUI feat/openstreetmap @27d7307, PR #3: https://github.com/neurons-me/GUI/pull/3), self-hosted here because it is not on npm.
+     SRI-pinned below; port-gui.js also re-checks its sha256 in the browser before the page runs (same as the kernel). -->
+<script src="veracruz-port/vendor/this.gui-27d7307.umd.js" integrity="sha384-HZNIHttir3YhnR/I1bk7GPZ3hEcZLeB7AGPBww+ywFkzLV5FkSDVaSa6k3PTktnZ" crossorigin="anonymous"></script>
 <style>
-  /* Page shell + MAP LAYER only (basemap SVG, canvas). Everything else is styled by .GUI (Theme + sx). */
+  /* Page shell + map overlay styling (GUI.OpenStreetMap renders the basemap, markers and canvas). Everything else is styled by .GUI (Theme + sx). */
   :root {
     --bg: #0b0d10; --text: #c8ced6; --muted: #6a7380; --dim: #3a424e;
     --accent: #7eb8c9; --warn: #c9a07e; --hot: #c97e7e; --ok: #7ec99a;
@@ -38,11 +40,11 @@
     border-right: 1px solid var(--border);
   }
   .map-wrap svg.scene { width: 100%; height: 100%; display: block; }
-  .basemap { opacity: 1; }
-  .basemap #roads-primary { opacity: 0.7; }
-  .basemap #roads-secondary { opacity: 0.5; }
-  .basemap #roads-tertiary { opacity: 0.4; }
-  .basemap #water { opacity: 0.75; }
+  .gui-osm__basemap { opacity: 1; }
+  .gui-osm__basemap #roads-primary { opacity: 0.7; }
+  .gui-osm__basemap #roads-secondary { opacity: 0.5; }
+  .gui-osm__basemap #roads-tertiary { opacity: 0.4; }
+  .gui-osm__basemap #water { opacity: 0.75; }
 
   .edge { fill: none; stroke: #3d4a58; stroke-width: 1.3; opacity: 0.65; }
   .edge.flow-imp { stroke: #5a8a9a; stroke-width: 1.6; opacity: 0.85; }
@@ -54,23 +56,23 @@
   .edge.hl { stroke: var(--accent); opacity: 1; stroke-width: 2; }
   .edge.dimmed { opacity: 0.12; }
 
-  .node-label { font-family: var(--mono); font-size: 12px; fill: #9aa3ae; letter-spacing: 0.05em; }
-  .node-meta { font-family: var(--mono); font-size: 11px; fill: var(--muted); }
-  .node-core { stroke-width: 1.4; }
-  .node.ship .node-core { fill: #121820; stroke: #6a9bb0; }
-  .node.train .node-core { fill: #181610; stroke: #b0a06a; }
-  .node.queue .node-core { fill: #141418; stroke: #7a7a90; }
-  .node.port .node-core { fill: #1a2430; stroke: var(--accent); }
-  .node.yard .node-core { fill: #141810; stroke: #7a9a7a; }
-  .node.hl .node-core {
+  .gui-osm-marker__label { font-family: var(--mono); font-size: 12px; fill: #9aa3ae; letter-spacing: 0.05em; }
+  .gui-osm-marker__meta { font-family: var(--mono); font-size: 11px; fill: var(--muted); }
+  .gui-osm-marker__core { stroke-width: 1.4; }
+  .node.ship .gui-osm-marker__core { fill: #121820; stroke: #6a9bb0; }
+  .node.train .gui-osm-marker__core { fill: #181610; stroke: #b0a06a; }
+  .node.queue .gui-osm-marker__core { fill: #141418; stroke: #7a7a90; }
+  .node.port .gui-osm-marker__core { fill: #1a2430; stroke: var(--accent); }
+  .node.yard .gui-osm-marker__core { fill: #141810; stroke: #7a9a7a; }
+  .node.hl .gui-osm-marker__core {
     stroke-width: 2.4;
     filter: drop-shadow(0 0 6px rgba(126,184,201,0.5));
   }
-  .node.hl .node-label { fill: #dce8ef; }
+  .node.hl .gui-osm-marker__label { fill: #dce8ef; }
   .node.dimmed { opacity: 0.25; }
-  .node.pulse .node-core { animation: pulse 0.7s ease-out; }
-  .node.done .node-core { stroke: var(--ok); }
-  .node.busy .node-core { stroke: var(--warn); }
+  .node.pulse .gui-osm-marker__core { animation: pulse 0.7s ease-out; }
+  .node.done .gui-osm-marker__core { stroke: var(--ok); }
+  .node.busy .gui-osm-marker__core { stroke: var(--warn); }
 
   @keyframes pulse {
     0% { stroke-width: 1.4; } 40% { stroke-width: 3; } 100% { stroke-width: 1.4; }
@@ -80,13 +82,13 @@
   .icon-txt { font-family: var(--mono); font-size: 10px; fill: #6a7380; }
 
   .spotlight { fill: none; stroke: var(--accent); stroke-width: 1; opacity: 0.3; stroke-dasharray: 4 3; }
-  .node .node-meta, .node .node-label { paint-order: stroke; stroke: #0b0d10; stroke-width: 3px; }
+  .node .gui-osm-marker__meta, .node .gui-osm-marker__label { paint-order: stroke; stroke: #0b0d10; stroke-width: 3px; }
   .map-wrap canvas.traffic { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
   #edges .edge { opacity: 0.2; stroke-dasharray: 2 5; stroke-width: 1.1; }
   #edges .edge.hl { opacity: 0.42; stroke-width: 1.3; filter: none; }
   #edges .edge.dimmed { opacity: 0.06; }
   #edges .edge.wave { opacity: 0.55; stroke-width: 1.4; filter: none; }
-  .node.hit .node-core { stroke: #dce8ef; filter: drop-shadow(0 0 5px rgba(126,184,201,0.55)); }
+  .node.hit .gui-osm-marker__core { stroke: #dce8ef; filter: drop-shadow(0 0 5px rgba(126,184,201,0.55)); }
   .exit-label { font-family: var(--mono); font-size: 11px; fill: #8a94a0; paint-order: stroke; stroke: #0b0d10; stroke-width: 3px; letter-spacing: .03em; }
   .exit-tick { fill: none; stroke: #8a94a0; stroke-width: 1.2; opacity: .8; }
   .map-wrap svg.scene { position: absolute; inset: 0; }
@@ -94,11 +96,11 @@
 </head>
 <body>
 <div id="root"></div>
-<div id="boot-error">.GUI (this.gui@4.0.0) or React failed to load, so this page cannot render. The <a href="veracruz-port.html" style="color:var(--accent)">classic page</a> runs without .GUI.</div>
-<!-- Map layer (not a .GUI component: GUI has no map/scene component). Mounted once by the page; it reads only the kernel and adapter state. -->
-<template id="map-tpl">
-      <svg class="scene" viewBox="0 0 1200 800" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Veracruz port operations">
-        <g class="basemap" id="basemap">
+<div id="boot-error">.GUI (this.gui branch build @27d7307) or React failed to load, so this page cannot render. The <a href="veracruz-port.html" style="color:var(--accent)">classic page</a> runs without .GUI.</div>
+<!-- Basemap data: the existing output of veracruz-port/build_basemap.py (same geometry as basemap.svg), kept as data.
+     GUI.OpenStreetMap presents it; the page only reads it into layers. -->
+<template id="basemap-tpl">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800">
 
   
 
@@ -335,93 +337,7 @@
   </g>
   <!-- bbox W=-96.142 S=19.192 E=-96.122 N=19.205 equirectangular -->
   <!-- © OpenStreetMap contributors -->
-
-        
-
-        
-
-        </g>
-
-                        <g id="edges">
-          <path class="edge flow-imp" id="e-ship1-q" d="M801.6,168.6 L686.4,313.2"/>
-          <path class="edge flow-imp" id="e-ship2-q" d="M888.0,284.3 L686.4,313.2"/>
-          <path class="edge flow-imp" id="e-ship3-q" d="M945.6,382.6 L686.4,313.2"/>
-          <path class="edge flow-imp" id="e-qimp-port" d="M686.4,313.2 L600.0,255.4"/>
-          <path class="edge flow-exp" id="e-yard-qexp" d="M513.6,457.8 L484.8,284.3"/>
-          <path class="edge flow-exp" id="e-qexp-train" d="M484.8,284.3 L340.8,342.2"/>
-          <path class="edge" id="e-port-yard" d="M600.0,255.4 L513.6,457.8"/>
-          <path class="edge" id="e-port-train" d="M600.0,255.4 L340.8,342.2"/>
-        </g>
-
-        <g id="exit-labels"></g>
-        <circle class="spotlight" id="spotlight" cx="0" cy="0" r="30" visibility="hidden"/>
-
-        <g id="nodes">
-          <!-- PORT -->
-          <g class="node port" id="n-port" transform="translate(600.0,255.4)">
-            <circle class="node-core" r="14"/>
-            <text class="icon-txt" text-anchor="middle" y="3">PORT</text>
-            <text class="node-label" x="21" y="-6">VERACRUZ</text>
-            <text class="node-meta" x="21" y="6" id="port-status">3 ships · 1 train</text>
-          </g>
-
-          <!-- SHIPS -->
-          <g class="node ship" id="n-ship1" transform="translate(801.6,168.6)">
-            <rect class="node-core" x="-16" y="-9" width="32" height="18" rx="3"/>
-            <text class="icon-txt" text-anchor="middle" y="3">SHIP1</text>
-            <text class="node-label" x="21" y="-4">SHIP[1] coffee</text>
-            <text class="node-meta" x="21" y="9" id="ship1-meta">unloading · —</text>
-          </g>
-          <g class="node ship" id="n-ship2" transform="translate(888.0,284.3)">
-            <rect class="node-core" x="-16" y="-9" width="32" height="18" rx="3"/>
-            <text class="icon-txt" text-anchor="middle" y="3">SHIP2</text>
-            <text class="node-label" x="21" y="-4">SHIP[2] sugar</text>
-            <text class="node-meta" x="21" y="9" id="ship2-meta">unloading · —</text>
-          </g>
-          <g class="node ship" id="n-ship3" transform="translate(945.6,382.6)">
-            <rect class="node-core" x="-16" y="-9" width="32" height="18" rx="3"/>
-            <text class="icon-txt" text-anchor="middle" y="3">SHIP3</text>
-            <text class="node-label" x="21" y="-4">SHIP[3] TEU</text>
-            <text class="node-meta" x="21" y="9" id="ship3-meta">unloading · —</text>
-          </g>
-
-          <!-- TRAIN -->
-          <g class="node train" id="n-train" transform="translate(340.8,342.2)">
-            <rect class="node-core" x="-18" y="-8" width="36" height="16" rx="3"/>
-            <text class="icon-txt" text-anchor="middle" y="3">TRAIN</text>
-            <text class="node-label" text-anchor="end" x="-23" y="-4">TRAIN[1]</text>
-            <text class="node-meta" text-anchor="end" x="-23" y="8" id="train-meta">loading · —</text>
-          </g>
-
-          <!-- QUEUES -->
-          <g class="node queue" id="n-qimp" transform="translate(686.4,313.2)">
-            <circle class="node-core" r="12"/>
-            <text class="node-label" x="16" y="-4">Q.IMPORT</text>
-            <text class="node-meta" x="16" y="9" id="qimp-meta">0 trucks</text>
-          </g>
-          <g class="node queue" id="n-qexp" transform="translate(484.8,284.3)">
-            <circle class="node-core" r="12"/>
-            <text class="node-label" text-anchor="end" x="-16" y="-4">Q.EXPORT</text>
-            <text class="node-meta" text-anchor="end" x="-16" y="9" id="qexp-meta">0 trucks</text>
-          </g>
-
-          <!-- YARD stocks -->
-          <g class="node yard" id="n-yard" transform="translate(513.6,457.8)">
-            <rect class="node-core" x="-14" y="-14" width="28" height="28" rx="3"/>
-            <text class="icon-txt" text-anchor="middle" y="3">YARD</text>
-            <text class="node-label" x="21" y="-6">CARGO YARD · CEDIS A</text>
-            <text class="node-meta" x="21" y="6" id="yard-meta">stocks</text>
-          </g>
-          <!-- CEDIS B: example distribution centre (hypothetical site on an OSM street) -->
-          <g class="node yard" id="n-cedisb" transform="translate(220.7,529.8)">
-            <rect class="node-core" x="-9" y="-9" width="18" height="18" rx="2"/>
-            <text class="icon-txt" text-anchor="middle" y="3">B</text>
-            <text class="node-label" x="14" y="-4">CEDIS B</text>
-            <text class="node-meta" x="14" y="8" id="cedisb-meta">example site</text>
-          </g>
-        </g>
-      </svg>
-      <canvas class="traffic" id="traffic" aria-hidden="true"></canvas>
+</svg>
 </template>
 <script>if (!window.GUI || !window.React || !window.ReactDOM) document.getElementById("boot-error").style.display = "block";</script>
 <script type="module" src="veracruz-port/port-gui.js"></script>

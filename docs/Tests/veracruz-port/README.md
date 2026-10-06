@@ -16,24 +16,36 @@ Page: [veracruz-port-gui.html](../veracruz-port-gui.html) · <https://neurons-me
 
 The same kernel (`this.me@4.1.0`, sha256-checked as above), traffic adapter and map, with the chrome and panels rendered by **.GUI** (`this.gui`, neurons.me's Generative User Interface, a React + MUI component library) instead of hand-written HTML/CSS.
 
-**Pinned dependencies.** Exact versions from jsDelivr, each with Subresource Integrity (the browser refuses a file whose hash differs):
+**.GUI build: unreleased branch build, self-hosted.** The map uses `GUI.OpenStreetMap`, which is not in a published this.gui release yet. The page therefore loads the UMD built from the PR head commit, `this.gui feat/openstreetmap @27d7307` ([neurons-me/GUI#3](https://github.com/neurons-me/GUI/pull/3), which depends on [#2](https://github.com/neurons-me/GUI/pull/2)). The file is `vendor/this.gui-27d7307.umd.js`, the output of `npm run build` at commit `27d7307416b5232e0438071fb0328d45a7e648b9`, and the build is reproducible (same bytes on rebuild). The `<script>` tag carries SRI, and `port-gui.js` re-hashes the file in the browser (sha256) before anything runs, the same way it checks the kernel. If either check fails, the page stops. This build does **not** include #2, so the explicit `subscribe` bridge below stays in place.
 
 | File | sha256 | SRI |
 |---|---|---|
-| `this.gui@4.0.0/dist/this.gui.umd.js` | `42491c246d8cfbd3ed27ab606c040ce02c48196d1ee91ffbbcba2784bc478fa7` | `sha384-pB2ENZfg4OzWQRcfI2yjTof3wt4zUjStqPBfSLF/dnx2kXBCKNQk3WklnRi7IuTj` |
+| `vendor/this.gui-27d7307.umd.js` (self-hosted, branch build) | `7bdda6da1a0346bc685ccc229ebf15655d1e7422a56438d3254dc73827178ce1` | `sha384-HZNIHttir3YhnR/I1bk7GPZ3hEcZLeB7AGPBww+ywFkzLV5FkSDVaSa6k3PTktnZ` |
+
+**Other pinned dependencies.** Exact versions from jsDelivr, each with Subresource Integrity (the browser refuses a file whose hash differs):
+
+| File | sha256 | SRI |
+|---|---|---|
 | `this.gui@4.0.0/dist/material-symbols.css` | `717649f90831db7a1447191f0d46c15a5b9bf2bb93d65bd4cd069a785600b53b` | `sha384-dvUfVVY6nb2ef6F+dRTsSozZpefoOvMox4Ay4fQP86bSU+6yHovoYYKaRtwS+mca` |
 | `react@18.3.1/umd/react.production.min.js` | `d949f1c3687aedadcedac85261865f29b17cd273997e7f6b2bfc53b2f9d4c4dd` | `sha384-DGyLxAyjq0f9SPpVevD6IgztCFlnMF6oW/XQGmfe+IsZ8TqEiDrcHkMLKI6fiB/Z` |
 | `react-dom@18.3.1/umd/react-dom.production.min.js` | `35f4f974f4b2bcd44da73963347f8952e341f83909e4498227d4e26b98f66f0d` | `sha384-gTGxhz21lVGYNMcdJOyq01Edg0jhn/c22nsx0kyqP0TxaV5WVdsSH1fSDUf5YJj1` |
 
-The jsDelivr `this.gui.umd.js` is byte-identical to the file in the npm tarball `this.gui-4.0.0.tgz`. The UMD expects `window.React` and `window.ReactDOM`; React 18.3.1 is the last React release with UMD builds.
+The icon font CSS still comes from the this.gui@4.0.0 release (unchanged in the branch). The UMD expects `window.React` and `window.ReactDOM`; React 18.3.1 is the last React release with UMD builds.
 
-**What .GUI renders** (`port-gui.js`): `Theme` (neurons.me, dark), the topbar (`registry.TopBar`: neurons.me logo + `.me` linking to <https://neurons-me.github.io/>), the title strip, the glossary (`Button` + `Collapse`, all collapsed), the kernel/tour strip (collapsible, remembered in `localStorage`; `?step=N` opens it at step N), the 1–8 stepper and Back/Next, every panel (`Paper`, `Typography`, `Chip` tags: kernel tags use the *aurora* accent, adapter tags the *ember* accent), the speed and explain selects (`TextField select` + `MenuItem`), Start/Reset/Verify (`Button`), the progress bars (`Progress`), and the map legend + HUD chips.
+**What .GUI renders** (`port-gui.js`): `Theme` (neurons.me, dark), the topbar (`registry.TopBar`: neurons.me logo + `.me` linking to <https://neurons-me.github.io/>), the title strip, the glossary (`Button` + `Collapse`, all collapsed), the kernel/tour strip (collapsible, remembered in `localStorage`; `?step=N` opens it at step N), the 1–8 stepper and Back/Next, every panel (`Paper`, `Typography`, `Chip` tags: kernel tags use the *aurora* accent, adapter tags the *ember* accent), the speed and explain selects (`TextField select` + `MenuItem`), Start/Reset/Verify (`Button`), the progress bars (`Progress`), the map legend + HUD chips, and the map itself (`GUI.OpenStreetMap`, below).
 
 **How the kernel drives re-render.** All kernel readouts sit under `GUI.MeRuntimeProvider({ me, subscribe })`, and each one is a `GUI.useMeValue(path)` subscription whose snapshot is the kernel read `me(path)`. After each flush, the adapter collects the paths the kernel itself reported for every write: the written fact plus `explain().meta.recomputed`. On the UI tick (4 Hz) it notifies only those paths' subscribers, and React re-renders only the components whose value changed. The explain panel also re-renders when its path shows up in a wave whose value didn't change. While traffic runs, readouts can lag the kernel by up to 250 ms (the 4 Hz tick, same cadence as the classic page). Headless check, pausing and taking one tick each time: all 81 bound readouts (63 distinct paths) match a direct `P.read(path)` at load, mid-run, after fast-forward and at the end (`window.__port.consistency()`).
 
-**Do not let .GUI auto-detect `me.subscribe`.** With no `subscribe` bridge, `this.gui@4.0.0` calls `me.subscribe(path, cb)` whenever `typeof me.subscribe === "function"`. On a `this.me@4.1.0` proxy that is always true, and the call **writes a kernel fact** named `subscribe`. The page therefore always passes its own bridge. The headless check confirms `me("subscribe")` stays undefined.
+**Do not let .GUI auto-detect `me.subscribe`.** With no `subscribe` bridge, this.gui (4.0.0, and this branch build) calls `me.subscribe(path, cb)` whenever `typeof me.subscribe === "function"`. On a `this.me@4.1.0` proxy that is always true, and the call **writes a kernel fact** named `subscribe`. The page therefore always passes its own bridge. The headless check confirms `me("subscribe")` stays undefined.
 
-**Still manual (adapter, labeled):** the basemap SVG and the 500-dot canvas (GUI has no map component). The SVG lives in a `<template>`, is mounted once and reads the kernel at the UI tick. Also manual: the per-unit last-mile strip canvas, the SVG node labels, page stats (fps, moving dots), the sim clock, the redirect feed, the completion estimate, and the path-notification schedule.
+**Map = `GUI.OpenStreetMap`.** GUI only presents the map. The data stays in this project: the basemap is the existing `build_basemap.py` output (same geometry as `basemap.svg`, not rebuilt). It sits in a `<template id="basemap-tpl">`, and `port-gui.js` reads its groups into `basemap.layers`.
+- **Projection:** the component gets the generator's bbox, the 1200×800 frame and pad 24, and its `project(lat, lon)` uses the same equirectangular formula as `build_basemap.py`. The basemap, the node markers and the canvas layer share that one transform.
+- **Attribution and source:** "© OpenStreetMap contributors · ODbL" is rendered on the map (bottom-right; the HUD sits 24 px up so they never overlap). The source (generator, Overpass query, bbox, projection) is in the SVG `<metadata>` and the attribution tooltip.
+- **Nodes** are `GUI.OpenStreetMap.Marker`s. Positions are the old pixel centres converted with the map's own `unproject`, so they are identical. Meta lines (`unloading · 31,350 t`, `47 queued`, …) are `GUI.useMeValue` subscriptions through the same bridge.
+- **Trucks:** the 500 dots are drawn by `GUI.OpenStreetMap.Canvas`'s per-frame `onFrame({ ctx, … })`, which also drives the adapter loop. Canvas suits this many moving points; SVG overlays or markers are also possible.
+- **Check vs the previous hand-written map** (headless, same seed): identical node positions (0 px), Verify 241/241, identical drain totals, and frame time / main-thread time within run-to-run noise (details in GUI#3).
+
+**Still manual (adapter, labeled):** the edge/exit-label overlay data, the node highlight classes, the per-unit last-mile strip canvas, the SVG node labels, page stats (fps, moving dots), the sim clock, the redirect feed, the completion estimate, and the path-notification schedule.
 
 ## 500 trucks, one kernel
 
@@ -221,7 +233,8 @@ python3 build_basemap.py
 | File | Role |
 |---|---|
 | `../veracruz-port.html` | Page: tutorial, map, UI, kernel loader |
-| `../veracruz-port-gui.html`, `port-gui.js` | .GUI version: same kernel/adapter/map; chrome + panels as this.gui@4.0.0 components bound to kernel paths |
+| `../veracruz-port-gui.html`, `port-gui.js` | .GUI version: same kernel/adapter/basemap data; chrome, panels and map (`GUI.OpenStreetMap`) as this.gui components bound to kernel paths |
+| `vendor/this.gui-27d7307.umd.js` | Self-hosted unreleased this.gui branch build (feat/openstreetmap @27d7307, GUI#3), SRI + sha256 pinned |
 | `port-sim.js` | Kernel wiring: seed facts, formulas, write/wave helper, verify |
 | `port-traffic.js` | Adapter: 500 truck agents, speeds (assumptions), slots, timers, last-mile plan + rebalancing, deltas → flush (real writes) |
 | `port-lastmile.js`, `build_lastmile.py` | Last-mile example data: 2 CEDIS, 1,000 trips, road trees (generated) |

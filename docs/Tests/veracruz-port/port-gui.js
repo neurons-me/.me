@@ -1,4 +1,5 @@
-// Port of Veracruz: .GUI interface (this.gui@4.0.0, UMD, pinned and SRI-checked in the HTML)
+// Port of Veracruz: .GUI interface (this.gui feat/openstreetmap @27d7307, unreleased branch build, self-hosted UMD,
+// SRI-pinned in the HTML and sha256-checked in the browser below). The map is GUI.OpenStreetMap.
 // over the real, unmodified this.me@4.1.0 kernel (sha256-checked here before import).
 //
 // Who owns what:
@@ -20,7 +21,10 @@ const KERNEL = {
   sha256: "47cc8f9a9b5ee2921a59023d400e694d6c9b9f80a0782db850b06156cbb46afa",
   urls: ["https://cdn.jsdelivr.net/npm/this.me@4.1.0/dist/me.es.js", "https://unpkg.com/this.me@4.1.0/dist/me.es.js"],
 };
-const GUI_PIN = { version: "4.0.0", file: "dist/this.gui.umd.js", sha256: "42491c246d8cfbd3ed27ab606c040ce02c48196d1ee91ffbbcba2784bc478fa7" };
+// .GUI build: not on npm yet, so the exact UMD built from the PR head commit is self-hosted next to this file.
+const GUI_PIN = { label: "this.gui feat/openstreetmap @27d7307", branch: "feat/openstreetmap", commit: "27d7307416b5232e0438071fb0328d45a7e648b9", short: "27d7307",
+  pr: "https://github.com/neurons-me/GUI/pull/3", url: new URL("vendor/this.gui-27d7307.umd.js", import.meta.url).href,
+  sha256: "7bdda6da1a0346bc685ccc229ebf15655d1e7422a56438d3254dc73827178ce1", sri: "sha384-HZNIHttir3YhnR/I1bk7GPZ3hEcZLeB7AGPBww+ywFkzLV5FkSDVaSa6k3PTktnZ" };
 
 const G = window.GUI, h = React.createElement;
 const { Box, Button, Typography, Chip, Progress, Paper, Link, TextField } = G.Atoms;
@@ -37,6 +41,15 @@ const pad4 = (n) => String(n).padStart(4, "0"), lmName = (u) => `LM-${String(u).
 async function sha256Hex(text) {
   const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
   return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+// Re-hash the .GUI UMD in the browser (the <script> tag already enforced SRI sha384; this shows and checks sha256 too).
+async function verifyGuiBuild() {
+  const res = await fetch(GUI_PIN.url, { cache: "force-cache" });
+  if (!res.ok) throw new Error(`.GUI build: HTTP ${res.status}`);
+  const buf = await crypto.subtle.digest("SHA-256", await res.arrayBuffer());
+  const hash = [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
+  if (hash !== GUI_PIN.sha256) { const e = new Error(`.GUI build sha256 mismatch: got ${hash}`); e.mismatch = true; throw e; }
+  return hash;
 }
 async function loadKernel() {
   const errors = [];
@@ -224,7 +237,7 @@ function TitleStrip() {
     h(Typography, { sx: { fontFamily: MONO, fontSize: 12, color: "primary.main" } }, "me://port"),
     h(SrcTag, { kind: "adapter", label: "port operations · 500 trucks · guided" }),
     h(Typography, { sx: { ml: "auto", fontFamily: MONO, fontSize: 11, color: "text.secondary" } },
-      `UI: this.gui@${GUI_PIN.version} · kernel: `, h(KernelLink, { id: "kver-top", minCh: 31 }), " · ",
+      "UI: ", h(Link, { href: GUI_PIN.pr, target: "_blank", rel: "noopener", underline: "hover", title: `${GUI_PIN.label} (unreleased branch build)\nsha256 ${GUI_PIN.sha256}` }, `this.gui@${GUI_PIN.short}`), " · kernel: ", h(KernelLink, { id: "kver-top", minCh: 31 }), " · ",
       h(Link, { href: "veracruz-port.html", underline: "hover" }, "classic page")));
 }
 
@@ -525,7 +538,8 @@ const Legend = () => h(Paper, { id: "legend", variant: "outlined", sx: { positio
 function SimClock() { useStore(sim); const { speed } = useStore(ui); return h("strong", { id: "hud-tick" }, `${T ? clock(T.simTime) : clock(0)} · ×${speed}`); }
 const HudChip = ({ label, children, adapter }) => h(Chip, { size: "small", variant: "outlined", label: h(React.Fragment, null, label, " ", children),
   sx: (t) => ({ fontFamily: MONO, fontSize: 10, bgcolor: "rgba(11,13,16,0.88)", borderRadius: "3px", color: "text.secondary", borderStyle: adapter ? "dashed" : "solid", borderColor: adapter ? accentColor(t, "ember") : t.palette.divider, "& strong": { color: "text.primary", fontWeight: 500 } }) });
-const Hud = () => h(Box, { sx: { position: "absolute", left: 12, bottom: 12, right: 12, display: "flex", flexWrap: "wrap", gap: 1, pointerEvents: "none" } },
+// HUD sits 24 px up so the map's OSM attribution strip (bottom-right, 17 px) never sits under a chip
+const Hud = () => h(Box, { sx: { position: "absolute", left: 12, bottom: 24, right: 12, display: "flex", flexWrap: "wrap", gap: 1, pointerEvents: "none" } },
   h(HudChip, { label: "import left" }, h(Box, { component: "strong", sx: { color: "#7eb8c9 !important" } }, V("flows.importRemaining", { suffix: " t" }))),
   h(HudChip, { label: "export left" }, h(Box, { component: "strong", sx: { color: "#c9b87e !important" } }, V("flows.exportRemaining", { suffix: " t" }))),
   h(HudChip, { label: "trucks.working" }, h("strong", null, V("trucks.working"), " / ", V("trucks.fleet"))),
@@ -533,51 +547,34 @@ const Hud = () => h(Box, { sx: { position: "absolute", left: 12, bottom: 12, rig
   h(HudChip, { label: "sim (adapter)", adapter: true }, h(SimClock)),
   h(HudChip, { label: "assumed: heavy", adapter: true }, h("strong", null, "25 km/h"), " · last-mile ", h("strong", null, "22 km/h")));
 
-// The SVG basemap + canvas stay hand-written (GUI has no scene component); mounted once from <template>.
-const MapScene = React.memo(function MapScene() {
-  const ref = React.useRef(null);
-  React.useLayoutEffect(() => { initMap(ref.current); }, []);
-  return h(Box, { ref, sx: { position: "absolute", inset: 0 } });
-});
-function MapPanel() {
-  const { me } = useStore(ui);
-  return h(Box, { className: "map-wrap", sx: { position: "relative", overflow: "hidden", bgcolor: "#0b0d10", minHeight: 300 } },
-    h(MapScene),
-    me ? h(G.MeRuntimeProvider, { me, subscribe: kernelSubscribe }, h(Legend), h(Hud)) : null);
+// ── map: GUI.OpenStreetMap over the EXISTING build_basemap.py output (GUI presents; this adapter only reads it) ──
+const OSM = G.OpenStreetMap;
+const FRAME = { bbox: { south: PROJ.south, west: PROJ.west, north: PROJ.north, east: PROJ.east }, width: PROJ.W, height: PROJ.H, pad: PROJ.PAD };
+const OSM_PROJ = G.createOsmProjection(FRAME);   // the map's projection = build_basemap.py's (equirectangular, same bbox/pad)
+const OSM_SOURCE = { generator: "veracruz-port/build_basemap.py", dataSource: "OpenStreetMap via Overpass API", query: "veracruz-port/overpass_query.txt", notes: "static SVG basemap · no live tiles", license: "ODbL" };
+function readBasemap() {   // generator SVG (inline <template>) → layers; geometry and styles unchanged
+  const svg = document.getElementById("basemap-tpl").content.querySelector("svg");
+  const attr = (el, k) => el.getAttribute(k) ?? undefined, num = (el, k) => (el.hasAttribute(k) ? Number(el.getAttribute(k)) : undefined);
+  return {
+    background: svg.querySelector(":scope > rect")?.getAttribute("fill") || "#0b0d10",
+    layers: [...svg.querySelectorAll(":scope > g[id]")].map((g) => ({
+      id: g.id,
+      style: { fill: attr(g, "fill"), stroke: attr(g, "stroke"), strokeWidth: num(g, "stroke-width"), opacity: num(g, "opacity"), strokeLinecap: attr(g, "stroke-linecap"), strokeLinejoin: attr(g, "stroke-linejoin") },
+      paths: [...g.querySelectorAll("path")].map((p) => p.getAttribute("d")),
+      circles: [...g.querySelectorAll("circle")].map((c) => ({ cx: Number(c.getAttribute("cx")), cy: Number(c.getAttribute("cy")), r: Number(c.getAttribute("r")) })),
+    })),
+  };
 }
-
-const Footer = () => h(Box, { component: "footer", sx: { px: 2, py: .9, borderTop: 1, borderColor: "divider", fontFamily: MONO, fontSize: 10, color: "text.disabled", display: "flex", justifyContent: "space-between", gap: 1.25, flexWrap: "wrap", "& a": { color: "text.secondary" } } },
-  h("span", null, "© ", h(Link, { href: "https://www.openstreetmap.org/copyright", target: "_blank", rel: "noopener", underline: "hover" }, "OpenStreetMap"), " contributors · static SVG basemap · no live tiles"),
-  h("span", null, h(KernelLink, { id: "kver-foot", after: " (unmodified)", minCh: 44 }), ` · this.gui@${GUI_PIN.version} (pinned, SRI) · `, h(Link, { href: "veracruz-port/", underline: "hover" }, "build notes")));
-
-function App() {
-  return h(G.Theme, { initialThemeId: "neurons.me", initialMode: "dark" },
-    h(Box, { sx: { display: "flex", flexDirection: "column", height: "100vh", minHeight: 640, bgcolor: "background.default", color: "text.primary", "@media (max-width:1000px)": { height: "auto" } } },
-      TOPBAR, h(TitleStrip), h(Glossary),
-      h(Box, { className: "layout", sx: { flex: 1, display: "grid", gridTemplateColumns: "1fr 380px", minHeight: 0, "@media (max-width:1000px)": { gridTemplateColumns: "1fr", gridTemplateRows: "minmax(300px, 42vh) auto" } } },
-        h(MapPanel), h(Aside)),
-      h(Footer)));
-}
-
-// ══════════════════════════ adapter: map layer, loop, kernel lifecycle ══════════════════════════
-let canvas = null, ctx = null, wrap = null, view = { s: 1, ox: 0, oy: 0, dpr: 1, w: 0, h: 0 };
-const $ = (s) => document.querySelector(s), $$ = (s) => [...document.querySelectorAll(s)];
-function resize() {
-  if (!wrap) return;
-  const r = wrap.getBoundingClientRect(), dpr = Math.min(2, window.devicePixelRatio || 1);
-  canvas.width = Math.round(r.width * dpr); canvas.height = Math.round(r.height * dpr);
-  const s = Math.min(r.width / 1200, r.height / 800);   // matches preserveAspectRatio="xMidYMid meet"
-  view = { s, ox: (r.width - 1200 * s) / 2, oy: (r.height - 800 * s) / 2, dpr, w: r.width, h: r.height };
-}
-function initMap(host) {
-  host.appendChild(document.getElementById("map-tpl").content.cloneNode(true));
-  wrap = host; canvas = host.querySelector("#traffic"); ctx = canvas.getContext("2d");
-  new ResizeObserver(resize).observe(host); resize();
-  exitLabels(); applyMapHighlights();
-  requestAnimationFrame(frame);
-}
-function exitLabels() {
-  const g = $("#exit-labels"), NS = "http://www.w3.org/2000/svg";
+const BASEMAP = readBasemap();
+// flow edges between nodes (page overlay, map pixels)
+const EDGES = [
+  ["e-ship1-q", "edge flow-imp", "M801.6,168.6 L686.4,313.2"], ["e-ship2-q", "edge flow-imp", "M888.0,284.3 L686.4,313.2"],
+  ["e-ship3-q", "edge flow-imp", "M945.6,382.6 L686.4,313.2"], ["e-qimp-port", "edge flow-imp", "M686.4,313.2 L600.0,255.4"],
+  ["e-yard-qexp", "edge flow-exp", "M513.6,457.8 L484.8,284.3"], ["e-qexp-train", "edge flow-exp", "M484.8,284.3 L340.8,342.2"],
+  ["e-port-yard", "edge", "M600.0,255.4 L513.6,457.8"], ["e-port-train", "edge", "M600.0,255.4 L340.8,342.2"],
+];
+function exitLabelData() {
+  const out = [];
   for (const ex of CONFIG.exits) {
     const r = ROUTES[`berth1>${ex}`];
     let cross = null;
@@ -590,43 +587,86 @@ function exitLabels() {
     }
     if (!cross) continue;
     const top = cross[1] < 400, left = cross[0] < 600;
-    const t = document.createElementNS(NS, "text");
-    t.setAttribute("class", "exit-label");
-    t.setAttribute("x", (cross[0] + (left ? 8 : -8)).toFixed(1));
-    t.setAttribute("y", (top ? 16 : 728).toFixed(1));
-    t.setAttribute("text-anchor", left ? "start" : "end");
-    t.textContent = (top ? "↖ " : "↓ ") + EXITS[ex] + " · off map";
-    g.appendChild(t);
+    out.push({ key: ex, x: (cross[0] + (left ? 8 : -8)).toFixed(1), y: (top ? 16 : 728).toFixed(1), anchor: left ? "start" : "end", text: (top ? "↖ " : "↓ ") + EXITS[ex] + " · off map" });
   }
+  return out;
 }
+const EXIT_LABELS = exitLabelData();
+
+// node meta lines: GUI subscriptions to kernel paths (re-read when the bridge announces those paths)
+function NeedsKernel({ C, ...p }) { const c = G.useOptionalMeRuntimeContext(); return c && c.me ? h(C, p) : "—"; }
+function ShipMeta({ s }) { const work = G.useMeValue(`ships.${s.i}.hasWork`), rem = G.useMeValue(`ships.${s.i}.remaining`); return `${work ? "unloading" : "done"} · ${fmt(rem)} ${s.unit}`; }
+function TrainMeta() { const work = G.useMeValue("train.1.hasWork"), rem = G.useMeValue("train.1.remainingToLoad"); return `${work ? "loading" : "done"} · ${fmt(rem)} t`; }
+function QueueMeta({ q }) { const n = G.useMeValue(`queues.${q}.length`), busy = G.useMeValue(`queues.${q}.busy`); return `${n} queued${busy ? "" : " · idle"}`; }
+function YardMeta() { useStore(sim); const heavy = G.useMeValue("trucks.heavy.available"); return `pool: ${fmt(heavy)} heavy · ${T ? T.units.filter((u) => u.home === 0 && u.st === "lmPool").length : 0} small (adapter)`; }
+function PortMeta() { const busy = G.useMeValue("port.busy"); return busy ? "port.busy = true" : "port.busy = false"; }
+// node positions are the page's existing map pixels, converted to lat/lon with the map's own projection
+const NODES = [
+  { id: "n-port", kind: "port", x: 600.0, y: 255.4, shape: "circle", size: 28, gap: 7, icon: "anchor", color: "#7eb8c9", label: "VERACRUZ", Meta: PortMeta },
+  ...SHIPS_META.map((s, i) => ({ id: `n-ship${s.i}`, kind: "ship", x: [801.6, 888.0, 945.6][i], y: [168.6, 284.3, 382.6][i], shape: "rect", w: 32, hh: 18, gap: 5, icon: "directions_boat", color: "#6a9bb0", label: `SHIP[${s.i}] ${["coffee", "sugar", "TEU"][i]}`, Meta: ShipMeta, mp: { s } })),
+  { id: "n-train", kind: "train", x: 340.8, y: 342.2, shape: "rect", w: 36, hh: 16, gap: 5, place: "left", icon: "train", color: "#b0a06a", label: "TRAIN[1]", Meta: TrainMeta },
+  { id: "n-qimp", kind: "queue", x: 686.4, y: 313.2, shape: "circle", size: 24, gap: 4, icon: "local_shipping", color: "#7a7a90", label: "Q.IMPORT", Meta: QueueMeta, mp: { q: "import" } },
+  { id: "n-qexp", kind: "queue", x: 484.8, y: 284.3, shape: "circle", size: 24, gap: 4, place: "left", icon: "local_shipping", color: "#7a7a90", label: "Q.EXPORT", Meta: QueueMeta, mp: { q: "export" } },
+  { id: "n-yard", kind: "yard", x: 513.6, y: 457.8, shape: "square", size: 28, gap: 7, icon: "warehouse", color: "#7a9a7a", label: "CARGO YARD · CEDIS A", Meta: YardMeta },
+  { id: "n-cedisb", kind: "yard", x: 220.7, y: 529.8, shape: "square", size: 18, gap: 5, icon: "inventory_2", color: "#7a9a7a", label: "CEDIS B", meta: "example site" },
+].map((n) => ({ ...n, ...OSM_PROJ.unproject(n.x, n.y) }));
+const NodeMarker = React.memo(function NodeMarker({ n }) {
+  return h(OSM.Marker, { id: n.id, className: `node ${n.kind}`, lat: n.lat, lon: n.lon, shape: n.shape, size: n.size, width: n.w, height: n.hh,
+    color: n.color, icon: n.icon, iconColor: n.color, label: n.label, labelPlacement: n.place || "right", labelOffset: n.gap,
+    meta: n.Meta ? h(NeedsKernel, { C: n.Meta, ...(n.mp || {}) }) : n.meta });
+});
+let mapMounted = false;
+const MapLayer = React.memo(function MapLayer({ me }) {
+  React.useEffect(() => { mapMounted = true; lastHlStep = 0; applyMapHighlights(); renderMapLabels(); return () => { mapMounted = false; }; }, []);
+  return h(G.MeRuntimeProvider, { me, subscribe: kernelSubscribe },
+    h(OSM, { ...FRAME, basemap: BASEMAP, source: OSM_SOURCE, ariaLabel: "Veracruz port operations", attribution: { position: "bottom-right" } },
+      h("g", { id: "edges" }, EDGES.map(([id, cls, d]) => h("path", { key: id, id, className: cls, d }))),
+      h("g", { id: "exit-labels" }, EXIT_LABELS.map((l) => h("text", { key: l.key, className: "exit-label", x: l.x, y: l.y, textAnchor: l.anchor }, l.text))),
+      h("circle", { className: "spotlight", id: "spotlight", cx: 0, cy: 0, r: 30, visibility: "hidden" }),
+      h("g", { id: "nodes" }, NODES.map((n) => h(NodeMarker, { key: n.id, n }))),
+      h(OSM.Canvas, { id: "traffic", className: "traffic", onFrame: onMapFrame })));
+});
+function MapPanel() {
+  const { me } = useStore(ui);
+  return h(Box, { className: "map-wrap", sx: { position: "relative", overflow: "hidden", bgcolor: "#0b0d10", minHeight: 300 } },
+    h(MapLayer, { me }),
+    me ? h(G.MeRuntimeProvider, { me, subscribe: kernelSubscribe }, h(Legend), h(Hud)) : null);
+}
+
+const Footer = () => h(Box, { component: "footer", sx: { px: 2, py: .9, borderTop: 1, borderColor: "divider", fontFamily: MONO, fontSize: 10, color: "text.disabled", display: "flex", justifyContent: "space-between", gap: 1.25, flexWrap: "wrap", "& a": { color: "text.secondary" } } },
+  h("span", null, "© ", h(Link, { href: "https://www.openstreetmap.org/copyright", target: "_blank", rel: "noopener", underline: "hover" }, "OpenStreetMap"), " contributors · static SVG basemap · no live tiles"),
+  h("span", null, h(KernelLink, { id: "kver-foot", after: " (unmodified)", minCh: 44 }), " · ", h(Link, { href: GUI_PIN.pr, target: "_blank", rel: "noopener", underline: "hover" }, `${GUI_PIN.label}`), " (unreleased branch build, self-hosted, SRI + sha256) · ", h(Link, { href: "veracruz-port/", underline: "hover" }, "build notes")));
+
+function App() {
+  return h(G.Theme, { initialThemeId: "neurons.me", initialMode: "dark" },
+    h(Box, { sx: { display: "flex", flexDirection: "column", height: "100vh", minHeight: 640, bgcolor: "background.default", color: "text.primary", "@media (max-width:1000px)": { height: "auto" } } },
+      TOPBAR, h(TitleStrip), h(Glossary),
+      h(Box, { className: "layout", sx: { flex: 1, display: "grid", gridTemplateColumns: "1fr 380px", minHeight: 0, "@media (max-width:1000px)": { gridTemplateColumns: "1fr", gridTemplateRows: "minmax(300px, 42vh) auto" } } },
+        h(MapPanel), h(Aside)),
+      h(Footer)));
+}
+
+// ══════════════════════════ adapter: map layer, loop, kernel lifecycle ══════════════════════════
+const $ = (s) => document.querySelector(s), $$ = (s) => [...document.querySelectorAll(s)];
 let lastHlStep = 0;
 function applyMapHighlights() {
-  const step = ui.state.step; if (!wrap || step === lastHlStep) return; lastHlStep = step;
+  const step = ui.state.step; if (!mapMounted || step === lastHlStep) return; lastHlStep = step;
   const t = TOUR[step];
   $$("#nodes .node").forEach((n) => { n.classList.remove("hl", "dimmed"); n.classList.add(t.hlNodes.includes(n.id) ? "hl" : "dimmed"); });
   $$("#edges .edge").forEach((e) => { e.classList.remove("hl", "dimmed"); e.classList.add(t.hlEdges.includes(e.id) ? "hl" : "dimmed"); });
 }
 ui.subscribe(applyMapHighlights);
 
-// SVG node labels: map layer, read from the kernel at the UI tick (adapter render; not a GUI component)
+// node state classes (adapter-side highlight of the GUI markers; the meta text lines are GUI bindings)
 function renderMapLabels() {
-  if (!P || !wrap) return;
+  if (!P || !mapMounted) return;
   const R = P.read;
-  for (const s of SHIPS_META) {
-    const work = R(`ships.${s.i}.hasWork`);
-    $(`#ship${s.i}-meta`).textContent = `${work ? "unloading" : "done"} · ${fmt(R(`ships.${s.i}.remaining`))} ${s.unit}`;
-    $(`#n-ship${s.i}`).classList.toggle("done", !work); $(`#n-ship${s.i}`).classList.toggle("busy", !!work);
-  }
+  for (const s of SHIPS_META) { const work = R(`ships.${s.i}.hasWork`); $(`#n-ship${s.i}`)?.classList.toggle("done", !work); $(`#n-ship${s.i}`)?.classList.toggle("busy", !!work); }
   const tw = R("train.1.hasWork");
-  $("#train-meta").textContent = `${tw ? "loading" : "done"} · ${fmt(R("train.1.remainingToLoad"))} t`;
-  $("#n-train").classList.toggle("done", !tw); $("#n-train").classList.toggle("busy", !!tw);
-  $("#qimp-meta").textContent = `${R("queues.import.length")} queued${R("queues.import.busy") ? "" : " · idle"}`;
-  $("#qexp-meta").textContent = `${R("queues.export.length")} queued${R("queues.export.busy") ? "" : " · idle"}`;
-  $("#yard-meta").textContent = `pool: ${fmt(R("trucks.heavy.available"))} heavy · ${T ? T.units.filter((u) => u.home === 0 && u.st === "lmPool").length : 0} small (adapter)`;
-  $("#port-status").textContent = R("port.busy") ? "port.busy = true" : "port.busy = false";
+  $("#n-train")?.classList.toggle("done", !tw); $("#n-train")?.classList.toggle("busy", !!tw);
 }
 function lightHits() {
-  if (!wrap) return;
+  if (!mapMounted) return;
   const lit = new Set([...hitPaths].map(nodeOfPath).filter(Boolean));
   hitPaths.clear();
   $$("#nodes .node").forEach((n) => n.classList.toggle("hit", lit.has(n.id)));
@@ -657,14 +697,8 @@ const ADDR_ORDER = ["planned", "unassigned", "unscheduled", "active", "done"];
 const addrB = Object.fromEntries(ADDR_ORDER.map((k) => [k, []]));
 const ringAbove = [], ringBelow = [];
 
-function draw() {
-  const { s, ox, oy, dpr } = view;
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  ctx.clearRect(0, 0, view.w, view.h);
+function drawTrucks(ctx) {   // ctx: from GUI.OpenStreetMap.Canvas (map pixels, cleared, clipped to the frame)
   if (!T) return;
-  ctx.setTransform(dpr * s, 0, 0, dpr * s, dpr * ox, dpr * oy);
-  ctx.save();
-  ctx.beginPath(); ctx.rect(0, 0, 1200, 800); ctx.clip();   // trucks vanish at the map edge
   // 1,000 address points: dim until delivered
   for (const k of ADDR_ORDER) addrB[k].length = 0;
   for (const tp of T.trips) addrB[tp.st].push(tp.x, tp.y);
@@ -713,13 +747,12 @@ function draw() {
     for (let i = 0; i < b.length; i += 2) { ctx.moveTo(b[i] + 3, b[i + 1]); ctx.arc(b[i], b[i + 1], 3, 0, 6.2832); }
     ctx.stroke();
   }
-  ctx.restore();
 }
 
-// ── main loop: adapter steps → one flush per animation tick → kernel writes ──
+
+// ── main loop: adapter steps → one flush per animation tick → kernel writes (driven by the map canvas layer) ──
 let lastNow = 0;
-function frame(now) {
-  requestAnimationFrame(frame);
+function onMapFrame({ ctx, now }) {
   const dtReal = lastNow ? Math.min(0.1, (now - lastNow) / 1000) : 0;
   lastNow = now;
   frameLog.push(now); if (frameLog.length > 240) frameLog = frameLog.filter((t) => now - t <= 1000);
@@ -730,7 +763,7 @@ function frame(now) {
     if (writes.length) onFlush(writes, now);
     if (T.done()) setRunning(false, true);
   }
-  draw();
+  drawTrucks(ctx);
   if (now - lastUi > 250) { lastUi = now; if (P) uiTick(); }
 }
 
@@ -789,9 +822,9 @@ const params = new URLSearchParams(location.search);
 ReactDOM.createRoot(document.getElementById("root")).render(h(App));
 
 try {
-  const { mod, host, hash, url, version } = await loadKernel();
+  const [{ mod, host, hash, url, version }, guiHash] = await Promise.all([loadKernel(), verifyGuiBuild()]);
   ME = mod.default || mod.ME;
-  ui.set({ kernel: { state: "ok", version, hash, url, text: `Kernel <b>this.me@${version.replace(/[&<>"]/g, "")}</b> · dist/me.es.js from ${host} · sha256 ${hash.slice(0, 12)}… <b>verified</b> · unmodified · UI <b>this.gui@${G.version}</b> (UMD, SRI-pinned)` } });
+  ui.set({ kernel: { state: "ok", version, hash, url, text: `Kernel <b>this.me@${version.replace(/[&<>"]/g, "")}</b> · dist/me.es.js from ${host} · sha256 ${hash.slice(0, 12)}… <b>verified</b> · unmodified · UI <b>${GUI_PIN.label}</b> (unreleased branch build, <a href="${GUI_PIN.pr}" target="_blank" rel="noopener">PR #3</a>) · sha256 ${guiHash.slice(0, 12)}… <b>verified</b>` } });
   resetKernel();
   if (params.get("autostart") !== "0") setRunning(true);
   // hooks for headless checks
@@ -799,7 +832,7 @@ try {
     get P() { return P; }, get T() { return T; },
     verify,
     pause: () => setRunning(false),
-    gui: { version: G.version, pinned: GUI_PIN, get announced() { return announced; }, listeners: () => kListeners.size },
+    gui: { version: G.version, build: GUI_PIN, get announced() { return announced; }, listeners: () => kListeners.size },
     // every GUI readout bound to a .me path, compared with a direct kernel read (after React commits)
     // (UI ticks at 4 Hz, so while traffic runs the readouts trail the kernel by up to 250 ms: pause first)
     async consistency() {
@@ -852,7 +885,8 @@ try {
   window.__portReady = true;
 } catch (e) {
   const msg = String(e?.message || e).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-  if (!ME) ui.set({ kernel: { state: "error", mismatch: !!e?.mismatch, detail: String(e?.message || e), text: `<b>Kernel failed to load</b>: ${msg}. Nothing on this page runs without it.` } });
+  const guiFail = /^\.GUI build/.test(String(e?.message || ""));
+  if (!ME) ui.set({ kernel: { state: "error", mismatch: !!e?.mismatch && !guiFail, detail: String(e?.message || e), text: `<b>${guiFail ? ".GUI build check failed" : "Kernel failed to load"}</b>: ${msg}. Nothing on this page runs without it.` } });
   setTourOpen(true, false);
   window.__portError = String(e?.message || e);
 }
