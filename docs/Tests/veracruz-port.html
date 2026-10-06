@@ -256,6 +256,16 @@
   .src-tag.kernel { color: var(--accent); border: 1px solid #2a4550; }
   .src-tag.adapter { color: var(--warn); border: 1px dashed #5a4a30; }
   .panel.adapter { border-style: dashed; border-color: #3a3024; }
+  .tour-wrap { flex-shrink: 0; border-bottom: 1px solid var(--border); }
+  .tour-wrap.collapsed #tour-panel { display: none; }
+  .tour-toggle { appearance: none; width: 100%; display: flex; align-items: center; gap: 6px; padding: 7px 12px; background: #0b0e12; border: none; cursor: pointer; font-family: var(--mono); font-size: 10px; color: var(--muted); text-align: left; white-space: nowrap; overflow: hidden; }
+  .tour-toggle:hover { color: var(--text); }
+  .tour-toggle .tt-kernel b { color: var(--ok); font-weight: 500; }
+  .tour-toggle .tt-kernel.err b { color: var(--hot); }
+  .tour-toggle .tt-sep { color: var(--dim); }
+  .tour-toggle .tt-step { color: var(--accent); overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .tour-toggle .tt-caret { margin-left: auto; color: var(--dim); flex-shrink: 0; }
+  .tour-wrap:not(.collapsed) .tour-toggle { border-bottom: 1px solid var(--border); }
   .kernel-status { font-family: var(--mono); font-size: 9.5px; color: var(--muted); padding: 6px 12px; border-bottom: 1px solid var(--border); background: #0b0e12; line-height: 1.4; }
   .kernel-status b { color: var(--ok); font-weight: 500; }
   .kernel-status.err b { color: var(--hot); }
@@ -317,8 +327,8 @@
     <span class="hint">runs on this.me@4.1.0 · facts · rules · wave · explain · <a href="https://neurons-me.github.io/smart-cities/" style="color:var(--accent);text-decoration:none">Smart Cities ↗</a></span>
   </header>
 
-  <div class="glossary">
-    <details open>
+  <div class="glossary" id="glossary">
+    <details>
       <summary>What is this?</summary>
       <p>Port of Veracruz on the real .me kernel: ships, train, 500 trucks (400 heavy + 100 last-mile, 1,000 example trips) and stocks are facts; totals, averages and flags are kernel formulas. OSM is just the map.</p>
     </details>
@@ -682,6 +692,11 @@
     </div>
 
     <aside>
+      <div class="tour-wrap collapsed" id="tour-wrap">
+      <button type="button" class="tour-toggle" id="tour-toggle" aria-expanded="false" aria-controls="tour-panel" title="Show / hide kernel status and the guided tour">
+        <span class="tt-kernel" id="tt-kernel">kernel loading…</span><span class="tt-sep">·</span><span class="tt-step" id="tt-step">1 · Port overview</span><span class="tt-caret" id="tt-caret">▸ tour</span>
+      </button>
+      <div id="tour-panel">
       <div class="kernel-status" id="kernel-status">Loading this.me@4.1.0…</div>
       <div class="tour">
         <div class="tour-steps" id="tour-steps"></div>
@@ -692,6 +707,8 @@
           <button type="button" id="btn-next">Next</button>
           <span class="step-label" id="step-label">1 / 8</span>
         </div>
+      </div>
+      </div>
       </div>
 
       <div class="aside-scroll">
@@ -1284,6 +1301,7 @@ function applyTour(step) {
   tourStep = step;
   const t = TOUR[step];
   $("#tour-title").textContent = t.title;
+  $("#tt-step").textContent = t.title;
   $("#tour-body").innerHTML = t.body;
   $("#step-label").textContent = `${step} / ${TOUR.length - 1}`;
   $("#btn-prev").disabled = step <= 1;
@@ -1308,7 +1326,22 @@ $("#btn-reset").addEventListener("click", resetKernel);
 $("#btn-verify").addEventListener("click", verify);
 $("#ex-select").addEventListener("change", renderExplain);
 
+// collapsible kernel-status + tour block (state remembered; ?step=N expands it)
+const TOUR_KEY = "veracruz-port.tourOpen";
+function setTourOpen(open, persist = true) {
+  $("#tour-wrap").classList.toggle("collapsed", !open);
+  $("#tour-toggle").setAttribute("aria-expanded", String(open));
+  $("#tt-caret").textContent = open ? "▾ hide" : "▸ tour";
+  if (persist) { try { localStorage.setItem(TOUR_KEY, open ? "1" : "0"); } catch (e) { /* storage unavailable */ } }
+}
+$("#tour-toggle").addEventListener("click", () => setTourOpen($("#tour-wrap").classList.contains("collapsed")));
+
 const params = new URLSearchParams(location.search);
+{
+  let stored = null;
+  try { stored = localStorage.getItem(TOUR_KEY); } catch (e) { /* storage unavailable */ }
+  setTourOpen(params.has("step") || stored === "1", params.has("step"));
+}
 applyTour(Math.min(TOUR.length - 1, Math.max(1, parseInt(params.get("step") || "1", 10) || 1)));
 if (params.get("speed")) { speed = Number(params.get("speed")) || 10; $("#sel-speed").value = String(speed); }
 
@@ -1316,6 +1349,7 @@ try {
   const { mod, host, hash } = await loadKernel();
   ME = mod.default || mod.ME;
   $("#kernel-status").innerHTML = `Kernel <b>this.me@${KERNEL.version}</b> · dist/me.es.js from ${host} · sha256 ${hash.slice(0, 12)}… <b>verified</b> · unmodified`;
+  $("#tt-kernel").innerHTML = `<b>✓</b> this.me@${KERNEL.version} verified`;
   resetKernel();
   ["#btn-run", "#btn-reset", "#btn-verify"].forEach((s) => ($(s).disabled = false));
   if (params.get("autostart") !== "0") setRunning(true);
@@ -1367,6 +1401,8 @@ try {
   window.__portReady = true;
 } catch (e) {
   $("#kernel-status").classList.add("err");
+  $("#tt-kernel").classList.add("err"); $("#tt-kernel").innerHTML = `<b>✗</b> kernel failed`;
+  setTourOpen(true, false);
   $("#kernel-status").innerHTML = `<b>Kernel failed to load</b> — ${esc(e?.message || e)}. Nothing on this page runs without it.`;
   window.__portError = String(e?.message || e);
 }
