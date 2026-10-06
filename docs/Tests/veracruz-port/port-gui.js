@@ -208,7 +208,7 @@ function TitleStrip() {
     h(Typography, { sx: { fontFamily: MONO, fontSize: 12, color: "primary.main" } }, "me://port"),
     h(SrcTag, { kind: "adapter", label: "port operations · 500 trucks · guided" }),
     h(Typography, { sx: { ml: "auto", fontFamily: MONO, fontSize: 11, color: "text.secondary" } },
-      `UI: this.gui@${GUI_PIN.version} · kernel: this.me@${KERNEL.version} · facts · rules · wave · explain · `,
+      `UI: this.gui@${GUI_PIN.version} · kernel: this.me@${KERNEL.version} · `,
       h(Link, { href: "veracruz-port.html", underline: "hover" }, "classic page")));
 }
 
