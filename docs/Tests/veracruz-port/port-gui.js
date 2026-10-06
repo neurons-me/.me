@@ -84,7 +84,7 @@ function createStore(state) {
 }
 const useStore = (s) => { React.useSyncExternalStore(s.subscribe, s.version); return s.state; };
 const VERIFY_HINT = "Flushes, then rebuilds a fresh kernel from the current facts + same formulas and compares every derived path; checks Σ counters = 500, trips done + pending + unscheduled = 1,000, above + within + below = 100, band limits, and adapter states vs kernel counters.";
-const ui = createStore({ step: 1, tourOpen: false, running: false, finished: false, speed: 10, me: null, runtime: null, kernel: { state: "loading", text: `Loading this.me@${KERNEL.version}…` }, verify: { tone: "", text: VERIFY_HINT }, seed: "—" });
+const ui = createStore({ step: 1, tourOpen: false, glossaryOpen: false, running: false, finished: false, speed: 10, me: null, runtime: null, kernel: { state: "loading", text: `Loading this.me@${KERNEL.version}…` }, verify: { tone: "", text: VERIFY_HINT }, seed: "—" });
 const sim = createStore({});   // bumped by the adapter at ~4 Hz: sim clock, page stats, feeds
 
 // ── kernel → .GUI subscribe bridge (adapter schedule, kernel values) ──
@@ -273,18 +273,34 @@ const GLOSSARY = [
 function GlossaryItem(p) {
   const [label, body] = GLOSSARY[p.idx];
   const [open, setOpen] = React.useState(false);
-  return h(Box, { ...nodeAttrs(p), sx: { flex: "1 1 140px", minWidth: 120, borderRight: 1, borderColor: "divider", px: 1.25, py: .5, "&:last-of-type": { borderRight: 0 } } },
-    h(Button, { size: "small", onClick: () => setOpen(!open), "aria-expanded": open, sx: { p: 0, minWidth: 0, fontFamily: MONO, fontSize: 9, letterSpacing: ".06em", color: open ? "primary.main" : "text.secondary", justifyContent: "flex-start" } }, (open ? "▾ " : "▸ ") + label),
+  return h(Box, { ...nodeAttrs(p), sx: { borderBottom: 1, borderColor: "divider", "&:last-of-type": { borderBottom: 0 } } },
+    h(Button, { size: "small", fullWidth: true, onClick: () => setOpen(!open), "aria-expanded": open,
+      sx: { justifyContent: "flex-start", px: 1.25, py: .55, borderRadius: 0, fontFamily: MONO, fontSize: 10, letterSpacing: ".04em", textTransform: "none", color: open ? "primary.main" : "text.secondary", minHeight: 0 } },
+      (open ? "▾ " : "▸ ") + label),
     h(Collapse, { in: open },
-      h(Typography, { component: "p", sx: { mt: .4, fontFamily: MONO, fontSize: 10, lineHeight: 1.35, "& code": { fontSize: 9.5, color: "primary.main" } } }, ...body)));
+      h(Typography, { component: "p", sx: { px: 1.25, pb: .75, mt: 0, fontFamily: MONO, fontSize: 10, lineHeight: 1.4, color: "text.secondary", "& code": { fontSize: 9.5, color: "primary.main" }, "& a": { color: "primary.main" }, "& b": { color: "text.primary", fontWeight: 500 } } }, ...body)));
 }
 
-function KernelLine({ compact }) {
+function KernelLine() {
   const { kernel } = useStore(ui);
   const ok = kernel.state === "ok", err = kernel.state === "error";
-  if (compact) return h(Box, { component: "span", id: "tt-kernel", sx: { color: ok ? "success.main" : err ? "error.main" : "text.secondary" } }, ok ? `✓ this.me@${kernel.version} verified` : err ? "✗ kernel failed" : "kernel loading…");
   if (ok) return null;
   return h(Typography, { id: "kernel-status", component: "div", sx: { fontFamily: MONO, fontSize: 9.5, color: err ? "error.main" : "text.secondary", px: 1.5, py: .75, borderBottom: 1, borderColor: "divider", lineHeight: 1.4, "& b": { color: err ? "error.main" : "success.main", fontWeight: 500 } }, dangerouslySetInnerHTML: { __html: kernel.text } });
+}
+
+function KernelStrip(p) {
+  const { glossaryOpen } = useStore(ui);
+  return h(Box, { id: "kernel-wrap", ...nodeAttrs(p), "data-open": glossaryOpen ? "1" : "0", sx: { flexShrink: 0, borderBottom: 1, borderColor: "divider" } },
+    h(Box, { sx: { display: "flex", alignItems: "center", gap: .75, px: 1.5, py: .75, borderBottom: glossaryOpen ? 1 : 0, borderColor: "divider", fontFamily: MONO, fontSize: 10, color: "text.secondary", minHeight: 36 } },
+      h(Box, { component: "span", sx: { overflow: "hidden", textOverflow: "ellipsis", minWidth: 0, whiteSpace: "nowrap" } },
+        "kernel: ", h(KernelLink, { id: "kver-aside", minCh: 28 })),
+      h(Button, { id: "kernel-toggle", size: "small", onClick: () => ui.set({ glossaryOpen: !glossaryOpen }), "aria-expanded": glossaryOpen, "aria-controls": "kernel-panel", title: "Show / hide kernel glossary",
+        sx: { ml: "auto", flexShrink: 0, minWidth: 0, px: .75, py: .25, fontFamily: MONO, fontSize: 10, textTransform: "none", color: "text.disabled" } },
+        glossaryOpen ? "▾ hide" : "▸ kernel")),
+    h(Collapse, { in: glossaryOpen, id: "kernel-panel" },
+      h(KernelLine),
+      h(Box, { id: "glossary", sx: { bgcolor: "background.default" } },
+        GLOSSARY.map(([label], idx) => h(GlossaryItem, { key: label, idx, "data-gui-node-id": `glossary/${label}` })))));
 }
 function TourStrip(p) {
   const { step, tourOpen } = useStore(ui);
@@ -478,8 +494,8 @@ const SvgGroup = (p) => { const { children, "data-gui-component": _c, ...rest } 
 const pageType = (type, C) => ({ type, resolve: (spec) => { const { key: _k, ...p } = spec.props || {}; return h(C, p); } });
 const PAGE_TYPES = Object.fromEntries([
   ["PortValue", ValView], ["PortSum", SumView], ["PortBar", BarView], ["PortRow", Row], ["PortFormula", Formula], ["PortPanel", Panel],
-  ["PortLegendRow", LgRow], ["PortHudChip", HudChip], ["PortSvgGroup", SvgGroup], ["PortGlossaryItem", GlossaryItem],
-  ["PortTour", TourStrip], ["PortKernelLink", KernelLink], ["PortRunControls", RunControls], ["PortStats", Stats], ["PortWrites", Writes],
+  ["PortLegendRow", LgRow], ["PortHudChip", HudChip], ["PortSvgGroup", SvgGroup],
+  ["PortTour", TourStrip], ["PortKernelStrip", KernelStrip], ["PortKernelLink", KernelLink], ["PortRunControls", RunControls], ["PortStats", Stats], ["PortWrites", Writes],
   ["PortExplain", ExplainLeaf], ["PortLmStrip", LmStrip], ["PortLmEstimate", LmEstimate], ["PortLmFeed", LmFeed], ["PortSeed", SeedCode],
   ["PortVerifyOut", VerifyOut], ["PortKernelWait", KernelWait], ["PortOffMap", OffMap], ["PortSimClock", SimClock],
 ].map(([t, C]) => [t, pageType(t, C)]).concat([
@@ -725,15 +741,11 @@ function titleStripSpec(s = "title") {
     N("Typography", `${s}/name`, { component: "h1", sx: { fontWeight: 600, fontSize: 14, letterSpacing: ".04em" } }, "VERACRUZ"),
     N("Typography", `${s}/address`, { sx: { fontFamily: MONO, fontSize: 12, color: "primary.main" } }, "me://port"),
     TAG(`${s}/tag`, "adapter", "port operations · 500 trucks · guided"),
-    N("Typography", `${s}/builds`, { sx: { ml: "auto", fontFamily: MONO, fontSize: 11, color: "text.secondary" } }, [
-      "kernel: ", N("PortKernelLink", `${s}/builds:kernel`, { id: "kver-top", minCh: 31 }),
-    ]),
   ]);
 }
-const glossarySpec = () => N("Box", "glossary", { id: "glossary", sx: { display: "flex", flexWrap: "wrap", borderBottom: 1, borderColor: "divider", bgcolor: "background.default" } },
-  GLOSSARY.map(([label], idx) => N("PortGlossaryItem", `glossary/${label}`, { idx })));
 function asideSpec(live) {
   return N("Box", "aside", { component: "aside", sx: { bgcolor: "background.paper", display: "flex", flexDirection: "column", overflow: "hidden", minHeight: 0, borderLeft: 1, borderColor: "divider" } }, [
+    N("PortKernelStrip", "aside/kernel"),
     N("PortTour", "aside/tour"),
     N("Box", "aside/panels", { sx: { flex: 1, overflowY: "auto", p: "10px 12px 14px", display: "flex", flexDirection: "column", gap: 1.25 } },
       live ? [mutatePanel(), explainPanel(), shipsPanel(), trainPanel(), trucksPanel(), lastMilePanel(), stocksPanel(), adapterPanel(live)] : [N("PortKernelWait", "aside/waiting")]),
@@ -751,7 +763,7 @@ const footerSpec = (s = "footer") => N("Box", s, { component: "footer", sx: { px
 ]);
 function pageSpec(live) {
   return N("Box", "page", { sx: { display: "flex", flexDirection: "column", height: "100vh", minHeight: 640, bgcolor: "background.default", color: "text.primary", "@media (max-width:1000px)": { height: "auto" } } }, [
-    topBarSpec(), titleStripSpec(), glossarySpec(),
+    topBarSpec(), titleStripSpec(),
     N("Box", "layout", { className: "layout", sx: { flex: 1, display: "grid", gridTemplateColumns: "1fr 380px", minHeight: 0, "@media (max-width:1000px)": { gridTemplateColumns: "1fr", gridTemplateRows: "minmax(300px, 42vh) auto" } } },
       [mapPanelSpec(live), asideSpec(live)]),
     footerSpec(),
