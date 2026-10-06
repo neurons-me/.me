@@ -711,8 +711,7 @@ function titleStripSpec(s = "title") {
     TAG(`${s}/tag`, "adapter", "port operations · 500 trucks · guided"),
     N("Typography", `${s}/builds`, { sx: { ml: "auto", fontFamily: MONO, fontSize: 11, color: "text.secondary" } }, [
       "UI: ", LINK(`${s}/builds:gui`, { href: GUI_PIN.pr, target: "_blank", rel: "noopener", underline: "hover", title: `${GUI_PIN.label} (unreleased branch build)\nsha256 ${GUI_PIN.sha256}` }, `this.gui@${GUI_PIN.short}`),
-      " · kernel: ", N("PortKernelLink", `${s}/builds:kernel`, { id: "kver-top", minCh: 31 }), " · ",
-      LINK(`${s}/builds:classic`, { href: "veracruz-port.html", underline: "hover" }, "classic page"),
+      " · kernel: ", N("PortKernelLink", `${s}/builds:kernel`, { id: "kver-top", minCh: 31 }),
     ]),
   ]);
 }
