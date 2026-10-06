@@ -308,9 +308,14 @@ function RunControls(p) {
       h(MenuItem, { value: "1", sx: { fontFamily: MONO, fontSize: 11 } }, "×1 real time"), h(MenuItem, { value: "10", sx: { fontFamily: MONO, fontSize: 11 } }, "×10"), h(MenuItem, { value: "60", sx: { fontFamily: MONO, fontSize: 11 } }, "×60")),
     h(Button, { id: "btn-reset", variant: "text", disabled: !me, onClick: resetKernel, sx: { fontFamily: MONO, fontSize: 10.5, color: "text.secondary" } }, "Reset"));
 }
-function Stat({ id, label, value, adapter }) {
+const OK_DOC = "https://neurons-me.github.io/Inverted-Dependency-Indexing-Beautiful-Viz.html";
+function InfoLink({ id, href, title }) {
+  return h(Link, { id, href, target: "_blank", rel: "noopener", title, "aria-label": title, underline: "none",
+    sx: (t) => ({ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 12, height: 12, ml: .5, verticalAlign: "1px", borderRadius: "50%", border: 1, borderColor: "currentColor", fontFamily: "Georgia, serif", fontStyle: "italic", fontSize: 8.5, lineHeight: 1, color: "text.secondary", "&:hover": { color: t.palette.primary.main } }) }, "i");
+}
+function Stat({ id, label, value, adapter, info }) {
   return h(Box, { sx: { fontFamily: MONO, fontSize: 9, color: "text.secondary", border: 1, borderColor: "divider", borderRadius: "3px", p: "4px 5px", bgcolor: "background.default", borderStyle: adapter ? "dashed" : "solid" } },
-    label, h(Box, { id, component: "b", sx: (t) => ({ display: "block", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", fontSize: 12, fontWeight: 500, color: adapter ? accentColor(t, "ember") : t.palette.primary.main }) }, value));
+    label, info ? h(InfoLink, info) : null, h(Box, { id, component: "b", sx: (t) => ({ display: "block", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", fontSize: 12, fontWeight: 500, color: adapter ? accentColor(t, "ember") : t.palette.primary.main }) }, value));
 }
 function Stats(p) {
   useStore(sim);
@@ -318,7 +323,7 @@ function Stats(p) {
   return h(Box, { ...nodeAttrs(p), sx: { display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: .5, mt: .75 } },
     h(Stat, { id: "st-wps", label: "writes/s", value: fmt(win.reduce((a, f) => a + f.n, 0)) }),
     h(Stat, { id: "st-fps-flush", label: "flushes/s", value: fmt(win.length) }),
-    h(Stat, { id: "st-k", label: "recent k", value: win.length && lastFlush ? `${lastFlush.writes[lastFlush.writes.length - 1].k}·max ${Math.max(...win.map((f) => f.kMax))}` : "—" }),
+    h(Stat, { id: "st-k", label: "recent k", info: { id: "st-k-info", href: OK_DOC, title: "What is k? O(k) reactivity, visualized" }, value: win.length && lastFlush ? `${lastFlush.writes[lastFlush.writes.length - 1].k}·max ${Math.max(...win.map((f) => f.kMax))}` : "—" }),
     h(Stat, { id: "st-writes", label: "total writes", value: fmt(writeCount) }),
     h(Stat, { id: "st-fps", label: "fps (page)", value: fmt(frameLog.filter((t) => now - t <= 1000).length), adapter: true }),
     h(Stat, { id: "st-moving", label: "moving dots", value: fmt(moving), adapter: true }));
