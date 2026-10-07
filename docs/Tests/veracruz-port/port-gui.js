@@ -32,6 +32,7 @@ const GUI_PIN = { label: "this.gui feat/openstreetmap @ed06869", branch: "feat/o
 const G = window.GUI, h = React.createElement;
 const { Box, Button, Typography, Chip, Progress, Paper, Link, TextField } = G.Atoms;
 const { Collapse, MenuItem } = G.Molecules;
+const alpha = (c, a) => `color-mix(in srgb, ${c} ${Math.round(a * 100)}%, transparent)`;
 
 const MONO = '"IBM Plex Mono", "SF Mono", ui-monospace, Menlo, Consolas, monospace';
 const fmt = (n) => (typeof n === "number" ? n.toLocaleString("en-US", { maximumFractionDigits: 2 }) : String(n));
@@ -152,7 +153,7 @@ const TOUR = [null,
     hlNodes: ["n-qimp", "n-qexp", "n-port", "n-yard"], hlEdges: ["e-qimp-port", "e-qexp-train"], hlPanels: ["panel-queues", "panel-adapter"] },
   { title: "6 · Last-mile dispatch", body: "100 small trucks (pink) run an example schedule of <strong>1,000 trips</strong> from CEDIS A (cargo yard) and CEDIS B (example site) to addresses on OSM streets; address points light up when delivered. A greedy plan fills each unit's shift, then units are rebalanced to <strong>avg ± 15%</strong> (amber ring above, cyan below). Trip counters, band limits and per-unit sums are kernel; the heuristic is adapter.",
     hlNodes: ["n-yard", "n-cedisb"], hlEdges: [], hlPanels: ["panel-lastmile"] },
-  { title: "7 · Live traffic", body: "Press <strong>Start traffic</strong>. Speeds are assumptions (heavy 25 km/h, last-mile 22 km/h, travel time from route metres); playback ×10 by default. Each animation tick the adapter flushes <strong>real writes</strong> (one call per changed fact), listed exactly with the kernel's own <strong>k</strong>.",
+  { title: "7 · Live traffic", body: "Press <strong>Start traffic</strong> (top of this panel; Pause, speed and Reset sit next to it). Speeds are assumptions (heavy 25 km/h, last-mile 22 km/h, travel time from route metres); playback ×10 by default. Each animation tick the adapter flushes <strong>real writes</strong> (one call per changed fact), listed exactly with the kernel's own <strong>k</strong>.",
     hlNodes: ["n-qimp", "n-ship2", "n-port", "n-yard"], hlEdges: ["e-ship2-q", "e-qimp-port"], hlPanels: ["panel-mutate"] },
   { title: "8 · Explain why", body: "<strong>me.explain(\"trips.bandHigh\")</strong> returns the expression, every input with its value, and <strong>sourcePath</strong>, the write that last recomputed it. <strong>Verify</strong> rebuilds a fresh kernel from the facts and compares everything.",
     hlNodes: ["n-port", "n-ship1", "n-ship2", "n-ship3"], hlEdges: ["e-ship1-q", "e-ship2-q", "e-ship3-q"], hlPanels: ["panel-explain", "panel-adapter"] },
@@ -169,6 +170,7 @@ const OPEN_KEY = (id) => `veracruz-port.open.${id}`;
 const LEGACY_TOUR_KEY = "veracruz-port.tourOpen";   // earlier builds saved only the tour, under this key
 const sectionOpen = (id) => !!ui.state.open[id];
 function setSectionOpen(id, open, persist = true) {
+  if (persist) tourOpened.delete(id);   // the user's own choice: the tour no longer tidies this one away
   if (persist) { try { localStorage.setItem(OPEN_KEY(id), open ? "1" : "0"); } catch (e) { /* storage unavailable */ } }
   if (sectionOpen(id) !== open) ui.set({ open: { ...ui.state.open, [id]: open } });
 }
@@ -188,14 +190,64 @@ function readOpenState() {
   }
   return open;
 }
-const setTourOpen = (open, persist = true) => setSectionOpen("tour", open, persist);
+// Hiding the overview ends the tour: sections that only the tour had opened close again (the user's saved state).
+function setTourOpen(open, persist = true) {
+  if (!open) { const patch = closeTourOpened(); if (Object.keys(patch).length) ui.set({ open: { ...ui.state.open, ...patch } }); }
+  setSectionOpen("tour", open, persist);
+}
 // A tour step opens the sections it highlights (a collapsed one would hide what the step talks about).
 // That open is not saved: stored state only records the user's own header clicks, so walking through the
 // tour never rewrites them (after a reload those sections are back to how the user left them).
+// Sections the tour opened (and the user has not touched since) close again when a later step no longer
+// highlights them, so the panel stays tidy. Then the highlighted sections are scrolled into view inside the
+// panel's own scroll container (stacked layout: the page) and their headers glow briefly.
+const tourOpened = new Set();
+function closeTourOpened(keep = []) {
+  const close = [...tourOpened].filter((id) => !keep.includes(id));
+  close.forEach((id) => tourOpened.delete(id));
+  return Object.fromEntries(close.map((id) => [id, false]));
+}
 const setStep = (step) => {
-  const n = Math.min(STEPS, Math.max(1, step)), shut = TOUR[n].hlPanels.filter((id) => !sectionOpen(id));
-  ui.set({ step: n, ...(shut.length ? { open: { ...ui.state.open, ...Object.fromEntries(shut.map((id) => [id, true])) } } : {}) });
+  const n = Math.min(STEPS, Math.max(1, step)), hl = TOUR[n].hlPanels;
+  const shut = hl.filter((id) => !sectionOpen(id));
+  shut.forEach((id) => tourOpened.add(id));
+  const patch = { ...closeTourOpened(hl), ...Object.fromEntries(shut.map((id) => [id, true])) };
+  ui.set({ step: n, ...(Object.keys(patch).length ? { open: { ...ui.state.open, ...patch } } : {}) });
+  revealSections(hl);
 };
+const reducedMotion = () => !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+let revealToken = 0;
+function revealSections(ids) {
+  const token = ++revealToken, t0 = performance.now();
+  // wait until the open / close animations in the panel have settled, so the target positions are final
+  const settled = () => [...document.querySelectorAll('[data-gui-node-id="aside/panels"] .MuiCollapse-root')]
+    .every((c) => c.classList.contains("MuiCollapse-entered") || c.classList.contains("MuiCollapse-hidden"));
+  const go = () => {
+    if (token !== revealToken) return;
+    if (!settled() && performance.now() - t0 < 900) return requestAnimationFrame(go);
+    const secs = ids.map((id) => document.querySelector(`[data-section="${id}"]`)).filter(Boolean);
+    if (!secs.length) return;
+    const panels = document.querySelector('[data-gui-node-id="aside/panels"]');
+    const stacked = window.matchMedia("(max-width:1000px)").matches || !panels;
+    const behavior = reducedMotion() ? "auto" : "smooth", pad = 8;
+    const vTop = stacked ? 0 : panels.getBoundingClientRect().top, vH = stacked ? window.innerHeight : panels.clientHeight;
+    const rects = secs.map((e) => e.getBoundingClientRect());
+    const top = Math.min(...rects.map((r) => r.top)) - vTop, bottom = Math.max(...rects.map((r) => r.bottom)) - vTop;
+    // "nearest": move only if needed; if the span does not fit, its first header goes to the top
+    let dy = 0;
+    if (top < pad) dy = top - pad;
+    else if (bottom > vH - pad) dy = Math.min(top - pad, bottom - (vH - pad));
+    // stacked layout: the tour strip scrolls with the page, so never push its Back / Next row off the top
+    if (stacked && dy > 0) { const nb = document.getElementById("btn-next")?.getBoundingClientRect(); if (nb && nb.bottom > 0) dy = Math.min(dy, nb.top - pad); }
+    if (Math.abs(dy) >= 1) { if (stacked) window.scrollBy({ top: dy, behavior }); else panels.scrollBy({ top: dy, behavior }); }
+    for (const e of secs) {
+      const head = e.querySelector("h2"); if (!head) continue;
+      head.setAttribute("data-flash", "1");
+      setTimeout(() => head.setAttribute("data-flash", "0"), reducedMotion() ? 1200 : 450);
+    }
+  };
+  requestAnimationFrame(() => requestAnimationFrame(go));
+}
 
 // ══════════════════════════ .GUI view: ONE spec tree resolved by GUI.mount ══════════════════════════
 // The page is a spec ({ type, props, children, provenance }) that GUI.mount resolves through the GUI
@@ -269,7 +321,11 @@ function Panel(p) {
 function SectionHeader(p) {   // children: title, badge chips, toggle (spec nodes)
   const { section, children } = p;
   return h(Typography, { component: "h2", ...nodeAttrs(p), onClick: () => setSectionOpen(section, !sectionOpen(section)),
-    sx: { fontSize: 9.5, fontWeight: 600, letterSpacing: ".14em", textTransform: "uppercase", color: "text.secondary", display: "flex", alignItems: "center", gap: .75, flexWrap: "wrap", cursor: "pointer", userSelect: "none", "&:hover": { color: "text.primary" } } },
+    // tour glow (data-flash, set by revealSections): a box-shadow ring that fades; no layout effect; no fade with reduced motion
+    sx: (t) => ({ fontSize: 9.5, fontWeight: 600, letterSpacing: ".14em", textTransform: "uppercase", color: "text.secondary", display: "flex", alignItems: "center", gap: .75, flexWrap: "wrap", cursor: "pointer", userSelect: "none", "&:hover": { color: "text.primary" },
+      borderRadius: "3px", boxShadow: `0 0 0 2px ${alpha(t.palette.primary.main, 0)}`, transition: "box-shadow 1.2s ease-out",
+      "&[data-flash='1']": { boxShadow: `0 0 0 2px ${alpha(t.palette.primary.main, .75)}, 0 0 10px ${alpha(t.palette.primary.main, .45)}`, transition: "none" },
+      "@media (prefers-reduced-motion: reduce)": { transition: "none" } }) },
     children);
 }
 function SectionToggle(p) {   // no onClick of its own: the click bubbles to the header, keyboard Enter/Space included
@@ -397,16 +453,21 @@ function TourStrip(p) {
 }
 
 // ── panel leaves (page state, not kernel paths) ──
+// Primary traffic controls: one compact row pinned at the top of the right panel (never inside a collapsible
+// section). Fixed height and fixed-width button labels, so switching Start / Pause never moves anything.
+// The buttons and the speed selector act even while the .GUI inspector is on (inspector controls).
 function RunControls(p) {
   const { running: on, finished, speed, me } = useStore(ui);
-  const label = finished ? ["All work done ✓", "Reset to replay"] : on ? ["Pause ■", "500 trucks · real me.… writes"] : ["Start traffic ▸", "500 trucks · real me.… writes"];
-  return h(Box, { ...nodeAttrs(p), sx: { display: "flex", gap: .75, flexWrap: "wrap", alignItems: "stretch" } },
-    h(Button, { id: "btn-run", variant: "outlined", disabled: !me, onClick: () => setRunning(!running), sx: { flex: 1, fontFamily: MONO, fontSize: 10.5, textTransform: "none", textAlign: "left", lineHeight: 1.35, display: "block", py: 1, minHeight: "calc(4.05em + 18px)" } },
-      label[0], h("br"), h(Box, { component: "span", sx: { color: "text.secondary", fontSize: 9 } }, label[1])),
-    h(TextField, { id: "sel-speed", select: true, size: "small", value: String(speed), onChange: (e) => ui.set({ speed: Number(e.target.value) || 10 }), inputProps: { "aria-label": "Playback speed (1 s real = N s simulated)" }, title: "Playback: 1 s real = N s simulated",
-      sx: { minWidth: 96, "& .MuiInputBase-root": { fontFamily: MONO, fontSize: 10.5, height: "100%" } } },
+  const ctl = { "data-gui-inspector-control": "true" };
+  const runLabel = finished ? "All work done ✓" : on ? "Pause ■" : "Start traffic ▸";
+  const runTitle = finished ? "All work done. Press Reset to replay." : on ? "Pause the traffic" : "Start the traffic: 500 trucks, real me.… kernel writes";
+  return h(Box, { ...nodeAttrs(p), id: "run-controls", role: "toolbar", "aria-label": "Traffic controls", sx: { flexShrink: 0, display: "flex", gap: .75, alignItems: "center", px: 1.5, py: .75, height: 46, boxSizing: "border-box", borderBottom: 1, borderColor: "divider" } },
+    h(Button, { id: "btn-run", ...ctl, variant: on ? "outlined" : "contained", disableElevation: true, disabled: !me || finished, onClick: () => setRunning(!running), title: runTitle,
+      sx: { flex: 1, minWidth: 0, height: 30, fontFamily: MONO, fontSize: 11, textTransform: "none", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" } }, runLabel),
+    h(TextField, { id: "sel-speed", select: true, size: "small", value: String(speed), onChange: (e) => ui.set({ speed: Number(e.target.value) || 10 }), inputProps: { "aria-label": "Playback speed (1 s real = N s simulated)" }, SelectProps: { SelectDisplayProps: ctl }, title: "Playback: 1 s real = N s simulated",
+      sx: { width: 112, flexShrink: 0, "& .MuiInputBase-root": { fontFamily: MONO, fontSize: 10.5, height: 30 } } },
       h(MenuItem, { value: "1", sx: { fontFamily: MONO, fontSize: 11 } }, "×1 real time"), h(MenuItem, { value: "10", sx: { fontFamily: MONO, fontSize: 11 } }, "×10"), h(MenuItem, { value: "60", sx: { fontFamily: MONO, fontSize: 11 } }, "×60")),
-    h(Button, { id: "btn-reset", variant: "text", disabled: !me, onClick: resetKernel, sx: { fontFamily: MONO, fontSize: 10.5, color: "text.secondary" } }, "Reset"));
+    h(Button, { id: "btn-reset", ...ctl, variant: "outlined", disabled: !me, onClick: resetKernel, title: "Reset the kernel and the traffic to the seed", sx: { flexShrink: 0, height: 30, minWidth: 0, px: 1.25, fontFamily: MONO, fontSize: 10.5, textTransform: "none", color: "text.secondary", borderColor: "divider" } }, "Reset"));
 }
 const OK_DOC = "https://neurons-me.github.io/Inverted-Dependency-Indexing-Beautiful-Viz.html";
 function InfoLink({ id, href, title }) {
@@ -782,7 +843,7 @@ const pathsPanel = (s = "panel-paths") => PANEL(s, "Map numbers → kernel paths
     N("Box", `${s}/row:${where}:${what}/path`, { sx: { height: 14, lineHeight: "14px", pl: "calc(6ch + 6px)", color: kind === "adapter" ? "text.disabled" : "primary.main", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" } }, path),
   ])),
 ]);
-const mutatePanel = (s = "panel-mutate") => PANEL(s, "Mutate · live traffic", [["kernel", "kernel writes"]], [N("PortRunControls", `${s}/run`), N("PortStats", `${s}/stats`), N("PortWrites", `${s}/writes`)]);
+const mutatePanel = (s = "panel-mutate") => PANEL(s, "Mutate · live traffic", [["kernel", "kernel writes"]], [N("PortStats", `${s}/stats`), N("PortWrites", `${s}/writes`)]);
 const explainPanel = (s = "panel-explain") => PANEL(s, "Explain · why", [["kernel", "me.explain()"]], [N("PortExplain", `${s}/explain`)]);
 
 function legend(s = "legend") {
@@ -957,6 +1018,7 @@ function asideSpec(live) {
   // Stacked layout (≤1000px): the live aside is ~3000px tall, the boot one a few lines. Floor it at one viewport
   // so the footer starts below the fold either way and does not jump when the kernel arrives (CLS 0).
   return N("Box", "aside", { component: "aside", sx: { bgcolor: "background.paper", display: "flex", flexDirection: "column", overflow: "hidden", minHeight: 0, borderLeft: 1, borderColor: "divider", "@media (max-width:1000px)": { minHeight: "100vh" } } }, [
+    N("PortRunControls", "aside/controls"),
     N("PortKernelStrip", "aside/kernel"),
     N("PortTour", "aside/tour"),
     N("Box", "aside/panels", { sx: { flex: 1, overflowY: "auto", p: "10px 12px 14px", display: "flex", flexDirection: "column", gap: 1.25 } },
