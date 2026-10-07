@@ -160,8 +160,9 @@ const TOUR = [null,
     hlNodes: ["n-port", "n-ship1", "n-ship2", "n-ship3"], hlEdges: ["e-ship1-q", "e-ship2-q", "e-ship3-q"], hlPanels: ["panel-explain", "panel-adapter"] },
 ];
 const STEPS = TOUR.length - 1;
+const TOUR_LABEL = "Port Simulation Overview";   // the tour section's fixed header label (no step number)
 // ── open / closed state of every collapsible block on the right (one mechanism for all) ──
-// "tour" = the Port Simulation Overview strip (its header shows the current tour step), "kernel" = the kernel
+// "tour" = the Port Simulation Overview strip (fixed header label; the step title is in its body), "kernel" = the kernel
 // strip, then the 8 panel sections. Default: only the overview is open. Each block's state is saved under
 // localStorage "veracruz-port.open.<id>" = "1" | "0" when the user toggles it, and read once at boot,
 // before the first render (no flash, no layout shift).
@@ -440,9 +441,10 @@ function TourStrip(p) {
   const { step } = useStore(ui);
   const tourOpen = sectionOpen("tour"), t = TOUR[step];
   return h(Box, { id: "tour-wrap", ...nodeAttrs(p), "data-open": tourOpen ? "1" : "0", sx: { flexShrink: 0, borderBottom: 1, borderColor: "divider" } },
-    h(Button, { id: "tour-toggle", "data-gui-inspector-control": "true", fullWidth: true, onClick: () => setTourOpen(!tourOpen), "aria-expanded": tourOpen, "aria-controls": "tour-panel", title: "Show / hide the guided tour",
+    h(Button, { id: "tour-toggle", "data-gui-inspector-control": "true", fullWidth: true, onClick: () => setTourOpen(!tourOpen), "aria-expanded": tourOpen, "aria-controls": "tour-panel", "aria-label": "Port Simulation Overview (guided tour)", title: "Show / hide the Port Simulation Overview (guided tour)",
       sx: { justifyContent: "flex-start", gap: .75, px: 1.5, py: .9, borderRadius: 0, fontFamily: MONO, fontSize: 10, textTransform: "none", color: "text.secondary", whiteSpace: "nowrap", overflow: "hidden", borderBottom: tourOpen ? 1 : 0, borderColor: "divider" } },
-      h(Box, { component: "span", id: "tt-step", sx: { color: "primary.main", fontSize: 12.5, fontWeight: 500, letterSpacing: ".02em", overflow: "hidden", textOverflow: "ellipsis", minWidth: 0 } }, t.title),
+      // fixed section label; the current step's number + title is shown once, inside the body (#tour-title)
+      h(Box, { component: "span", id: "tt-label", sx: { color: "primary.main", fontSize: 12.5, fontWeight: 500, letterSpacing: ".02em", overflow: "hidden", textOverflow: "ellipsis", minWidth: 0 } }, TOUR_LABEL),
       h(Box, { component: "span", id: "tt-caret", sx: { ml: "auto", color: "text.disabled", flexShrink: 0 } }, tourOpen ? "▾ hide" : "▸ tour")),
     h(Collapse, { in: tourOpen, id: "tour-panel" },
       h(KernelLine),
