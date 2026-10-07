@@ -232,10 +232,22 @@ function Panel(p) {
 
 // ── chrome ──
 const LOGO = "https://res.cloudinary.com/dkwnxf6gm/image/upload/v1760629064/neurons.me_b50f6a.png";
-const INSPECTOR_ACTION = h(Box, { component: "span", sx: { display: "inline-flex", "@media (max-width:1100px)": { display: "none" } } },
-  h(G.InspectorToggle, { id: "inspector-toggle", "data-gui-inspector-control": true, show: "both", label: "Inspector", onText: "on", offText: "off", size: "small", variant: "button",
-    title: "Semantic Inspector (.GUI devtools): turn on, click a map node, then Explain. Clicks inspect instead of acting while it is on.",
-    sx: { minWidth: 0, py: .25, px: 1, lineHeight: 1.4, fontFamily: MONO, fontSize: 11, textTransform: "none", color: "text.secondary", borderColor: "divider" } }));
+// Inspector toggle: visible at every width. Two instances of the same GUI.InspectorToggle share GUI's one
+// inspector state; CSS shows exactly one: the full label on a wide bar, a compact one on a bar of 1100px or less.
+// Sizes are container queries on the top bar itself (not the viewport): opening the inspector panel splits
+// the window and narrows the page, so the bar adapts to the width it really has. Container widths are the
+// bar's content box (bar width minus 28px of padding), so 1072px here is a 1100px bar.
+// Fixed min widths so "on"/"off" never nudges the top bar.
+const INSPECTOR_TITLE = "Semantic Inspector (.GUI devtools): turn on, click a map node, then Explain. Clicks inspect instead of acting while it is on.";
+const INSPECTOR_SX = { minWidth: 0, py: .25, lineHeight: 1.4, fontFamily: MONO, fontSize: 11, textTransform: "none", color: "text.secondary", borderColor: "divider", whiteSpace: "nowrap",
+  "&.MuiButton-contained": { color: "success.contrastText" } }; // "on" is a filled button: keep its label legible
+const INSPECTOR_ACTION = h(Box, { component: "span", "data-gui-node-id": "brand/inspector", sx: { display: "inline-flex", alignItems: "center", flexShrink: 0 } },
+  h(Box, { component: "span", className: "insp-full", sx: { display: "inline-flex", "@container brandbar (max-width: 1072px)": { display: "none" } } },
+    h(G.InspectorToggle, { id: "inspector-toggle", "data-gui-inspector-control": true, show: "both", label: "Inspector", onText: "on", offText: "off", size: "small", variant: "button",
+      title: INSPECTOR_TITLE, sx: { ...INSPECTOR_SX, px: 1, minWidth: "calc(15ch + 16px)" } })),
+  h(Box, { component: "span", className: "insp-compact", sx: { display: "none", "@container brandbar (max-width: 1072px)": { display: "inline-flex" } } },
+    h(G.InspectorToggle, { id: "inspector-toggle-compact", "data-gui-inspector-control": true, show: "state", onText: "Insp on", offText: "Insp off", size: "small", variant: "button",
+      "aria-label": "Semantic Inspector", title: INSPECTOR_TITLE, sx: { ...INSPECTOR_SX, py: .125, px: .75, minWidth: "calc(8ch + 12px)" } })));
 
 // Kernel link (top bar + footer): text, target and title come from the running kernel's in-browser check.
 const NPM_KERNEL = "https://www.npmjs.com/package/this.me";
@@ -744,7 +756,7 @@ function brandBarSpec(s = "brand") {
   };
   return N("Box", s, {
     component: "header",
-    sx: { display: "flex", alignItems: "center", gap: 1.25, flexWrap: "wrap", px: 1.75, py: .85, borderBottom: 1, borderColor: "divider", bgcolor: "background.paper" },
+    sx: { display: "flex", alignItems: "center", gap: 1.25, flexWrap: "wrap", px: 1.75, py: .85, borderBottom: 1, borderColor: "divider", bgcolor: "background.paper", containerType: "inline-size", containerName: "brandbar" },
   }, [
     N("PortBrandLogo", `${s}/logo`),
     N("Box", `${s}/path`, { component: "nav", "aria-label": "me path", sx: { display: "inline-flex", alignItems: "center", flexWrap: "wrap", minWidth: 0 } },
@@ -752,7 +764,9 @@ function brandBarSpec(s = "brand") {
     // Scenario label read from the recipe itself (port-sim.js), never hand-typed.
     N("Box", `${s}/tag:link`, { component: "a", href: SCENARIO_SRC, target: "_blank", rel: "noopener",
       title: `Scenario recipe: port-sim.js (HEAVY = ${HEAVY}, LAST_MILE = ${LAST_MILE})`,
-      sx: { display: "inline-flex", textDecoration: "none", cursor: "pointer" } },
+      // The scenario tag gives way before the Inspector does: hidden where it alone would wrap the bar
+      // (content box 474–699px: one row fits without it, not with it) and below 359px (no room on row two).
+      sx: { display: "inline-flex", textDecoration: "none", cursor: "pointer", "@container brandbar (min-width: 474px) and (max-width: 699.98px)": { display: "none" }, "@container brandbar (max-width: 358.98px)": { display: "none" } } },
       [TAG(`${s}/tag`, "adapter", `port operations · ${HEAVY + LAST_MILE} trucks · guided`)]),
     N("Box", `${s}/actions`, { sx: { ml: "auto", display: "inline-flex", alignItems: "center", gap: 1.25, flexWrap: "wrap" } }, [
       // Spec can't hold a live React element; PortBrandActions mounts the inspector + Docs / GitHub.
@@ -778,7 +792,9 @@ function BrandActions(p) {
         h("path", { d: GITHUB_MARK }))));
 }
 function asideSpec(live) {
-  return N("Box", "aside", { component: "aside", sx: { bgcolor: "background.paper", display: "flex", flexDirection: "column", overflow: "hidden", minHeight: 0, borderLeft: 1, borderColor: "divider" } }, [
+  // Stacked layout (≤1000px): the live aside is ~3000px tall, the boot one a few lines. Floor it at one viewport
+  // so the footer starts below the fold either way and does not jump when the kernel arrives (CLS 0).
+  return N("Box", "aside", { component: "aside", sx: { bgcolor: "background.paper", display: "flex", flexDirection: "column", overflow: "hidden", minHeight: 0, borderLeft: 1, borderColor: "divider", "@media (max-width:1000px)": { minHeight: "100vh" } } }, [
     N("PortKernelStrip", "aside/kernel"),
     N("PortTour", "aside/tour"),
     N("Box", "aside/panels", { sx: { flex: 1, overflowY: "auto", p: "10px 12px 14px", display: "flex", flexDirection: "column", gap: 1.25 } },
