@@ -3,7 +3,7 @@
 // accumulates the resulting fact changes as deltas. flush() turns the deltas into
 // REAL kernel writes (one write per changed fact per flush); the kernel then
 // recomputes every derived value and reports its own wave (k).
-import { SHIPS, TRAIN, HEAVY, LAST_MILE, UNIT_IDS, TRIP_COUNTERS } from "./port-sim.js";
+import { SHIPS, TRAIN, HEAVY, LAST_MILE, UNIT_IDS, TRIP_COUNTERS, TRUCK_STATES, TRUCK_CODE } from "./port-sim.js";
 import { CEDIS, NODES, PARENT, TRIPS } from "./port-lastmile.js";
 
 // ── Speeds: ASSUMPTIONS for this demo, not sourced statistics ──
@@ -50,6 +50,9 @@ export const COUNTER_OF = {
   lmPool: "trucks.lastMile.available", lmLoading: "trucks.lastMile.loading",
   lmOut: "trucks.lastMile.enRoute", lmDrop: "trucks.lastMile.enRoute", lmBack: "trucks.lastMile.returning",
 };
+// every adapter state has exactly one numeric code in the kernel (trucks.unit[n].state)
+if (TRUCK_STATES.length !== Object.keys(COUNTER_OF).length || !TRUCK_STATES.every((st) => st in COUNTER_OF))
+  throw new Error("port-traffic: TRUCK_STATES (port-sim.js) and COUNTER_OF disagree");
 // drawing class per state (null = off map, not drawn)
 export const VIS_OF = {
   pool: "idle", impToQueue: "returning", impQueued: "queued", impToBerth: "loading", impLoading: "loading",
@@ -120,11 +123,12 @@ export function createTraffic({ kernel, ROUTES, KEY, PROJ, seed = 7 }) {
   const kread = (path) => { let v = cache.get(path); if (v === undefined) { v = kernel.read(path); cache.set(path, v); } return v; };
   const live = (path) => kread(path) + (deltas.get(path) || 0);   // kernel value + not-yet-flushed delta
 
+  const dirty = new Set();                    // trucks whose state changed since the last flush
   function setState(tr, st) {
     const a = COUNTER_OF[tr.st], b = COUNTER_OF[st];
     stateCount[tr.st]--; stateCount[st]++;
     if (a !== b) { addDelta(a, -1); addDelta(b, +1); }
-    tr.st = st;
+    tr.st = st; dirty.add(tr);
   }
   function go(tr, st, routeKey, route) { setState(tr, st); tr.route = route || R[routeKey]; tr.d = 0; tr.seg = 0; tr.x = tr.route.pts[0][0]; tr.y = tr.route.pts[0][1]; }
   const pickExit = () => CONFIG.exits[Math.floor(rnd() * CONFIG.exits.length)];
@@ -415,6 +419,17 @@ export function createTraffic({ kernel, ROUTES, KEY, PROJ, seed = 7 }) {
       writes.push(w);
     }
     deltas.clear(); hauls.clear(); cache.clear();
+    // per-truck instance facts: one write per truck whose state changed (final state of this batch only)
+    if (dirty.size) {
+      for (const tr of [...dirty].sort((x, y) => x.id - y.id)) {
+        const path = `trucks.unit.${tr.id + 1}.state`, code = TRUCK_CODE[tr.st], prev = kernel.read(path);
+        if (prev === code) continue;
+        const w = kernel.write(path, code);
+        w.delta = code - prev; w.note = tr.st; w.hauls = 0; w.unit = true;
+        writes.push(w);
+      }
+      dirty.clear();
+    }
     // adapter classification with the kernel's own bandHigh/bandLow (read after the writes above)
     for (const [path, value, note] of bandWrites()) {
       const prev = kernel.read(path);

@@ -14,8 +14,8 @@
 //                     the SVG map labels, page stats (fps, writes/s), the redirect feed, the completion
 //                     estimate, and the notification schedule (which kernel paths to re-announce, and when).
 
-import { createPortKernel, COUNTERS, TRIP_COUNTERS, UNIT_IDS, FLEET, HEAVY, LAST_MILE, TRIP_COUNT, TEMPLATES, templateCode, SHIPS, TRAIN, SHIP_FIELDS, TRAIN_FIELDS } from "./port-sim.js";
-import { createTraffic, VIS_OF, CONFIG, SIM_START_H } from "./port-traffic.js";
+import { createPortKernel, COUNTERS, TRIP_COUNTERS, UNIT_IDS, FLEET, HEAVY, LAST_MILE, TRIP_COUNT, TEMPLATES, templateCode, SHIPS, TRAIN, SHIP_FIELDS, TRAIN_FIELDS, TRUCK_STATES, TRUCK_FIELDS, TRUCK_KIND } from "./port-sim.js";
+import { createTraffic, VIS_OF, COUNTER_OF, CONFIG, SIM_START_H } from "./port-traffic.js";
 import { ROUTES, KEY, EXITS, PROJ } from "./port-routes.js";
 import { CEDIS } from "./port-lastmile.js";
 
@@ -84,9 +84,10 @@ function createStore(state) {
   return { state, subscribe: (cb) => (ls.add(cb), () => ls.delete(cb)), version: () => v, set(patch) { if (patch) Object.assign(state, patch); v++; ls.forEach((cb) => cb()); } };
 }
 const useStore = (s) => { React.useSyncExternalStore(s.subscribe, s.version); return s.state; };
-const VERIFY_HINT = "Flushes, then rebuilds a fresh kernel from the current facts + same formulas and compares every derived path; checks Σ counters = 500, trips done + pending + unscheduled = 1,000, above + within + below = 100, band limits, and adapter states vs kernel counters.";
+const VERIFY_HINT = "Flushes, then rebuilds a fresh kernel from the current facts + same formulas and compares every derived path; checks Σ counters = 500, per-truck kernel states vs counters, trips done + pending + unscheduled = 1,000, above + within + below = 100, band limits, and adapter states vs kernel counters.";
 const ui = createStore({ step: 1, open: {}, running: false, finished: false, speed: 10, me: null, runtime: null, kernel: { state: "loading", text: `Loading this.me@${KERNEL.version}…` }, verify: { tone: "", text: VERIFY_HINT }, seed: "—" });
 const sim = createStore({});   // bumped by the adapter at ~4 Hz: sim clock, page stats, feeds
+const pick = createStore({ n: null });   // the truck instance picked on the map (me.trucks.unit[n]); page state
 
 // ── kernel → .GUI subscribe bridge (adapter schedule, kernel values) ──
 // The .GUI runtime (GUI.createMeRuntime) takes `subscribe(path, cb)`. this.me@4.1.0 has no per-instance change events,
@@ -141,7 +142,7 @@ const EDGE_ENDS = {
 
 // ── Tour ──
 const TOUR = [null,
-  { title: "1 · Port Simulation Overview", body: "The <strong>Port of Veracruz</strong>, modelled as kernel instances. <strong>me.ships[1..3]</strong> share one class: each ship has facts (total, remaining, tonsPerUnit) and the kernel applies one formula template to every index: <code>ships[\"[i]\"][\"=\"](\"remainingTons\", \"remaining * tonsPerUnit\")</code>. <strong>train[1]</strong> loads export sugar the same way. The 500 trucks are <strong>counters, not instances</strong>: facts such as trucks.import.enRoute that the traffic adapter writes; where each truck drives is adapter logic (dashed). <strong>Model</strong> shows the live classes; <strong>Map numbers</strong> gives the kernel path behind each number on the map.",
+  { title: "1 · Port Simulation Overview", body: "The <strong>Port of Veracruz</strong>, modelled as kernel instances. <strong>me.ships[1..3]</strong> share one class: each ship has facts (total, remaining, tonsPerUnit) and the kernel applies one formula template to every index: <code>ships[\"[i]\"][\"=\"](\"remainingTons\", \"remaining * tonsPerUnit\")</code>. <strong>train[1]</strong> loads export sugar the same way. The 500 trucks are instances too: <strong>me.trucks.unit[1..500]</strong> with facts <strong>state</strong> (a numeric code the adapter writes on each transition) and <strong>kind</strong>, and class formulas <code>working = state &gt; 1</code>, <code>heavy = kind == 1</code>. The counts by state (trucks.import.enRoute…) are facts the adapter writes, not kernel sums of the instances; where each truck drives is adapter logic (dashed). Click any truck dot to see its instance. <strong>Model</strong> shows the live classes; <strong>Map numbers</strong> gives the kernel path behind each number on the map.",
     hlNodes: ["n-port", "n-ship1", "n-ship2", "n-ship3", "n-train"], hlEdges: ["e-ship1-q", "e-ship2-q", "e-ship3-q", "e-qexp-train"], hlPanels: ["panel-model", "panel-paths"] },
   { title: "2 · Stocks (facts)", body: "<strong>me.cargo.coffee(100000)</strong>, sugar(200000), containers(5000), <strong>me.trucks.fleet(500)</strong> = heavy.fleet(400) + lastMile.fleet(100). A fact changes only when a write says so. <strong>cargo.bulkTons</strong> is a kernel rule: coffee + sugar.",
     hlNodes: ["n-yard"], hlEdges: ["e-port-yard"], hlPanels: ["panel-stocks"] },
@@ -149,7 +150,7 @@ const TOUR = [null,
     hlNodes: ["n-ship1", "n-ship2", "n-ship3", "n-qimp"], hlEdges: ["e-ship1-q", "e-ship2-q", "e-ship3-q"], hlPanels: ["panel-ships"] },
   { title: "4 · Train loading", body: "<strong>train[1].remainingToLoad</strong> is a fact; <strong>flows.exportRemaining</strong> and <strong>train[1].progress</strong> are kernel rules. Export trucks (amber) come in from outside the map with sugar and unload into the train.",
     hlNodes: ["n-train", "n-qexp", "n-yard"], hlEdges: ["e-yard-qexp", "e-qexp-train"], hlPanels: ["panel-train"] },
-  { title: "5 · Trucks by state", body: "Every truck state is a counter fact (<strong>trucks.heavy.available</strong>, <strong>queues.import.length</strong>, <strong>trucks.import.enRoute</strong>, <strong>trucks.lastMile.loading</strong>…). Kernel rules sum them: <strong>trucks.working</strong>, <strong>trucks.accounted</strong>, <strong>trucks.balanced = accounted == fleet</strong>. <em>Where</em> each truck drives is adapter logic (dashed panel).",
+  { title: "5 · Trucks by state", body: "Each truck is a kernel instance <strong>me.trucks.unit[n]</strong> (state code, kind); the counts by state are counter facts the adapter writes (<strong>trucks.heavy.available</strong>, <strong>queues.import.length</strong>, <strong>trucks.import.enRoute</strong>, <strong>trucks.lastMile.loading</strong>…). Kernel rules sum them: <strong>trucks.working</strong>, <strong>trucks.accounted</strong>, <strong>trucks.balanced = accounted == fleet</strong>. <em>Where</em> each truck drives is adapter logic (dashed panel).",
     hlNodes: ["n-qimp", "n-qexp", "n-port", "n-yard"], hlEdges: ["e-qimp-port", "e-qexp-train"], hlPanels: ["panel-queues", "panel-adapter"] },
   { title: "6 · Last-mile dispatch", body: "100 small trucks (pink) run an example schedule of <strong>1,000 trips</strong> from CEDIS A (cargo yard) and CEDIS B (example site) to addresses on OSM streets; address points light up when delivered. A greedy plan fills each unit's shift, then units are rebalanced to <strong>avg ± 15%</strong> (amber ring above, cyan below). Trip counters, band limits and per-unit sums are kernel; the heuristic is adapter.",
     hlNodes: ["n-yard", "n-cedisb"], hlEdges: [], hlPanels: ["panel-lastmile"] },
@@ -525,7 +526,7 @@ function Writes(p) {   // node id on the list itself (the header line above it b
       sx: { listStyle: "none", m: 0, p: 0, fontFamily: MONO, fontSize: 9.5, mt: .75, height: 240, overflowY: "auto", overflowAnchor: "none", contain: "strict", scrollbarGutter: "stable", borderTop: 1, borderColor: "divider" } }, ...items));
 }
 
-const EXPLAIN_PATHS = ["flows.importRemaining", "ships.2.remainingTons", "train.1.progress", "flows.exportRemaining", "flows.importProgress", "trips.bandHigh", "trips.perUnitAvg", "trips.balanced", "lastMile.unitsOk", "trucks.working", "trucks.balanced", "trucks.inQueue", "queues.import.busy", "port.busy", "cargo.bulkTons"];
+const EXPLAIN_PATHS = ["flows.importRemaining", "ships.2.remainingTons", "train.1.progress", "trucks.unit.1.working", "flows.exportRemaining", "flows.importProgress", "trips.bandHigh", "trips.perUnitAvg", "trips.balanced", "lastMile.unitsOk", "trucks.working", "trucks.balanced", "trucks.inQueue", "queues.import.busy", "port.busy", "cargo.bulkTons"];
 function useWave(path) {   // re-render when the kernel reports `path` in a wave, even if its value did not change
   const { runtime } = G.useMe();
   const [, setN] = React.useState(0);
@@ -587,6 +588,50 @@ function ClassExplain(p) {
     line("inputs", inputs.length ? inputs.map((x, j) => h(React.Fragment, { key: j }, j ? " · " : "", `${x.path} = `, em(fmt(x.value)))) : "—", inputsText),
     line("value", em(fmt(ex?.value))),
     line("last wave", m.sourcePath ? h(React.Fragment, null, "write ", em(m.sourcePath), ` · k=${m.k}`) : "not recomputed yet (press Start traffic)", (m.recomputed || []).join(", ")));
+}
+
+// The truck instance picked on the map: me.trucks.unit[n] live, with one me.explain(). Map overlay with a
+// fixed size (absolute, so it never moves anything); before a pick it is a one-line hint. Clicks on the map
+// are hit-tested by the adapter against the dot positions it drew (positions are adapter, not kernel).
+const TC_LINE = { display: "grid", gridTemplateColumns: "70px minmax(0, 1fr)", gap: .5, height: 16, lineHeight: "16px" };
+const TC_H = 222;
+function TruckCard(p) {
+  const { n } = useStore(pick);
+  const base = `trucks.unit.${n}`;
+  useWave(`${base}.state`); useWave(`${base}.working`);
+  const { me } = G.useMe();
+  const ctl = { "data-gui-inspector-control": "true" };
+  const boxSx = { position: "absolute", top: 10, left: 12, zIndex: 2, fontFamily: MONO, fontSize: 9.5, bgcolor: "rgba(11,13,16,0.97)", border: 1, borderColor: "divider", borderRadius: "3px", color: "text.secondary" };
+  if (!n || !me) return h(Box, { ...nodeAttrs(p), id: "truck-card", "data-state": "hint", sx: { ...boxSx, pointerEvents: "none", height: 22, lineHeight: "20px", px: "7px", maxWidth: "calc(100% - 248px)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", "@media (max-width:640px)": { display: "none" } } },
+    "click a truck dot → me.trucks.unit[n]");
+  const R = (k) => me(`${base}.${k}`);
+  const state = R("state"), kind = R("kind"), working = R("working"), heavy = R("heavy");
+  let ex = null; try { ex = me.explain(`${base}.working`); } catch (e) { /* shown as — */ }
+  const m = ex?.meta || {}, inputs = ex?.derivation?.inputs || [];
+  // live values sit in fixed-width slots (or end the line), so nothing after them moves when they change (CLS 0)
+  const em = (t, path, v, ch) => h(Box, { component: "span", sx: { color: "primary.main", ...(ch ? { display: "inline-block", width: `${ch}ch` } : {}) }, ...(path ? { "data-me-path": path, "data-me-value": String(v) } : {}) }, t);
+  const line = (k, v, title) => h(Box, { key: k, sx: TC_LINE }, h(Box, { component: "span", sx: { color: "text.disabled" } }, k), h(Box, { component: "span", title, sx: ONE_LINE }, v));
+  const dim = (t) => h(Box, { component: "span", sx: { color: "text.disabled" } }, t);
+  const st = TRUCK_STATES[state];
+  const step = (d) => pick.set({ n: ((n - 1 + d + FLEET) % FLEET) + 1 });
+  const btn = (label, title, onClick) => h(Button, { size: "small", title, "aria-label": title, onClick, ...ctl, sx: { minWidth: 20, height: 18, p: 0, fontFamily: MONO, fontSize: 11, color: "text.secondary" } }, label);
+  return h(Box, { ...nodeAttrs(p), id: "truck-card", "data-state": "picked", "data-unit": n, role: "region", "aria-label": `Truck instance me.trucks.unit[${n}]`,
+    sx: { ...boxSx, width: 316, height: TC_H, p: "5px 7px", boxSizing: "border-box", overflow: "hidden", "@media (max-width:640px)": { left: 8, right: 8, top: 8, width: "auto" } } },
+    h(Box, { sx: { display: "flex", alignItems: "center", gap: .25, height: 20, mb: .25 } },
+      h(Box, { component: "span", sx: { ...ONE_LINE, flex: 1, minWidth: 0, color: "text.primary", fontSize: 10.5 } }, `me.trucks.unit[${n}]`),
+      btn("‹", "Previous truck instance", () => step(-1)), btn("›", "Next truck instance", () => step(1)), btn("×", "Close truck instance", () => pick.set({ n: null }))),
+    line("state", h(React.Fragment, null, em(fmt(state), `${base}.state`, state, 3), dim("adapter fact · "), st ?? "?"), `trucks.unit.${n}.state = ${state} (${st}); the adapter writes it on each transition`),
+    line("kind", h(React.Fragment, null, em(fmt(kind), `${base}.kind`, kind, 3), dim("fact · "), TRUCK_KIND[kind] ?? "?")),
+    line("working", h(React.Fragment, null, em(String(working), `${base}.working`, working, 6), dim("template state > 1"))),
+    line("heavy", h(React.Fragment, null, em(String(heavy), `${base}.heavy`, heavy, 6), dim("template kind == 1"))),
+    h(Box, { sx: { ...ONE_LINE, height: 18, lineHeight: "18px", mt: .5, pt: "2px", borderTop: 1, borderColor: "divider", color: "text.secondary" } }, `me.explain("${base}.working")`),
+    line("expression", h(React.Fragment, null, ex?.expr ?? "—", dim(`  · trucks.unit["[i]"] template`)), ex?.expr),
+    line("inputs", inputs.length ? inputs.map((x, j) => h(React.Fragment, { key: j }, j ? " · " : "", `${x.path} = `, em(fmt(x.value)))) : "—", inputs.map((x) => `${x.path} = ${x.value}`).join(" · ")),
+    line("value", em(String(ex?.value))),
+    line("last wave", m.sourcePath ? h(React.Fragment, null, "write ", em(m.sourcePath), ` · k=${m.k}`) : "not recomputed yet (no state write since seed)", (m.recomputed || []).join(", ")),
+    h(Box, { sx: { ...TC_LINE, mt: .5, pt: "2px", height: 18, borderTop: 1, borderColor: "divider" } }, h(Box, { component: "span", sx: { color: "text.disabled" } }, "counted in"),
+      h(Box, { component: "span", sx: ONE_LINE, title: "Counter fact the adapter writes; the kernel does not count instances" }, dim("adapter-written "), h(Box, { component: "span", sx: { color: "text.primary" } }, COUNTER_OF[st] ?? "—"))),
+    line("position", dim("adapter only (route, x/y, timers)")));
 }
 
 function LmStrip(p) {   // per-unit strip (adapter view); band lines read from the kernel
@@ -663,7 +708,7 @@ const PAGE_TYPES = Object.fromEntries([
   ["PortValue", ValView], ["PortSum", SumView], ["PortBar", BarView], ["PortRow", Row], ["PortFormula", Formula], ["PortPanel", Panel], ["PortSectionHeader", SectionHeader], ["PortSectionToggle", SectionToggle], ["PortSectionBody", SectionBody],
   ["PortLegendRow", LgRow], ["PortHudChip", HudChip], ["PortSvgGroup", SvgGroup],
   ["PortTour", TourStrip], ["PortKernelStrip", KernelStrip], ["PortBrandLogo", BrandLogo], ["PortBrandActions", BrandActions], ["PortKernelLink", KernelLink], ["PortRunControls", RunControls], ["PortStats", Stats], ["PortWrites", Writes],
-  ["PortExplain", ExplainLeaf], ["PortClassExplain", ClassExplain], ["PortLmStrip", LmStrip], ["PortLmEstimate", LmEstimate], ["PortLmFeed", LmFeed], ["PortSeed", SeedCode],
+  ["PortExplain", ExplainLeaf], ["PortClassExplain", ClassExplain], ["PortTruckCard", TruckCard], ["PortLmStrip", LmStrip], ["PortLmEstimate", LmEstimate], ["PortLmFeed", LmFeed], ["PortSeed", SeedCode],
   ["PortVerifyOut", VerifyOut], ["PortKernelWait", KernelWait], ["PortOffMap", OffMap], ["PortSimClock", SimClock],
 ].map(([t, C]) => [t, pageType(t, C)]).concat([
   // GUI's registered Link resolver drops target / rel / title / data-gui-node-id, so links use GUI.Atoms.Link as is
@@ -791,11 +836,11 @@ function instanceTable(s, family, ids, cols) {   // one row per instance, every 
       ...cols.map(([f, o = {}]) => cell(`${s}/[${i}].${f}`, [V(s, `${family}.${i}.${f}`, o.f ? { f: o.f } : {})], { textAlign: "right", color: o.rule ? "primary.main" : "text.primary" }, `${family}[${i}].${f}`))]),
   ]);
 }
-function classBlock(s, family, fields, cols, ids, explainName) {
+function classBlock(s, family, fields, cols, ids, explainName, countText) {
   const tpl = TEMPLATES.filter((t) => t.family.join(".") === family);
   return N("Box", s, { sx: { "& + &": { mt: 1.5, pt: 1.25, borderTop: 1, borderColor: "divider" } } }, [
     N("Box", `${s}/title`, { sx: { display: "flex", alignItems: "baseline", gap: .75, fontFamily: MONO, fontSize: 11, color: "text.primary", whiteSpace: "nowrap", height: 18, lineHeight: "18px" } },
-      [N("Box", `${s}/class`, { component: "span", sx: { flexShrink: 0 } }, `class ${family}[i]`), N("Box", `${s}/count`, { component: "span", sx: { fontSize: 9.5, color: "text.secondary", overflow: "hidden", textOverflow: "ellipsis", minWidth: 0 } }, `· ${ids.length} instance${ids.length > 1 ? "s" : ""}: ${ids.map((i) => `${family}[${i}]`).join(", ")}`)]),
+      [N("Box", `${s}/class`, { component: "span", sx: { flexShrink: 0 } }, `class ${family}[i]`), N("Box", `${s}/count`, { component: "span", sx: { fontSize: 9.5, color: "text.secondary", overflow: "hidden", textOverflow: "ellipsis", minWidth: 0 } }, countText || `· ${ids.length} instance${ids.length > 1 ? "s" : ""}: ${ids.map((i) => `${family}[${i}]`).join(", ")}`)]),
     SUB(`${s}/facts`, `facts per instance: ${fields.join(" · ")}`),
     N("Box", `${s}/templates`, { component: "pre", sx: { fontFamily: MONO, fontSize: 9.5, color: "text.secondary", m: 0, mt: .75, p: "5px 7px", bgcolor: "background.default", border: 1, borderColor: "divider", borderRadius: "3px", lineHeight: 1.45, whiteSpace: "pre-wrap", wordBreak: "break-word" } },
       tpl.map((t) => templateCode(t)).join("\n")),
@@ -803,13 +848,17 @@ function classBlock(s, family, fields, cols, ids, explainName) {
     N("PortClassExplain", `${s}/explain`, { family, ids, name: explainName }),
   ]);
 }
+const TRUCK_COLS = [["state", { f: (v) => (typeof v === "number" ? `${v} ${TRUCK_STATES[v] ?? "?"}` : "—") }], ["kind", { f: (v) => (typeof v === "number" ? `${v} ${TRUCK_KIND[v] ?? "?"}` : "—") }], ["working", { f: S, rule: true }], ["heavy", { f: S, rule: true }]];
+const TRUCK_SAMPLE = [1, 2, HEAVY + 1];
 const modelPanel = (s = "panel-model") => PANEL(s, "Model · classes & instances", [["kernel", "kernel"]], [
   SUB(`${s}/intro`, "One formula template per class; the kernel applies it to every index. Blue = template formula, white = fact. Values are live kernel reads.", { mt: 0 }),
   classBlock(`${s}/ships`, "ships", SHIP_FIELDS, SHIP_COLS, SHIPS.map((x) => x.i), "remainingTons"),
   classBlock(`${s}/train`, "train", TRAIN_FIELDS, TRAIN_COLS, [TRAIN.i], "progress"),
-  N("Box", `${s}/trucks`, { sx: { mt: 1.5, pt: 1.25, borderTop: 1, borderColor: "divider", fontFamily: MONO, fontSize: 9.5, color: "text.secondary", lineHeight: 1.45 } }, [
-    N("Box", `${s}/trucks:title`, { sx: { display: "flex", alignItems: "center", gap: .75, fontSize: 11, color: "text.primary", mb: .5 } }, ["trucks", TAG(`${s}/trucks:tag`, "adapter", "counters, not instances")]),
-    "The 500 trucks are not kernel instances yet. 13 state counters (trucks.heavy.available, queues.import.length, trucks.import.enRoute …) are kernel facts the traffic adapter writes on each transition; kernel formulas sum them (trucks.working, trucks.balanced). Each dot on the map is an adapter object (route, position, timers).",
+  classBlock(`${s}/trucks`, "trucks.unit", TRUCK_FIELDS, TRUCK_COLS, TRUCK_SAMPLE, "working", `· ${FLEET} instances · rows: unit[${TRUCK_SAMPLE.join("], [")}] (click any dot)`),
+  SUB(`${s}/trucks:codes`, `state codes (formulas compare numbers, not strings): ${TRUCK_STATES.map((st, c) => `${c} ${st}`).join(" · ")}. 0–1 idle, 2–${TRUCK_STATES.length - 1} working.`, { fontSize: 8.5, color: "text.disabled" }),
+  N("Box", `${s}/trucks:counts`, { sx: { mt: .75, fontFamily: MONO, fontSize: 9.5, color: "text.secondary", lineHeight: 1.45 } }, [
+    N("Box", `${s}/trucks:counts:title`, { sx: { display: "flex", alignItems: "center", gap: .75, height: 22, color: "text.primary" } }, ["counts by state", TAG(`${s}/trucks:counts:tag`, "adapter", "adapter-written facts")]),
+    "The 13 counters (trucks.heavy.available, queues.import.length, trucks.import.enRoute …) are still facts the adapter writes; the kernel does not count the instances (this.me@4.1.0 has no aggregate over [i]; an explicit 500-term sum would cost milliseconds per write). Verify recounts the instances in JS and checks they match the counters. Positions stay in the adapter.",
   ]),
 ]);
 
@@ -834,10 +883,11 @@ const MAP_PATHS = [
   ["legend", "last-mile out · back · load · idle", "trucks.lastMile.enRoute · returning · loading · available", "adapter-written facts"],
   ["legend", "band ↑ · ↓", "lastMile.unitsAbove · lastMile.unitsBelow", "adapter → facts"],
   ["legend", "trips ○ · ✓ · ✗", "trips.pending · trips.done · trips.unscheduled", "rule · facts"],
-  ["map", "each truck dot", "— (adapter object: route, position, timers)", "adapter"],
+  ["map", "each truck dot (click it)", "trucks.unit[n].state · kind → working · heavy", "adapter-written facts · template"],
+  ["map", "dot position, route, timers", "— (adapter object, not kernel)", "adapter"],
 ];
 const pathsPanel = (s = "panel-paths") => PANEL(s, "Map numbers → kernel paths", [["kernel", "kernel"], ["adapter", "adapter"]], [
-  SUB(`${s}/intro`, "Where each number on the map comes from. Trucks are counters, not instances: the adapter writes the counter facts.", { mt: 0, mb: .5 }),
+  SUB(`${s}/intro`, "Where each number on the map comes from. Each truck is a kernel instance trucks.unit[n] (click a dot); the counts by state are facts the adapter writes.", { mt: 0, mb: .5 }),
   ...MAP_PATHS.map(([where, what, path, kind]) => N("Box", `${s}/row:${where}:${what}`, { title: `${what} → ${path} (${kind})`, sx: { height: 32, py: "2px", borderBottom: 1, borderColor: "divider", fontFamily: MONO, fontSize: 9.5, "&:last-of-type": { borderBottom: 0 } } }, [
     N("Box", `${s}/row:${where}:${what}/label`, { sx: { display: "flex", gap: .75, height: 14, lineHeight: "14px", color: "text.secondary", whiteSpace: "nowrap", overflow: "hidden" } }, [
       N("Box", `${s}/row:${where}:${what}/where`, { component: "span", sx: { color: "text.disabled", width: "6ch", flexShrink: 0 } }, where),
@@ -949,6 +999,22 @@ const markerSpec = (n, live) => N("OpenStreetMapMarker", `map.${n.id}`, { id: n.
 let mapMounted = false;
 function MapLifecycle() {   // no element: marks the map as mounted for the adapter's DOM highlights
   React.useEffect(() => { mapMounted = true; lastHlStep = 0; applyMapHighlights(); renderMapLabels(); return () => { mapMounted = false; }; }, []);
+  // truck pick: a click / tap on the map is hit-tested against the drawn dots (adapter). pointerdown/up, not
+  // click, so it also works while the .GUI inspector (which captures clicks) is on.
+  React.useEffect(() => {
+    const root = document.querySelector('[data-gui-node-id="map"]'); if (!root) return undefined;
+    let down = null;
+    const pd = (e) => { down = e.isPrimary ? [e.clientX, e.clientY] : null; };
+    const pu = (e) => {
+      if (!down || Math.hypot(e.clientX - down[0], e.clientY - down[1]) > 6) return;
+      down = null;
+      const n = truckAt(e.clientX, e.clientY, mapSvg(root), e.pointerType === "touch" ? 14 : 9);
+      if (n) pick.set({ n });
+    };
+    const pm = (e) => { if (e.pointerType === "mouse") root.style.cursor = truckAt(e.clientX, e.clientY, mapSvg(root)) ? "pointer" : ""; };
+    root.addEventListener("pointerdown", pd); root.addEventListener("pointerup", pu); root.addEventListener("pointermove", pm);
+    return () => { root.removeEventListener("pointerdown", pd); root.removeEventListener("pointerup", pu); root.removeEventListener("pointermove", pm); };
+  }, []);
   return null;
 }
 function mapSpec(live) {
@@ -1029,7 +1095,7 @@ function asideSpec(live) {
   ]);
 }
 const mapPanelSpec = (live) => N("Box", "map-panel", { className: "map-wrap", sx: { position: "relative", overflow: "hidden", bgcolor: "#0b0d10", minHeight: 300 } },
-  live ? [mapSpec(true), legend(), hud()] : [mapSpec(false)]);
+  live ? [mapSpec(true), legend(), hud(), N("PortTruckCard", "map.truck-card")] : [mapSpec(false)]);
 const footerSpec = (s = "footer") => N("Box", s, { component: "footer", sx: { px: 2, py: .9, borderTop: 1, borderColor: "divider", fontFamily: MONO, fontSize: 10, color: "text.disabled", display: "flex", justifyContent: "space-between", gap: 1.25, flexWrap: "wrap", "& a": { color: "text.secondary" } } }, [
   N("Box", `${s}/osm`, { component: "span" }, ["© ", LINK(`${s}/osm:link`, { href: "https://www.openstreetmap.org/copyright", target: "_blank", rel: "noopener", underline: "hover" }, "OpenStreetMap"), " contributors · static SVG basemap · no live tiles"]),
   N("Box", `${s}/builds`, { component: "span" }, [
@@ -1102,6 +1168,16 @@ const ADDR = { planned: "#4a3a45", unassigned: "#4a3a45", active: "#b0789a", don
 const ADDR_ORDER = ["planned", "unassigned", "unscheduled", "active", "done"];
 const addrB = Object.fromEntries(ADDR_ORDER.map((k) => [k, []]));
 const ringAbove = [], ringBelow = [];
+// where each truck dot was drawn this frame (map pixels), for the click hit-test; adapter-side only
+const drawnX = new Float32Array(FLEET), drawnY = new Float32Array(FLEET), drawnOn = new Uint8Array(FLEET);
+function truckAt(clientX, clientY, svg, tolPx = 9) {   // client point → nearest drawn truck (unit n) within tolPx
+  const m = svg?.getScreenCTM?.(); if (!m) return null;
+  const pt = new DOMPoint(clientX, clientY).matrixTransform(m.inverse());
+  const tol = tolPx / (m.a || 1); let best = -1, bd = tol * tol;
+  for (let i = 0; i < FLEET; i++) if (drawnOn[i]) { const dx = drawnX[i] - pt.x, dy = drawnY[i] - pt.y, d = dx * dx + dy * dy; if (d < bd) { bd = d; best = i; } }
+  return best < 0 ? null : best + 1;
+}
+const mapSvg = (root) => root?.querySelector(`svg[viewBox="0 0 ${PROJ.W} ${PROJ.H}"]`) || root?.querySelector("svg");
 
 function drawTrucks(ctx) {   // ctx: from GUI.OpenStreetMap.Canvas (map pixels, cleared, clipped to the frame)
   if (!T) return;
@@ -1117,7 +1193,7 @@ function drawTrucks(ctx) {   // ctx: from GUI.OpenStreetMap.Canvas (map pixels, 
   ctx.globalAlpha = 1;
   for (const k of DRAW_ORDER) buckets[k].length = 0;
   ringAbove.length = 0; ringBelow.length = 0;
-  moving = 0; offMap = 0;
+  moving = 0; offMap = 0; drawnOn.fill(0);
   const lmPoolIdx = [0, 0];
   for (const tr of T.trucks) {
     const vis = VIS_OF[tr.st];
@@ -1131,10 +1207,10 @@ function drawTrucks(ctx) {   // ctx: from GUI.OpenStreetMap.Canvas (map pixels, 
     else if (tr.st === "lmPool") { const p = LM_POOL[tr.home], i = lmPoolIdx[tr.home]++; x = p.x + (i % 8) * 3.2; y = p.y + Math.floor(i / 8) * 3.2; }
     else if (tr.st === "lmLoading") { const c = CEDIS[tr.home].pt; x = c[0] - 12 + (tr.slot % 6) * 4; y = c[1] - 16 - Math.floor(tr.slot / 6) * 4; }
     else { x = tr.x + jit(tr.id, 1); y = tr.y + jit(tr.id, 2); }
-    buckets[vis].push(x, y);
+    buckets[vis].push(x, y); drawnX[tr.id] = x; drawnY[tr.id] = y; drawnOn[tr.id] = 1;
     if (tr.cat === "lastMile" && tr.band !== "within") (tr.band === "above" ? ringAbove : ringBelow).push(x, y);
   }
-  const lay = (q, node) => q.forEach((tr, i) => buckets.queued.push(node[0] - 14 + (i % 10) * 3.6, node[1] + 17 + Math.floor(i / 10) * 3.6));
+  const lay = (q, node) => q.forEach((tr, i) => { const x = node[0] - 14 + (i % 10) * 3.6, y = node[1] + 17 + Math.floor(i / 10) * 3.6; buckets.queued.push(x, y); drawnX[tr.id] = x; drawnY[tr.id] = y; drawnOn[tr.id] = 1; });
   lay(T.queues.impQ, KEY.qimp); lay(T.queues.expQ, KEY.qexp);
   if (moving > maxMoving) maxMoving = moving;
   for (const k of DRAW_ORDER) {
@@ -1153,6 +1229,8 @@ function drawTrucks(ctx) {   // ctx: from GUI.OpenStreetMap.Canvas (map pixels, 
     for (let i = 0; i < b.length; i += 2) { ctx.moveTo(b[i] + 3, b[i + 1]); ctx.arc(b[i], b[i + 1], 3, 0, 6.2832); }
     ctx.stroke();
   }
+  const sel = pick.state.n;   // ring around the picked truck instance (if it is on the map)
+  if (sel && drawnOn[sel - 1]) { ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 1.3; ctx.beginPath(); ctx.arc(drawnX[sel - 1], drawnY[sel - 1], 5.5, 0, 6.2832); ctx.stroke(); }
 }
 
 
@@ -1202,6 +1280,24 @@ function adapterChecks() {
     ["trips.unitMax = adapter recount", P.read("trips.unitMax"), mx],
     ["trips.unitMin = adapter recount", P.read("trips.unitMin"), mn],
     ["trips.redirects = adapter count", P.read("trips.redirects"), T.redirects],
+    ...truckInstanceChecks(),
+  ];
+}
+// per-truck kernel instances vs the counters and the adapter (a JS recount: the kernel does not count instances)
+function truckInstanceChecks() {
+  const byCounter = {}; let stateMismatch = 0, working = 0, heavy = 0;
+  for (const tr of T.trucks) {
+    const n = tr.id + 1, st = TRUCK_STATES[P.read(`trucks.unit.${n}.state`)];
+    if (st !== tr.st) stateMismatch++;
+    byCounter[COUNTER_OF[st]] = (byCounter[COUNTER_OF[st]] || 0) + 1;
+    if (P.read(`trucks.unit.${n}.working`) === true) working++;
+    if (P.read(`trucks.unit.${n}.heavy`) === true) heavy++;
+  }
+  return [
+    ...COUNTERS.map((c) => [`Σ trucks.unit[i] with state in ${c} = ${c}`, byCounter[c] || 0, P.read(c)]),
+    ["trucks whose kernel state ≠ adapter state", stateMismatch, 0],
+    ["Σ trucks.unit[i].working = trucks.working", working, P.read("trucks.working")],
+    ["Σ trucks.unit[i].heavy = trucks.heavy.fleet", heavy, P.read("trucks.heavy.fleet")],
   ];
 }
 function verifyNow() {
@@ -1212,7 +1308,7 @@ function verifyNow() {
 function verify() {
   const v = verifyNow();
   ui.set({ verify: v.ok
-    ? { tone: "ok", text: `✓ ${v.checked} checks pass: every derived path matches a fresh kernel rebuild (none undefined); Σ counters = ${FLEET} (${HEAVY} heavy + ${LAST_MILE} last-mile); trips done + pending + unscheduled = ${TRIP_COUNT}; above + within + below = ${LAST_MILE}; bandHigh/bandLow = avg × 1.15 / × 0.85; adapter states = kernel counters (sim ${clock(T.simTime)}, ${fmt(writeCount)} writes).` }
+    ? { tone: "ok", text: `✓ ${v.checked} checks pass: every derived path matches a fresh kernel rebuild (none undefined); Σ counters = ${FLEET} (${HEAVY} heavy + ${LAST_MILE} last-mile); trips done + pending + unscheduled = ${TRIP_COUNT}; above + within + below = ${LAST_MILE}; bandHigh/bandLow = avg × 1.15 / × 0.85; adapter states = kernel counters; Σ trucks.unit[i] by state = counters (JS recount) (sim ${clock(T.simTime)}, ${fmt(writeCount)} writes).` }
     : { tone: "bad", text: `✗ mismatches: ${JSON.stringify(v.mismatches)}` } });
   uiTick();
   return v;
@@ -1248,6 +1344,14 @@ try {
     get P() { return P; }, get T() { return T; },
     verify,
     pause: () => setRunning(false),
+    // truck dots as drawn last frame, in client pixels: [unit n, x, y, adapter state]
+    truckPoints() {
+      const m = mapSvg(document.querySelector('[data-gui-node-id="map"]'))?.getScreenCTM(); if (!m) return [];
+      const out = [];
+      for (let i = 0; i < FLEET; i++) if (drawnOn[i]) { const q = new DOMPoint(drawnX[i], drawnY[i]).matrixTransform(m); out.push([i + 1, q.x, q.y, T.trucks[i].st]); }
+      return out;
+    },
+    pick: (n) => pick.set({ n }),
     gui: { version: G.version, build: GUI_PIN, get announced() { return announced; }, listeners: () => kListeners.size, callbacks: bridgeCallbacks,
       get runtime() { return RT; }, unmount: () => mountHandle?.unmount(), remount: () => mountPage() },
     // every GUI readout bound to a .me path, compared with a direct kernel read (after React commits)

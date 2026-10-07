@@ -47,12 +47,27 @@ export const TRAIN_FIELDS = ["cargo", "total", "remainingToLoad", "haul"];
 // (me.ships["[i]"]["="](name, expr) → ships[1], ships[2], ships[3], and any ships[n] added later).
 // `ids` = the instances seeded here; the kernel itself does not need them (templates apply to every index).
 const SHIP_IDS = SHIPS.map((s) => s.i);
+// Trucks as kernel instances: me.trucks.unit[1..500] with facts `state` (numeric code below) and `kind`
+// (1 = heavy, 2 = last-mile). The adapter writes `state` on each transition; positions stay in the adapter.
+// The kernel has no string literals in formulas, so states are numeric codes. Order matters: 0 = pool and
+// 1 = lmPool (idle), every code > 1 is a working state → template `working = state > 1`.
+export const TRUCK_STATES = ["pool", "lmPool",
+  "impToQueue", "impQueued", "impToBerth", "impLoading", "impOut", "impAway", "impBack",
+  "expOut", "expAway", "expIn", "expQueued", "expToTrain", "expUnloading", "toDepotImp", "toDepotExp",
+  "lmLoading", "lmOut", "lmDrop", "lmBack"];
+export const TRUCK_CODE = Object.fromEntries(TRUCK_STATES.map((st, c) => [st, c]));
+export const TRUCK_FIELDS = ["state", "kind"];
+export const TRUCK_KIND = { 1: "heavy", 2: "last-mile" };
+export const TRUCK_IDS = Array.from({ length: FLEET }, (_, i) => i + 1);   // unit[n] ⇄ adapter truck id n − 1
+export const truckKind = (n) => (n <= HEAVY ? 1 : 2);
 export const TEMPLATES = [
   { family: ["ships"], name: "remainingTons", expr: "remaining * tonsPerUnit", ids: SHIP_IDS },
   { family: ["ships"], name: "progress", expr: "1 - remaining / total", ids: SHIP_IDS },
   { family: ["ships"], name: "hasWork", expr: "remaining > 0", ids: SHIP_IDS },
   { family: ["train"], name: "progress", expr: "1 - remainingToLoad / total", ids: [TRAIN.i] },
   { family: ["train"], name: "hasWork", expr: "remainingToLoad > 0", ids: [TRAIN.i] },
+  { family: ["trucks", "unit"], name: "working", expr: "state > 1", ids: TRUCK_IDS },
+  { family: ["trucks", "unit"], name: "heavy", expr: "kind == 1", ids: TRUCK_IDS },
 ];
 export const templateCode = (t) => `${codeOf(t.family)}["[i]"]["="](${JSON.stringify(t.name)}, ${JSON.stringify(t.expr)})`;
 
@@ -116,6 +131,7 @@ export function seedFacts() {
   for (const i of UNIT_IDS) f.push([["lastMile", "units", i, "done"], 0]);
   f.push([["trucks", "fleet"], FLEET], [["trucks", "heavy", "fleet"], HEAVY], [["trucks", "lastMile", "fleet"], LAST_MILE]);
   for (const c of COUNTERS) f.push([c.split("."), POOL_COUNTERS[c] ?? 0]);
+  for (const n of TRUCK_IDS) f.push([["trucks", "unit", n, "state"], truckKind(n) === 1 ? TRUCK_CODE.pool : TRUCK_CODE.lmPool], [["trucks", "unit", n, "kind"], truckKind(n)]);
   return f;
 }
 
@@ -145,8 +161,11 @@ export function createPortKernel(ME) {
   for (const [segs, v] of seedFacts()) {
     const sg = segs.map((s) => (typeof s === "string" && /^\d+$/.test(s) ? Number(s) : s));
     setLeaf(me, sg, v);
+    if (sg[0] === "trucks" && sg[1] === "unit") continue;   // 1,000 instance facts: logged once below
     seedLog.push(`${codeOf(sg)}(${JSON.stringify(v)})`);
   }
+  seedLog.push(`// for n in 1..${HEAVY}: me.trucks.unit[n].state(${TRUCK_CODE.pool}), me.trucks.unit[n].kind(1)`,
+    `// for n in ${HEAVY + 1}..${FLEET}: me.trucks.unit[n].state(${TRUCK_CODE.lmPool}), me.trucks.unit[n].kind(2)`);
   installRules(me, seedLog);
   for (const p of DERIVED_PATHS) me(p); // warm reads (template instances included)
 
