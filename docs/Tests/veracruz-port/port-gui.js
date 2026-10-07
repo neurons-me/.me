@@ -14,8 +14,8 @@
 //                     the SVG map labels, page stats (fps, writes/s), the redirect feed, the completion
 //                     estimate, and the notification schedule (which kernel paths to re-announce, and when).
 
-import { createPortKernel, COUNTERS, TRIP_COUNTERS, UNIT_IDS, FLEET, HEAVY, LAST_MILE, TRIP_COUNT, TEMPLATES, templateCode, SHIPS, TRAIN, SHIP_FIELDS, TRAIN_FIELDS, TRUCK_STATES, TRUCK_FIELDS, TRUCK_KIND } from "./port-sim.js";
-import { createTraffic, VIS_OF, COUNTER_OF, CONFIG, SIM_START_H } from "./port-traffic.js";
+import { createPortKernel, COUNTERS, TRIP_COUNTERS, UNIT_IDS, FLEET, HEAVY, LAST_MILE, TRIP_COUNT, TEMPLATES, templateCode, SHIPS, TRAIN, SHIP_FIELDS, TRAIN_FIELDS, TRUCK_STATES, TRUCK_FIELDS, TRUCK_KIND, BAND_COUNTERS, ADAPTER_AGGREGATES, SPEED_FACTS } from "./port-sim.js";
+import { createTraffic, VIS_OF, COUNTER_OF, CONFIG, SIM_START_H, HEAVY_TRUCK_KMH, LAST_MILE_KMH, MOVING_STATES } from "./port-traffic.js";
 import { ROUTES, KEY, EXITS, PROJ } from "./port-routes.js";
 import { CEDIS } from "./port-lastmile.js";
 
@@ -154,7 +154,7 @@ const TOUR = [null,
     hlNodes: ["n-qimp", "n-qexp", "n-port", "n-yard"], hlEdges: ["e-qimp-port", "e-qexp-train"], hlPanels: ["panel-queues", "panel-adapter"] },
   { title: "6 · Last-mile dispatch", body: "100 small trucks (pink) run an example schedule of <strong>1,000 trips</strong> from CEDIS A (cargo yard) and CEDIS B (example site) to addresses on OSM streets; address points light up when delivered. A greedy plan fills each unit's shift, then units are rebalanced to <strong>avg ± 15%</strong> (amber ring above, cyan below). Trip counters, band limits and per-unit sums are kernel; the heuristic is adapter.",
     hlNodes: ["n-yard", "n-cedisb"], hlEdges: [], hlPanels: ["panel-lastmile"] },
-  { title: "7 · Live traffic", body: "Press <strong>Start traffic</strong> (top of this panel; Pause, speed and Reset sit next to it). Speeds are assumptions (heavy 25 km/h, last-mile 22 km/h, travel time from route metres); playback ×10 by default. Each animation tick the adapter flushes <strong>real writes</strong> (one call per changed fact), listed exactly with the kernel's own <strong>k</strong>.",
+  { title: "7 · Live traffic", body: `Press <strong>Start traffic</strong> (top of this panel; Pause, speed and Reset sit next to it). Speeds are assumptions (heavy ${HEAVY_TRUCK_KMH} km/h, last-mile ${LAST_MILE_KMH} km/h, ±${Math.round(CONFIG.speedSpread * 100)}% per truck; travel time from route metres); the HUD averages are kernel rules over speed sums the adapter samples ≤4×/s, tap a chip for its expression; playback ×10 by default. Each animation tick the adapter flushes <strong>real writes</strong> (one call per changed fact), listed exactly with the kernel's own <strong>k</strong>.`,
     hlNodes: ["n-qimp", "n-ship2", "n-port", "n-yard"], hlEdges: ["e-ship2-q", "e-qimp-port"], hlPanels: ["panel-mutate"] },
   { title: "8 · Explain why", body: "<strong>me.explain(\"trips.bandHigh\")</strong> returns the expression, every input with its value, and <strong>sourcePath</strong>, the write that last recomputed it. <strong>Verify</strong> rebuilds a fresh kernel from the facts and compares everything.",
     hlNodes: ["n-port", "n-ship1", "n-ship2", "n-ship3"], hlEdges: ["e-ship1-q", "e-ship2-q", "e-ship3-q"], hlPanels: ["panel-explain", "panel-adapter"] },
@@ -695,13 +695,79 @@ function OffMap(p) { useStore(sim); return h("span", { id: "lg-off", ...nodeAttr
 const LGH_SX = { fontSize: 8.5, letterSpacing: ".1em", textTransform: "uppercase", color: "text.disabled", mb: .25 };
 function SimClock(p) { useStore(sim); const { speed } = useStore(ui); return h("strong", { id: "hud-tick", ...nodeAttrs(p) }, `${T ? clock(T.simTime) : clock(0)} · ×${speed}`); }
 function HudChip(p) {   // strong: wrap the children in <strong> (with strongSx: a styled one); otherwise children as given
-  const { label, children, adapter, strong, strongSx } = p;
+  const { label, children, adapter, strong, strongSx, exprKey, minCh = 0 } = p;
+  const { key: openKey } = useStore(hudX);
+  const open = !!exprKey && openKey === exprKey;
   // Live values keep their widest width (as in Row): the HUD wraps from the bottom, so a chip growing by a digit
   // could re-wrap it and move the rows above (e.g. on the narrower map while the inspector panel is open).
-  const ref = useReservedWidth();
+  const ref = useReservedWidth(minCh);
   const value = h(Box, { component: "span", ref, sx: { display: "inline-block" } }, !strong ? children : strongSx ? h(Box, { component: "strong", sx: strongSx }, children) : h("strong", null, children));
-  return h(Chip, { ...nodeAttrs(p), size: "small", variant: "outlined", label: h(React.Fragment, null, label, " ", value),
-    sx: (t) => ({ fontFamily: MONO, fontSize: 10, bgcolor: "rgba(11,13,16,0.88)", borderRadius: "3px", color: "text.secondary", borderStyle: adapter ? "dashed" : "solid", borderColor: adapter ? accentColor(t, "ember") : t.palette.divider, "& strong": { color: "text.primary", fontWeight: 500 } }) });
+  // the small ƒ is an inspector control: with the Semantic Inspector on, a click on the chip inspects it, a click on ƒ still opens the expression
+  const fx = exprKey ? h(Box, { component: "span", "data-gui-inspector-control": "true", "aria-hidden": true, sx: { ml: .6, px: "3px", border: 1, borderRadius: "2px", borderColor: open ? "primary.main" : "divider", color: open ? "primary.main" : "text.disabled", fontSize: 9, lineHeight: "11px", fontStyle: "italic" } }, "ƒ") : null;
+  const toggle = exprKey ? () => toggleHudExpr(exprKey) : undefined;
+  return h(Chip, { ...nodeAttrs(p), size: "small", variant: "outlined", label: h(React.Fragment, null, label, " ", value, fx),
+    ...(exprKey ? { onClick: toggle, role: "button", tabIndex: 0, "aria-expanded": open, "aria-controls": "hud-expr", "aria-label": `${label}: show the .me expression`, title: open ? "Hide the .me expression" : "Show the .me expression behind this value",
+      onKeyDown: (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggle(); } else if (e.key === "Escape") hudX.set({ key: null }); } } : {}),
+    sx: (t) => ({ fontFamily: MONO, fontSize: 10, bgcolor: "rgba(11,13,16,0.88)", borderRadius: "3px", color: "text.secondary", borderStyle: adapter ? "dashed" : "solid", borderColor: open ? t.palette.primary.main : adapter ? accentColor(t, "ember") : t.palette.divider, "& strong": { color: "text.primary", fontWeight: 500 },
+      ...(exprKey ? { pointerEvents: "auto", cursor: "pointer", "&:hover": { borderColor: t.palette.primary.main } } : {}) }) });
+}
+// ── HUD expression popover: what produced each chip's value (kernel explain() or the adapter's constants) ──
+const hudX = createStore({ key: null });
+const toggleHudExpr = (key) => hudX.set({ key: hudX.state.key === key ? null : key });
+const ADAPTER_FACTS = new Set([...COUNTERS, ...TRIP_COUNTERS, ...BAND_COUNTERS, ...ADAPTER_AGGREGATES, ...SPEED_FACTS, "trips.redirects", "localDelivery.remainingKg", "train.1.remainingToLoad"]);
+const factWriter = (path) => (ADAPTER_FACTS.has(path) || /^ships\.\d+\.remaining$|^cargo\.|^lastMile\.units\.\d+\.done$|^trucks\.unit\.\d+\.state$/.test(path) ? "fact · adapter writes" : "fact · seed (set once at load)");
+const speedNote = (fleet, name, kmh) => `each ${fleet} truck drives at ${name} = ${kmh} km/h × (1 ± ${CONFIG.speedSpread}), drawn once per truck: an assumption in port-traffic.js, not a measured statistic. kmhSum = Σ speeds of the ${fleet} trucks driving right now, moving = how many; facts the adapter samples at most 4×/s. Shown as — while none is moving (0 / 0 is undefined in the kernel).`;
+const MOVING_NOTE = `moving = driving along a route on the map (adapter states ${MOVING_STATES.join(", ")}); a moving truck's speed is exactly its configured one (no acceleration model).`;
+const HUD_EXPR = {
+  import: { title: "import left", paths: ["flows.importRemaining"] },
+  export: { title: "export left", paths: ["flows.exportRemaining"] },
+  working: { title: "trucks.working / trucks.fleet", paths: ["trucks.working", "trucks.fleet"] },
+  balanced: { title: "trucks.balanced", paths: ["trucks.balanced"] },
+  sim: { title: "sim clock", adapter: true, notes: () => [`adapter clock, not a kernel path: sim time = ${clock(0)} (SIM_START_H = ${SIM_START_H}) + simTime; every animation frame adds real dt × playback ×${speedOf()} (port-gui.js onMapFrame → port-traffic.js step).`, `now: ${T ? clock(T.simTime) : clock(0)} · simTime = ${T ? Math.round(T.simTime) : 0} s`] },
+  "speed-all": { title: "avg speed of moving trucks · all", paths: ["trucks.speed.avg"], notes: () => ["= Σ speed / Σ moving over both fleets, i.e. the moving-count-weighted mean of the heavy and last-mile averages (not a mean of the two means).", MOVING_NOTE] },
+  "speed-heavy": { title: "avg speed of moving trucks · heavy", paths: ["trucks.speed.heavy.avg"], notes: () => [speedNote("heavy", "HEAVY_TRUCK_KMH", HEAVY_TRUCK_KMH), MOVING_NOTE] },
+  "speed-lastMile": { title: "avg speed of moving trucks · last-mile", paths: ["trucks.speed.lastMile.avg"], notes: () => [speedNote("last-mile", "LAST_MILE_KMH", LAST_MILE_KMH), MOVING_NOTE] },
+};
+function ExprPath({ path }) {   // one kernel path: rule (expression + inputs from explain()) or fact (who writes it)
+  useWave(path);
+  const { me } = G.useMe();
+  let ex = null; try { ex = me.explain(path); } catch (e) { /* — */ }
+  const em = (t) => h(Box, { component: "span", sx: { color: "primary.main" } }, t);
+  const dim = (t) => h(Box, { component: "span", sx: { color: "text.disabled" } }, t);
+  const val = (v) => (v === undefined ? "undefined" : fmt(v));
+  if (!ex?.expr) return h(Box, { sx: { mb: .5 } }, h("code", null, path), " = ", em(val(me(path))), "  ", dim(factWriter(path)));
+  const m = ex.meta || {};
+  return h(Box, { sx: { mb: .5 } },
+    h(Box, null, h("code", { "data-expr": path }, `${path} = ${ex.expr}`), "  ", dim("kernel rule")),
+    h(Box, { component: "ul", sx: { m: 0, mt: .25, pl: 1.75 } }, ...(ex.derivation?.inputs || []).map((x, i) => {
+      let ix = null; try { ix = me.explain(x.path); } catch (e) { /* — */ }
+      return h(Box, { component: "li", key: i }, `${x.path} = `, em(val(x.value)), "  ", dim(ix?.expr ? `rule: ${ix.expr}` : factWriter(x.path)));
+    })),
+    h(Box, null, "value ", em(val(ex.value)), m.sourcePath ? dim(`  · last wave: write ${m.sourcePath} · k=${m.k}`) : dim("  · not recomputed since seed")));
+}
+function HudExpr(p) {
+  const { key } = useStore(hudX);
+  useStore(sim);
+  React.useEffect(() => { if (!key) return undefined; const esc = (e) => { if (e.key === "Escape") hudX.set({ key: null }); }; window.addEventListener("keydown", esc); return () => window.removeEventListener("keydown", esc); }, [key]);
+  const d = key && HUD_EXPR[key];
+  // fixed max size, but never taller than the map space above the HUD (narrow screens: the HUD sits high)
+  const ref = React.useRef(null);
+  React.useLayoutEffect(() => {
+    const el = ref.current; if (!el || !d) return undefined;
+    const fit = () => { const hudEl = el.closest("#hud"); el.style.maxHeight = Math.max(80, Math.min(210, (hudEl?.offsetTop || 220) - 14)) + "px"; };
+    fit(); window.addEventListener("resize", fit); return () => window.removeEventListener("resize", fit);
+  }, [key]);
+  if (!d) return h(Box, { ...nodeAttrs(p), id: "hud-expr", "data-open": "0", sx: { display: "none" } });
+  return h(Box, { ...nodeAttrs(p), ref, id: "hud-expr", "data-open": "1", "data-key": key, role: "region", "aria-label": `${d.title}: .me expression`,
+    sx: (t) => ({ position: "absolute", left: 0, bottom: "calc(100% + 6px)", width: "min(480px, 100%)", maxHeight: 210, overflowY: "auto", overscrollBehavior: "contain", boxSizing: "border-box", pointerEvents: "auto", zIndex: 3,
+      p: "6px 8px", bgcolor: "rgba(11,13,16,0.97)", border: 1, borderStyle: d.adapter ? "dashed" : "solid", borderColor: d.adapter ? accentColor(t, "ember") : t.palette.primary.main, borderRadius: "3px",
+      fontFamily: MONO, fontSize: 9.5, lineHeight: 1.5, color: "text.secondary", "& code": { fontFamily: MONO, color: "text.primary", wordBreak: "break-word" } }) },
+    h(Box, { sx: { display: "flex", alignItems: "center", gap: .75, mb: .5, position: "sticky", top: -6, bgcolor: "rgba(11,13,16,0.97)" } },
+      h(Box, { component: "span", sx: { color: "text.primary" } }, d.title),
+      h(Box, { component: "span", sx: { fontSize: 8, letterSpacing: ".08em", textTransform: "uppercase", px: "4px", border: 1, borderRadius: "2px", borderStyle: d.adapter ? "dashed" : "solid", color: d.adapter ? "warning.main" : "primary.main" } }, d.adapter ? "adapter · not kernel" : "kernel"),
+      h(Button, { size: "small", "data-gui-inspector-control": "true", "aria-label": "Close the expression", onClick: () => hudX.set({ key: null }), sx: { ml: "auto", minWidth: 20, height: 18, p: 0, fontFamily: MONO, fontSize: 11, color: "text.secondary" } }, "×")),
+    ...(d.paths || []).map((path) => h(ExprPath, { key: path, path })),
+    ...(d.notes ? d.notes() : []).map((n, i) => h(Box, { key: `n${i}`, sx: { color: "text.disabled", mt: .25 } }, n)));
 }
 const SvgGroup = (p) => { const { children, "data-gui-component": _c, ...rest } = p; return h("g", rest, children); };
 
@@ -711,7 +777,7 @@ const PAGE_TYPES = Object.fromEntries([
   ["PortValue", ValView], ["PortSum", SumView], ["PortBar", BarView], ["PortRow", Row], ["PortFormula", Formula], ["PortPanel", Panel], ["PortSectionHeader", SectionHeader], ["PortSectionToggle", SectionToggle], ["PortSectionBody", SectionBody],
   ["PortLegendRow", LgRow], ["PortHudChip", HudChip], ["PortSvgGroup", SvgGroup],
   ["PortTour", TourStrip], ["PortKernelStrip", KernelStrip], ["PortBrandLogo", BrandLogo], ["PortBrandActions", BrandActions], ["PortKernelLink", KernelLink], ["PortRunControls", RunControls], ["PortStats", Stats], ["PortWrites", Writes],
-  ["PortExplain", ExplainLeaf], ["PortClassExplain", ClassExplain], ["PortGuiBuild", GuiBuildInfo], ["PortTruckCard", TruckCard], ["PortLmStrip", LmStrip], ["PortLmEstimate", LmEstimate], ["PortLmFeed", LmFeed], ["PortSeed", SeedCode],
+  ["PortExplain", ExplainLeaf], ["PortClassExplain", ClassExplain], ["PortHudExpr", HudExpr], ["PortGuiBuild", GuiBuildInfo], ["PortTruckCard", TruckCard], ["PortLmStrip", LmStrip], ["PortLmEstimate", LmEstimate], ["PortLmFeed", LmFeed], ["PortSeed", SeedCode],
   ["PortVerifyOut", VerifyOut], ["PortKernelWait", KernelWait], ["PortOffMap", OffMap], ["PortSimClock", SimClock],
 ].map(([t, C]) => [t, pageType(t, C)]).concat([
   // GUI's registered Link resolver drops target / rel / title / data-gui-node-id, so links use GUI.Atoms.Link as is
@@ -872,7 +938,8 @@ const MAP_PATHS = [
   ["HUD", "export left", "flows.exportRemaining", "rule"],
   ["HUD", "trucks.working N / 500", "trucks.working · trucks.fleet", "rule · fact"],
   ["HUD", "trucks.balanced", "trucks.balanced", "rule"],
-  ["HUD", "sim clock · Average Speed", "— (adapter clock and speed constants)", "adapter"],
+  ["HUD", "avg km/h, moving · all · heavy · last-mile", "trucks.speed.avg · trucks.speed.heavy.avg · trucks.speed.lastMile.avg", "rule"],
+  ["HUD", "sim clock", "— (adapter clock)", "adapter"],
   ["map", "VERACRUZ · port.busy", "port.busy", "rule"],
   ["map", "SHIP[i] · unloading · N t", "ships[i].hasWork · ships[i].remaining", "template · fact"],
   ["map", "TRAIN[1] · loading · N t", "train[1].hasWork · train[1].remainingToLoad", "template · fact"],
@@ -920,16 +987,23 @@ function legend(s = "legend") {
     N("Box", `${s}/foot`, { sx: { borderTop: 1, borderColor: "divider", mt: .5, pt: .4, fontSize: 9, color: "text.disabled" } }, ["kernel counts · ", N("PortOffMap", `${s}/off-map`), " off-map (adapter)"]),
   ]);
 }
-// HUD sits 24 px up so the map's OSM attribution strip (bottom-right, 17 px) never sits under a chip
+// HUD sits 24 px up so the map's OSM attribution strip (bottom-right, 17 px) never sits under a chip.
+// Each chip opens its .me expression (click; click again to close) in ONE popover above the HUD (absolute, fixed
+// max size, internal scroll), so nothing in the map moves. The expressions are read from the kernel (explain())
+// and from the adapter's own constants, never typed by hand.
 function hud(s = "hud") {
-  const CHIP = (label, props, children) => N("PortHudChip", `${s}/${label}`, { label, ...props }, children);
-  return N("Box", s, { sx: { position: "absolute", left: 12, bottom: 24, right: 12, display: "flex", flexWrap: "wrap", gap: 1, pointerEvents: "none" } }, [
-    CHIP("import left", { strong: true, strongSx: { color: "#7eb8c9 !important" } }, V(s, "flows.importRemaining", { suffix: " t" })),
-    CHIP("export left", { strong: true, strongSx: { color: "#c9b87e !important" } }, V(s, "flows.exportRemaining", { suffix: " t" })),
-    CHIP("trucks.working", { strong: true }, [V(s, "trucks.working"), " / ", V(s, "trucks.fleet")]),
-    CHIP("trucks.balanced", { strong: true }, V(s, "trucks.balanced", { f: S })),
-    CHIP("sim (adapter)", { adapter: true }, N("PortSimClock", `${s}/sim-clock`)),
-    CHIP("Average Speed · Heavy Load:", { adapter: true }, [h("strong", { key: "a" }, "25 km/h"), " · Last-Mile: ", h("strong", { key: "b" }, "22 km/h")]),
+  const CHIP = (key, label, props, children) => N("PortHudChip", `${s}/${key}`, { label, exprKey: key, ...props }, children);
+  const KMH = { f: (v) => (typeof v === "number" ? v.toFixed(1) : "—") };   // — while undefined (0 moving)
+  return N("Box", s, { id: "hud", sx: { position: "absolute", left: 12, bottom: 24, right: 12, display: "flex", flexWrap: "wrap", gap: 1, pointerEvents: "none" } }, [
+    CHIP("import", "import left", { strong: true, strongSx: { color: "#7eb8c9 !important" } }, V(s, "flows.importRemaining", { suffix: " t" })),
+    CHIP("export", "export left", { strong: true, strongSx: { color: "#c9b87e !important" } }, V(s, "flows.exportRemaining", { suffix: " t" })),
+    CHIP("working", "trucks.working", { strong: true }, [N("Box", `${s}/working-slot`, { component: "span", sx: { display: "inline-block", minWidth: "3ch", textAlign: "right" } }, V(s, "trucks.working")), " / ", V(s, "trucks.fleet")]),
+    CHIP("balanced", "trucks.balanced", { strong: true }, V(s, "trucks.balanced", { f: S })),
+    CHIP("speed-all", "avg km/h, moving trucks · all", { strong: true, minCh: 4 }, V(s, "trucks.speed.avg", KMH)),
+    CHIP("speed-heavy", "heavy", { strong: true, minCh: 4 }, V(s, "trucks.speed.heavy.avg", KMH)),
+    CHIP("speed-lastMile", "last-mile", { strong: true, minCh: 4 }, V(s, "trucks.speed.lastMile.avg", KMH)),
+    CHIP("sim", "sim (adapter)", { adapter: true }, N("PortSimClock", `${s}/sim-clock`)),
+    N("PortHudExpr", `${s}/expr`),
   ]);
 }
 
@@ -1169,7 +1243,7 @@ function uiRefreshAll() { announceAll(); sim.set(); renderMapLabels(); }
 const COLORS = { enRouteImp: "#7eb8c9", enRouteExp: "#c9b87e", loading: "#7ec99a", queued: "#b39ddb", returning: "#5f6b78", idle: "#4a535e",
   lmEnRoute: "#e58fc0", lmReturning: "#9a6585", lmLoading: "#e58fc0", lmIdle: "#6a4a5e" };
 const DRAW_ORDER = ["idle", "returning", "queued", "enRouteExp", "enRouteImp", "loading", "lmIdle", "lmReturning", "lmLoading", "lmEnRoute"];
-const MOVING = new Set(["impToQueue", "impToBerth", "impOut", "expOut", "expIn", "expToTrain", "toDepotImp", "toDepotExp", "lmOut", "lmBack"]);
+const MOVING = new Set(MOVING_STATES);   // driving along a route (the adapter's own list)
 const jit = (id, k) => ((Math.sin(id * 12.9898 + k * 78.233) * 43758.5453) % 1) * 1.6;   // lane offset per truck
 const POOL = { x: 470, y: 478, cols: 20, gap: 3.2 };
 const LM_POOL = [{ x: 540, y: 478 }, { x: CEDIS[1].pt[0] - 14, y: CEDIS[1].pt[1] + 14 }];
@@ -1246,7 +1320,8 @@ function drawTrucks(ctx) {   // ctx: from GUI.OpenStreetMap.Canvas (map pixels, 
 
 
 // ── main loop: adapter steps → one flush per animation tick → kernel writes (driven by the map canvas layer) ──
-let lastNow = 0;
+let lastNow = 0, lastSpeedAt = -1e9;
+const SPEED_SAMPLE_MS = 250;   // the per-fleet speed facts are sampled at most 4×/s (they only feed averages)
 function onMapFrame({ ctx, now }) {
   const dtReal = lastNow ? Math.min(0.1, (now - lastNow) / 1000) : 0;
   lastNow = now;
@@ -1255,6 +1330,7 @@ function onMapFrame({ ctx, now }) {
     let s = dtReal * speedOf();
     while (s > 1e-9) { const d = Math.min(0.5, s); T.step(d); s -= d; }
     const writes = T.flush();                 // ← real kernel writes happen here
+    if (now - lastSpeedAt >= SPEED_SAMPLE_MS) { lastSpeedAt = now; writes.push(...T.speedFlush()); }
     if (writes.length) onFlush(writes, now);
     if (T.done()) setRunning(false, true);
   }
@@ -1291,6 +1367,7 @@ function adapterChecks() {
     ["trips.unitMax = adapter recount", P.read("trips.unitMax"), mx],
     ["trips.unitMin = adapter recount", P.read("trips.unitMin"), mn],
     ["trips.redirects = adapter count", P.read("trips.redirects"), T.redirects],
+    ...(() => { const v = T.speedNow(); return SPEED_FACTS.map((f) => [`adapter vs kernel ${f} (speed sample)`, P.read(f), v[f]]); })(),
     ...truckInstanceChecks(),
   ];
 }
@@ -1312,14 +1389,14 @@ function truckInstanceChecks() {
   ];
 }
 function verifyNow() {
-  const writes = T.flush();
+  const writes = [...T.flush(), ...T.speedFlush()];
   if (writes.length) onFlush(writes, performance.now());
   return P.verifyFromScratch(adapterChecks());
 }
 function verify() {
   const v = verifyNow();
   ui.set({ verify: v.ok
-    ? { tone: "ok", text: `✓ ${v.checked} checks pass: every derived path matches a fresh kernel rebuild (none undefined); Σ counters = ${FLEET} (${HEAVY} heavy + ${LAST_MILE} last-mile); trips done + pending + unscheduled = ${TRIP_COUNT}; above + within + below = ${LAST_MILE}; bandHigh/bandLow = avg × 1.15 / × 0.85; adapter states = kernel counters; Σ trucks.unit[i] by state = counters (JS recount) (sim ${clock(T.simTime)}, ${fmt(writeCount)} writes).` }
+    ? { tone: "ok", text: `✓ ${v.checked} checks pass: every derived path matches a fresh kernel rebuild (none undefined, except a speed average while its fleet has 0 moving); Σ counters = ${FLEET} (${HEAVY} heavy + ${LAST_MILE} last-mile); trips done + pending + unscheduled = ${TRIP_COUNT}; above + within + below = ${LAST_MILE}; bandHigh/bandLow = avg × 1.15 / × 0.85; adapter states = kernel counters; Σ trucks.unit[i] by state = counters (JS recount); speed facts = adapter sample, trucks.speed.avg = weighted mean (undefined only while 0 moving) (sim ${clock(T.simTime)}, ${fmt(writeCount)} writes).` }
     : { tone: "bad", text: `✗ mismatches: ${JSON.stringify(v.mismatches)}` } });
   uiTick();
   return v;
@@ -1378,10 +1455,11 @@ try {
     drain({ dt = 1, stepsPerFlush = 2, verifyEvery = 1000 } = {}) {
       setRunning(false);
       const t0 = performance.now();
-      let flushes = 0, writes = 0, checks = 0, failures = [], kMax = 0, kSum = 0;
+      let flushes = 0, writes = 0, checks = 0, failures = [], kMax = 0, kSum = 0, steps = 0;
       while (!T.done() && T.simTime < 200000) {
         for (let i = 0; i < stepsPerFlush; i++) T.step(dt);
         const w = T.flush();
+        if (++steps % 8 === 0) w.push(...T.speedFlush());   // speed facts: sampled, not every flush
         if (!w.length) continue;
         onFlush(w, performance.now()); flushes++; writes += w.length;
         for (const x of w) { kMax = Math.max(kMax, x.k); kSum += x.k; }
@@ -1397,6 +1475,7 @@ try {
     advance(simSec, dt = 1) {
       const end = T.simTime + simSec;
       while (!T.done() && T.simTime < end) { T.step(dt); const w = T.flush(); if (w.length) onFlush(w, performance.now()); }
+      { const w = T.speedFlush(); if (w.length) onFlush(w, performance.now()); }
       uiTick();
       return { simClock: clock(T.simTime), tripsDone: P.read("trips.done"), band: [P.read("lastMile.unitsAbove"), P.read("lastMile.unitsWithin"), P.read("lastMile.unitsBelow")] };
     },

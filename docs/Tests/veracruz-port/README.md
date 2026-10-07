@@ -78,6 +78,8 @@ Named constants in `port-traffic.js`:
 | CEDIS loading bays | 12 (A) / 10 (B) | |
 | gate release | one heavy truck every 2 s at start | several gate lanes; staggered start |
 
+The HUD speed chips are **kernel rules**, not these constants: the adapter samples, at most 4×/s, the facts `trucks.speed.{heavy,lastMile}.kmhSum` (Σ km/h of the trucks driving a route right now) and `.moving` (how many), and the kernel derives `trucks.speed.heavy.avg = kmhSum / moving`, `trucks.speed.lastMile.avg = kmhSum / moving` and the count-weighted `trucks.speed.avg = (heavy.kmhSum + lastMile.kmhSum) / (heavy.moving + lastMile.moving)`. An average is `undefined` (shown —) while its fleet has 0 moving; Verify checks that this is the only case. Each HUD chip opens the expression behind its value (from `me.explain()`).
+
 Travel time comes from the **route length in metres**: each OSM polyline is converted back to lon/lat (inverse of the page's equirectangular projection, `PROJ` in `port-routes.js`) and measured with the haversine formula. Playback is shown in the UI: **×10 by default** (1 s real = 10 s simulated), ×1 real time and ×60 available; the HUD shows the simulated clock.
 
 ### Last-mile: 1,000 scheduled trips (example data)

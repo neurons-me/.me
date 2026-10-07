@@ -38,6 +38,17 @@ export const TRIP_COUNTERS = ["trips.unassigned", "trips.planned", "trips.active
 export const BAND_COUNTERS = ["lastMile.unitsAbove", "lastMile.unitsWithin", "lastMile.unitsBelow"];
 // Adapter aggregates written as facts (the kernel has no min()/max()): labelled "adapter aggregate" in the UI.
 export const ADAPTER_AGGREGATES = ["trips.unitMax", "trips.unitMin"];
+// Speed of the trucks that are driving right now (on a route on the map), per fleet: Σ of their speeds in km/h
+// and how many they are. Adapter-written facts, sampled at most 4×/s (not per frame). Each truck's speed is the
+// adapter's configured value for it (port-traffic.js: HEAVY_TRUCK_KMH / LAST_MILE_KMH × (1 ± speedSpread)).
+export const SPEED_FACTS = ["trucks.speed.heavy.kmhSum", "trucks.speed.heavy.moving", "trucks.speed.lastMile.kmhSum", "trucks.speed.lastMile.moving"];
+// Averages that are undefined while no truck of that set is moving (0 / 0: the kernel returns undefined, and its
+// formulas have no conditional). path → the count that must be > 0 for the average to be defined.
+export const UNDEFINED_WHEN_ZERO = {
+  "trucks.speed.heavy.avg": ["trucks.speed.heavy.moving"],
+  "trucks.speed.lastMile.avg": ["trucks.speed.lastMile.moving"],
+  "trucks.speed.avg": ["trucks.speed.heavy.moving", "trucks.speed.lastMile.moving"],
+};
 const POOL_COUNTERS = { "trucks.heavy.available": HEAVY, "trucks.lastMile.available": LAST_MILE };
 
 // Instance facts per class (seeded below for every index).
@@ -109,6 +120,10 @@ export const FORMULAS = [
   [["trucks"], "accounted", "trucks.working + trucks.available"],
   [["trucks"], "balanced", "trucks.accounted == trucks.fleet"],
   [["trucks"], "splitOk", "trucks.heavy.fleet + trucks.lastMile.fleet == trucks.fleet"],
+  [["trucks", "speed", "heavy"], "avg", "kmhSum / moving"],
+  [["trucks", "speed", "lastMile"], "avg", "kmhSum / moving"],
+  // all moving trucks: Σ speeds / Σ count = the moving-count-weighted mean of the two fleet averages (not a mean of means)
+  [["trucks", "speed"], "avg", "(trucks.speed.heavy.kmhSum + trucks.speed.lastMile.kmhSum) / (trucks.speed.heavy.moving + trucks.speed.lastMile.moving)"],
   [["cargo"], "bulkTons", "coffee + sugar"],
   [["port"], "busy", "flows.importRemaining + flows.exportRemaining + trips.pending + trucks.working > 0"],
 ];
@@ -131,6 +146,7 @@ export function seedFacts() {
   for (const i of UNIT_IDS) f.push([["lastMile", "units", i, "done"], 0]);
   f.push([["trucks", "fleet"], FLEET], [["trucks", "heavy", "fleet"], HEAVY], [["trucks", "lastMile", "fleet"], LAST_MILE]);
   for (const c of COUNTERS) f.push([c.split("."), POOL_COUNTERS[c] ?? 0]);
+  for (const c of SPEED_FACTS) f.push([c.split("."), 0]);
   for (const n of TRUCK_IDS) f.push([["trucks", "unit", n, "state"], truckKind(n) === 1 ? TRUCK_CODE.pool : TRUCK_CODE.lmPool], [["trucks", "unit", n, "kind"], truckKind(n)]);
   return f;
 }
@@ -203,8 +219,21 @@ export function createPortKernel(ME) {
     }
     const imp = SHIPS.reduce((acc, s) => acc + me(`ships.${s.i}.remaining`) * s.tonsPerUnit, 0);
     if (imp !== me("flows.importRemaining")) mismatches.push({ path: "flows.importRemaining (arith)", live: me("flows.importRemaining"), fresh: imp });
-    // no derived value may be undefined (the kernel returns undefined silently for unsupported syntax)
-    for (const p of DERIVED_PATHS) if (me(p) === undefined) mismatches.push({ path: p + " (undefined)", live: undefined, fresh: "defined" });
+    // no derived value may be undefined (the kernel returns undefined silently for unsupported syntax),
+    // except an average over an empty set: undefined exactly while its count is 0
+    for (const p of DERIVED_PATHS) {
+      const guard = UNDEFINED_WHEN_ZERO[p];
+      const mayBeUndefined = guard && guard.reduce((a, c) => a + me(c), 0) === 0;
+      if (mayBeUndefined ? me(p) !== undefined : me(p) === undefined) mismatches.push({ path: p + (mayBeUndefined ? " (should be undefined: nothing moving)" : " (undefined)"), live: me(p), fresh: mayBeUndefined ? undefined : "defined" });
+    }
+    // speed averages: the kernel's value = the arithmetic, and the global one = the count-weighted mean of the fleet means
+    const hs = me("trucks.speed.heavy.kmhSum"), hm = me("trucks.speed.heavy.moving"), ls = me("trucks.speed.lastMile.kmhSum"), lm = me("trucks.speed.lastMile.moving");
+    const close = (a, b) => (a === undefined && b === undefined) || (typeof a === "number" && typeof b === "number" && Math.abs(a - b) < 1e-9);
+    const spd = [["trucks.speed.heavy.avg (arith Σ/n)", me("trucks.speed.heavy.avg"), hm ? hs / hm : undefined],
+      ["trucks.speed.lastMile.avg (arith Σ/n)", me("trucks.speed.lastMile.avg"), lm ? ls / lm : undefined],
+      ["trucks.speed.avg (arith Σ/n)", me("trucks.speed.avg"), hm + lm ? (hs + ls) / (hm + lm) : undefined],
+      ["trucks.speed.avg = weighted mean of fleet means", me("trucks.speed.avg"), hm + lm ? ((hm ? me("trucks.speed.heavy.avg") * hm : 0) + (lm ? me("trucks.speed.lastMile.avg") * lm : 0)) / (hm + lm) : undefined]];
+    for (const [label, live, expected] of spd) if (!close(live, expected)) mismatches.push({ path: label, live, fresh: expected });
     const sum = (list) => list.reduce((a, c) => a + me(c), 0);
     const checks = [
       ["Σ all counters = fleet", sum(COUNTERS), FLEET],
@@ -229,7 +258,7 @@ export function createPortKernel(ME) {
     if (!near(me("trips.bandLow"), avg * (1 - BAND))) mismatches.push({ path: "trips.bandLow (arith avg × 0.85)", live: me("trips.bandLow"), fresh: avg * (1 - BAND) });
     for (const [label, live, expected] of checks) if (live !== expected) mismatches.push({ path: label, live, fresh: expected });
     for (const [label, live, expected] of extraChecks) if (live !== expected) mismatches.push({ path: label, live, fresh: expected });
-    return { ok: mismatches.length === 0, checked: DERIVED_PATHS.length * 2 + 1 + 16 + 2 + extraChecks.length, mismatches };
+    return { ok: mismatches.length === 0, checked: DERIVED_PATHS.length * 2 + 1 + 16 + 2 + 4 + extraChecks.length, mismatches };
   }
 
   return { me, read, write, waveOf, verifyFromScratch, seedLog };

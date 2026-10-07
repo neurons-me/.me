@@ -3,7 +3,7 @@
 // accumulates the resulting fact changes as deltas. flush() turns the deltas into
 // REAL kernel writes (one write per changed fact per flush); the kernel then
 // recomputes every derived value and reports its own wave (k).
-import { SHIPS, TRAIN, HEAVY, LAST_MILE, UNIT_IDS, TRIP_COUNTERS, TRUCK_STATES, TRUCK_CODE } from "./port-sim.js";
+import { SHIPS, TRAIN, HEAVY, LAST_MILE, UNIT_IDS, TRIP_COUNTERS, TRUCK_STATES, TRUCK_CODE, SPEED_FACTS } from "./port-sim.js";
 import { CEDIS, NODES, PARENT, TRIPS } from "./port-lastmile.js";
 
 // ── Speeds: ASSUMPTIONS for this demo, not sourced statistics ──
@@ -53,6 +53,9 @@ export const COUNTER_OF = {
 // every adapter state has exactly one numeric code in the kernel (trucks.unit[n].state)
 if (TRUCK_STATES.length !== Object.keys(COUNTER_OF).length || !TRUCK_STATES.every((st) => st in COUNTER_OF))
   throw new Error("port-traffic: TRUCK_STATES (port-sim.js) and COUNTER_OF disagree");
+// states in which a truck is driving along a route on the map (moveAlong at its own speed tr.spd)
+export const MOVING_STATES = ["impToQueue", "impToBerth", "impOut", "expOut", "expIn", "expToTrain", "toDepotImp", "toDepotExp", "lmOut", "lmBack"];
+const MOVING = new Set(MOVING_STATES);
 // drawing class per state (null = off map, not drawn)
 export const VIS_OF = {
   pool: "idle", impToQueue: "returning", impQueued: "queued", impToBerth: "loading", impLoading: "loading",
@@ -443,6 +446,27 @@ export function createTraffic({ kernel, ROUTES, KEY, PROJ, seed = 7 }) {
     return writes;
   }
 
+  // Speed sample of the trucks driving right now: per fleet Σ km/h (2 decimals) and count. A moving truck's speed
+  // is exactly its configured tr.spd (no acceleration model). Written by speedFlush(), at most a few times per second.
+  function speedNow() {
+    let hs = 0, hm = 0, ls = 0, lm = 0;
+    for (const tr of trucks) if (MOVING.has(tr.st)) { const kmh = tr.spd * 3.6; if (tr.cat === "lastMile") { ls += kmh; lm++; } else { hs += kmh; hm++; } }
+    const r2 = (x) => Math.round(x * 100) / 100;
+    return { "trucks.speed.heavy.kmhSum": r2(hs), "trucks.speed.heavy.moving": hm, "trucks.speed.lastMile.kmhSum": r2(ls), "trucks.speed.lastMile.moving": lm };
+  }
+  function speedFlush() {
+    const v = speedNow(), writes = [];
+    for (const path of SPEED_FACTS) {
+      const prev = kernel.read(path);
+      if (prev === v[path]) continue;
+      const w = kernel.write(path, v[path]);
+      w.delta = Math.round((v[path] - prev) * 100) / 100; w.note = "speed sample"; w.hauls = 0;
+      writes.push(w);
+    }
+    totalWrites += writes.length;
+    return writes;
+  }
+
   const done = () => kread("flows.importRemaining") === 0 && kread("flows.exportRemaining") === 0 &&
     tripCount.unassigned === 0 && tripCount.planned === 0 && tripCount.active === 0 &&
     stateCount.pool === HEAVY && stateCount.lmPool === LAST_MILE && deltas.size === 0;
@@ -457,7 +481,7 @@ export function createTraffic({ kernel, ROUTES, KEY, PROJ, seed = 7 }) {
   }
 
   return {
-    trucks, step, flush, done, adapterCounters, KEY, R,
+    trucks, step, flush, speedFlush, speedNow, done, adapterCounters, KEY, R,
     get simTime() { return simTime; }, get totalWrites() { return totalWrites; },
     get totalFlushes() { return totalFlushes; }, get totalHauls() { return totalHauls; },
     queues: { impQ, expQ }, berthUsed, trainUsed, bayUsed,
