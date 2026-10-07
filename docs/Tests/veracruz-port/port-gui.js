@@ -222,9 +222,9 @@ function revealSections(ids) {
   // wait until the open / close animations in the panel have settled, so the target positions are final
   const settled = () => [...document.querySelectorAll('[data-gui-node-id="aside/panels"] .MuiCollapse-root')]
     .every((c) => c.classList.contains("MuiCollapse-entered") || c.classList.contains("MuiCollapse-hidden"));
-  const go = () => {
+  const go = (pass = 0) => {
     if (token !== revealToken) return;
-    if (!settled() && performance.now() - t0 < 900) return requestAnimationFrame(go);
+    if (!settled() && performance.now() - t0 < 2500) return requestAnimationFrame(() => go(pass));
     const secs = ids.map((id) => document.querySelector(`[data-section="${id}"]`)).filter(Boolean);
     if (!secs.length) return;
     const panels = document.querySelector('[data-gui-node-id="aside/panels"]');
@@ -239,14 +239,17 @@ function revealSections(ids) {
     else if (bottom > vH - pad) dy = Math.min(top - pad, bottom - (vH - pad));
     // stacked layout: the tour strip scrolls with the page, so never push its Back / Next row off the top
     if (stacked && dy > 0) { const nb = document.getElementById("btn-next")?.getBoundingClientRect(); if (nb && nb.bottom > 0) dy = Math.min(dy, nb.top - pad); }
-    if (Math.abs(dy) >= 1) { if (stacked) window.scrollBy({ top: dy, behavior }); else panels.scrollBy({ top: dy, behavior }); }
+    if (Math.abs(dy) >= 1) { if (stacked) window.scrollBy({ top: dy, behavior: pass ? "auto" : behavior }); else panels.scrollBy({ top: dy, behavior: pass ? "auto" : behavior }); }
+    // one corrective pass once the smooth scroll is over (a busy page can still be animating when we measure)
+    if (!pass) setTimeout(() => go(1), reducedMotion() ? 150 : 800);
+    if (pass) return;
     for (const e of secs) {
       const head = e.querySelector("h2"); if (!head) continue;
       head.setAttribute("data-flash", "1");
       setTimeout(() => head.setAttribute("data-flash", "0"), reducedMotion() ? 1200 : 450);
     }
   };
-  requestAnimationFrame(() => requestAnimationFrame(go));
+  requestAnimationFrame(() => requestAnimationFrame(() => go(0)));
 }
 
 // ══════════════════════════ .GUI view: ONE spec tree resolved by GUI.mount ══════════════════════════
