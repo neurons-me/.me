@@ -750,9 +750,10 @@ function brandBarSpec(s = "brand") {
     N("Box", `${s}/path`, { component: "nav", "aria-label": "me path", sx: { display: "inline-flex", alignItems: "center", flexWrap: "wrap", minWidth: 0 } },
       PATH_SEGMENTS.flatMap(crumb)),
     // Scenario label read from the recipe itself (port-sim.js), never hand-typed.
-    N("Chip", `${s}/tag`, { size: "small", variant: "outlined", clickable: true, component: "a", href: SCENARIO_SRC, target: "_blank", rel: "noopener",
+    N("Box", `${s}/tag:link`, { component: "a", href: SCENARIO_SRC, target: "_blank", rel: "noopener",
       title: `Scenario recipe: port-sim.js (HEAVY = ${HEAVY}, LAST_MILE = ${LAST_MILE})`,
-      label: `scenario · ${HEAVY} heavy + ${LAST_MILE} last-mile · port-sim.js ↗`, sx: { ...srcTagSx("adapter"), cursor: "pointer" } }),
+      sx: { display: "inline-flex", textDecoration: "none", cursor: "pointer" } },
+      [TAG(`${s}/tag`, "adapter", `port operations · ${HEAVY + LAST_MILE} trucks · guided`)]),
     N("Box", `${s}/actions`, { sx: { ml: "auto", display: "inline-flex", alignItems: "center", gap: 1.25, flexWrap: "wrap" } }, [
       // Spec can't hold a live React element; PortBrandActions mounts the inspector + Docs / GitHub.
       N("PortBrandActions", `${s}/actions:nav`),
