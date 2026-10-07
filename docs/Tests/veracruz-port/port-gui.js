@@ -203,8 +203,7 @@ function BarView(p) {
 // A value keeps the widest width it has shown (numbers pre-padded to 3 digits), so its key never re-wraps
 // as digits change: rows keep a constant height while values stream in.
 const reserveChars = (text) => [...text.replace(/\d[\d,.]*/g, (d) => d.padStart(3, "0")).replace(/\btrue\b/g, "false")].length;
-function Row(p) {
-  const { k, kind, children, minCh = 0 } = p;
+function useReservedWidth(minCh = 0) {   // ref for an element that keeps the widest width its text has shown
   const ref = React.useRef(null);
   React.useLayoutEffect(() => {
     const el = ref.current; if (!el) return;
@@ -214,6 +213,11 @@ function Row(p) {
     const mo = new MutationObserver(fit); mo.observe(el, { childList: true, characterData: true, subtree: true });
     return () => mo.disconnect();
   }, [minCh]);
+  return ref;
+}
+function Row(p) {
+  const { k, kind, children, minCh = 0 } = p;
+  const ref = useReservedWidth(minCh);
   return h(Box, { ...nodeAttrs(p), sx: { display: "flex", justifyContent: "space-between", gap: 1, py: "3px", borderBottom: 1, borderColor: "divider", fontFamily: MONO, fontSize: 10.5, "&:last-of-type": { borderBottom: 0 } } },
     h(Box, { component: "span", sx: { color: "text.secondary", minWidth: 0 } }, k, h(Box, { component: "span", sx: kindSx }, kind)),
     h(Box, { component: "span", ref, sx: { color: "primary.main", textAlign: "right", whiteSpace: "nowrap", flexShrink: 0 } }, children));
@@ -421,7 +425,8 @@ function Writes(p) {   // node id on the list itself (the header line above it b
   }) : [h(Box, { component: "li", key: "e", sx: { color: "text.disabled" } }, "No writes yet: press Start.")];
   return h(React.Fragment, null,
     h(Typography, { component: "div", sx: { ...SUB_SX, color: "text.disabled", height: 24, lineHeight: "12px", overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", wordBreak: "break-word" } },
-      h("span", { id: "flush-meta", title: meta }, held ? h(Box, { component: "span", sx: { color: "warning.main" } }, `held while you read · latest #${lastFlush.idx}`) : null, held ? " · " : null, meta)),
+      // keyed by the hold state: the "held" note swaps in fresh text instead of pushing the old text aside (no layout shift on hover)
+      h("span", { id: "flush-meta", key: held ? "held" : "live", title: meta }, held ? h(Box, { component: "span", sx: { color: "warning.main" } }, `held while you read · latest #${lastFlush.idx}`) : null, held ? " · " : null, meta)),
     h(Box, { component: "ul", id: "writes", ref: ulRef, ...nodeAttrs(p),
       onPointerEnter: (e) => { if (e.pointerType === "mouse") wHold.hover = true; },
       onPointerLeave: () => { wHold.hover = false; holdWrites(600); },
@@ -528,7 +533,10 @@ const LGH_SX = { fontSize: 8.5, letterSpacing: ".1em", textTransform: "uppercase
 function SimClock(p) { useStore(sim); const { speed } = useStore(ui); return h("strong", { id: "hud-tick", ...nodeAttrs(p) }, `${T ? clock(T.simTime) : clock(0)} · ×${speed}`); }
 function HudChip(p) {   // strong: wrap the children in <strong> (with strongSx: a styled one); otherwise children as given
   const { label, children, adapter, strong, strongSx } = p;
-  const value = !strong ? children : strongSx ? h(Box, { component: "strong", sx: strongSx }, children) : h("strong", null, children);
+  // Live values keep their widest width (as in Row): the HUD wraps from the bottom, so a chip growing by a digit
+  // could re-wrap it and move the rows above (e.g. on the narrower map while the inspector panel is open).
+  const ref = useReservedWidth();
+  const value = h(Box, { component: "span", ref, sx: { display: "inline-block" } }, !strong ? children : strongSx ? h(Box, { component: "strong", sx: strongSx }, children) : h("strong", null, children));
   return h(Chip, { ...nodeAttrs(p), size: "small", variant: "outlined", label: h(React.Fragment, null, label, " ", value),
     sx: (t) => ({ fontFamily: MONO, fontSize: 10, bgcolor: "rgba(11,13,16,0.88)", borderRadius: "3px", color: "text.secondary", borderStyle: adapter ? "dashed" : "solid", borderColor: adapter ? accentColor(t, "ember") : t.palette.divider, "& strong": { color: "text.primary", fontWeight: 500 } }) });
 }
