@@ -84,7 +84,7 @@ function createStore(state) {
 }
 const useStore = (s) => { React.useSyncExternalStore(s.subscribe, s.version); return s.state; };
 const VERIFY_HINT = "Flushes, then rebuilds a fresh kernel from the current facts + same formulas and compares every derived path; checks Σ counters = 500, trips done + pending + unscheduled = 1,000, above + within + below = 100, band limits, and adapter states vs kernel counters.";
-const ui = createStore({ step: 1, tourOpen: false, glossaryOpen: false, running: false, finished: false, speed: 10, me: null, runtime: null, kernel: { state: "loading", text: `Loading this.me@${KERNEL.version}…` }, verify: { tone: "", text: VERIFY_HINT }, seed: "—" });
+const ui = createStore({ step: 1, tourOpen: false, glossaryOpen: false, collapsed: {}, running: false, finished: false, speed: 10, me: null, runtime: null, kernel: { state: "loading", text: `Loading this.me@${KERNEL.version}…` }, verify: { tone: "", text: VERIFY_HINT }, seed: "—" });
 const sim = createStore({});   // bumped by the adapter at ~4 Hz: sim clock, page stats, feeds
 
 // ── kernel → .GUI subscribe bridge (adapter schedule, kernel values) ──
@@ -163,7 +163,11 @@ function setTourOpen(open, persist = true) {
   ui.set({ tourOpen: open });
   if (persist) { try { localStorage.setItem(TOUR_KEY, open ? "1" : "0"); } catch (e) { /* storage unavailable */ } }
 }
-const setStep = (step) => ui.set({ step: Math.min(STEPS, Math.max(1, step)) });
+// A tour step opens the sections it highlights (a collapsed one would hide what the step talks about).
+const setStep = (step) => {
+  const n = Math.min(STEPS, Math.max(1, step)), shut = TOUR[n].hlPanels.filter((id) => ui.state.collapsed[id]);
+  ui.set({ step: n, ...(shut.length ? { collapsed: { ...ui.state.collapsed, ...Object.fromEntries(shut.map((id) => [id, false])) } } : {}) });
+};
 
 // ══════════════════════════ .GUI view: ONE spec tree resolved by GUI.mount ══════════════════════════
 // The page is a spec ({ type, props, children, provenance }) that GUI.mount resolves through the GUI
@@ -180,9 +184,6 @@ const accentColor = (t, accent) => t.palette[t.visuals?.accents?.[accent]?.chip]
 const nodeAttrs = (p) => ({ "data-gui-node-id": p["data-gui-node-id"], "data-gui-component": p["data-gui-component"] });
 
 const srcTagSx = (kind) => (t) => { const accent = kind === "adapter" ? "ember" : "aurora"; return { height: 16, fontSize: 8, fontFamily: MONO, letterSpacing: ".08em", textTransform: "uppercase", borderRadius: "3px", color: accentColor(t, accent), borderColor: accentColor(t, accent), borderStyle: kind === "adapter" ? "dashed" : "solid", "& .MuiChip-label": { px: "5px" } }; };
-function SrcTag({ kind, label }) {   // kernel → aurora accent; adapter → ember accent
-  return h(Chip, { size: "small", variant: "outlined", label, sx: srcTagSx(kind) });
-}
 const kindSx = { fontSize: 7.5, color: "text.disabled", letterSpacing: ".06em", textTransform: "uppercase", ml: .5, border: 1, borderColor: "divider", px: "3px", borderRadius: "2px" };
 
 // One kernel readout = one spec node with value: { read: "me/<path>" } (resolved + subscribed by GUI's renderer).
@@ -220,14 +221,44 @@ function Row(p) {
 const Formula = (p) => h(Box, { ...nodeAttrs(p), sx: { fontFamily: MONO, fontSize: 9.5, color: "text.secondary", mt: .75, p: "5px 7px", bgcolor: "background.default", border: 1, borderColor: "divider", borderRadius: "3px", lineHeight: 1.45, "& b": { color: "primary.main", fontWeight: 500, display: "inline-block", minWidth: "7ch", textAlign: "right", whiteSpace: "nowrap" } } }, p.children);
 const SUB_SX = { fontFamily: MONO, fontSize: 9, color: "text.secondary", mt: .75, lineHeight: 1.4 };
 
+// Collapsible sections: the same ▸/▾ caret as the kernel strip and the tour (Port overview). Every section
+// starts expanded; state is page memory only (not stored), so a reload shows everything again.
+// Collapsing only hides the body (MUI Collapse keeps it mounted): kernel reads, the adapter and the live
+// counters keep running, and reopening shows current values. Fixed heights and internal scrolling are untouched.
+// Spec nodes: <id> (section) → <id>/header (h2: title + badges) → <id>/toggle (caret button), and <id>/body.
+const sectionOpen = (id) => !ui.state.collapsed[id];
+function setSectionOpen(id, open) {
+  if (sectionOpen(id) === open) return;
+  ui.set({ collapsed: { ...ui.state.collapsed, [id]: !open } });
+}
+// The caret toggles (here, the kernel strip, the tour) are marked as inspector controls, so they keep working
+// while the Semantic Inspector is on; a click anywhere else on a header still inspects it.
+const CARET_SX = { ml: "auto", flexShrink: 0, minWidth: 0, px: .5, py: 0, lineHeight: "16px", fontFamily: MONO, fontSize: 10, fontWeight: 400, letterSpacing: "normal", textTransform: "none", color: "text.disabled" };
 function Panel(p) {
-  const { id, title, tags = [], adapter = false, children } = p;
+  const { id, children } = p;
+  useStore(ui);
+  return h(Box, { ...nodeAttrs(p), "data-section": id, "data-open": sectionOpen(id) ? "1" : "0" }, children);
+}
+function SectionHeader(p) {   // children: title, badge chips, toggle (spec nodes)
+  const { section, children } = p;
+  return h(Typography, { component: "h2", ...nodeAttrs(p), onClick: () => setSectionOpen(section, !sectionOpen(section)),
+    sx: { fontSize: 9.5, fontWeight: 600, letterSpacing: ".14em", textTransform: "uppercase", color: "text.secondary", display: "flex", alignItems: "center", gap: .75, flexWrap: "wrap", cursor: "pointer", userSelect: "none", "&:hover": { color: "text.primary" } } },
+    children);
+}
+function SectionToggle(p) {   // no onClick of its own: the click bubbles to the header, keyboard Enter/Space included
+  const { section, title } = p;
+  useStore(ui);
+  const open = sectionOpen(section);
+  return h(Button, { ...nodeAttrs(p), id: `${section}-toggle`, size: "small", "data-gui-inspector-control": "true", "aria-expanded": open, "aria-controls": section,
+    "aria-label": `${open ? "Hide" : "Show"} ${title}`, title: `${open ? "Hide" : "Show"} this section`, sx: CARET_SX }, open ? "▾ hide" : "▸ show");
+}
+function SectionBody(p) {
+  const { id, adapter = false, children } = p;
   const { step } = useStore(ui);
   const hl = !!TOUR[step]?.hlPanels.includes(id);
-  return h(Box, nodeAttrs(p),
-    h(Typography, { component: "h2", sx: { fontSize: 9.5, fontWeight: 600, letterSpacing: ".14em", textTransform: "uppercase", color: "text.secondary", mb: .75, display: "flex", alignItems: "center", gap: .75, flexWrap: "wrap" } },
-      title, ...tags.map(([kind, label]) => h(SrcTag, { key: label, kind, label }))),
-    h(Paper, { id, variant: "outlined", "data-hl": hl ? "1" : "0", sx: (t) => ({ p: "8px 10px", borderRadius: "4px", borderStyle: adapter ? "dashed" : "solid", borderColor: hl ? t.palette.primary.main : adapter ? accentColor(t, "ember") : t.palette.divider, background: hl ? t.visuals.accents.aurora.soft : t.visuals.accents.neutral.soft, transition: "border-color .2s, background .2s" }) }, children));
+  return h(Collapse, { ...nodeAttrs(p), in: sectionOpen(id) },
+    h(Box, { sx: { pt: .75 } },
+      h(Paper, { id, variant: "outlined", "data-hl": hl ? "1" : "0", sx: (t) => ({ p: "8px 10px", borderRadius: "4px", borderStyle: adapter ? "dashed" : "solid", borderColor: hl ? t.palette.primary.main : adapter ? accentColor(t, "ember") : t.palette.divider, background: hl ? t.visuals.accents.aurora.soft : t.visuals.accents.neutral.soft, transition: "border-color .2s, background .2s" }) }, children)));
 }
 
 // ── chrome ──
@@ -306,7 +337,7 @@ function KernelStrip(p) {
     h(Box, { sx: { display: "flex", alignItems: "center", gap: .75, px: 1.5, py: .75, borderBottom: glossaryOpen ? 1 : 0, borderColor: "divider", fontFamily: MONO, fontSize: 10, color: "text.secondary", minHeight: 36 } },
       h(Box, { component: "span", sx: { overflow: "hidden", textOverflow: "ellipsis", minWidth: 0, whiteSpace: "nowrap" } },
         "kernel: ", h(KernelLink, { id: "kver-aside", minCh: 28 })),
-      h(Button, { id: "kernel-toggle", size: "small", onClick: () => ui.set({ glossaryOpen: !glossaryOpen }), "aria-expanded": glossaryOpen, "aria-controls": "kernel-panel", title: "Show / hide kernel glossary",
+      h(Button, { id: "kernel-toggle", "data-gui-inspector-control": "true", size: "small", onClick: () => ui.set({ glossaryOpen: !glossaryOpen }), "aria-expanded": glossaryOpen, "aria-controls": "kernel-panel", title: "Show / hide kernel glossary",
         sx: { ml: "auto", flexShrink: 0, minWidth: 0, px: .75, py: .25, fontFamily: MONO, fontSize: 10, textTransform: "none", color: "text.disabled" } },
         glossaryOpen ? "▾ hide" : "▸ kernel")),
     h(Collapse, { in: glossaryOpen, id: "kernel-panel" },
@@ -318,7 +349,7 @@ function TourStrip(p) {
   const { step, tourOpen } = useStore(ui);
   const t = TOUR[step];
   return h(Box, { id: "tour-wrap", ...nodeAttrs(p), "data-open": tourOpen ? "1" : "0", sx: { flexShrink: 0, borderBottom: 1, borderColor: "divider" } },
-    h(Button, { id: "tour-toggle", fullWidth: true, onClick: () => setTourOpen(!tourOpen), "aria-expanded": tourOpen, "aria-controls": "tour-panel", title: "Show / hide the guided tour",
+    h(Button, { id: "tour-toggle", "data-gui-inspector-control": "true", fullWidth: true, onClick: () => setTourOpen(!tourOpen), "aria-expanded": tourOpen, "aria-controls": "tour-panel", title: "Show / hide the guided tour",
       sx: { justifyContent: "flex-start", gap: .75, px: 1.5, py: .9, borderRadius: 0, fontFamily: MONO, fontSize: 10, textTransform: "none", color: "text.secondary", whiteSpace: "nowrap", overflow: "hidden", borderBottom: tourOpen ? 1 : 0, borderColor: "divider" } },
       h(Box, { component: "span", id: "tt-step", sx: { color: "primary.main", fontSize: 12.5, fontWeight: 500, letterSpacing: ".02em", overflow: "hidden", textOverflow: "ellipsis", minWidth: 0 } }, t.title),
       h(Box, { component: "span", id: "tt-caret", sx: { ml: "auto", color: "text.disabled", flexShrink: 0 } }, tourOpen ? "▾ hide" : "▸ tour")),
@@ -367,7 +398,8 @@ function Stats(p) {
     h(Stat, { id: "st-fps", label: "fps (page)", value: fmt(frameLog.filter((t) => now - t <= 1000).length), adapter: true }),
     h(Stat, { id: "st-moving", label: "moving dots", value: fmt(moving), adapter: true }));
 }
-// The writes list has a fixed height and never auto-scrolls. While the pointer is over it or it was just
+// The writes list has a fixed height and never auto-scrolls. Its rows are keyed per flush, so each flush
+// renders fresh rows instead of re-flowing the old ones (an existing row moving down would count as layout shift). While the pointer is over it or it was just
 // scrolled, its content is held (the shown flush stays put) so it can be read; the header says so.
 const wHold = { hover: false, until: 0, topAfterRender: 0, shown: null };
 const holdWrites = (ms) => { wHold.until = Math.max(wHold.until, performance.now() + ms); };
@@ -382,7 +414,7 @@ function Writes(p) {   // node id on the list itself (the header line above it b
   const meta = shown ? flushMetaText(shown) : "Each animation tick the adapter flushes its pending deltas: one real write per changed fact.";
   const items = shown ? shown.writes.map((w, i) => {
     const note = w.note ? `// ${w.note}` : w.hauls ? `// ${sgn(w.delta)} · ${w.hauls} ${w.source.startsWith("trips.") || w.source.startsWith("localDelivery.") ? "deliver" + (w.hauls > 1 ? "ies" : "y") : "haul" + (w.hauls > 1 ? "s" : "")}` : `// ${sgn(w.delta)}`;
-    return h(Box, { component: "li", key: i, sx: { py: .5, borderBottom: 1, borderColor: "divider", "&:last-of-type": { borderBottom: 0 } } },
+    return h(Box, { component: "li", key: `${shown.idx}:${i}`, sx: { py: .5, borderBottom: 1, borderColor: "divider", "&:last-of-type": { borderBottom: 0 } } },
       h(Box, { component: "code", sx: { color: "text.primary" } }, w.code), h(Box, { component: "span", sx: { color: "warning.main", ml: .75 } }, `k=${w.k}`), h(Box, { component: "span", sx: { color: "text.disabled", ml: .75 } }, note),
       h(Box, { component: "span", sx: { display: "block", color: "text.disabled", mt: .25, wordBreak: "break-all" } }, "recomputed: ",
         w.recomputed.length ? w.recomputed.flatMap((p, j) => [j ? ", " : "", w.changed.includes(p) ? h(Box, { component: "span", key: p, sx: { color: "primary.main" } }, p) : p]) : "no dependents"));
@@ -505,7 +537,7 @@ const SvgGroup = (p) => { const { children, "data-gui-component": _c, ...rest } 
 // ── page-local registry types (rendered by GUI's renderer like any registry entry; no new GUI types) ──
 const pageType = (type, C) => ({ type, resolve: (spec) => { const { key: _k, ...p } = spec.props || {}; return h(C, p); } });
 const PAGE_TYPES = Object.fromEntries([
-  ["PortValue", ValView], ["PortSum", SumView], ["PortBar", BarView], ["PortRow", Row], ["PortFormula", Formula], ["PortPanel", Panel],
+  ["PortValue", ValView], ["PortSum", SumView], ["PortBar", BarView], ["PortRow", Row], ["PortFormula", Formula], ["PortPanel", Panel], ["PortSectionHeader", SectionHeader], ["PortSectionToggle", SectionToggle], ["PortSectionBody", SectionBody],
   ["PortLegendRow", LgRow], ["PortHudChip", HudChip], ["PortSvgGroup", SvgGroup],
   ["PortTour", TourStrip], ["PortKernelStrip", KernelStrip], ["PortBrandLogo", BrandLogo], ["PortBrandActions", BrandActions], ["PortKernelLink", KernelLink], ["PortRunControls", RunControls], ["PortStats", Stats], ["PortWrites", Writes],
   ["PortExplain", ExplainLeaf], ["PortLmStrip", LmStrip], ["PortLmEstimate", LmEstimate], ["PortLmFeed", LmFeed], ["PortSeed", SeedCode],
@@ -528,7 +560,10 @@ const FORMULA = (scope, name, children) => N("PortFormula", `${scope}/formula:${
 const SUB = (id, children, sx) => N("Typography", id, { component: "div", sx: { ...SUB_SX, ...sx } }, children);
 const SCENARIO_SRC = "https://github.com/neurons-me/.me/blob/main/docs/Tests/veracruz-port/port-sim.js";
 const TAG = (id, kind, label) => N("Chip", id, { size: "small", variant: "outlined", label, sx: srcTagSx(kind) });
-const PANEL = (id, title, tags, children, adapter) => N("PortPanel", id, { id, title, tags, ...(adapter ? { adapter } : {}) }, children);
+const PANEL = (id, title, tags, children, adapter) => N("PortPanel", id, { id }, [
+  N("PortSectionHeader", `${id}/header`, { section: id }, [title, ...tags.map(([kind, label]) => TAG(`${id}/header/tag:${label}`, kind, label)), N("PortSectionToggle", `${id}/toggle`, { section: id, title })]),
+  N("PortSectionBody", `${id}/body`, { id, ...(adapter ? { adapter } : {}) }, children),
+]);
 const LINK = (id, props, children) => N("PortLink", id, props, children);
 
 const SHIPS_META = [{ i: 1, unit: "t" }, { i: 2, unit: "t" }, { i: 3, unit: "TEU" }];
