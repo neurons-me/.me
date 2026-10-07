@@ -84,7 +84,7 @@ function createStore(state) {
 }
 const useStore = (s) => { React.useSyncExternalStore(s.subscribe, s.version); return s.state; };
 const VERIFY_HINT = "Flushes, then rebuilds a fresh kernel from the current facts + same formulas and compares every derived path; checks Σ counters = 500, trips done + pending + unscheduled = 1,000, above + within + below = 100, band limits, and adapter states vs kernel counters.";
-const ui = createStore({ step: 1, tourOpen: false, glossaryOpen: false, collapsed: {}, running: false, finished: false, speed: 10, me: null, runtime: null, kernel: { state: "loading", text: `Loading this.me@${KERNEL.version}…` }, verify: { tone: "", text: VERIFY_HINT }, seed: "—" });
+const ui = createStore({ step: 1, open: {}, running: false, finished: false, speed: 10, me: null, runtime: null, kernel: { state: "loading", text: `Loading this.me@${KERNEL.version}…` }, verify: { tone: "", text: VERIFY_HINT }, seed: "—" });
 const sim = createStore({});   // bumped by the adapter at ~4 Hz: sim clock, page stats, feeds
 
 // ── kernel → .GUI subscribe bridge (adapter schedule, kernel values) ──
@@ -140,7 +140,7 @@ const EDGE_ENDS = {
 
 // ── Tour ──
 const TOUR = [null,
-  { title: "1 · Port overview", body: "You are at the <strong>Port of Veracruz</strong>. Three ships unload (import), one train loads (export), and <strong>500 trucks</strong> (400 heavy, 100 last-mile) circulate on real OpenStreetMap roads; every dot is one truck. Every number on the right reads a path of the real kernel.",
+  { title: "1 · Port Simulation Overview", body: "You are at the <strong>Port of Veracruz</strong>. Three ships unload (import), one train loads (export), and <strong>500 trucks</strong> (400 heavy, 100 last-mile) circulate on real OpenStreetMap roads; every dot is one truck. Every number on the right reads a path of the real kernel.",
     hlNodes: ["n-port", "n-ship1", "n-ship2", "n-ship3", "n-train"], hlEdges: ["e-ship1-q", "e-ship2-q", "e-ship3-q", "e-qexp-train"], hlPanels: [] },
   { title: "2 · Stocks (facts)", body: "<strong>me.cargo.coffee(100000)</strong>, sugar(200000), containers(5000), <strong>me.trucks.fleet(500)</strong> = heavy.fleet(400) + lastMile.fleet(100). A fact changes only when a write says so. <strong>cargo.bulkTons</strong> is a kernel rule: coffee + sugar.",
     hlNodes: ["n-yard"], hlEdges: ["e-port-yard"], hlPanels: ["panel-stocks"] },
@@ -158,15 +158,43 @@ const TOUR = [null,
     hlNodes: ["n-port", "n-ship1", "n-ship2", "n-ship3"], hlEdges: ["e-ship1-q", "e-ship2-q", "e-ship3-q"], hlPanels: ["panel-explain", "panel-adapter"] },
 ];
 const STEPS = TOUR.length - 1;
-const TOUR_KEY = "veracruz-port.tourOpen";
-function setTourOpen(open, persist = true) {
-  ui.set({ tourOpen: open });
-  if (persist) { try { localStorage.setItem(TOUR_KEY, open ? "1" : "0"); } catch (e) { /* storage unavailable */ } }
+// ── open / closed state of every collapsible block on the right (one mechanism for all) ──
+// "tour" = the Port Simulation Overview strip (its header shows the current tour step), "kernel" = the kernel
+// strip, then the 8 panel sections. Default: only the overview is open. Each block's state is saved under
+// localStorage "veracruz-port.open.<id>" = "1" | "0" when the user toggles it, and read once at boot,
+// before the first render (no flash, no layout shift).
+const SECTION_IDS = ["tour", "kernel", "panel-mutate", "panel-explain", "panel-ships", "panel-train", "panel-queues", "panel-lastmile", "panel-stocks", "panel-adapter"];
+const DEFAULT_OPEN = { tour: true };
+const OPEN_KEY = (id) => `veracruz-port.open.${id}`;
+const LEGACY_TOUR_KEY = "veracruz-port.tourOpen";   // earlier builds saved only the tour, under this key
+const sectionOpen = (id) => !!ui.state.open[id];
+function setSectionOpen(id, open, persist = true) {
+  if (persist) { try { localStorage.setItem(OPEN_KEY(id), open ? "1" : "0"); } catch (e) { /* storage unavailable */ } }
+  if (sectionOpen(id) !== open) ui.set({ open: { ...ui.state.open, [id]: open } });
 }
+function readOpenState() {
+  const open = {};
+  for (const id of SECTION_IDS) {
+    let v = null;
+    try {
+      v = localStorage.getItem(OPEN_KEY(id));
+      if (v === null && id === "tour") {   // carry over a choice saved by an earlier build, once
+        const old = localStorage.getItem(LEGACY_TOUR_KEY);
+        if (old === "1" || old === "0") { v = old; localStorage.setItem(OPEN_KEY(id), old); }
+        localStorage.removeItem(LEGACY_TOUR_KEY);
+      }
+    } catch (e) { /* storage unavailable: defaults */ }
+    open[id] = v === "1" ? true : v === "0" ? false : !!DEFAULT_OPEN[id];
+  }
+  return open;
+}
+const setTourOpen = (open, persist = true) => setSectionOpen("tour", open, persist);
 // A tour step opens the sections it highlights (a collapsed one would hide what the step talks about).
+// That open is not saved: stored state only records the user's own header clicks, so walking through the
+// tour never rewrites them (after a reload those sections are back to how the user left them).
 const setStep = (step) => {
-  const n = Math.min(STEPS, Math.max(1, step)), shut = TOUR[n].hlPanels.filter((id) => ui.state.collapsed[id]);
-  ui.set({ step: n, ...(shut.length ? { collapsed: { ...ui.state.collapsed, ...Object.fromEntries(shut.map((id) => [id, false])) } } : {}) });
+  const n = Math.min(STEPS, Math.max(1, step)), shut = TOUR[n].hlPanels.filter((id) => !sectionOpen(id));
+  ui.set({ step: n, ...(shut.length ? { open: { ...ui.state.open, ...Object.fromEntries(shut.map((id) => [id, true])) } } : {}) });
 };
 
 // ══════════════════════════ .GUI view: ONE spec tree resolved by GUI.mount ══════════════════════════
@@ -225,16 +253,11 @@ function Row(p) {
 const Formula = (p) => h(Box, { ...nodeAttrs(p), sx: { fontFamily: MONO, fontSize: 9.5, color: "text.secondary", mt: .75, p: "5px 7px", bgcolor: "background.default", border: 1, borderColor: "divider", borderRadius: "3px", lineHeight: 1.45, "& b": { color: "primary.main", fontWeight: 500, display: "inline-block", minWidth: "7ch", textAlign: "right", whiteSpace: "nowrap" } } }, p.children);
 const SUB_SX = { fontFamily: MONO, fontSize: 9, color: "text.secondary", mt: .75, lineHeight: 1.4 };
 
-// Collapsible sections: the same ▸/▾ caret as the kernel strip and the tour (Port overview). Every section
-// starts expanded; state is page memory only (not stored), so a reload shows everything again.
+// Collapsible sections: the same ▸/▾ caret as the kernel strip and the tour (Port Simulation Overview).
+// Open / closed state and its storage: see SECTION_IDS above (default collapsed, remembered per section).
 // Collapsing only hides the body (MUI Collapse keeps it mounted): kernel reads, the adapter and the live
 // counters keep running, and reopening shows current values. Fixed heights and internal scrolling are untouched.
 // Spec nodes: <id> (section) → <id>/header (h2: title + badges) → <id>/toggle (caret button), and <id>/body.
-const sectionOpen = (id) => !ui.state.collapsed[id];
-function setSectionOpen(id, open) {
-  if (sectionOpen(id) === open) return;
-  ui.set({ collapsed: { ...ui.state.collapsed, [id]: !open } });
-}
 // The caret toggles (here, the kernel strip, the tour) are marked as inspector controls, so they keep working
 // while the Semantic Inspector is on; a click anywhere else on a header still inspects it.
 const CARET_SX = { ml: "auto", flexShrink: 0, minWidth: 0, px: .5, py: 0, lineHeight: "16px", fontFamily: MONO, fontSize: 10, fontWeight: 400, letterSpacing: "normal", textTransform: "none", color: "text.disabled" };
@@ -328,20 +351,23 @@ function GlossaryItem(p) {
       h(Typography, { component: "p", sx: { px: 1.25, pb: .75, mt: 0, fontFamily: MONO, fontSize: 10, lineHeight: 1.4, color: "text.secondary", "& code": { fontSize: 9.5, color: "primary.main" }, "& a": { color: "primary.main" }, "& b": { color: "text.primary", fontWeight: 500 } } }, ...body)));
 }
 
+// Kernel failure line (in the kernel strip and the overview). Only on error: while loading, the strip's
+// "verifying…" link already says so, and a loading line that vanishes on success would shift what is below it.
 function KernelLine() {
   const { kernel } = useStore(ui);
-  const ok = kernel.state === "ok", err = kernel.state === "error";
-  if (ok) return null;
+  const err = kernel.state === "error";
+  if (!err) return null;
   return h(Typography, { id: "kernel-status", component: "div", sx: { fontFamily: MONO, fontSize: 9.5, color: err ? "error.main" : "text.secondary", px: 1.5, py: .75, borderBottom: 1, borderColor: "divider", lineHeight: 1.4, "& b": { color: err ? "error.main" : "success.main", fontWeight: 500 } }, dangerouslySetInnerHTML: { __html: kernel.text } });
 }
 
 function KernelStrip(p) {
-  const { glossaryOpen } = useStore(ui);
+  useStore(ui);
+  const glossaryOpen = sectionOpen("kernel");
   return h(Box, { id: "kernel-wrap", ...nodeAttrs(p), "data-open": glossaryOpen ? "1" : "0", sx: { flexShrink: 0, borderBottom: 1, borderColor: "divider" } },
     h(Box, { sx: { display: "flex", alignItems: "center", gap: .75, px: 1.5, py: .75, borderBottom: glossaryOpen ? 1 : 0, borderColor: "divider", fontFamily: MONO, fontSize: 10, color: "text.secondary", minHeight: 36 } },
       h(Box, { component: "span", sx: { overflow: "hidden", textOverflow: "ellipsis", minWidth: 0, whiteSpace: "nowrap" } },
         "kernel: ", h(KernelLink, { id: "kver-aside", minCh: 28 })),
-      h(Button, { id: "kernel-toggle", "data-gui-inspector-control": "true", size: "small", onClick: () => ui.set({ glossaryOpen: !glossaryOpen }), "aria-expanded": glossaryOpen, "aria-controls": "kernel-panel", title: "Show / hide kernel glossary",
+      h(Button, { id: "kernel-toggle", "data-gui-inspector-control": "true", size: "small", onClick: () => setSectionOpen("kernel", !glossaryOpen), "aria-expanded": glossaryOpen, "aria-controls": "kernel-panel", title: "Show / hide kernel glossary",
         sx: { ml: "auto", flexShrink: 0, minWidth: 0, px: .75, py: .25, fontFamily: MONO, fontSize: 10, textTransform: "none", color: "text.disabled" } },
         glossaryOpen ? "▾ hide" : "▸ kernel")),
     h(Collapse, { in: glossaryOpen, id: "kernel-panel" },
@@ -350,8 +376,8 @@ function KernelStrip(p) {
         GLOSSARY.map(([label], idx) => h(GlossaryItem, { key: label, idx, "data-gui-node-id": `glossary/${label}` })))));
 }
 function TourStrip(p) {
-  const { step, tourOpen } = useStore(ui);
-  const t = TOUR[step];
+  const { step } = useStore(ui);
+  const tourOpen = sectionOpen("tour"), t = TOUR[step];
   return h(Box, { id: "tour-wrap", ...nodeAttrs(p), "data-open": tourOpen ? "1" : "0", sx: { flexShrink: 0, borderBottom: 1, borderColor: "divider" } },
     h(Button, { id: "tour-toggle", "data-gui-inspector-control": "true", fullWidth: true, onClick: () => setTourOpen(!tourOpen), "aria-expanded": tourOpen, "aria-controls": "tour-panel", title: "Show / hide the guided tour",
       sx: { justifyContent: "flex-start", gap: .75, px: 1.5, py: .9, borderRadius: 0, fontFamily: MONO, fontSize: 10, textTransform: "none", color: "text.secondary", whiteSpace: "nowrap", overflow: "hidden", borderBottom: tourOpen ? 1 : 0, borderColor: "divider" } },
@@ -1037,10 +1063,8 @@ function verify() {
 // ── boot ──
 const params = new URLSearchParams(location.search);
 {
-  let stored = null;
-  try { stored = localStorage.getItem(TOUR_KEY); } catch (e) { /* storage unavailable */ }
-  ui.set({ step: Math.min(STEPS, Math.max(1, parseInt(params.get("step") || "1", 10) || 1)) });
-  setTourOpen(params.has("step") || stored === "1", params.has("step"));
+  ui.set({ open: readOpenState(), step: Math.min(STEPS, Math.max(1, parseInt(params.get("step") || "1", 10) || 1)) });
+  if (params.has("step")) setTourOpen(true);   // a ?step= link opens the overview (saved, as before)
   if (params.get("speed")) ui.set({ speed: Number(params.get("speed")) || 10 });
 }
 // GUI.mount resolves the page spec (SPEC_BOOT until the kernel is loaded, then SPEC_LIVE) through the GUI
