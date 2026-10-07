@@ -98,6 +98,7 @@
       font-size: 1.1rem;
     }
 
+    .card picture { display: block; }
     .card-media {
       display: block;
       width: calc(100% + 40px);
@@ -175,6 +176,15 @@
     </nav>
 
     <div class="grid">
+
+      <a class="card" href="../Demos/">
+        <picture>
+          <source srcset="assets/demos-cover.avif" type="image/avif" />
+          <img class="card-media" src="assets/demos-cover.webp" width="960" height="420" alt="Demos: Smart Cities, Robots, Social Networks, Digital Space Algebra, Wallet Split, Affinity Model" />
+        </picture>
+        <div class="card-title">Demos</div>
+        <div class="card-desc">Live examples of the .me kernel — Smart Cities, Robots, Social Graph, Wallet Split, Affinity, Shops.</div>
+      </a>
 
       <a class="card" href="https://neurons-me.github.io/.me/docs/me.html">
         <div class="card-icon">⊙</div>
@@ -313,12 +323,6 @@
         <div class="card-icon">⚡</div>
         <div class="card-title">Benchmarks</div>
         <div class="card-desc">O(k) scaling, throughput, fan-out, cold/warm, explain overhead, secret-scope cost.</div>
-      </a>
-
-      <a class="card" href="../Demos/">
-        <div class="card-icon">🎯</div>
-        <div class="card-title">Demos</div>
-        <div class="card-desc">Live examples of the .me kernel — Smart Cities, Robots, Social Graph, Wallet Split, Affinity, Shops.</div>
       </a>
 
     </div>
