@@ -1,469 +1,167 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Affinity Model · .me Demos</title>
-<meta name="description" content="Affinity is emergent — store reactions, derive affinity as executable graph logic. Live on the real this.me@4.1.0 kernel: reactions are facts, affinity is a derived formula, explain() shows why." />
-<link rel="canonical" href="https://neurons-me.github.io/.me/Demos/AffinityModel/" />
-<meta property="og:type" content="website" />
-<meta property="og:site_name" content=".me" />
-<meta property="og:title" content="Affinity Model · .me" />
-<meta property="og:description" content="Affinity is emergent — store reactions, derive affinity as executable graph logic. Live on the real this.me@4.1.0 kernel." />
-<meta property="og:url" content="https://neurons-me.github.io/.me/Demos/AffinityModel/" />
-<meta property="og:image" content="https://neurons-me.github.io/.me/docs/assets/affinity-model-og.jpg" />
-<meta property="og:image:width" content="1200" />
-<meta property="og:image:height" content="630" />
-<meta property="og:image:alt" content="Affinity Model: a face dissolving into clouds" />
-<meta name="twitter:card" content="summary_large_image" />
-<meta name="twitter:title" content="Affinity Model · .me" />
-<meta name="twitter:description" content="Affinity is emergent — store reactions, derive affinity as executable graph logic. Live on the real this.me@4.1.0 kernel." />
-<meta name="twitter:image" content="https://neurons-me.github.io/.me/docs/assets/affinity-model-og.jpg" />
-<link rel="icon" type="image/png" href="https://res.cloudinary.com/dkwnxf6gm/image/upload/v1769890772/this.me.png" />
-<style>
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  :root {
-    --bg: #f4f7f8; --text: #0f1720; --muted: #51606d; --card: #fff; --line: rgba(15,23,32,0.10);
-    --accent: #0f6a78; --accent-soft: rgba(15,106,120,0.10); --code-bg: #eef3f4;
-    --pos: #0f7a4f; --neg: #b3402f; --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root { --bg: #0b1114; --text: #e8eded; --muted: #98a7b3; --card: #111a1f; --line: rgba(232,237,237,0.10);
-      --accent: #4fd1c5; --accent-soft: rgba(79,209,197,0.10); --code-bg: #0d1519; --pos: #5fd39a; --neg: #f08a78; }
-  }
-  html { scroll-behavior: smooth; }
-  body { font-family: "Inter", "Helvetica Neue", Helvetica, Arial, sans-serif; background: var(--bg); color: var(--text); -webkit-font-smoothing: antialiased; line-height: 1.5; }
-  a { color: var(--accent); text-decoration: none; }
-  a:hover { text-decoration: underline; }
-  code, pre { font-family: var(--mono); }
-  code { font-size: 0.86em; background: var(--code-bg); padding: 1px 5px; border-radius: 4px; }
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#0b0b0f" />
+  <title>Affinity Model · .me Demos</title>
+  <meta name="description" content="Affinity is emergent — store reactions, derive affinity as executable graph logic. The live this.me@4.1.0 demo plus the Affinity UI explorations." />
+  <link rel="canonical" href="https://neurons-me.github.io/.me/Demos/AffinityModel/" />
+  <link rel="icon" type="image/png" href="https://res.cloudinary.com/dkwnxf6gm/image/upload/v1769890772/this.me.png" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content=".me" />
+  <meta property="og:title" content="Affinity Model · .me" />
+  <meta property="og:description" content="Affinity is emergent — store reactions, derive affinity as executable graph logic. Live kernel demo and UI explorations." />
+  <meta property="og:url" content="https://neurons-me.github.io/.me/Demos/AffinityModel/" />
+  <meta property="og:image" content="https://neurons-me.github.io/.me/docs/assets/affinity-model-og.jpg" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="Affinity Model: a face dissolving into clouds" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Affinity Model · .me" />
+  <meta name="twitter:description" content="Affinity is emergent — store reactions, derive affinity as executable graph logic. Live kernel demo and UI explorations." />
+  <meta name="twitter:image" content="https://neurons-me.github.io/.me/docs/assets/affinity-model-og.jpg" />
+  <!-- The live demo used to live here; old #live links go straight to it. -->
+  <script>if (location.hash === "#live") location.replace("https://neurons-me.github.io/.me/Demos/AffinityModel/Live/#live");</script>
+  <style>
+    /* Same structure and styling as the Smart Cities landing (always dark). */
+    :root {
+      --bg: #0b0b0f;
+      --text: #f4f4f5;
+      --muted: #a1a1aa;
+      --blue: #83d6ec;
+      --line: rgba(255,255,255,.1);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background:
+        radial-gradient(circle at 20% 0%, rgba(131,214,236,.08), transparent 32rem),
+        radial-gradient(circle at 85% 20%, rgba(241,155,155,.08), transparent 30rem),
+        var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+    a { color: inherit; }
+    .wrap { width: min(760px, calc(100% - 40px)); margin: 0 auto; padding-top: 12px; }
 
-  .topnav { position: fixed; top: 0; left: 0; right: 0; z-index: 100; height: 48px; display: flex; align-items: center; gap: 12px; padding: 0 20px;
-    background: color-mix(in srgb, var(--bg) 92%, transparent); backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); }
-  .topnav .logo { display: inline-flex; line-height: 0; }
-  .topnav .logo img { width: 28px; height: 28px; object-fit: contain; display: block; }
-  .mepath { font-family: var(--mono); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
-  .mepath .sep { color: var(--muted); opacity: .6; margin: 0 1px; }
-  .mepath .here { font-weight: 600; color: var(--text); }
-  .topnav .spacer { flex: 1; }
-  .topnav .act { font-family: var(--mono); font-size: 12px; color: var(--muted); }
-  .topnav .gh { display: inline-flex; line-height: 0; color: var(--muted); }
-  .topnav .gh:hover { color: var(--text); }
+    /* Topbar: one me:// path line + Docs + GitHub mark (same as the Affinity Live page, dark tokens) */
+    .topnav { position: sticky; top: 0; z-index: 100; height: 48px; display: flex; align-items: center; gap: 12px; padding: 0 20px;
+      background: rgba(11,17,20,0.92); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); border-bottom: 1px solid rgba(232,237,237,0.10); }
+    .topnav a { text-decoration: none; }
+    .topnav .logo { display: inline-flex; line-height: 0; }
+    .topnav .logo img { width: 28px; height: 28px; object-fit: contain; display: block; }
+    .mepath { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; line-height: 1.5; }
+    .mepath a { color: #4fd1c5; }
+    .mepath a:hover { text-decoration: underline; }
+    .mepath .sep { color: #98a7b3; opacity: .6; margin: 0 1px; }
+    .mepath .here { font-weight: 600; color: #e8eded; }
+    .topnav .spacer { flex: 1; }
+    .topnav .act { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; color: #98a7b3; }
+    .topnav .act:hover { color: #4fd1c5; text-decoration: underline; }
+    .topnav .gh { display: inline-flex; line-height: 0; color: #98a7b3; }
+    .topnav .gh:hover { color: #e8eded; }
 
-  .page { max-width: 1080px; margin: 0 auto; padding: 88px 28px 72px; }
-  section { margin-top: 56px; }
-  h2 { font-size: 1.35rem; font-weight: 800; letter-spacing: -0.01em; margin-bottom: 6px; }
-  .lead { color: var(--muted); font-size: 0.95rem; max-width: 680px; margin-bottom: 18px; }
-
-  .hero { display: grid; grid-template-columns: 1fr auto; gap: 40px; align-items: center; }
-  .hero h1 { font-size: 3rem; font-weight: 800; letter-spacing: -0.025em; line-height: 1.05; margin-bottom: 14px; }
-  .tagline { font-size: 1.15rem; color: var(--muted); max-width: 520px; margin-bottom: 22px; }
-  .tagline em { color: var(--text); font-style: normal; font-weight: 600; }
-  .cta { display: flex; gap: 10px; flex-wrap: wrap; }
-  .btn { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 14px; border-radius: 8px; border: 1px solid var(--line); background: var(--card); color: var(--text); font: 600 0.85rem/1 inherit; font-family: inherit; cursor: pointer; text-decoration: none; }
-  .btn:hover { border-color: var(--accent); text-decoration: none; }
-  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
-  @media (prefers-color-scheme: dark) { .btn.primary { color: #062a2a; } }
-  .btn:disabled { opacity: .45; cursor: not-allowed; border-color: var(--line); }
-  .cover { width: 260px; aspect-ratio: 324 / 480; border-radius: 14px; overflow: hidden; border: 1px solid var(--line); background: #1d3f6e; box-shadow: 0 10px 40px rgba(15,23,32,0.18); }
-  .cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
-
-  .idea { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
-  .idea .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; }
-  .idea .n { font-family: var(--mono); font-size: 0.72rem; color: var(--accent); letter-spacing: .08em; }
-  .idea h3 { font-size: 1rem; font-weight: 800; margin: 4px 0 6px; }
-  .idea p { font-size: 0.86rem; color: var(--muted); margin-bottom: 10px; }
-  .idea pre { font-size: 0.72rem; background: var(--code-bg); border-radius: 6px; padding: 8px 10px; white-space: pre-wrap; word-break: break-word; }
-
-  /* Live section: fixed-height panels, no layout shift */
-  .kstrip { height: 34px; display: flex; align-items: center; gap: 10px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--card);
-    font-family: var(--mono); font-size: 12px; white-space: nowrap; overflow: hidden; margin-bottom: 14px; }
-  .kstrip .dot { width: 8px; height: 8px; border-radius: 50%; background: #c9a07e; flex-shrink: 0; }
-  .kstrip.ok .dot { background: var(--pos); }
-  .kstrip.err .dot { background: var(--neg); }
-  .kstrip .txt { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
-  .kstrip .fresh { margin-left: auto; color: var(--muted); flex-shrink: 0; }
-  .live { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; }
-  .panel { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; overflow: hidden; }
-  .panel h4 { font-size: 0.72rem; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); font-weight: 700; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
-  .panel h4 .hint { text-transform: none; letter-spacing: 0; font-weight: 500; font-family: var(--mono); font-size: 0.7rem; }
-
-  .target { height: 150px; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; margin-bottom: 10px; display: grid; grid-template-rows: auto auto 1fr; gap: 8px; cursor: pointer; }
-  .target.sel { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
-  .t-head { display: flex; align-items: baseline; gap: 8px; }
-  .t-head b { font-size: 0.95rem; }
-  .t-head .p { font-family: var(--mono); font-size: 0.72rem; color: var(--muted); }
-  .t-head .strong { margin-left: auto; width: 15ch; text-align: center; font-family: var(--mono); font-size: 0.7rem; padding: 1px 7px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); white-space: nowrap; }
-  .t-head .strong.on { color: var(--pos); border-color: currentColor; }
-  .reacts { display: flex; gap: 8px; flex-wrap: nowrap; }
-  .r { display: inline-flex; align-items: center; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; height: 30px; }
-  .r span { display: inline-flex; align-items: center; gap: 4px; padding: 0 8px; font-family: var(--mono); font-size: 0.82rem; min-width: 52px; justify-content: center; }
-  .r button { width: 26px; height: 30px; border: 0; background: transparent; color: var(--text); font: 600 0.95rem/1 var(--mono); cursor: pointer; }
-  .r button:hover:not(:disabled) { background: var(--accent-soft); }
-  .r button:disabled { opacity: .3; cursor: not-allowed; }
-  .derived { display: grid; grid-template-columns: auto auto 1fr; gap: 2px 14px; align-items: center; font-family: var(--mono); font-size: 0.74rem; color: var(--muted); }
-  .derived .v { color: var(--text); font-weight: 600; width: 6ch; }
-  .aff { display: flex; align-items: center; gap: 10px; }
-  .aff .num { font-family: var(--mono); font-size: 1.15rem; font-weight: 800; width: 7.5ch; text-align: right; }
-  .bar { position: relative; height: 8px; flex: 1; min-width: 60px; border-radius: 4px; background: var(--code-bg); }
-  .bar::after { content: ""; position: absolute; left: 50%; top: -3px; bottom: -3px; width: 1px; background: var(--muted); opacity: .5; }
-  .bar i { position: absolute; top: 0; bottom: 0; left: 50%; width: 50%; border-radius: 4px; transform-origin: left center; transform: scaleX(0); transition: transform .2s; }
-
-  .weights { height: 46px; display: flex; align-items: center; gap: 10px; flex-wrap: nowrap; font-family: var(--mono); font-size: 0.78rem; color: var(--muted); margin-bottom: 10px; }
-  .weights label { display: inline-flex; align-items: center; gap: 4px; }
-  .weights select { font: inherit; color: var(--text); background: var(--card); border: 1px solid var(--line); border-radius: 6px; height: 28px; padding: 0 4px; }
-  .actions { display: flex; gap: 8px; flex-wrap: wrap; height: 36px; overflow: hidden; }
-
-  .log { height: 132px; overflow: hidden; font-family: var(--mono); font-size: 0.72rem; display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; }
-  .log .row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; padding: 5px 8px; border-radius: 6px; background: var(--code-bg); white-space: nowrap; }
-  .log .row code { background: none; padding: 0; overflow: hidden; text-overflow: ellipsis; font-size: 1em; }
-  .log .row .k { color: var(--accent); font-weight: 700; }
-  .log .row.empty { color: var(--muted); background: none; }
-  .wave { height: 96px; overflow: hidden; font-family: var(--mono); font-size: 0.68rem; color: var(--muted); margin-bottom: 10px; line-height: 1.45; }
-  .wave b { color: var(--text); }
-  .xhead { font-family: var(--mono); font-size: 0.74rem; margin-bottom: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; height: 20px; }
-  pre.explain { height: 330px; overflow: auto; background: var(--code-bg); border-radius: 8px; padding: 10px 12px; font-size: 0.7rem; line-height: 1.45; }
-  .note { margin-top: 14px; font-size: 0.8rem; color: var(--muted); border-left: 3px solid var(--accent); padding: 4px 0 4px 12px; max-width: 900px; }
-  details.seed { margin-top: 12px; }
-  details.seed summary { cursor: pointer; font-size: 0.82rem; color: var(--muted); }
-  details.seed pre { margin-top: 8px; height: 220px; overflow: auto; background: var(--code-bg); border-radius: 8px; padding: 10px 12px; font-size: 0.7rem; }
-
-  .links { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-  .links ul { list-style: none; display: flex; flex-direction: column; gap: 8px; }
-  .links li { font-size: 0.9rem; }
-  .links li small { display: block; color: var(--muted); font-size: 0.78rem; }
-  footer { margin-top: 56px; padding-top: 18px; border-top: 1px solid var(--line); font-family: var(--mono); font-size: 0.72rem; color: var(--muted); }
-
-  @media (max-width: 520px) {
-    .page { padding: 76px 14px 56px; }
-    .panel { padding: 12px; }
-    .target { height: 184px; }
-    .t-head { flex-wrap: wrap; row-gap: 0; }
-    .t-head .p { order: 3; width: 100%; }
-    .reacts { gap: 6px; }
-    .r span { min-width: 40px; padding: 0 4px; }
-    .r button { width: 24px; }
-    .aff .num { font-size: 1rem; width: 7ch; }
-    .weights { flex-wrap: wrap; height: 72px; align-content: center; }
-    .kstrip { font-size: 11px; }
-    .kstrip .fresh { display: none; }
-    .wave { height: 118px; }
-  }
-  @media (max-width: 860px) {
-    .hero { grid-template-columns: 1fr; }
-    .cover { width: 200px; }
-    .idea, .live, .links { grid-template-columns: 1fr; }
-    .hero h1 { font-size: 2.4rem; }
-  }
-</style>
+    header { padding: 28px 0 40px; }
+    h1 { font-size: clamp(2.2rem, 6vw, 3.4rem); line-height: 1.05; letter-spacing: -.03em; margin: 0 0 14px; }
+    section { padding: 32px 0; border-top: 1px solid var(--line); }
+    .section-title { font-size: clamp(1.6rem, 4vw, 2.2rem); line-height: 1.1; letter-spacing: -.02em; font-weight: 800; margin: 0 0 18px; }
+    .section-label { font-size: .78rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 0 0 18px; }
+    .links { display: flex; flex-direction: column; gap: 10px; }
+    .item {
+      display: block; padding: 16px 20px; border: 1px solid var(--line); border-radius: 14px;
+      background: rgba(255,255,255,.03); text-decoration: none; transition: border-color .15s, background .15s;
+    }
+    .item:hover { border-color: rgba(255,255,255,.25); background: rgba(255,255,255,.05); }
+    .item-title { font-weight: 600; font-size: 1.02rem; }
+    .item-desc { color: var(--muted); font-size: .9rem; margin-top: 4px; }
+    .item-tag {
+      display: inline-block; margin-top: 10px; font-size: .72rem; letter-spacing: .06em;
+      text-transform: uppercase; color: var(--blue); opacity: .9;
+    }
+    .item-media {
+      display: block; width: 100%; height: auto; max-height: 160px; object-fit: cover;
+      border-radius: 10px; margin-bottom: 12px; border: 1px solid var(--line);
+    }
+    footer { padding: 30px 0 60px; color: var(--muted); font-size: .85rem; border-top: 1px solid var(--line); margin-top: 20px; }
+  </style>
 </head>
 <body>
-<nav class="topnav" aria-label="me path">
-  <a class="logo" href="https://neurons-me.github.io/" title="neurons.me"><img src="https://res.cloudinary.com/dkwnxf6gm/image/upload/v1760629064/neurons.me_b50f6a.png" alt="neurons.me" width="28" height="28" /></a>
-  <div class="mepath"><a href="https://neurons-me.github.io/.me/" title=".me">me://</a><a href="https://neurons-me.github.io/.me/Demos/" title=".me Demos">Demos</a><span class="sep">/</span><span class="here" aria-current="page">AffinityModel</span></div>
-  <span class="spacer"></span>
-  <a class="act" href="https://neurons-me.github.io/.me/docs/">Docs</a>
-  <a class="gh" href="https://github.com/neurons-me/.me" target="_blank" rel="noopener" title="GitHub · neurons-me/.me" aria-label="GitHub"><svg viewBox="0 0 16 16" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg></a>
-</nav>
+  <nav class="topnav" aria-label="me path">
+    <a class="logo" href="https://neurons-me.github.io/" title="neurons.me"><img src="https://res.cloudinary.com/dkwnxf6gm/image/upload/v1760629064/neurons.me_b50f6a.png" alt="neurons.me" width="28" height="28" /></a>
+    <div class="mepath"><a href="https://neurons-me.github.io/.me/" title=".me">me://</a><a href="https://neurons-me.github.io/.me/Demos/" title=".me Demos">Demos</a><span class="sep">/</span><span class="here" aria-current="page">AffinityModel</span></div>
+    <span class="spacer"></span>
+    <a class="act" href="https://neurons-me.github.io/.me/docs/">Docs</a>
+    <a class="gh" href="https://github.com/neurons-me/.me" target="_blank" rel="noopener" title="GitHub · neurons-me/.me" aria-label="GitHub"><svg viewBox="0 0 16 16" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg></a>
+  </nav>
+  <div class="wrap">
+    <header>
+      <h1>Affinity is emergent.</h1>
+      <p class="dataset-note">Kernel: <a href="https://neurons-me.github.io/.me/Typescript/typedocs/examples/Affinity-Model.html">Walkthrough</a> · <a href="https://www.npmjs.com/package/this.me/v/4.1.0">this.me@4.1.0</a></p>
+    </header>
 
-<main class="page">
-  <header class="hero">
-    <div>
-      <h1>Affinity Model</h1>
-      <p class="tagline"><em>Affinity is emergent</em> — store reactions, derive affinity as executable graph logic.</p>
-      <div class="cta">
-        <a class="btn primary" href="#live">Try it live</a>
-        <a class="btn" href="https://neurons-me.github.io/.me/Typescript/typedocs/examples/Affinity-Model.html">Kernel walkthrough</a>
+    <section>
+      <h2 class="section-title">Demos</h2>
+      <div class="links">
+        <a class="item" href="https://neurons-me.github.io/.me/Demos/AffinityModel/Live/">
+          <picture><source type="image/avif" srcset="/.me/docs/assets/affinity/live.avif" /><img class="item-media" src="/.me/docs/assets/affinity/live.webp" width="1200" height="268" alt="Affinity Model live demo: reactions, derived affinity_score, k and explain()" /></picture>
+          <div class="item-title">Affinity Model — live on the kernel</div>
+          <div class="item-desc">Tap ❤️ 👍 👎 on two targets. The real this.me@4.1.0 (sha256-checked in your browser) derives affinity_score, reports k, and shows the actual explain() receipt.</div>
+          <span class="item-tag">Live · this.me@4.1.0</span>
+        </a>
+        <a class="item" href="https://neurons-me.github.io/Affinity-Model-Rich-Everyday.html">
+          <picture><source type="image/avif" srcset="/.me/docs/assets/affinity/rich-everyday.avif" /><img class="item-media" src="/.me/docs/assets/affinity/rich-everyday.webp" width="1200" height="268" alt="Rich Everyday affinity exploration" loading="lazy" /></picture>
+          <div class="item-title">Rich Everyday</div>
+          <div class="item-desc">The everyday story: people react with ❤️ 👍 👎 and affinity is derived at read time. UI prototype (no kernel).</div>
+          <span class="item-tag">Exploration</span>
+        </a>
+        <a class="item" href="https://neurons-me.github.io/Affinity-%E2%80%94-Intuitive-Minimal%2C-Right-Design.html">
+          <picture><source type="image/avif" srcset="/.me/docs/assets/affinity/intuitive-minimal.avif" /><img class="item-media" src="/.me/docs/assets/affinity/intuitive-minimal.webp" width="1200" height="268" alt="Intuitive Minimal affinity exploration" loading="lazy" /></picture>
+          <div class="item-title">Intuitive Minimal</div>
+          <div class="item-desc">One knob from −100 to +100: affinity as a temperature dial. UI prototype (no kernel).</div>
+          <span class="item-tag">Exploration</span>
+        </a>
+        <a class="item" href="https://neurons-me.github.io/Affinity-Potentiometers-%C2%B1100.html">
+          <picture><source type="image/avif" srcset="/.me/docs/assets/affinity/potentiometers.avif" /><img class="item-media" src="/.me/docs/assets/affinity/potentiometers.webp" width="1200" height="268" alt="Potentiometers ±100 affinity exploration" loading="lazy" /></picture>
+          <div class="item-title">Potentiometers ±100</div>
+          <div class="item-desc">One potentiometer per emoji; affinity is the mean of the dials. UI prototype (no kernel).</div>
+          <span class="item-tag">Exploration</span>
+        </a>
+        <a class="item" href="https://neurons-me.github.io/Affinity-%E2%80%94-Integrated-with.html">
+          <picture><source type="image/avif" srcset="/.me/docs/assets/affinity/integrated.avif" /><img class="item-media" src="/.me/docs/assets/affinity/integrated.webp" width="1200" height="268" alt="Integrated with .me affinity exploration" loading="lazy" /></picture>
+          <div class="item-title">Integrated with .me</div>
+          <div class="item-desc">A 32-knob emoji weight grid next to the .me calls it would write. UI prototype (no kernel).</div>
+          <span class="item-tag">Exploration</span>
+        </a>
+        <a class="item" href="https://neurons-me.github.io/infoGraphics/Affinity-%E2%80%94-All-Emojis-Selector.html">
+          <picture><source type="image/avif" srcset="/.me/docs/assets/affinity/all-emojis-selector.avif" /><img class="item-media" src="/.me/docs/assets/affinity/all-emojis-selector.webp" width="1200" height="268" alt="All-Emojis Selector affinity exploration" loading="lazy" /></picture>
+          <div class="item-title">All-Emojis Selector</div>
+          <div class="item-desc">Pick from 32 emojis on a cold-to-hot temperature scale. UI prototype (no kernel).</div>
+          <span class="item-tag">Exploration</span>
+        </a>
       </div>
-    </div>
-    <div class="cover"><img src="https://neurons-me.github.io/neurons-me/media/affinity_model.gif" width="324" height="480" alt="Affinity Model cover: a face dissolving into clouds" /></div>
-  </header>
+    </section>
 
-  <section aria-labelledby="idea-h">
-    <h2 id="idea-h">The idea</h2>
-    <p class="lead">No ratings table, no affinity column. People react; affinity is what the graph derives from it.</p>
-    <div class="idea">
-      <div class="card"><div class="n">01</div><h3>Reactions are facts</h3><p>Store what people did. Each tap is one write into the semantic tree.</p><pre>me.contexts[123].targets[1].hearts(2)</pre></div>
-      <div class="card"><div class="n">02</div><h3>Affinity is derived</h3><p>A formula, not a stored number. When a reaction changes, only the nodes that depend on it recompute (k).</p><pre>targets["[i]"]["="]("affinity_score",
-  "score_sum / reactions")</pre></div>
-      <div class="card"><div class="n">03</div><h3>explain() shows why</h3><p>Ask any derived value for its receipt: the expression and every input value it used.</p><pre>me.explain("contexts[123].targets[1].affinity_score")</pre></div>
-    </div>
-  </section>
-
-  <section id="live" aria-labelledby="live-h">
-    <h2 id="live-h">Live: the real kernel in your browser</h2>
-    <p class="lead">Tap a reaction. Every number is read from the kernel, and the explain() panel is the kernel's own output.</p>
-    <div class="kstrip" id="kstrip"><span class="dot"></span><span class="txt" id="ktxt">Loading this.me@4.1.0 and checking its sha256…</span><span class="fresh" id="fresh"></span></div>
-    <div class="live">
-      <div class="panel">
-        <h4>Facts → derived <span class="hint">contexts[123]</span></h4>
-        <div id="targets"></div>
-        <div class="weights" id="weights"><span>weights (facts):</span></div>
-        <div class="actions">
-          <button class="btn" id="replay" disabled title="The walkthrough's diff: one ❤️ on abc becomes 👎 (two writes)">Replay: ❤️ → 👎 on abc</button>
-          <button class="btn" id="reset" disabled>Reset</button>
-        </div>
+    <section>
+      <p class="section-label">Related technical docs</p>
+      <div class="links">
+        <a class="item" href="https://neurons-me.github.io/.me/Typescript/typedocs/examples/Affinity-Model.html">
+          <div class="item-title">Affinity Model — kernel walkthrough</div>
+          <div class="item-desc">Reactions as writes, broadcast formulas, secret scopes and explain(), step by step.</div>
+        </a>
+        <a class="item" href="https://github.com/neurons-me/.me/blob/main/Typescript/tests/Demos/Affinity_Model.ts">
+          <div class="item-title">Affinity_Model.ts</div>
+          <div class="item-desc">The kernel's own demo script: scoring, selection by derived state, masked explain() for private inputs, with assertions.</div>
+        </a>
+        <a class="item" href="https://www.npmjs.com/package/this.me/v/4.1.0">
+          <div class="item-title">this.me@4.1.0 on npm</div>
+          <div class="item-desc">The exact kernel version the live demo loads and verifies.</div>
+        </a>
       </div>
-      <div class="panel">
-        <h4>Writes <span class="hint">k = nodes recomputed (explain().meta.k)</span></h4>
-        <div class="log" id="log"><div class="row empty">No writes yet. Tap ＋ or − on a reaction.</div></div>
-        <div class="wave" id="wave">recomputed: —</div>
-        <div class="xhead" id="xhead">me.explain("…affinity_score")</div>
-        <pre class="explain" id="explain">waiting for the kernel…</pre>
-      </div>
-    </div>
-    <p class="note">What runs here: the unmodified <b>this.me@4.1.0</b> (jsDelivr, unpkg fallback), sha256-checked before import. 4.1.0 formulas are arithmetic and comparisons over paths: no string literals, ternaries, <code>map/filter/reduce</code>, sum or count. So the walkthrough's emoji ternary becomes weight facts, reactions are per-target tallies, sums are explicit, and indices use brackets (<code>targets[1]</code>; <code>targets.1</code> silently reads undefined). With zero reactions, <code>score_sum / reactions</code> divides by zero and the kernel returns <code>undefined</code>. Page code only draws, sends the writes, and runs the fresh-rebuild comparison.</p>
-    <details class="seed"><summary>Every call this demo made to seed the kernel</summary><pre id="seed">—</pre></details>
-  </section>
+    </section>
 
-  <section aria-labelledby="links-h">
-    <h2 id="links-h">Go deeper</h2>
-    <div class="links">
-      <ul>
-        <li><a href="https://neurons-me.github.io/.me/Typescript/typedocs/examples/Affinity-Model.html">Affinity Model — kernel walkthrough</a><small>The full write-up: reactions, broadcast formulas, secret scopes, explain().</small></li>
-        <li><a href="https://github.com/neurons-me/.me/blob/main/Typescript/tests/Demos/Affinity_Model.ts">Affinity_Model.ts</a><small>The kernel's own demo script, with assertions.</small></li>
-        <li><a href="https://github.com/neurons-me/.me/blob/main/Demos/AffinityModel/index.html">This page's source</a><small>One HTML file: kernel loader, facts, formulas, rendering.</small></li>
-        <li><a href="https://www.npmjs.com/package/this.me/v/4.1.0">this.me@4.1.0 on npm</a><small>The exact kernel version running above.</small></li>
-      </ul>
-      <ul>
-        <li><a href="https://neurons-me.github.io/Affinity-Model-Rich-Everyday.html">Rich Everyday</a><small>Related exploration · UI prototype (no kernel)</small></li>
-        <li><a href="https://neurons-me.github.io/Affinity-%E2%80%94-Intuitive-Minimal%2C-Right-Design.html">Intuitive Minimal</a><small>Related exploration · UI prototype (no kernel)</small></li>
-        <li><a href="https://neurons-me.github.io/Affinity-Potentiometers-%C2%B1100.html">Potentiometers ±100</a><small>Related exploration · UI prototype (no kernel)</small></li>
-        <li><a href="https://neurons-me.github.io/Affinity-%E2%80%94-Integrated-with.html">Integrated with .me</a><small>Related exploration · UI prototype (no kernel)</small></li>
-        <li><a href="https://neurons-me.github.io/infoGraphics/Affinity-%E2%80%94-All-Emojis-Selector.html">All-Emojis Selector</a><small>Related exploration · UI prototype (no kernel)</small></li>
-      </ul>
-    </div>
-  </section>
-
-  <footer>me://Demos/AffinityModel · kernel: this.me@4.1.0, unmodified · <a href="https://neurons-me.github.io/.me/Demos/">all demos</a></footer>
-</main>
-
-<script type="module">
-// Affinity Model — live on this.me@4.1.0 (unmodified).
-// KERNEL: every fact, every derived value, k / recomputed (explain().meta), explain() itself.
-// PAGE: loading + sha256 check, buttons that send writes, rendering, the fresh-rebuild comparison.
-const KERNEL = {
-  version: "4.1.0",
-  sha256: "47cc8f9a9b5ee2921a59023d400e694d6c9b9f80a0782db850b06156cbb46afa",
-  urls: ["https://cdn.jsdelivr.net/npm/this.me@4.1.0/dist/me.es.js", "https://unpkg.com/this.me@4.1.0/dist/me.es.js"],
-};
-const NPM = "https://www.npmjs.com/package/this.me";
-
-// ---- the model (facts + formulas), same data drives the seed log ----
-const CTX = ["contexts", 123];
-const EMOJI = [
-  { tally: "hearts", weight: "heart", glyph: "❤️", options: [1, 0.8, 0.5] },
-  { tally: "likes", weight: "like", glyph: "👍", options: [0.7, 0.5, 0.3, 0] },
-  { tally: "dislikes", weight: "dislike", glyph: "👎", options: [-1, -0.7, -0.5] },
-];
-// Seed reproduces the walkthrough's numbers: abc = (1 + 0.7 − 1) / 3 = 0.2333…, xyz = (1 + 0.7) / 2 = 0.85
-const TARGETS = [
-  { i: 1, code: "abc", label: "Project ABC", hearts: 1, likes: 1, dislikes: 1 },
-  { i: 2, code: "xyz", label: "Project XYZ", hearts: 1, likes: 1, dislikes: 0 },
-];
-const W = (k) => `contexts[123].weights.${k}`;
-const FORMULAS = [
-  [[...CTX, "targets", "[i]"], "reactions", "hearts + likes + dislikes"],
-  [[...CTX, "targets", "[i]"], "score_sum", `hearts * ${W("heart")} + likes * ${W("like")} + dislikes * ${W("dislike")}`],
-  [[...CTX, "targets", "[i]"], "affinity_score", "score_sum / reactions"],
-  [[...CTX, "targets", "[i]"], "isStrong", "affinity_score >= 0.5"],
-  [[...CTX], "abc_leads", "targets[1].affinity_score > targets[2].affinity_score"],
-];
-function seedFacts() {
-  const f = [];
-  for (const e of EMOJI) f.push([[...CTX, "weights", e.weight], e.options[0]]);
-  for (const t of TARGETS) {
-    f.push([[...CTX, "targets", t.i, "code"], t.code], [[...CTX, "targets", t.i, "label"], t.label]);
-    for (const e of EMOJI) f.push([[...CTX, "targets", t.i, e.tally], t[e.tally]]);
-  }
-  return f;
-}
-const DERIVED = [
-  ...TARGETS.flatMap((t) => ["reactions", "score_sum", "affinity_score", "isStrong"].map((n) => `contexts[123].targets[${t.i}].${n}`)),
-  "contexts[123].abc_leads",
-];
-
-// ---- path helpers ----
-const codeOf = (segs) => "me" + segs.map((s) => (typeof s === "number" ? `[${s}]` : s.startsWith("[") ? `["${s}"]` : `.${s}`)).join("");
-const readPathOf = (segs) => segs.map((s, i) => (typeof s === "number" ? `[${s}]` : (i ? "." : "") + s)).join("");
-const keyOf = (segs) => segs.join(".");       // kernel's internal dotted key (as in explain().meta)
-const nodeAt = (m, segs) => segs.reduce((n, s) => n[s], m);
-const setLeaf = (m, segs, v) => nodeAt(m, segs.slice(0, -1))[segs[segs.length - 1]](v);
-const $ = (id) => document.getElementById(id);
-const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-
-async function sha256Hex(text) {
-  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
-  return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
-}
-async function loadKernel() {
-  const errors = [];
-  for (const url of KERNEL.urls) {
-    try {
-      const res = await fetch(url, { cache: "force-cache" });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const text = await res.text();
-      const hash = await sha256Hex(text);
-      if (hash !== KERNEL.sha256) throw new Error(`sha256 mismatch: got ${hash}`);
-      const blobUrl = URL.createObjectURL(new Blob([text], { type: "text/javascript" }));
-      const mod = await import(blobUrl);
-      URL.revokeObjectURL(blobUrl);
-      // The module exports no version: read it from the final URL whose bytes just passed the sha256 check.
-      const loadedUrl = res.url || url;
-      const version = (loadedUrl.match(/\/this\.me@([0-9]+\.[0-9]+\.[0-9]+[0-9A-Za-z.+-]*)\//) || [])[1] || "?";
-      return { ME: mod.default || mod.ME, hash, url: loadedUrl, host: new URL(loadedUrl).host, version };
-    } catch (e) { errors.push(`${url}: ${e?.message || e}`); }
-  }
-  const err = new Error(errors.join(" | "));
-  err.mismatch = errors.some((x) => x.includes("sha256 mismatch"));
-  throw err;
-}
-
-// ---- kernel state ----
-let ME = null, me = null, reader = {}, seedLog = [], writes = [], selected = 1;
-
-function build() {
-  const m = new ME();
-  const log = [];
-  for (const [segs, v] of seedFacts()) { setLeaf(m, segs, v); log.push(`${codeOf(segs)}(${JSON.stringify(v)})`); }
-  for (const [scope, name, expr] of FORMULAS) { nodeAt(m, scope)["="](name, expr); log.push(`${codeOf(scope)}["="](${JSON.stringify(name)}, ${JSON.stringify(expr)})`); }
-  return { m, log };
-}
-function reset() {
-  ({ m: me, log: seedLog } = build());
-  for (const d of DERIVED) me(d); // warm reads
-  // which derived node reads each source (from the kernel's own dependsOn) → where to read the wave meta
-  reader = {};
-  for (const d of DERIVED) for (const s of me.explain(d)?.meta?.dependsOn || []) reader[s] ??= d;
-  writes = [];
-  $("seed").textContent = seedLog.join("\n");
-  render();
-}
-// One real kernel write. k / recomputed come from the kernel's stored wave (explain().meta), only if that wave is this write's.
-function write(segs, value) {
-  setLeaf(me, segs, value);
-  const key = keyOf(segs), d = reader[key];
-  const meta = d ? me.explain(d)?.meta || {} : {};
-  const own = meta.sourcePath === key;
-  const w = { code: `${codeOf(segs)}(${JSON.stringify(value)})`, source: key, k: own ? meta.k : null, recomputed: own ? meta.recomputed || [] : [], changed: own ? meta.changed || [] : [] };
-  writes.unshift(w);
-  writes = writes.slice(0, 5);
-  return w;
-}
-const read = (p) => me(p);
-
-// Fresh rebuild from the current facts must equal the incrementally maintained values.
-function freshCheck() {
-  const f = new ME();
-  for (const [segs] of seedFacts()) setLeaf(f, segs, me(readPathOf(segs)));
-  for (const [scope, name, expr] of FORMULAS) nodeAt(f, scope)["="](name, expr);
-  let ok = 0;
-  for (const p of DERIVED) { const a = me(p), b = f(p); if (a === b || (typeof a === "number" && typeof b === "number" && Math.abs(a - b) < 1e-12)) ok++; }
-  return { ok, total: DERIVED.length };
-}
-
-// ---- rendering ----
-const short = (p) => String(p).replace(/^contexts\.123\./, "");
-const fmt = (v) => (v === undefined ? "undefined" : typeof v === "number" ? String(Number(v.toFixed(4))).replace("-", "−") : String(v));
-function targetHTML(t) {
-  return `<div class="target" data-t="${t.i}">
-    <div class="t-head"><b>${esc(t.label)}</b><span class="p">targets[${t.i}] · code "${esc(t.code)}"</span><span class="strong" data-f="isStrong">isStrong —</span></div>
-    <div class="reacts">${EMOJI.map((e) => `<span class="r"><button data-t="${t.i}" data-e="${e.tally}" data-d="-1" aria-label="remove ${e.glyph}">−</button><span title="fact: contexts[123].targets[${t.i}].${e.tally}">${e.glyph} <b data-f="${e.tally}">—</b></span><button data-t="${t.i}" data-e="${e.tally}" data-d="1" aria-label="add ${e.glyph}">＋</button></span>`).join("")}</div>
-    <div class="aff"><span class="num" data-f="affinity_score">—</span><span class="bar"><i data-f="bar"></i></span>
-      <span class="derived"><span>reactions</span><span class="v" data-f="reactions">—</span><span></span><span>score_sum</span><span class="v" data-f="score_sum">—</span><span></span></span></div>
-  </div>`;
-}
-function renderStatic() {
-  $("targets").innerHTML = TARGETS.map(targetHTML).join("");
-  $("weights").innerHTML = `<span>weights (facts):</span>` + EMOJI.map((e) =>
-    `<label title="fact: contexts[123].weights.${e.weight}">${e.glyph}<select data-w="${e.weight}" disabled>${e.options.map((o) => `<option value="${o}">${o}</option>`).join("")}</select></label>`).join("");
-}
-function render() {
-  for (const t of TARGETS) {
-    const el = document.querySelector(`.target[data-t="${t.i}"]`);
-    const base = `contexts[123].targets[${t.i}]`;
-    el.classList.toggle("sel", t.i === selected);
-    for (const e of EMOJI) {
-      const n = read(`${base}.${e.tally}`);
-      el.querySelector(`[data-f="${e.tally}"]`).textContent = fmt(n);
-      el.querySelector(`button[data-e="${e.tally}"][data-d="-1"]`).disabled = !(n > 0);
-      el.querySelector(`button[data-e="${e.tally}"][data-d="1"]`).disabled = false;
-    }
-    for (const f of ["reactions", "score_sum"]) el.querySelector(`[data-f="${f}"]`).textContent = fmt(read(`${base}.${f}`));
-    const a = read(`${base}.affinity_score`);
-    const num = el.querySelector('[data-f="affinity_score"]');
-    num.textContent = fmt(a);
-    num.title = `contexts[123].targets[${t.i}].affinity_score = ${a}`;
-    num.style.color = typeof a === "number" ? (a >= 0 ? "var(--pos)" : "var(--neg)") : "var(--muted)";
-    const bar = el.querySelector('[data-f="bar"]');
-    // transform only (no layout): scaleX(x) from the centre line, negative values extend left
-    const x = typeof a === "number" ? Math.max(-1, Math.min(1, a)) : 0;
-    bar.style.transform = `scaleX(${x})`; bar.style.background = x >= 0 ? "var(--pos)" : "var(--neg)";
-    const s = read(`${base}.isStrong`), sEl = el.querySelector('[data-f="isStrong"]');
-    sEl.textContent = `isStrong ${fmt(s)}`; sEl.classList.toggle("on", s === true);
-  }
-  for (const sel of document.querySelectorAll("select[data-w]")) { sel.value = String(read(`contexts[123].weights.${sel.dataset.w}`)); sel.disabled = false; }
-  $("replay").disabled = !(read("contexts[123].targets[1].hearts") > 0);
-  $("reset").disabled = false;
-  // writes log
-  $("log").innerHTML = writes.length
-    ? writes.map((w) => `<div class="row"><code title="${esc(w.code)}">${esc(w.code)}</code><span class="k">${w.k == null ? "k —" : "k = " + w.k}</span></div>`).join("")
-    : `<div class="row empty">No writes yet. Tap ＋ or − on a reaction.</div>`;
-  const last = writes[0];
-  $("wave").innerHTML = last
-    ? `recomputed (${last.recomputed.length}) under contexts.123: ${last.recomputed.map((p) => `<b>${esc(short(p))}</b>`).join(", ") || "—"}<br>value changed: ${last.changed.map((p) => esc(short(p))).join(", ") || "none"}`
-    : `recomputed: — <br>Each write wakes only the nodes that read it.`;
-  const xp = `contexts[123].targets[${selected}].affinity_score`;
-  $("xhead").textContent = `me.explain("${xp}")`;
-  $("explain").textContent = JSON.stringify(me.explain(xp), null, 2);
-  const fc = freshCheck();
-  $("fresh").textContent = `fresh rebuild matches: ${fc.ok}/${fc.total}`;
-  $("fresh").style.color = fc.ok === fc.total ? "var(--pos)" : "var(--neg)";
-}
-
-function wire() {
-  $("targets").addEventListener("click", (ev) => {
-    const b = ev.target.closest("button[data-e]");
-    const card = ev.target.closest(".target");
-    if (card) selected = Number(card.dataset.t);
-    if (b && !b.disabled) {
-      const i = Number(b.dataset.t), e = b.dataset.e, d = Number(b.dataset.d);
-      const cur = read(`contexts[123].targets[${i}].${e}`);
-      write([...CTX, "targets", i, e], Math.max(0, cur + d));
-    }
-    render();
-  });
-  $("weights").addEventListener("change", (ev) => {
-    const s = ev.target.closest("select[data-w]");
-    if (!s) return;
-    write([...CTX, "weights", s.dataset.w], Number(s.value));
-    render();
-  });
-  $("replay").addEventListener("click", () => {
-    selected = 1;
-    const h = read("contexts[123].targets[1].hearts"), x = read("contexts[123].targets[1].dislikes");
-    write([...CTX, "targets", 1, "hearts"], h - 1);
-    write([...CTX, "targets", 1, "dislikes"], x + 1);
-    render();
-  });
-  $("reset").addEventListener("click", () => { selected = 1; reset(); });
-}
-
-renderStatic();
-try {
-  const k = await loadKernel();
-  ME = k.ME;
-  const ks = $("kstrip"); ks.classList.add("ok");
-  $("ktxt").innerHTML = `Kernel <a href="${NPM}/v/${encodeURIComponent(k.version)}" target="_blank" rel="noopener" title="sha256 ${k.hash}\nloaded: ${esc(k.url)}">this.me@${esc(k.version)}</a> · dist/me.es.js from ${esc(k.host)} · sha256 ${k.hash.slice(0, 12)}… <b>verified</b> · unmodified`;
-  wire();
-  reset();
-  window.__aff = { get me() { return me; }, read, write, reset, freshCheck, kernel: { version: k.version, hash: k.hash, url: k.url }, DERIVED, FORMULAS, get writes() { return writes; }, get seedLog() { return seedLog; } };
-} catch (e) {
-  $("kstrip").classList.add("err");
-  $("ktxt").textContent = (e.mismatch ? "this.me sha256 mismatch — not running. " : "Could not load this.me@4.1.0. ") + (e.message || e);
-  $("explain").textContent = "The kernel did not load, so there is nothing to explain. No values on this page are simulated.";
-  window.__aff = { error: String(e.message || e) };
-}
-</script>
+    <footer>sui.gn / neurons.me</footer>
+  </div>
 </body>
 </html>
