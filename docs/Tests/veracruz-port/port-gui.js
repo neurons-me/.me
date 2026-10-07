@@ -792,7 +792,7 @@ const footerSpec = (s = "footer") => N("Box", s, { component: "footer", sx: { px
   N("Box", `${s}/builds`, { component: "span" }, [
     N("PortKernelLink", `${s}/builds:kernel`, { id: "kver-foot", after: " (unmodified)", minCh: 44 }), " · ",
     LINK(`${s}/builds:gui`, { href: GUI_PIN.pr, target: "_blank", rel: "noopener", underline: "hover" }, `${GUI_PIN.label}`),
-    " (unreleased branch build, self-hosted, SRI + sha256) · ", LINK(`${s}/builds:notes`, { href: "veracruz-port/", underline: "hover" }, "build notes"),
+    " (unreleased branch build, self-hosted, SRI + sha256) · ", LINK(`${s}/builds:notes`, { href: "https://github.com/neurons-me/.me/tree/main/docs/Tests/veracruz-port", underline: "hover" }, "build notes"),
   ]),
 ]);
 function pageSpec(live) {

@@ -12,7 +12,7 @@ If the hash does not match, the page refuses to run.
 
 ## .GUI version (`veracruz-port-gui.html`)
 
-Page: [veracruz-port-gui.html](../veracruz-port-gui.html) · <https://neurons-me.github.io/.me/docs/Tests/veracruz-port-gui.html>. The classic page above is unchanged.
+Page: <https://neurons-me.github.io/.me/Demos/SmartCities/Veracruz.Port/> (`/.me/Demos/SmartCities/Veracruz.Port/index.html`; the old `docs/Tests/veracruz-port-gui.html` redirects there). The classic page above is unchanged.
 
 The same kernel (`this.me@4.1.0`, sha256-checked as above), traffic adapter and map, with the chrome and panels rendered by **.GUI** (`this.gui`, neurons.me's Generative User Interface, a React + MUI component library) instead of hand-written HTML/CSS.
 
