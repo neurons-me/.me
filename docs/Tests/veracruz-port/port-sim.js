@@ -40,15 +40,24 @@ export const BAND_COUNTERS = ["lastMile.unitsAbove", "lastMile.unitsWithin", "la
 export const ADAPTER_AGGREGATES = ["trips.unitMax", "trips.unitMin"];
 const POOL_COUNTERS = { "trucks.heavy.available": HEAVY, "trucks.lastMile.available": LAST_MILE };
 
+// Instance facts per class (seeded below for every index).
+export const SHIP_FIELDS = ["cargo", "unit", "total", "remaining", "haul", "tonsPerUnit"];
+export const TRAIN_FIELDS = ["cargo", "total", "remainingToLoad", "haul"];
+// Class templates — ONE formula text per family; the kernel applies it to every index of that family
+// (me.ships["[i]"]["="](name, expr) → ships[1], ships[2], ships[3], and any ships[n] added later).
+// `ids` = the instances seeded here; the kernel itself does not need them (templates apply to every index).
+const SHIP_IDS = SHIPS.map((s) => s.i);
+export const TEMPLATES = [
+  { family: ["ships"], name: "remainingTons", expr: "remaining * tonsPerUnit", ids: SHIP_IDS },
+  { family: ["ships"], name: "progress", expr: "1 - remaining / total", ids: SHIP_IDS },
+  { family: ["ships"], name: "hasWork", expr: "remaining > 0", ids: SHIP_IDS },
+  { family: ["train"], name: "progress", expr: "1 - remainingToLoad / total", ids: [TRAIN.i] },
+  { family: ["train"], name: "hasWork", expr: "remainingToLoad > 0", ids: [TRAIN.i] },
+];
+export const templateCode = (t) => `${codeOf(t.family)}["[i]"]["="](${JSON.stringify(t.name)}, ${JSON.stringify(t.expr)})`;
+
 // Derived rules — the kernel's own `=` formulas. Explicit sums, bracket index paths.
 export const FORMULAS = [
-  ...SHIPS.flatMap((s) => [
-    [["ships", s.i], "remainingTons", "remaining * tonsPerUnit"],
-    [["ships", s.i], "progress", "1 - remaining / total"],
-    [["ships", s.i], "hasWork", "remaining > 0"],
-  ]),
-  [["train", 1], "progress", "1 - remainingToLoad / total"],
-  [["train", 1], "hasWork", "remainingToLoad > 0"],
   [["flows"], "importRemaining", "ships[1].remainingTons + ships[2].remainingTons + ships[3].remainingTons"],
   [["flows"], "importTotal", "ships[1].total * ships[1].tonsPerUnit + ships[2].total * ships[2].tonsPerUnit + ships[3].total * ships[3].tonsPerUnit"],
   [["flows"], "importProgress", "1 - importRemaining / importTotal"],
@@ -117,7 +126,17 @@ export const pathOf = (segs) => segs.join(".");
 const nodeAt = (me, segs) => segs.reduce((n, s) => n[s], me);
 const setLeaf = (me, segs, v) => nodeAt(me, segs.slice(0, -1))[segs[segs.length - 1]](v);
 
-export const DERIVED_PATHS = FORMULAS.map(([scope, name]) => pathOf([...scope, name]));
+// every derived path the kernel computes: each template expanded per instance, then the plain formulas
+export const TEMPLATE_PATHS = TEMPLATES.flatMap((t) => t.ids.map((i) => pathOf([...t.family, i, t.name])));
+export const DERIVED_PATHS = [...TEMPLATE_PATHS, ...FORMULAS.map(([scope, name]) => pathOf([...scope, name]))];
+// install the rules on a kernel (live one and the fresh one in verifyFromScratch): templates, then formulas
+function installRules(me, log) {
+  for (const t of TEMPLATES) { nodeAt(me, t.family)["[i]"]["="](t.name, t.expr); log?.push(templateCode(t)); }
+  for (const [scope, name, expr] of FORMULAS) {
+    nodeAt(me, scope)["="](name, expr);
+    log?.push(`${codeOf(scope)}["="](${JSON.stringify(name)}, ${JSON.stringify(expr)})`);
+  }
+}
 export const FACT_PATHS = seedFacts().map(([segs]) => pathOf(segs));
 
 export function createPortKernel(ME) {
@@ -128,13 +147,11 @@ export function createPortKernel(ME) {
     setLeaf(me, sg, v);
     seedLog.push(`${codeOf(sg)}(${JSON.stringify(v)})`);
   }
-  for (const [scope, name, expr] of FORMULAS) {
-    nodeAt(me, scope)["="](name, expr);
-    seedLog.push(`${codeOf(scope)}["="](${JSON.stringify(name)}, ${JSON.stringify(expr)})`);
-  }
-  for (const p of DERIVED_PATHS) me(p); // warm reads
+  installRules(me, seedLog);
+  for (const p of DERIVED_PATHS) me(p); // warm reads (template instances included)
 
-  // Reverse index from the kernel's own dependsOn: fact/derived S → one derived D that reads S.
+  // Reverse index from the kernel's own dependsOn: fact/derived S → one derived D that reads S
+  // (template instances included: explain("ships.2.remainingTons").meta.dependsOn = ["ships.2.remaining", …]).
   // The kernel stores the last recompute wave on every target it touched, so right after a
   // write to S, D's explain().meta is exactly S's wave (k, recomputed, changed, sourcePath).
   const reader = {};
@@ -159,7 +176,7 @@ export function createPortKernel(ME) {
   function verifyFromScratch(extraChecks = []) {
     const fresh = new ME();
     for (const p of FACT_PATHS) setLeaf(fresh, segsOf(p), me(p));
-    for (const [scope, name, expr] of FORMULAS) nodeAt(fresh, scope)["="](name, expr);
+    installRules(fresh);
     const mismatches = [];
     for (const p of DERIVED_PATHS) {
       const a = me(p), b = fresh(p);

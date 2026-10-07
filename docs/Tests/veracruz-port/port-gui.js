@@ -14,7 +14,7 @@
 //                     the SVG map labels, page stats (fps, writes/s), the redirect feed, the completion
 //                     estimate, and the notification schedule (which kernel paths to re-announce, and when).
 
-import { createPortKernel, COUNTERS, TRIP_COUNTERS, UNIT_IDS, FLEET, HEAVY, LAST_MILE, TRIP_COUNT } from "./port-sim.js";
+import { createPortKernel, COUNTERS, TRIP_COUNTERS, UNIT_IDS, FLEET, HEAVY, LAST_MILE, TRIP_COUNT, TEMPLATES, templateCode, SHIPS, TRAIN, SHIP_FIELDS, TRAIN_FIELDS } from "./port-sim.js";
 import { createTraffic, VIS_OF, CONFIG, SIM_START_H } from "./port-traffic.js";
 import { ROUTES, KEY, EXITS, PROJ } from "./port-routes.js";
 import { CEDIS } from "./port-lastmile.js";
@@ -140,8 +140,8 @@ const EDGE_ENDS = {
 
 // ── Tour ──
 const TOUR = [null,
-  { title: "1 · Port Simulation Overview", body: "You are at the <strong>Port of Veracruz</strong>. Three ships unload (import), one train loads (export), and <strong>500 trucks</strong> (400 heavy, 100 last-mile) circulate on real OpenStreetMap roads; every dot is one truck. Every number on the right reads a path of the real kernel.",
-    hlNodes: ["n-port", "n-ship1", "n-ship2", "n-ship3", "n-train"], hlEdges: ["e-ship1-q", "e-ship2-q", "e-ship3-q", "e-qexp-train"], hlPanels: [] },
+  { title: "1 · Port Simulation Overview", body: "The <strong>Port of Veracruz</strong>, modelled as kernel instances. <strong>me.ships[1..3]</strong> share one class: each ship has facts (total, remaining, tonsPerUnit) and the kernel applies one formula template to every index: <code>ships[\"[i]\"][\"=\"](\"remainingTons\", \"remaining * tonsPerUnit\")</code>. <strong>train[1]</strong> loads export sugar the same way. The 500 trucks are <strong>counters, not instances</strong>: facts such as trucks.import.enRoute that the traffic adapter writes; where each truck drives is adapter logic (dashed). <strong>Model</strong> shows the live classes; <strong>Map numbers</strong> gives the kernel path behind each number on the map.",
+    hlNodes: ["n-port", "n-ship1", "n-ship2", "n-ship3", "n-train"], hlEdges: ["e-ship1-q", "e-ship2-q", "e-ship3-q", "e-qexp-train"], hlPanels: ["panel-model", "panel-paths"] },
   { title: "2 · Stocks (facts)", body: "<strong>me.cargo.coffee(100000)</strong>, sugar(200000), containers(5000), <strong>me.trucks.fleet(500)</strong> = heavy.fleet(400) + lastMile.fleet(100). A fact changes only when a write says so. <strong>cargo.bulkTons</strong> is a kernel rule: coffee + sugar.",
     hlNodes: ["n-yard"], hlEdges: ["e-port-yard"], hlPanels: ["panel-stocks"] },
   { title: "3 · Ships unloading", body: "Each ship has facts <strong>total, remaining, tonsPerUnit</strong>. Kernel rules: <strong>remainingTons = remaining * tonsPerUnit</strong>, and <strong>importRemaining</strong> = the explicit sum over ships[1], [2], [3]. Laden import trucks (blue) leave Veracruz over the highways, off the map edge.",
@@ -163,7 +163,7 @@ const STEPS = TOUR.length - 1;
 // strip, then the 8 panel sections. Default: only the overview is open. Each block's state is saved under
 // localStorage "veracruz-port.open.<id>" = "1" | "0" when the user toggles it, and read once at boot,
 // before the first render (no flash, no layout shift).
-const SECTION_IDS = ["tour", "kernel", "panel-mutate", "panel-explain", "panel-ships", "panel-train", "panel-queues", "panel-lastmile", "panel-stocks", "panel-adapter"];
+const SECTION_IDS = ["tour", "kernel", "panel-model", "panel-paths", "panel-mutate", "panel-explain", "panel-ships", "panel-train", "panel-queues", "panel-lastmile", "panel-stocks", "panel-adapter"];
 const DEFAULT_OPEN = { tour: true };
 const OPEN_KEY = (id) => `veracruz-port.open.${id}`;
 const LEGACY_TOUR_KEY = "veracruz-port.tourOpen";   // earlier builds saved only the tour, under this key
@@ -389,7 +389,7 @@ function TourStrip(p) {
         h(Box, { id: "tour-steps", sx: { display: "flex", gap: "3px", flexWrap: "wrap", mb: 1 } },
           ...Array.from({ length: STEPS }, (_, i) => i + 1).map((i) => h(Button, { key: i, size: "small", title: TOUR[i].title, variant: i === step ? "outlined" : "text", color: i < step ? "success" : "primary", onClick: () => setStep(i), sx: { minWidth: 24, width: 24, height: 24, p: 0, fontFamily: MONO, fontSize: 10, color: i === step ? "primary.main" : i < step ? "success.main" : "text.secondary" } }, String(i)))),
         h(Typography, { id: "tour-title", sx: { fontFamily: MONO, fontSize: 10.5, color: "primary.main", letterSpacing: ".07em", textTransform: "uppercase", mb: .6 } }, t.title),
-        h(Typography, { id: "tour-body", component: "div", sx: { fontSize: 12, lineHeight: 1.4, minHeight: "3.2em", "& strong": { fontWeight: 600, color: "text.primary" } }, dangerouslySetInnerHTML: { __html: t.body } }),
+        h(Typography, { id: "tour-body", component: "div", sx: { fontSize: 12, lineHeight: 1.4, minHeight: "3.2em", "& strong": { fontWeight: 600, color: "text.primary" }, "& code": { fontFamily: MONO, fontSize: 10.5, color: "primary.main", wordBreak: "break-word" } }, dangerouslySetInnerHTML: { __html: t.body } }),
         h(Box, { sx: { display: "flex", gap: .75, mt: 1.25, alignItems: "center" } },
           h(Button, { id: "btn-prev", size: "small", variant: "text", disabled: step <= 1, onClick: () => setStep(step - 1), sx: { fontFamily: MONO, fontSize: 11 } }, "Back"),
           h(Button, { id: "btn-next", size: "small", variant: "outlined", onClick: () => setStep(step >= STEPS ? 1 : step + 1), sx: { fontFamily: MONO, fontSize: 11 } }, step >= STEPS ? "Restart" : "Next"),
@@ -461,7 +461,7 @@ function Writes(p) {   // node id on the list itself (the header line above it b
       sx: { listStyle: "none", m: 0, p: 0, fontFamily: MONO, fontSize: 9.5, mt: .75, height: 240, overflowY: "auto", overflowAnchor: "none", contain: "strict", scrollbarGutter: "stable", borderTop: 1, borderColor: "divider" } }, ...items));
 }
 
-const EXPLAIN_PATHS = ["flows.importRemaining", "flows.exportRemaining", "flows.importProgress", "trips.bandHigh", "trips.perUnitAvg", "trips.balanced", "lastMile.unitsOk", "trucks.working", "trucks.balanced", "trucks.inQueue", "queues.import.busy", "port.busy", "cargo.bulkTons"];
+const EXPLAIN_PATHS = ["flows.importRemaining", "ships.2.remainingTons", "train.1.progress", "flows.exportRemaining", "flows.importProgress", "trips.bandHigh", "trips.perUnitAvg", "trips.balanced", "lastMile.unitsOk", "trucks.working", "trucks.balanced", "trucks.inQueue", "queues.import.busy", "port.busy", "cargo.bulkTons"];
 function useWave(path) {   // re-render when the kernel reports `path` in a wave, even if its value did not change
   const { runtime } = G.useMe();
   const [, setN] = React.useState(0);
@@ -498,6 +498,31 @@ function ExplainLeaf(p) {   // path picker + me.explain() view (component state)
     h(TextField, { id: "ex-select", select: true, size: "small", fullWidth: true, value: path, onChange: (e) => setPath(e.target.value), inputProps: { "aria-label": "Path to explain" }, sx: { mb: .75, "& .MuiInputBase-root": { fontFamily: MONO, fontSize: 10 } } },
       ...EXPLAIN_PATHS.map((x) => h(MenuItem, { key: x, value: x, sx: { fontFamily: MONO, fontSize: 11 } }, x))),
     h(ExplainView, { path, na: nodeAttrs(p) }));
+}
+
+// One live me.explain() of a class-template instance (Model card). Fixed height; pick the instance.
+const CX_LINE = { display: "grid", gridTemplateColumns: "62px minmax(0, 1fr)", gap: .5, height: 16, lineHeight: "16px" };
+function ClassExplain(p) {
+  const { family, ids, name } = p;
+  const [sel, setSel] = React.useState(ids[0]);
+  const path = `${family}.${sel}.${name}`;
+  useWave(path);
+  const { me } = G.useMe();
+  let ex = null;
+  try { ex = me.explain(path); } catch (e) { /* shown as — */ }
+  const m = ex?.meta || {}, inputs = ex?.derivation?.inputs || [];
+  const em = (t) => h(Box, { component: "span", sx: { color: "primary.main" } }, t);
+  const line = (k, v, title) => h(Box, { key: k, sx: CX_LINE }, h(Box, { component: "span", sx: { color: "text.disabled" } }, k), h(Box, { component: "span", title, sx: ONE_LINE }, v));
+  const inputsText = inputs.map((x) => `${x.path} = ${fmt(x.value)}`).join(" · ");
+  return h(Box, { ...nodeAttrs(p), sx: { mt: .75, fontFamily: MONO, fontSize: 9.5, p: "5px 7px", bgcolor: "background.default", border: 1, borderColor: "divider", borderRadius: "3px" } },
+    h(Box, { sx: { display: "flex", alignItems: "center", gap: .5, height: 20, mb: .25 } },
+      h(Box, { component: "span", sx: { ...ONE_LINE, color: "text.secondary", flex: 1, minWidth: 0 } }, `me.explain("${path}")`),
+      ids.length > 1 ? ids.map((i) => h(Button, { key: i, size: "small", variant: i === sel ? "outlined" : "text", "aria-pressed": i === sel, title: `Explain ${family}[${i}].${name}`, onClick: () => setSel(i),
+        sx: { minWidth: 28, height: 18, p: 0, fontFamily: MONO, fontSize: 9.5, color: i === sel ? "primary.main" : "text.secondary" } }, `[${i}]`)) : null),
+    line("expression", h(React.Fragment, null, ex?.expr ?? "—", h(Box, { component: "span", sx: { color: "text.disabled" } }, `  · ${family}["[i]"] template`)), ex?.expr),
+    line("inputs", inputs.length ? inputs.map((x, j) => h(React.Fragment, { key: j }, j ? " · " : "", `${x.path} = `, em(fmt(x.value)))) : "—", inputsText),
+    line("value", em(fmt(ex?.value))),
+    line("last wave", m.sourcePath ? h(React.Fragment, null, "write ", em(m.sourcePath), ` · k=${m.k}`) : "not recomputed yet (press Start traffic)", (m.recomputed || []).join(", ")));
 }
 
 function LmStrip(p) {   // per-unit strip (adapter view); band lines read from the kernel
@@ -574,7 +599,7 @@ const PAGE_TYPES = Object.fromEntries([
   ["PortValue", ValView], ["PortSum", SumView], ["PortBar", BarView], ["PortRow", Row], ["PortFormula", Formula], ["PortPanel", Panel], ["PortSectionHeader", SectionHeader], ["PortSectionToggle", SectionToggle], ["PortSectionBody", SectionBody],
   ["PortLegendRow", LgRow], ["PortHudChip", HudChip], ["PortSvgGroup", SvgGroup],
   ["PortTour", TourStrip], ["PortKernelStrip", KernelStrip], ["PortBrandLogo", BrandLogo], ["PortBrandActions", BrandActions], ["PortKernelLink", KernelLink], ["PortRunControls", RunControls], ["PortStats", Stats], ["PortWrites", Writes],
-  ["PortExplain", ExplainLeaf], ["PortLmStrip", LmStrip], ["PortLmEstimate", LmEstimate], ["PortLmFeed", LmFeed], ["PortSeed", SeedCode],
+  ["PortExplain", ExplainLeaf], ["PortClassExplain", ClassExplain], ["PortLmStrip", LmStrip], ["PortLmEstimate", LmEstimate], ["PortLmFeed", LmFeed], ["PortSeed", SeedCode],
   ["PortVerifyOut", VerifyOut], ["PortKernelWait", KernelWait], ["PortOffMap", OffMap], ["PortSimClock", SimClock],
 ].map(([t, C]) => [t, pageType(t, C)]).concat([
   // GUI's registered Link resolver drops target / rel / title / data-gui-node-id, so links use GUI.Atoms.Link as is
@@ -689,6 +714,74 @@ function adapterPanel(live, s = "panel-adapter") {
     N("PortVerifyOut", `${s}/verify:result`),
   ], true);
 }
+// ── Model: the kernel's classes (templates) and their live instances ──
+const CELL_SX = { fontFamily: MONO, fontSize: 9.5, height: 18, lineHeight: "18px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" };
+const SHIP_COLS = [["cargo", { f: S }], ["remaining"], ["remainingTons", { rule: true }], ["progress", { f: pct, rule: true }], ["hasWork", { f: S, rule: true }]];
+const TRAIN_COLS = [["cargo", { f: S }], ["remainingToLoad"], ["progress", { f: pct, rule: true }], ["hasWork", { f: S, rule: true }]];
+function instanceTable(s, family, ids, cols) {   // one row per instance, every cell a live kernel read
+  const cell = (id, children, sx, title) => N("Box", id, { title, sx: { ...CELL_SX, ...sx } }, children);
+  return N("Box", `${s}/instances`, { role: "table", "aria-label": `${family} instances`, sx: { display: "grid", gridTemplateColumns: `30px repeat(${cols.length}, minmax(0, 1fr))`, columnGap: 1, mt: .75, borderTop: 1, borderBottom: 1, borderColor: "divider" } }, [
+    cell(`${s}/th:i`, "i", { color: "text.disabled" }),
+    ...cols.map(([f, o = {}]) => cell(`${s}/th:${f}`, f, { color: o.rule ? "primary.main" : "text.disabled", textAlign: "right", opacity: o.rule ? .8 : 1 }, `${f}: ${o.rule ? "template formula" : "fact"}`)),
+    ...ids.flatMap((i) => [cell(`${s}/[${i}]`, `[${i}]`, { color: "text.secondary" }),
+      ...cols.map(([f, o = {}]) => cell(`${s}/[${i}].${f}`, [V(s, `${family}.${i}.${f}`, o.f ? { f: o.f } : {})], { textAlign: "right", color: o.rule ? "primary.main" : "text.primary" }, `${family}[${i}].${f}`))]),
+  ]);
+}
+function classBlock(s, family, fields, cols, ids, explainName) {
+  const tpl = TEMPLATES.filter((t) => t.family.join(".") === family);
+  return N("Box", s, { sx: { "& + &": { mt: 1.5, pt: 1.25, borderTop: 1, borderColor: "divider" } } }, [
+    N("Box", `${s}/title`, { sx: { display: "flex", alignItems: "baseline", gap: .75, fontFamily: MONO, fontSize: 11, color: "text.primary", whiteSpace: "nowrap", height: 18, lineHeight: "18px" } },
+      [N("Box", `${s}/class`, { component: "span", sx: { flexShrink: 0 } }, `class ${family}[i]`), N("Box", `${s}/count`, { component: "span", sx: { fontSize: 9.5, color: "text.secondary", overflow: "hidden", textOverflow: "ellipsis", minWidth: 0 } }, `· ${ids.length} instance${ids.length > 1 ? "s" : ""}: ${ids.map((i) => `${family}[${i}]`).join(", ")}`)]),
+    SUB(`${s}/facts`, `facts per instance: ${fields.join(" · ")}`),
+    N("Box", `${s}/templates`, { component: "pre", sx: { fontFamily: MONO, fontSize: 9.5, color: "text.secondary", m: 0, mt: .75, p: "5px 7px", bgcolor: "background.default", border: 1, borderColor: "divider", borderRadius: "3px", lineHeight: 1.45, whiteSpace: "pre-wrap", wordBreak: "break-word" } },
+      tpl.map((t) => templateCode(t)).join("\n")),
+    instanceTable(s, family, ids, cols),
+    N("PortClassExplain", `${s}/explain`, { family, ids, name: explainName }),
+  ]);
+}
+const modelPanel = (s = "panel-model") => PANEL(s, "Model · classes & instances", [["kernel", "kernel"]], [
+  SUB(`${s}/intro`, "One formula template per class; the kernel applies it to every index. Blue = template formula, white = fact. Values are live kernel reads.", { mt: 0 }),
+  classBlock(`${s}/ships`, "ships", SHIP_FIELDS, SHIP_COLS, SHIPS.map((x) => x.i), "remainingTons"),
+  classBlock(`${s}/train`, "train", TRAIN_FIELDS, TRAIN_COLS, [TRAIN.i], "progress"),
+  N("Box", `${s}/trucks`, { sx: { mt: 1.5, pt: 1.25, borderTop: 1, borderColor: "divider", fontFamily: MONO, fontSize: 9.5, color: "text.secondary", lineHeight: 1.45 } }, [
+    N("Box", `${s}/trucks:title`, { sx: { display: "flex", alignItems: "center", gap: .75, fontSize: 11, color: "text.primary", mb: .5 } }, ["trucks", TAG(`${s}/trucks:tag`, "adapter", "counters, not instances")]),
+    "The 500 trucks are not kernel instances yet. 13 state counters (trucks.heavy.available, queues.import.length, trucks.import.enRoute …) are kernel facts the traffic adapter writes on each transition; kernel formulas sum them (trucks.working, trucks.balanced). Each dot on the map is an adapter object (route, position, timers).",
+  ]),
+]);
+
+// ── Map numbers → kernel paths ──
+// [where, what the map shows, kernel path(s), kind]
+const MAP_PATHS = [
+  ["HUD", "import left", "flows.importRemaining", "rule"],
+  ["HUD", "export left", "flows.exportRemaining", "rule"],
+  ["HUD", "trucks.working N / 500", "trucks.working · trucks.fleet", "rule · fact"],
+  ["HUD", "trucks.balanced", "trucks.balanced", "rule"],
+  ["HUD", "sim clock · Average Speed", "— (adapter clock and speed constants)", "adapter"],
+  ["map", "VERACRUZ · port.busy", "port.busy", "rule"],
+  ["map", "SHIP[i] · unloading · N t", "ships[i].hasWork · ships[i].remaining", "template · fact"],
+  ["map", "TRAIN[1] · loading · N t", "train[1].hasWork · train[1].remainingToLoad", "template · fact"],
+  ["map", "Q.IMPORT / Q.EXPORT · N queued", "queues.import.length · queues.export.length", "adapter-written facts"],
+  ["map", "CARGO YARD · pool: N heavy", "trucks.heavy.available", "adapter-written fact"],
+  ["legend", "import, laden · export, laden", "trucks.import.enRoute · trucks.export.enRoute", "adapter-written facts"],
+  ["legend", "load / unload", "trucks.import.loading + trucks.export.loading", "display sum of facts"],
+  ["legend", "queued", "trucks.inQueue", "rule"],
+  ["legend", "returning", "trucks.import.returning + trucks.export.returning", "display sum of facts"],
+  ["legend", "pool", "trucks.heavy.available", "adapter-written fact"],
+  ["legend", "last-mile out · back · load · idle", "trucks.lastMile.enRoute · returning · loading · available", "adapter-written facts"],
+  ["legend", "band ↑ · ↓", "lastMile.unitsAbove · lastMile.unitsBelow", "adapter → facts"],
+  ["legend", "trips ○ · ✓ · ✗", "trips.pending · trips.done · trips.unscheduled", "rule · facts"],
+  ["map", "each truck dot", "— (adapter object: route, position, timers)", "adapter"],
+];
+const pathsPanel = (s = "panel-paths") => PANEL(s, "Map numbers → kernel paths", [["kernel", "kernel"], ["adapter", "adapter"]], [
+  SUB(`${s}/intro`, "Where each number on the map comes from. Trucks are counters, not instances: the adapter writes the counter facts.", { mt: 0, mb: .5 }),
+  ...MAP_PATHS.map(([where, what, path, kind]) => N("Box", `${s}/row:${where}:${what}`, { title: `${what} → ${path} (${kind})`, sx: { height: 32, py: "2px", borderBottom: 1, borderColor: "divider", fontFamily: MONO, fontSize: 9.5, "&:last-of-type": { borderBottom: 0 } } }, [
+    N("Box", `${s}/row:${where}:${what}/label`, { sx: { display: "flex", gap: .75, height: 14, lineHeight: "14px", color: "text.secondary", whiteSpace: "nowrap", overflow: "hidden" } }, [
+      N("Box", `${s}/row:${where}:${what}/where`, { component: "span", sx: { color: "text.disabled", width: "6ch", flexShrink: 0 } }, where),
+      N("Box", `${s}/row:${where}:${what}/what`, { component: "span", sx: { overflow: "hidden", textOverflow: "ellipsis", minWidth: 0 } }, what),
+      N("Box", `${s}/row:${where}:${what}/kind`, { component: "span", sx: { ...kindSx, ml: "auto", flexShrink: 0, borderStyle: kind.startsWith("adapter") || kind.includes("adapter-written") ? "dashed" : "solid" } }, kind)]),
+    N("Box", `${s}/row:${where}:${what}/path`, { sx: { height: 14, lineHeight: "14px", pl: "calc(6ch + 6px)", color: kind === "adapter" ? "text.disabled" : "primary.main", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" } }, path),
+  ])),
+]);
 const mutatePanel = (s = "panel-mutate") => PANEL(s, "Mutate · live traffic", [["kernel", "kernel writes"]], [N("PortRunControls", `${s}/run`), N("PortStats", `${s}/stats`), N("PortWrites", `${s}/writes`)]);
 const explainPanel = (s = "panel-explain") => PANEL(s, "Explain · why", [["kernel", "me.explain()"]], [N("PortExplain", `${s}/explain`)]);
 
@@ -867,7 +960,7 @@ function asideSpec(live) {
     N("PortKernelStrip", "aside/kernel"),
     N("PortTour", "aside/tour"),
     N("Box", "aside/panels", { sx: { flex: 1, overflowY: "auto", p: "10px 12px 14px", display: "flex", flexDirection: "column", gap: 1.25 } },
-      live ? [mutatePanel(), explainPanel(), shipsPanel(), trainPanel(), trucksPanel(), lastMilePanel(), stocksPanel(), adapterPanel(live)] : [N("PortKernelWait", "aside/waiting")]),
+      live ? [modelPanel(), pathsPanel(), mutatePanel(), explainPanel(), shipsPanel(), trainPanel(), trucksPanel(), lastMilePanel(), stocksPanel(), adapterPanel(live)] : [N("PortKernelWait", "aside/waiting")]),
   ]);
 }
 const mapPanelSpec = (live) => N("Box", "map-panel", { className: "map-wrap", sx: { position: "relative", overflow: "hidden", bgcolor: "#0b0d10", minHeight: 300 } },
