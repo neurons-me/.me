@@ -367,7 +367,7 @@ const INSPECTOR_ACTION = h(Box, { component: "span", "data-gui-node-id": "brand/
     h(G.InspectorToggle, { id: "inspector-toggle-compact", "data-gui-inspector-control": true, show: "state", onText: "Insp on", offText: "Insp off", size: "small", variant: "button",
       "aria-label": "Semantic Inspector", title: INSPECTOR_TITLE, sx: { ...INSPECTOR_SX, py: .125, px: .75, minWidth: "calc(8ch + 12px)" } })));
 
-// Kernel link (top bar + footer): text, target and title come from the running kernel's in-browser check.
+// Kernel link (kernel strip): text, target and title come from the running kernel's in-browser check.
 const NPM_KERNEL = "https://www.npmjs.com/package/this.me";
 function KernelLink(p) {
   const { before = "", after = "", id, minCh } = p;
@@ -382,14 +382,15 @@ function KernelLink(p) {
 
 // Everything about the UI layer lives here (version, where the build is served from, its hash check, docs).
 const GUI_DOCS = [[".GUI docs", "https://neurons-me.github.io/GUI/docs/"], ["GUI.mount", "https://neurons-me.github.io/GUI/docs/doc.html?f=GUI-Mount.md"], ["Storybook", "https://neurons-me.github.io/GUI/storybook/"]];
-function GuiBuildInfo() {
+// All .GUI details in one place (kernel strip → provenance → .GUI): build, PR, served file + its hash check, docs.
+function GuiBuildInfo(p) {
   const { gui } = useStore(ui);
   const a = (href, text, title) => h(Link, { href, target: "_blank", rel: "noopener", underline: "hover", title }, text);
   const check = gui?.state === "ok" ? h("b", { key: "v" }, "verified") : gui?.state === "error" ? h(Box, { component: "span", sx: { color: "error.main" } }, "check failed") : "checking…";
-  return h(React.Fragment, null,
-    "UI: ", a(GUI_PIN.pr, `this.gui@${GUI_PIN.short}`, `${GUI_PIN.label}: unreleased branch build (PR #3)`), " (branch ", h("code", { key: "b" }, GUI_PIN.branch), ", not on npm yet). Build served from this site: ",
-    a(GUI_PIN.url, `this.gui-${GUI_PIN.short}.umd.js`, `sha256 ${GUI_PIN.sha256}`), " · sha256 ", GUI_PIN.sha256.slice(0, 12), "… ", check, ".",
-    h("br"), "Docs: ", ...GUI_DOCS.flatMap(([t, u], i) => [i ? " · " : "", a(u, t)]));
+  return h(Box, { component: "span", ...nodeAttrs(p) },
+    a(GUI_PIN.pr, GUI_PIN.label, "Pull request #3 (neurons-me/GUI)"), " · unreleased branch build (PR #3, not on npm yet), self-hosted, SRI + sha256 · ",
+    a(GUI_PIN.url, `this.gui-${GUI_PIN.short}.umd.js`, `sha256 ${GUI_PIN.sha256}`), " sha256 ", GUI_PIN.sha256.slice(0, 12), "… ", check,
+    " · docs: ", ...GUI_DOCS.flatMap(([t, u], i) => [i ? " · " : "", a(u, t)]));
 }
 const GLOSSARY = [
   ["What is this?", ["Port of Veracruz on the real .me kernel: ships, train, 500 trucks (400 heavy + 100 last-mile, 1,000 example trips) and stocks are facts; totals, averages and flags are kernel formulas. OSM is just the map."]],
@@ -398,7 +399,6 @@ const GLOSSARY = [
   ["mutation", ["Each animation tick the traffic adapter flushes its batch: one real kernel write per changed fact. Each write recomputes only its dependents."]],
   ["k", ["How many derived paths the kernel recomputed for a write (its affected set), read from the kernel, not counted by the UI."]],
   ["explain", [h("code", { key: 1 }, "me.explain(path)"), ": expression, inputs with values, and the write (sourcePath) that last recomputed it."]],
-  [".GUI binding", [h(GuiBuildInfo, { key: 1 })]],
 ];
 function GlossaryItem(p) {
   const [label, body] = GLOSSARY[p.idx];
@@ -420,18 +420,19 @@ function KernelLine() {
   return h(Typography, { id: "kernel-status", component: "div", sx: { fontFamily: MONO, fontSize: 9.5, color: err ? "error.main" : "text.secondary", px: 1.5, py: .75, borderBottom: 1, borderColor: "divider", lineHeight: 1.4, "& b": { color: err ? "error.main" : "success.main", fontWeight: 500 } }, dangerouslySetInnerHTML: { __html: kernel.text } });
 }
 
-function KernelStrip(p) {
+function KernelStrip(p) {   // children: provenance rows (spec nodes), shown under the header line when open
   useStore(ui);
   const glossaryOpen = sectionOpen("kernel");
   return h(Box, { id: "kernel-wrap", ...nodeAttrs(p), "data-open": glossaryOpen ? "1" : "0", sx: { flexShrink: 0, borderBottom: 1, borderColor: "divider" } },
     h(Box, { sx: { display: "flex", alignItems: "center", gap: .75, px: 1.5, py: .75, borderBottom: glossaryOpen ? 1 : 0, borderColor: "divider", fontFamily: MONO, fontSize: 10, color: "text.secondary", minHeight: 36 } },
       h(Box, { component: "span", sx: { overflow: "hidden", textOverflow: "ellipsis", minWidth: 0, whiteSpace: "nowrap" } },
         "kernel: ", h(KernelLink, { id: "kver-aside", minCh: 28 })),
-      h(Button, { id: "kernel-toggle", "data-gui-inspector-control": "true", size: "small", onClick: () => setSectionOpen("kernel", !glossaryOpen), "aria-expanded": glossaryOpen, "aria-controls": "kernel-panel", title: "Show / hide kernel glossary",
+      h(Button, { id: "kernel-toggle", "data-gui-inspector-control": "true", size: "small", onClick: () => setSectionOpen("kernel", !glossaryOpen), "aria-expanded": glossaryOpen, "aria-controls": "kernel-panel", title: "Show / hide kernel details: build provenance and glossary",
         sx: { ml: "auto", flexShrink: 0, minWidth: 0, px: .75, py: .25, fontFamily: MONO, fontSize: 10, textTransform: "none", color: "text.disabled" } },
         glossaryOpen ? "▾ hide" : "▸ kernel")),
     h(Collapse, { in: glossaryOpen, id: "kernel-panel" },
       h(KernelLine),
+      p.children,
       h(Box, { id: "glossary", sx: { bgcolor: "background.default" } },
         GLOSSARY.map(([label], idx) => h(GlossaryItem, { key: label, idx, "data-gui-node-id": `glossary/${label}` })))));
 }
@@ -708,7 +709,7 @@ const PAGE_TYPES = Object.fromEntries([
   ["PortValue", ValView], ["PortSum", SumView], ["PortBar", BarView], ["PortRow", Row], ["PortFormula", Formula], ["PortPanel", Panel], ["PortSectionHeader", SectionHeader], ["PortSectionToggle", SectionToggle], ["PortSectionBody", SectionBody],
   ["PortLegendRow", LgRow], ["PortHudChip", HudChip], ["PortSvgGroup", SvgGroup],
   ["PortTour", TourStrip], ["PortKernelStrip", KernelStrip], ["PortBrandLogo", BrandLogo], ["PortBrandActions", BrandActions], ["PortKernelLink", KernelLink], ["PortRunControls", RunControls], ["PortStats", Stats], ["PortWrites", Writes],
-  ["PortExplain", ExplainLeaf], ["PortClassExplain", ClassExplain], ["PortTruckCard", TruckCard], ["PortLmStrip", LmStrip], ["PortLmEstimate", LmEstimate], ["PortLmFeed", LmFeed], ["PortSeed", SeedCode],
+  ["PortExplain", ExplainLeaf], ["PortClassExplain", ClassExplain], ["PortGuiBuild", GuiBuildInfo], ["PortTruckCard", TruckCard], ["PortLmStrip", LmStrip], ["PortLmEstimate", LmEstimate], ["PortLmFeed", LmFeed], ["PortSeed", SeedCode],
   ["PortVerifyOut", VerifyOut], ["PortKernelWait", KernelWait], ["PortOffMap", OffMap], ["PortSimClock", SimClock],
 ].map(([t, C]) => [t, pageType(t, C)]).concat([
   // GUI's registered Link resolver drops target / rel / title / data-gui-node-id, so links use GUI.Atoms.Link as is
@@ -1084,11 +1085,11 @@ function BrandActions(p) {
         h("path", { d: GITHUB_MARK }))));
 }
 function asideSpec(live) {
-  // Stacked layout (≤1000px): the live aside is ~3000px tall, the boot one a few lines. Floor it at one viewport
-  // so the footer starts below the fold either way and does not jump when the kernel arrives (CLS 0).
-  return N("Box", "aside", { component: "aside", sx: { bgcolor: "background.paper", display: "flex", flexDirection: "column", overflow: "hidden", minHeight: 0, borderLeft: 1, borderColor: "divider", "@media (max-width:1000px)": { minHeight: "100vh" } } }, [
+  // Nothing sits below the aside (the old page footer now lives in the kernel strip), so in the stacked layout
+  // (≤1000px) the aside simply ends where its content ends: growing when the kernel arrives moves nothing (CLS 0).
+  return N("Box", "aside", { component: "aside", sx: { bgcolor: "background.paper", display: "flex", flexDirection: "column", overflow: "hidden", minHeight: 0, borderLeft: 1, borderColor: "divider" } }, [
     N("PortRunControls", "aside/controls"),
-    N("PortKernelStrip", "aside/kernel"),
+    N("PortKernelStrip", "aside/kernel", {}, [provenanceSpec()]),
     N("PortTour", "aside/tour"),
     N("Box", "aside/panels", { sx: { flex: 1, overflowY: "auto", p: "10px 12px 14px", display: "flex", flexDirection: "column", gap: 1.25 } },
       live ? [modelPanel(), pathsPanel(), mutatePanel(), explainPanel(), shipsPanel(), trainPanel(), trucksPanel(), lastMilePanel(), stocksPanel(), adapterPanel(live)] : [N("PortKernelWait", "aside/waiting")]),
@@ -1096,20 +1097,28 @@ function asideSpec(live) {
 }
 const mapPanelSpec = (live) => N("Box", "map-panel", { className: "map-wrap", sx: { position: "relative", overflow: "hidden", bgcolor: "#0b0d10", minHeight: 300 } },
   live ? [mapSpec(true), legend(), hud(), N("PortTruckCard", "map.truck-card")] : [mapSpec(false)]);
-const footerSpec = (s = "footer") => N("Box", s, { component: "footer", sx: { px: 2, py: .9, borderTop: 1, borderColor: "divider", fontFamily: MONO, fontSize: 10, color: "text.disabled", display: "flex", justifyContent: "space-between", gap: 1.25, flexWrap: "wrap", "& a": { color: "text.secondary" } } }, [
-  N("Box", `${s}/osm`, { component: "span" }, ["© ", LINK(`${s}/osm:link`, { href: "https://www.openstreetmap.org/copyright", target: "_blank", rel: "noopener", underline: "hover" }, "OpenStreetMap"), " contributors · static SVG basemap · no live tiles"]),
-  N("Box", `${s}/builds`, { component: "span" }, [
-    N("PortKernelLink", `${s}/builds:kernel`, { id: "kver-foot", after: " (unmodified)", minCh: 44 }), " · ",
-    LINK(`${s}/builds:gui`, { href: GUI_PIN.pr, target: "_blank", rel: "noopener", underline: "hover" }, `${GUI_PIN.label}`),
-    " (unreleased branch build, self-hosted, SRI + sha256) · ", LINK(`${s}/builds:notes`, { href: "https://github.com/neurons-me/.me/tree/main/docs/Tests/veracruz-port", underline: "hover" }, "build notes"),
-  ]),
-]);
+// Build provenance (formerly the page footer), inside the kernel strip under its header line. The kernel's
+// version and sha256 are on that header line (npm link), so they are not repeated here. The map keeps its own
+// "© OpenStreetMap contributors · ODbL" corner attribution at all times (license), whatever this strip shows.
+const BUILD_NOTES = "https://github.com/neurons-me/.me/tree/main/docs/Tests/veracruz-port";
+function provenanceSpec(s = "aside/kernel/provenance") {
+  const A = (id, href, text) => LINK(`${s}/${id}`, { href, target: "_blank", rel: "noopener", underline: "hover" }, text);
+  const ROW = (key, label, children) => N("Box", `${s}/${key}`, { sx: { display: "grid", gridTemplateColumns: "58px minmax(0, 1fr)", gap: .75, px: 1.5, py: .55, borderBottom: 1, borderColor: "divider" } }, [
+    N("Box", `${s}/${key}:label`, { component: "span", sx: { color: "text.disabled" } }, label),
+    N("Box", `${s}/${key}:value`, { component: "span", sx: { minWidth: 0, overflowWrap: "anywhere" } }, children)]);
+  return N("Box", s, { id: "kernel-provenance", "aria-label": "Build provenance", sx: { fontFamily: MONO, fontSize: 9.5, lineHeight: 1.45, color: "text.secondary", bgcolor: "background.default", borderBottom: 1, borderColor: "divider",
+    "& a": { color: "primary.main" }, "& b": { color: "text.primary", fontWeight: 500 }, "& > :last-of-type": { borderBottom: 0 } } }, [
+    ROW("kernel", "kernel", ["dist/me.es.js unmodified · sha256 checked in this browser · ", A("kernel:npm", NPM_KERNEL, "npm")]),
+    ROW("gui", ".GUI", [N("PortGuiBuild", `${s}/gui:build`)]),
+    ROW("basemap", "basemap", ["© ", A("basemap:osm", "https://www.openstreetmap.org/copyright", "OpenStreetMap"), " contributors · ODbL · static SVG basemap · no live tiles"]),
+    ROW("notes", "build", [A("notes:link", BUILD_NOTES, "build notes"), " · how this page is built and pinned"]),
+  ]);
+}
 function pageSpec(live) {
   return N("Box", "page", { sx: { display: "flex", flexDirection: "column", height: "100vh", minHeight: 640, bgcolor: "background.default", color: "text.primary", "@media (max-width:1000px)": { height: "auto" } } }, [
     brandBarSpec(),
     N("Box", "layout", { className: "layout", sx: { flex: 1, display: "grid", gridTemplateColumns: "1fr 380px", minHeight: 0, "@media (max-width:1000px)": { gridTemplateColumns: "1fr", gridTemplateRows: "minmax(300px, 42vh) auto" } } },
       [mapPanelSpec(live), asideSpec(live)]),
-    footerSpec(),
   ]);
 }
 // Built once: the same spec objects are handed to every mount() call (before / after the kernel loads).
