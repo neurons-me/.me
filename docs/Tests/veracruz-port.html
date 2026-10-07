@@ -35,6 +35,8 @@
   header .title { font-weight: 600; font-size: 14px; color: #e6eaef; letter-spacing: 0.04em; }
   header .sep { color: var(--dim); }
   header .ns { font-family: var(--mono); font-size: 12px; color: var(--accent); }
+  header a.tag { text-decoration: none; }
+  header a.tag:hover { border-color: var(--warn); }
   header .tag {
     font-family: var(--mono); font-size: 10px; color: var(--warn);
     border: 1px solid #3a3024; padding: 2px 7px; border-radius: 2px;
@@ -341,7 +343,7 @@
     <span class="title">VERACRUZ</span>
     <span class="sep">|</span>
     <span class="ns">me://port</span>
-    <span class="tag">port operations · 500 trucks · guided</span>
+    <a class="tag" id="scenario-tag" href="https://github.com/neurons-me/.me/blob/main/docs/Tests/veracruz-port/port-sim.js" target="_blank" rel="noopener" title="Scenario recipe: port-sim.js">scenario · port-sim.js ↗</a>
     <span class="hint"><a class="kver verifying" id="kver-top" href="https://www.npmjs.com/package/this.me" target="_blank" rel="noopener" title="Checking the kernel file's sha256 in this browser…">runs on this.me · verifying…</a> · <a href="https://neurons-me.github.io/smart-cities/" style="color:var(--accent);text-decoration:none;white-space:nowrap">Smart Cities ↗</a></span>
   </header>
 
@@ -844,6 +846,7 @@
 <script type="module">
 // ── Kernel: published this.me@4.1.0, unmodified, hash-pinned ──
 import { createPortKernel, SHIPS, TRAIN, COUNTERS, TRIP_COUNTERS, UNIT_IDS, FLEET, HEAVY, LAST_MILE, BAND, TRIP_COUNT } from "./veracruz-port/port-sim.js";
+{ const st = document.getElementById("scenario-tag"); if (st) { st.textContent = `scenario · ${HEAVY} heavy + ${LAST_MILE} last-mile · port-sim.js ↗`; st.title = `Scenario recipe: port-sim.js (HEAVY = ${HEAVY}, LAST_MILE = ${LAST_MILE})`; } }
 import { createTraffic, VIS_OF, CONFIG, LM, SIM_START_H, HEAVY_TRUCK_KMH, LAST_MILE_KMH } from "./veracruz-port/port-traffic.js";
 import { ROUTES, KEY, EXITS, PROJ } from "./veracruz-port/port-routes.js";
 import { CEDIS } from "./veracruz-port/port-lastmile.js";

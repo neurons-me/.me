@@ -514,6 +514,7 @@ const S = String;
 const ROW = (scope, k, kind, children, minCh) => N("PortRow", `${scope}/row:${k}`, { k, kind, ...(minCh ? { minCh } : {}) }, children);
 const FORMULA = (scope, name, children) => N("PortFormula", `${scope}/formula:${name}`, {}, children);
 const SUB = (id, children, sx) => N("Typography", id, { component: "div", sx: { ...SUB_SX, ...sx } }, children);
+const SCENARIO_SRC = "https://github.com/neurons-me/.me/blob/main/docs/Tests/veracruz-port/port-sim.js";
 const TAG = (id, kind, label) => N("Chip", id, { size: "small", variant: "outlined", label, sx: srcTagSx(kind) });
 const PANEL = (id, title, tags, children, adapter) => N("PortPanel", id, { id, title, tags, ...(adapter ? { adapter } : {}) }, children);
 const LINK = (id, props, children) => N("PortLink", id, props, children);
@@ -748,7 +749,10 @@ function brandBarSpec(s = "brand") {
     N("PortBrandLogo", `${s}/logo`),
     N("Box", `${s}/path`, { component: "nav", "aria-label": "me path", sx: { display: "inline-flex", alignItems: "center", flexWrap: "wrap", minWidth: 0 } },
       PATH_SEGMENTS.flatMap(crumb)),
-    TAG(`${s}/tag`, "adapter", "port operations · 500 trucks · guided"),
+    // Scenario label read from the recipe itself (port-sim.js), never hand-typed.
+    N("Chip", `${s}/tag`, { size: "small", variant: "outlined", clickable: true, component: "a", href: SCENARIO_SRC, target: "_blank", rel: "noopener",
+      title: `Scenario recipe: port-sim.js (HEAVY = ${HEAVY}, LAST_MILE = ${LAST_MILE})`,
+      label: `scenario · ${HEAVY} heavy + ${LAST_MILE} last-mile · port-sim.js ↗`, sx: { ...srcTagSx("adapter"), cursor: "pointer" } }),
     N("Box", `${s}/actions`, { sx: { ml: "auto", display: "inline-flex", alignItems: "center", gap: 1.25, flexWrap: "wrap" } }, [
       // Spec can't hold a live React element; PortBrandActions mounts the inspector + Docs / GitHub.
       N("PortBrandActions", `${s}/actions:nav`),
