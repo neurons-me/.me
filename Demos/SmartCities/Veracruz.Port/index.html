@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>Port of Veracruz: live operations (.GUI) · .me</title>
-<meta name="description" content="Port of Veracruz on a .GUI interface (this.gui feat/openstreetmap branch build, map = GUI.OpenStreetMap) over the real this.me@4.1.0 kernel: 500 trucks on real OpenStreetMap roads; every readout is a GUI component subscribed to a kernel path."/>
+<meta name="description" content="Port of Veracruz on a .GUI interface (this.gui 4.1.0, map = GUI.OpenStreetMap following the page theme) over the real this.me@4.1.0 kernel: 500 trucks on real OpenStreetMap roads; every readout is a GUI component subscribed to a kernel path."/>
 <link rel="canonical" href="https://neurons-me.github.io/.me/Demos/SmartCities/Veracruz.Port/"/>
 <meta property="og:title" content="Port of Veracruz: live operations (.GUI) · .me"/>
 <meta property="og:description" content="500 trucks on real OSM roads; .GUI components subscribed to live .me kernel paths. Every haul is a real kernel write; watch k, ask explain()."/>
@@ -25,82 +25,37 @@
   } catch (e) {}
 </script>
 <!-- Pinned dependencies (jsDelivr, exact versions, Subresource Integrity). React 18 = last React with UMD builds. -->
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/this.gui@4.0.0/dist/material-symbols.css" integrity="sha384-dvUfVVY6nb2ef6F+dRTsSozZpefoOvMox4Ay4fQP86bSU+6yHovoYYKaRtwS+mca" crossorigin="anonymous"/>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/this.gui@4.1.0/dist/material-symbols.css" integrity="sha384-dvUfVVY6nb2ef6F+dRTsSozZpefoOvMox4Ay4fQP86bSU+6yHovoYYKaRtwS+mca" crossorigin="anonymous"/>
 <script src="https://cdn.jsdelivr.net/npm/react@18.3.1/umd/react.production.min.js" integrity="sha384-DGyLxAyjq0f9SPpVevD6IgztCFlnMF6oW/XQGmfe+IsZ8TqEiDrcHkMLKI6fiB/Z" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/react-dom@18.3.1/umd/react-dom.production.min.js" integrity="sha384-gTGxhz21lVGYNMcdJOyq01Edg0jhn/c22nsx0kyqP0TxaV5WVdsSH1fSDUf5YJj1" crossorigin="anonymous"></script>
-<!-- .GUI: unreleased branch build of this.gui (neurons-me/GUI feat/openstreetmap @ed06869, PR #3: https://github.com/neurons-me/GUI/pull/3), self-hosted here because it is not on npm.
-     SRI-pinned below; port-gui.js also re-checks its sha256 in the browser before the page runs (same as the kernel). -->
-<script src="/.me/docs/Tests/veracruz-port/vendor/this.gui-ed06869.umd.js" integrity="sha384-LXkXfVwL5RIcJ3MHsgVViBYklGX0njWyjo6N/jxEQYFDL4Coy8qiWGxKUfCSQmfA" crossorigin="anonymous"></script>
+<!-- .GUI: this.gui@4.1.0 from npm (neurons-me/GUI main @3b0bfc7, PRs #2 + #3: GUI.OpenStreetMap), SRI-pinned below;
+     port-gui.js also re-checks its sha256 in the browser before the page runs (same as the kernel).
+     The previous self-hosted branch build (vendor/this.gui-ed06869.umd.js) is kept in the repo, unused. -->
+<script src="https://cdn.jsdelivr.net/npm/this.gui@4.1.0/dist/this.gui.umd.js" integrity="sha384-umBxi9YB2FkfPkyuR4Ej4TvKyweGkUbZnvIQh/ZzaF0YGstAGl5I6xJ9fnLC+76O" crossorigin="anonymous"></script>
 <style>
-  /* Page shell + map overlay styling (GUI.OpenStreetMap renders the basemap, markers and canvas). Everything else is styled by .GUI (Theme + sx). */
-  :root {
-    --bg: #0b0d10; --text: #c8ced6; --muted: #6a7380; --dim: #3a424e;
-    --accent: #7eb8c9; --warn: #c9a07e; --hot: #c97e7e; --ok: #7ec99a;
-    --mono: "IBM Plex Mono", "SF Mono", ui-monospace, Menlo, Consolas, monospace;
-  }
-  html, body { margin: 0; height: 100%; background: var(--bg); }
-  #boot-error { font: 13px/1.5 var(--mono); color: var(--hot); padding: 24px; display: none; }
-  /* No border-right here: the aside's own left border (theme divider) separates the map from the panel.
-     (A border-right on var(--border), never defined, used to sit here and rendered nothing.) */
-  .map-wrap { position: relative; overflow: hidden; background: var(--bg); }
-  .map-wrap svg.scene { width: 100%; height: 100%; display: block; }
-  .gui-osm__basemap { opacity: 1; }
-  .gui-osm__basemap #roads-primary { opacity: 0.7; }
-  .gui-osm__basemap #roads-secondary { opacity: 0.5; }
-  .gui-osm__basemap #roads-tertiary { opacity: 0.4; }
-  .gui-osm__basemap #water { opacity: 0.75; }
+  /* Page shell only. GUI.OpenStreetMap themes the basemap, pins, legend, chips, pin list, controls and the traffic canvas
+     from the page theme; the few page SVG layers below (flow edges, exit labels, spotlight) use the map's theme variables. */
+  :root { --mono: "IBM Plex Mono", "SF Mono", ui-monospace, Menlo, Consolas, monospace; }
+  html, body { margin: 0; height: 100%; }
+  #boot-error { font: 13px/1.5 var(--mono); color: #c97e7e; padding: 24px; display: none; }
+  .map-wrap { position: relative; overflow: hidden; }
 
-  .edge { fill: none; stroke: #3d4a58; stroke-width: 1.3; opacity: 0.65; }
-  .edge.flow-imp { stroke: #5a8a9a; stroke-width: 1.6; opacity: 0.85; }
-  .edge.flow-exp { stroke: #9a8a5a; stroke-width: 1.6; opacity: 0.85; }
-  .edge.wave {
-    stroke: var(--accent); stroke-width: 2.2; opacity: 1;
-    filter: drop-shadow(0 0 4px rgba(126,184,201,0.45));
-  }
-  .edge.hl { stroke: var(--accent); opacity: 1; stroke-width: 2; }
-  .edge.dimmed { opacity: 0.12; }
-
-  .gui-osm-marker__label { font-family: var(--mono); font-size: 12px; fill: #9aa3ae; letter-spacing: 0.05em; }
-  .gui-osm-marker__meta { font-family: var(--mono); font-size: 11px; fill: var(--muted); }
-  .gui-osm-marker__core { stroke-width: 1.4; }
-  .node.ship .gui-osm-marker__core { fill: #121820; stroke: #6a9bb0; }
-  .node.train .gui-osm-marker__core { fill: #181610; stroke: #b0a06a; }
-  .node.queue .gui-osm-marker__core { fill: #141418; stroke: #7a7a90; }
-  .node.port .gui-osm-marker__core { fill: #1a2430; stroke: var(--accent); }
-  .node.yard .gui-osm-marker__core { fill: #141810; stroke: #7a9a7a; }
-  .node.hl .gui-osm-marker__core {
-    stroke-width: 2.4;
-    filter: drop-shadow(0 0 6px rgba(126,184,201,0.5));
-  }
-  .node.hl .gui-osm-marker__label { fill: #dce8ef; }
-  .node.dimmed { opacity: 0.25; }
-  .node.pulse .gui-osm-marker__core { animation: pulse 0.7s ease-out; }
-  .node.done .gui-osm-marker__core { stroke: var(--ok); }
-  .node.busy .gui-osm-marker__core { stroke: var(--warn); }
-
-  @keyframes pulse {
-    0% { stroke-width: 1.4; } 40% { stroke-width: 3; } 100% { stroke-width: 1.4; }
-  }
-  .wave-particle { fill: var(--accent); opacity: 0; pointer-events: none; }
-  .truck-dot { fill: #c9b87e; opacity: 0.9; }
-  .icon-txt { font-family: var(--mono); font-size: 10px; fill: #6a7380; }
-
-  .spotlight { fill: none; stroke: var(--accent); stroke-width: 1; opacity: 0.3; stroke-dasharray: 4 3; }
-  .node .gui-osm-marker__meta, .node .gui-osm-marker__label { paint-order: stroke; stroke: #0b0d10; stroke-width: 3px; }
-  .map-wrap canvas.traffic { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
-  #edges .edge { opacity: 0.2; stroke-dasharray: 2 5; stroke-width: 1.1; }
-  #edges .edge.hl { opacity: 0.42; stroke-width: 1.3; filter: none; }
+  /* flow edges (page SVG inside the map): dashed, quiet; the tour step highlights its edges, a kernel wave lights an edge */
+  #edges .edge { fill: none; stroke: var(--gui-osm-road-primary); stroke-width: 1.1; stroke-dasharray: 2 5; opacity: 0.2; vector-effect: non-scaling-stroke; }
+  #edges .edge.flow-imp { stroke: var(--gui-osm-tone-ship); }
+  #edges .edge.flow-exp { stroke: var(--gui-osm-tone-train); }
+  #edges .edge.hl { opacity: 0.42; stroke-width: 1.3; }
   #edges .edge.dimmed { opacity: 0.06; }
-  #edges .edge.wave { opacity: 0.55; stroke-width: 1.4; filter: none; }
-  .node.hit .gui-osm-marker__core { stroke: #dce8ef; filter: drop-shadow(0 0 5px rgba(126,184,201,0.55)); }
-  .exit-label { font-family: var(--mono); font-size: 11px; fill: #8a94a0; paint-order: stroke; stroke: #0b0d10; stroke-width: 3px; letter-spacing: .03em; }
-  .exit-tick { fill: none; stroke: #8a94a0; stroke-width: 1.2; opacity: .8; }
-  .map-wrap svg.scene { position: absolute; inset: 0; }
+  #edges .edge.wave { stroke: var(--gui-osm-highlight); opacity: 0.55; stroke-width: 1.4; }
+  .exit-label { font-family: var(--mono); font-size: 11px; fill: var(--gui-osm-meta); paint-order: stroke; stroke: var(--gui-osm-halo); stroke-width: 3px; letter-spacing: .03em; }
+  .spotlight { fill: none; stroke: var(--gui-osm-highlight); stroke-width: 1; opacity: 0.3; stroke-dasharray: 4 3; }
+  /* kernel write flash on a pin (adapter class, one UI tick) */
+  .gui-osm-marker.node.hit .gui-osm-marker__core { stroke: var(--gui-osm-highlight); filter: drop-shadow(0 0 4px var(--gui-osm-highlight)); }
 </style>
 </head>
 <body>
 <div id="root"></div>
-<div id="boot-error">.GUI (this.gui branch build @ed06869) or React failed to load, so this page cannot render. The <a href="/.me/docs/Tests/veracruz-port.html" style="color:var(--accent)">classic page</a> runs without .GUI.</div>
+<div id="boot-error">.GUI (this.gui@4.1.0) or React failed to load, so this page cannot render. The <a href="/.me/docs/Tests/veracruz-port.html" style="color:inherit">classic page</a> runs without .GUI.</div>
 <!-- Basemap data: the existing output of veracruz-port/build_basemap.py (same geometry as basemap.svg), kept as data.
      GUI.OpenStreetMap presents it; the page only reads it into layers. -->
 <template id="basemap-tpl">

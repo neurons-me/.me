@@ -16,21 +16,26 @@ Page: <https://neurons-me.github.io/.me/Demos/SmartCities/Veracruz.Port/> (`/.me
 
 The same kernel (`this.me@4.1.0`, sha256-checked as above), traffic adapter and map, with the chrome and panels rendered by **.GUI** (`this.gui`, neurons.me's Generative User Interface, a React + MUI component library) instead of hand-written HTML/CSS.
 
+**.GUI build: this.gui@4.1.0 (npm).** The page loads `https://cdn.jsdelivr.net/npm/this.gui@4.1.0/dist/this.gui.umd.js`, published from neurons-me/GUI main @`3b0bfc7` (PRs #2 and #3). sha256 `d50e32f6a4f7603804228c074fc59df1cfdea73a4f3d5ad93ba9475227b2a577`, SRI `sha384-umBxi9YB2FkfPkyuR4Ej4TvKyweGkUbZnvIQh/ZzaF0YGstAGl5I6xJ9fnLC+76O`; the `<script>` carries the SRI and `port-gui.js` re-hashes the file (sha256) before anything runs. The map is now fully themed by .GUI: basemap, pins (`tone` + `state`: busy / done from the kernel flag, highlight / dimmed from the tour step), `OpenStreetMap.Legend`, the HUD as `OpenStreetMap.Chip`s (the simulation clock is a dashed adapter chip), the pin list (`MarkerList`, selection + edge pins), zoom/pan `Controls` with `markerScale="screen"` and the cooperative wheel (Ctrl/⌘ + scroll). The truck canvas takes its colours from the map palette; truck positions are still adapter-only. `MAP_INK` and the page's map CSS are gone. Headless: Verify 2,271/2,271, 125 bound readouts (91 paths) match the kernel, 0 console errors, in 8 themes and both modes.
+
+The paragraph below describes the previous ed06869 branch build (kept in `vendor/`, no longer loaded).
+
 **.GUI build: unreleased branch build, self-hosted.** The map uses `GUI.OpenStreetMap`, which is not in a published this.gui release yet. The page therefore loads the UMD built from the PR head commit, `this.gui feat/openstreetmap @ed06869` ([neurons-me/GUI#3](https://github.com/neurons-me/GUI/pull/3), which depends on [#2](https://github.com/neurons-me/GUI/pull/2)). Besides `GUI.OpenStreetMap`, that head adds markers as Semantic Inspector nodes (`nodeId` + `provenance`) and an Explain fix: the derivation's input count and the kernel wave's `k` / recomputed / changed are now separate tiles (the old "Dependencies (k)" tile showed the input count). The file is `vendor/this.gui-ed06869.umd.js`, the output of `npm run build` at commit `ed06869b65a6ee921ce7b51b371e35015886af1f`, and the build is reproducible (same bytes on rebuild). The `<script>` tag carries SRI, and `port-gui.js` re-hashes the file in the browser (sha256) before anything runs, the same way it checks the kernel. If either check fails, the page stops. This build does **not** include #2, so the explicit `subscribe` bridge below stays in place.
 
 | File | sha256 | SRI |
 |---|---|---|
-| `vendor/this.gui-ed06869.umd.js` (self-hosted, branch build) | `d5b256370f999fcae68f9c6ccef3ad0b09528f0bd8378c6e1bb58966d62e668a` | `sha384-LXkXfVwL5RIcJ3MHsgVViBYklGX0njWyjo6N/jxEQYFDL4Coy8qiWGxKUfCSQmfA` |
+| `this.gui@4.1.0/dist/this.gui.umd.js` (jsDelivr, npm) | `d50e32f6a4f7603804228c074fc59df1cfdea73a4f3d5ad93ba9475227b2a577` | `sha384-umBxi9YB2FkfPkyuR4Ej4TvKyweGkUbZnvIQh/ZzaF0YGstAGl5I6xJ9fnLC+76O` |
+| `vendor/this.gui-ed06869.umd.js` (previous self-hosted branch build, kept, unused here) | `d5b256370f999fcae68f9c6ccef3ad0b09528f0bd8378c6e1bb58966d62e668a` | `sha384-LXkXfVwL5RIcJ3MHsgVViBYklGX0njWyjo6N/jxEQYFDL4Coy8qiWGxKUfCSQmfA` |
 
 **Other pinned dependencies.** Exact versions from jsDelivr, each with Subresource Integrity (the browser refuses a file whose hash differs):
 
 | File | sha256 | SRI |
 |---|---|---|
-| `this.gui@4.0.0/dist/material-symbols.css` | `717649f90831db7a1447191f0d46c15a5b9bf2bb93d65bd4cd069a785600b53b` | `sha384-dvUfVVY6nb2ef6F+dRTsSozZpefoOvMox4Ay4fQP86bSU+6yHovoYYKaRtwS+mca` |
+| `this.gui@4.1.0/dist/material-symbols.css` (same bytes as 4.0.0) | `717649f90831db7a1447191f0d46c15a5b9bf2bb93d65bd4cd069a785600b53b` | `sha384-dvUfVVY6nb2ef6F+dRTsSozZpefoOvMox4Ay4fQP86bSU+6yHovoYYKaRtwS+mca` |
 | `react@18.3.1/umd/react.production.min.js` | `d949f1c3687aedadcedac85261865f29b17cd273997e7f6b2bfc53b2f9d4c4dd` | `sha384-DGyLxAyjq0f9SPpVevD6IgztCFlnMF6oW/XQGmfe+IsZ8TqEiDrcHkMLKI6fiB/Z` |
 | `react-dom@18.3.1/umd/react-dom.production.min.js` | `35f4f974f4b2bcd44da73963347f8952e341f83909e4498227d4e26b98f66f0d` | `sha384-gTGxhz21lVGYNMcdJOyq01Edg0jhn/c22nsx0kyqP0TxaV5WVdsSH1fSDUf5YJj1` |
 
-The icon font CSS still comes from the this.gui@4.0.0 release (unchanged in the branch). The UMD expects `window.React` and `window.ReactDOM`; React 18.3.1 is the last React release with UMD builds.
+The icon font CSS comes from this.gui@4.1.0 (byte-identical to 4.0.0). The UMD expects `window.React` and `window.ReactDOM`; React 18.3.1 is the last React release with UMD builds.
 
 **What .GUI renders** (`port-gui.js`): `Theme` (neurons.me, dark), the topbar (`registry.TopBar`: neurons.me logo + `.me` linking to <https://neurons-me.github.io/>), the title strip, the kernel strip (kernel line + build provenance rows; the concepts fact / rule / write / k / explain are explained by the tour, not a glossary) and the tour strip (collapsible, remembered in `localStorage`; `?step=N` opens it at step N), the 1–8 stepper and Back/Next, every panel (`Paper`, `Typography`, `Chip` tags: kernel tags use the *aurora* accent, adapter tags the *ember* accent), the speed and explain selects (`TextField select` + `MenuItem`), Start/Reset/Verify (`Button`), the progress bars (`Progress`), the map legend + HUD chips, and the map itself (`GUI.OpenStreetMap`, below).
 
