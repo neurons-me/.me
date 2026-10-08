@@ -154,7 +154,7 @@ const TOUR = [null,
     hlNodes: ["n-qimp", "n-qexp", "n-port", "n-yard"], hlEdges: ["e-qimp-port", "e-qexp-train"], hlPanels: ["panel-queues", "panel-adapter"] },
   { title: "6 · Last-mile dispatch", body: "100 small trucks (pink) run an example schedule of <strong>1,000 trips</strong> from CEDIS A (cargo yard) and CEDIS B (example site) to addresses on OSM streets; address points light up when delivered. A greedy plan fills each unit's shift, then units are rebalanced to <strong>avg ± 15%</strong> (amber ring above, cyan below). Trip counters, band limits and per-unit sums are kernel; the heuristic is adapter.",
     hlNodes: ["n-yard", "n-cedisb"], hlEdges: [], hlPanels: ["panel-lastmile"] },
-  { title: "7 · Live traffic", body: `Press <strong>Start traffic</strong> (top of this panel; Pause, speed and Reset sit next to it). Speeds are assumptions (heavy ${HEAVY_TRUCK_KMH} km/h, last-mile ${LAST_MILE_KMH} km/h, ±${Math.round(CONFIG.speedSpread * 100)}% per truck; travel time from route metres); the HUD averages are kernel rules over speed sums the adapter samples ≤4×/s, tap a chip for its expression; playback ×10 by default. Each animation tick the adapter flushes <strong>real writes</strong> (one call per changed fact), listed exactly with the kernel's own <strong>k</strong>.`,
+  { title: "7 · Live traffic", body: `Press <strong>Start traffic</strong> (top of this panel; Pause, speed and Reset sit next to it). Speeds are assumptions (heavy ${HEAVY_TRUCK_KMH} km/h, last-mile ${LAST_MILE_KMH} km/h, ±${Math.round(CONFIG.speedSpread * 100)}% per truck; travel time from route metres); the HUD averages are kernel rules over speed sums the adapter samples ≤4×/s, tap a chip for its expression; playback ×10 by default. Each animation tick the adapter flushes <strong>real writes</strong> (one call per changed fact), listed exactly with the kernel's own <strong>k</strong>: each write recomputes only the rules that depend on it, and <strong>k</strong> is how many derived paths it recomputed (read from the kernel, not counted by the page).`,
     hlNodes: ["n-qimp", "n-ship2", "n-port", "n-yard"], hlEdges: ["e-ship2-q", "e-qimp-port"], hlPanels: ["panel-mutate"] },
   { title: "8 · Explain why", body: "<strong>me.explain(\"trips.bandHigh\")</strong> returns the expression, every input with its value, and <strong>sourcePath</strong>, the write that last recomputed it. <strong>Verify</strong> rebuilds a fresh kernel from the facts and compares everything.",
     hlNodes: ["n-port", "n-ship1", "n-ship2", "n-ship3"], hlEdges: ["e-ship1-q", "e-ship2-q", "e-ship3-q"], hlPanels: ["panel-explain", "panel-adapter"] },
@@ -393,25 +393,6 @@ function GuiBuildInfo(p) {
     a(GUI_PIN.url, `this.gui-${GUI_PIN.short}.umd.js`, `sha256 ${GUI_PIN.sha256}`), " sha256 ", GUI_PIN.sha256.slice(0, 12), "… ", check,
     " · docs: ", ...GUI_DOCS.flatMap(([t, u], i) => [i ? " · " : "", a(u, t)]));
 }
-const GLOSSARY = [
-  ["What is this?", ["Port of Veracruz on the real .me kernel: ships, train, 500 trucks (400 heavy + 100 last-mile, 1,000 example trips) and stocks are facts; totals, averages and flags are kernel formulas. OSM is just the map."]],
-  ["fact", ["A value you write: ", h("code", { key: 1 }, "me.cargo.coffee(100000)"), ". It never computes itself."]],
-  ["rule / derived", ["A kernel ", h("code", { key: 1 }, "="), " formula: ", h("code", { key: 2 }, "importRemaining = ships[1].remainingTons + ships[2].remainingTons + ships[3].remainingTons"), "."]],
-  ["mutation", ["Each animation tick the traffic adapter flushes its batch: one real kernel write per changed fact. Each write recomputes only its dependents."]],
-  ["k", ["How many derived paths the kernel recomputed for a write (its affected set), read from the kernel, not counted by the UI."]],
-  ["explain", [h("code", { key: 1 }, "me.explain(path)"), ": expression, inputs with values, and the write (sourcePath) that last recomputed it."]],
-];
-function GlossaryItem(p) {
-  const [label, body] = GLOSSARY[p.idx];
-  const [open, setOpen] = React.useState(false);
-  return h(Box, { ...nodeAttrs(p), sx: { borderBottom: 1, borderColor: "divider", "&:last-of-type": { borderBottom: 0 } } },
-    h(Button, { size: "small", fullWidth: true, onClick: () => setOpen(!open), "aria-expanded": open,
-      sx: { justifyContent: "flex-start", px: 1.25, py: .55, borderRadius: 0, fontFamily: MONO, fontSize: 10, letterSpacing: ".04em", textTransform: "none", color: open ? "primary.main" : "text.secondary", minHeight: 0 } },
-      (open ? "▾ " : "▸ ") + label),
-    h(Collapse, { in: open },
-      h(Typography, { component: "p", sx: { px: 1.25, pb: .75, mt: 0, fontFamily: MONO, fontSize: 10, lineHeight: 1.4, color: "text.secondary", "& code": { fontSize: 9.5, color: "primary.main" }, "& a": { color: "primary.main" }, "& b": { color: "text.primary", fontWeight: 500 } } }, ...body)));
-}
-
 // Kernel failure line (in the kernel strip and the overview). Only on error: while loading, the strip's
 // "verifying…" link already says so, and a loading line that vanishes on success would shift what is below it.
 function KernelLine() {
@@ -423,19 +404,17 @@ function KernelLine() {
 
 function KernelStrip(p) {   // children: provenance rows (spec nodes), shown under the header line when open
   useStore(ui);
-  const glossaryOpen = sectionOpen("kernel");
-  return h(Box, { id: "kernel-wrap", ...nodeAttrs(p), "data-open": glossaryOpen ? "1" : "0", sx: { flexShrink: 0, borderBottom: 1, borderColor: "divider" } },
-    h(Box, { sx: { display: "flex", alignItems: "center", gap: .75, px: 1.5, py: .75, borderBottom: glossaryOpen ? 1 : 0, borderColor: "divider", fontFamily: MONO, fontSize: 10, color: "text.secondary", minHeight: 36 } },
+  const kernelOpen = sectionOpen("kernel");
+  return h(Box, { id: "kernel-wrap", ...nodeAttrs(p), "data-open": kernelOpen ? "1" : "0", sx: { flexShrink: 0, borderBottom: 1, borderColor: "divider" } },
+    h(Box, { sx: { display: "flex", alignItems: "center", gap: .75, px: 1.5, py: .75, borderBottom: kernelOpen ? 1 : 0, borderColor: "divider", fontFamily: MONO, fontSize: 10, color: "text.secondary", minHeight: 36 } },
       h(Box, { component: "span", sx: { overflow: "hidden", textOverflow: "ellipsis", minWidth: 0, whiteSpace: "nowrap" } },
         "kernel: ", h(KernelLink, { id: "kver-aside", minCh: 28 })),
-      h(Button, { id: "kernel-toggle", "data-gui-inspector-control": "true", size: "small", onClick: () => setSectionOpen("kernel", !glossaryOpen), "aria-expanded": glossaryOpen, "aria-controls": "kernel-panel", title: "Show / hide kernel details: build provenance and glossary",
+      h(Button, { id: "kernel-toggle", "data-gui-inspector-control": "true", size: "small", onClick: () => setSectionOpen("kernel", !kernelOpen), "aria-expanded": kernelOpen, "aria-controls": "kernel-panel", title: "Show / hide kernel details: build provenance",
         sx: { ml: "auto", flexShrink: 0, minWidth: 0, px: .75, py: .25, fontFamily: MONO, fontSize: 10, textTransform: "none", color: "text.disabled" } },
-        glossaryOpen ? "▾ hide" : "▸ kernel")),
-    h(Collapse, { in: glossaryOpen, id: "kernel-panel" },
+        kernelOpen ? "▾ hide" : "▸ kernel")),
+    h(Collapse, { in: kernelOpen, id: "kernel-panel" },
       h(KernelLine),
-      p.children,
-      h(Box, { id: "glossary", sx: { bgcolor: "background.default" } },
-        GLOSSARY.map(([label], idx) => h(GlossaryItem, { key: label, idx, "data-gui-node-id": `glossary/${label}` })))));
+      p.children));
 }
 function TourStrip(p) {
   const { step } = useStore(ui);
