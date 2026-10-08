@@ -14,10 +14,15 @@
 <meta name="twitter:card" content="summary_large_image"/>
 <meta name="twitter:image" content="https://neurons-me.github.io/.me/docs/assets/VERACRUZ-PORT-ME.png"/>
 <link rel="icon" type="image/png" href="https://res.cloudinary.com/dkwnxf6gm/image/upload/v1760629064/neurons.me_b50f6a.png"/>
-<!-- .GUI theme: page-scoped storage key (does not touch the shared this.gui:themeMode), dark by default -->
+<!-- .GUI theme: page-scoped storage keys, neurons.me dark by default. The topbar theme picker + light/dark toggle
+     (port-gui.js ThemeControls) persist the choice here. Both keys are seeded so another .GUI page's shared
+     this.gui:themeId / this.gui:themeMode (read as a fallback when a scoped key is empty) never picks this page's default. -->
 <script>
   window.__thisGuiThemeScope = { scopeId: "veracruz-port-gui", themeModeKey: "veracruz-port-gui.themeMode", themeIdKey: "veracruz-port-gui.themeId", defaultMode: "dark" };
-  try { if (!localStorage.getItem("veracruz-port-gui.themeMode")) localStorage.setItem("veracruz-port-gui.themeMode", "dark"); } catch (e) {}
+  try {
+    if (!localStorage.getItem("veracruz-port-gui.themeMode")) localStorage.setItem("veracruz-port-gui.themeMode", "dark");
+    if (!localStorage.getItem("veracruz-port-gui.themeId")) localStorage.setItem("veracruz-port-gui.themeId", "neurons.me");
+  } catch (e) {}
 </script>
 <!-- Pinned dependencies (jsDelivr, exact versions, Subresource Integrity). React 18 = last React with UMD builds. -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/this.gui@4.0.0/dist/material-symbols.css" integrity="sha384-dvUfVVY6nb2ef6F+dRTsSozZpefoOvMox4Ay4fQP86bSU+6yHovoYYKaRtwS+mca" crossorigin="anonymous"/>
@@ -35,10 +40,9 @@
   }
   html, body { margin: 0; height: 100%; background: var(--bg); }
   #boot-error { font: 13px/1.5 var(--mono); color: var(--hot); padding: 24px; display: none; }
-  .map-wrap {
-    position: relative; overflow: hidden; background: var(--bg);
-    border-right: 1px solid var(--border);
-  }
+  /* No border-right here: the aside's own left border (theme divider) separates the map from the panel.
+     (A border-right on var(--border), never defined, used to sit here and rendered nothing.) */
+  .map-wrap { position: relative; overflow: hidden; background: var(--bg); }
   .map-wrap svg.scene { width: 100%; height: 100%; display: block; }
   .gui-osm__basemap { opacity: 1; }
   .gui-osm__basemap #roads-primary { opacity: 0.7; }

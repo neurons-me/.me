@@ -572,6 +572,11 @@ function ClassExplain(p) {
     line("last wave", m.sourcePath ? h(React.Fragment, null, "write ", em(m.sourcePath), ` · k=${m.k}`) : "not recomputed yet (press Start traffic)", (m.recomputed || []).join(", ")));
 }
 
+// Map overlay ink: the legend, HUD chips + expression popover and truck card sit on the map, which keeps its dark
+// page colors in every theme, so their text / border colors are pinned to the neurons.me dark palette (this.gui
+// ed06869: text.primary / secondary / disabled, divider, primary.main, warning.main = the "ember" accent) instead of
+// following the page theme. In neurons.me dark these are the exact values the theme tokens resolved to.
+const MAP_INK = { primary: "#e8eded", secondary: "#98a7b3", disabled: "rgba(255, 255, 255, 0.5)", divider: "rgba(232,237,237,0.10)", accent: "#90caf9", ember: "#f4c95d" };
 // The truck instance picked on the map: me.trucks.unit[n] live, with one me.explain(). Map overlay with a
 // fixed size (absolute, so it never moves anything); before a pick it is a one-line hint. Clicks on the map
 // are hit-tested by the adapter against the dot positions it drew (positions are adapter, not kernel).
@@ -583,7 +588,7 @@ function TruckCard(p) {
   useWave(`${base}.state`); useWave(`${base}.working`);
   const { me } = G.useMe();
   const ctl = { "data-gui-inspector-control": "true" };
-  const boxSx = { position: "absolute", top: 10, left: 12, zIndex: 2, fontFamily: MONO, fontSize: 9.5, bgcolor: "rgba(11,13,16,0.97)", border: 1, borderColor: "divider", borderRadius: "3px", color: "text.secondary" };
+  const boxSx = { position: "absolute", top: 10, left: 12, zIndex: 2, fontFamily: MONO, fontSize: 9.5, bgcolor: "rgba(11,13,16,0.97)", border: 1, borderColor: MAP_INK.divider, borderRadius: "3px", color: MAP_INK.secondary };
   if (!n || !me) return h(Box, { ...nodeAttrs(p), id: "truck-card", "data-state": "hint", sx: { ...boxSx, pointerEvents: "none", height: 22, lineHeight: "20px", px: "7px", maxWidth: "calc(100% - 248px)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", "@media (max-width:640px)": { display: "none" } } },
     "click a truck dot → me.trucks.unit[n]");
   const R = (k) => me(`${base}.${k}`);
@@ -591,28 +596,28 @@ function TruckCard(p) {
   let ex = null; try { ex = me.explain(`${base}.working`); } catch (e) { /* shown as — */ }
   const m = ex?.meta || {}, inputs = ex?.derivation?.inputs || [];
   // live values sit in fixed-width slots (or end the line), so nothing after them moves when they change (CLS 0)
-  const em = (t, path, v, ch) => h(Box, { component: "span", sx: { color: "primary.main", ...(ch ? { display: "inline-block", width: `${ch}ch` } : {}) }, ...(path ? { "data-me-path": path, "data-me-value": String(v) } : {}) }, t);
-  const line = (k, v, title) => h(Box, { key: k, sx: TC_LINE }, h(Box, { component: "span", sx: { color: "text.disabled" } }, k), h(Box, { component: "span", title, sx: ONE_LINE }, v));
-  const dim = (t) => h(Box, { component: "span", sx: { color: "text.disabled" } }, t);
+  const em = (t, path, v, ch) => h(Box, { component: "span", sx: { color: MAP_INK.accent, ...(ch ? { display: "inline-block", width: `${ch}ch` } : {}) }, ...(path ? { "data-me-path": path, "data-me-value": String(v) } : {}) }, t);
+  const line = (k, v, title) => h(Box, { key: k, sx: TC_LINE }, h(Box, { component: "span", sx: { color: MAP_INK.disabled } }, k), h(Box, { component: "span", title, sx: ONE_LINE }, v));
+  const dim = (t) => h(Box, { component: "span", sx: { color: MAP_INK.disabled } }, t);
   const st = TRUCK_STATES[state];
   const step = (d) => pick.set({ n: ((n - 1 + d + FLEET) % FLEET) + 1 });
-  const btn = (label, title, onClick) => h(Button, { size: "small", title, "aria-label": title, onClick, ...ctl, sx: { minWidth: 20, height: 18, p: 0, fontFamily: MONO, fontSize: 11, color: "text.secondary" } }, label);
+  const btn = (label, title, onClick) => h(Button, { size: "small", title, "aria-label": title, onClick, ...ctl, sx: { minWidth: 20, height: 18, p: 0, fontFamily: MONO, fontSize: 11, color: MAP_INK.secondary } }, label);
   return h(Box, { ...nodeAttrs(p), id: "truck-card", "data-state": "picked", "data-unit": n, role: "region", "aria-label": `Truck instance me.trucks.unit[${n}]`,
     sx: { ...boxSx, width: 316, height: TC_H, p: "5px 7px", boxSizing: "border-box", overflow: "hidden", "@media (max-width:640px)": { left: 8, right: 8, top: 8, width: "auto" } } },
     h(Box, { sx: { display: "flex", alignItems: "center", gap: .25, height: 20, mb: .25 } },
-      h(Box, { component: "span", sx: { ...ONE_LINE, flex: 1, minWidth: 0, color: "text.primary", fontSize: 10.5 } }, `me.trucks.unit[${n}]`),
+      h(Box, { component: "span", sx: { ...ONE_LINE, flex: 1, minWidth: 0, color: MAP_INK.primary, fontSize: 10.5 } }, `me.trucks.unit[${n}]`),
       btn("‹", "Previous truck instance", () => step(-1)), btn("›", "Next truck instance", () => step(1)), btn("×", "Close truck instance", () => pick.set({ n: null }))),
     line("state", h(React.Fragment, null, em(fmt(state), `${base}.state`, state, 3), dim("adapter fact · "), st ?? "?"), `trucks.unit.${n}.state = ${state} (${st}); the adapter writes it on each transition`),
     line("kind", h(React.Fragment, null, em(fmt(kind), `${base}.kind`, kind, 3), dim("fact · "), TRUCK_KIND[kind] ?? "?")),
     line("working", h(React.Fragment, null, em(String(working), `${base}.working`, working, 6), dim("template state > 1"))),
     line("heavy", h(React.Fragment, null, em(String(heavy), `${base}.heavy`, heavy, 6), dim("template kind == 1"))),
-    h(Box, { sx: { ...ONE_LINE, height: 18, lineHeight: "18px", mt: .5, pt: "2px", borderTop: 1, borderColor: "divider", color: "text.secondary" } }, `me.explain("${base}.working")`),
+    h(Box, { sx: { ...ONE_LINE, height: 18, lineHeight: "18px", mt: .5, pt: "2px", borderTop: 1, borderColor: MAP_INK.divider, color: MAP_INK.secondary } }, `me.explain("${base}.working")`),
     line("expression", h(React.Fragment, null, ex?.expr ?? "—", dim(`  · trucks.unit["[i]"] template`)), ex?.expr),
     line("inputs", inputs.length ? inputs.map((x, j) => h(React.Fragment, { key: j }, j ? " · " : "", `${x.path} = `, em(fmt(x.value)))) : "—", inputs.map((x) => `${x.path} = ${x.value}`).join(" · ")),
     line("value", em(String(ex?.value))),
     line("last wave", m.sourcePath ? h(React.Fragment, null, "write ", em(m.sourcePath), ` · k=${m.k}`) : "not recomputed yet (no state write since seed)", (m.recomputed || []).join(", ")),
-    h(Box, { sx: { ...TC_LINE, mt: .5, pt: "2px", height: 18, borderTop: 1, borderColor: "divider" } }, h(Box, { component: "span", sx: { color: "text.disabled" } }, "counted in"),
-      h(Box, { component: "span", sx: ONE_LINE, title: "Counter fact the adapter writes; the kernel does not count instances" }, dim("adapter-written "), h(Box, { component: "span", sx: { color: "text.primary" } }, COUNTER_OF[st] ?? "—"))),
+    h(Box, { sx: { ...TC_LINE, mt: .5, pt: "2px", height: 18, borderTop: 1, borderColor: MAP_INK.divider } }, h(Box, { component: "span", sx: { color: MAP_INK.disabled } }, "counted in"),
+      h(Box, { component: "span", sx: ONE_LINE, title: "Counter fact the adapter writes; the kernel does not count instances" }, dim("adapter-written "), h(Box, { component: "span", sx: { color: MAP_INK.primary } }, COUNTER_OF[st] ?? "—"))),
     line("position", dim("adapter only (route, x/y, timers)")));
 }
 
@@ -668,10 +673,10 @@ function LgRow(p) {
   const { dot, label, children } = p;
   return h(Box, { ...nodeAttrs(p), sx: { display: "flex", alignItems: "center", gap: .75 } },
     h(Box, { component: "i", sx: { width: 7, height: 7, borderRadius: "50%", display: "inline-block", flexShrink: 0, ...dot } }), label,
-    h(Box, { component: "b", sx: { ml: "auto", color: "text.primary", fontWeight: 500 } }, children));
+    h(Box, { component: "b", sx: { ml: "auto", color: MAP_INK.primary, fontWeight: 500 } }, children));
 }
 function OffMap(p) { useStore(sim); return h("span", { id: "lg-off", ...nodeAttrs(p) }, String(offMap)); }
-const LGH_SX = { fontSize: 8.5, letterSpacing: ".1em", textTransform: "uppercase", color: "text.disabled", mb: .25 };
+const LGH_SX = { fontSize: 8.5, letterSpacing: ".1em", textTransform: "uppercase", color: MAP_INK.disabled, mb: .25 };
 function SimClock(p) { useStore(sim); const { speed } = useStore(ui); return h("strong", { id: "hud-tick", ...nodeAttrs(p) }, `${T ? clock(T.simTime) : clock(0)} · ×${speed}`); }
 function HudChip(p) {   // strong: wrap the children in <strong> (with strongSx: a styled one); otherwise children as given
   const { label, adapter, strong, strongSx, exprKey, minCh = 0, more } = p;
@@ -684,13 +689,13 @@ function HudChip(p) {   // strong: wrap the children in <strong> (with strongSx:
   const ref = useReservedWidth(minCh);
   const value = h(Box, { component: "span", ref, sx: { display: "inline-block" } }, !strong ? children : strongSx ? h(Box, { component: "strong", sx: strongSx }, children) : h("strong", null, children));
   // the small ƒ is an inspector control: with the Semantic Inspector on, a click on the chip inspects it, a click on ƒ still opens the expression
-  const fx = exprKey ? h(Box, { component: "span", "data-gui-inspector-control": "true", "aria-hidden": true, sx: { ml: .6, px: "3px", border: 1, borderRadius: "2px", borderColor: open ? "primary.main" : "divider", color: open ? "primary.main" : "text.disabled", fontSize: 9, lineHeight: "11px", fontStyle: "italic" } }, "ƒ") : null;
+  const fx = exprKey ? h(Box, { component: "span", "data-gui-inspector-control": "true", "aria-hidden": true, sx: { ml: .6, px: "3px", border: 1, borderRadius: "2px", borderColor: open ? MAP_INK.accent : MAP_INK.divider, color: open ? MAP_INK.accent : MAP_INK.disabled, fontSize: 9, lineHeight: "11px", fontStyle: "italic" } }, "ƒ") : null;
   const toggle = exprKey ? () => toggleHudExpr(exprKey) : undefined;
   return h(Chip, { ...nodeAttrs(p), size: "small", variant: "outlined", label: h(React.Fragment, null, label, " ", value, tail, fx),
     ...(exprKey ? { onClick: toggle, role: "button", tabIndex: 0, "aria-expanded": open, "aria-controls": "hud-expr", "aria-label": `${label}: show the .me expression`, title: open ? "Hide the .me expression" : "Show the .me expression behind this value",
       onKeyDown: (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggle(); } else if (e.key === "Escape") hudX.set({ key: null }); } } : {}),
-    sx: (t) => ({ fontFamily: MONO, fontSize: 10, bgcolor: "rgba(11,13,16,0.88)", borderRadius: "3px", color: "text.secondary", borderStyle: adapter ? "dashed" : "solid", borderColor: open ? t.palette.primary.main : adapter ? accentColor(t, "ember") : t.palette.divider, "& strong": { color: "text.primary", fontWeight: 500 },
-      ...(exprKey ? { pointerEvents: "auto", cursor: "pointer", "&:hover": { borderColor: t.palette.primary.main } } : {}) }) });
+    sx: (t) => ({ fontFamily: MONO, fontSize: 10, bgcolor: "rgba(11,13,16,0.88)", borderRadius: "3px", color: MAP_INK.secondary, borderStyle: adapter ? "dashed" : "solid", borderColor: open ? MAP_INK.accent : adapter ? MAP_INK.ember : MAP_INK.divider, "& strong": { color: MAP_INK.primary, fontWeight: 500 },
+      ...(exprKey ? { pointerEvents: "auto", cursor: "pointer", "&:hover": { borderColor: MAP_INK.accent } } : {}) }) });
 }
 // Compact extra text in a chip, shown only while the HUD is at least minHud px wide (it never re-wraps the HUD rows;
 // below that width the same facts are in the chip's popover). Measured before paint, and again when the map resizes.
@@ -711,8 +716,8 @@ function ImportCargo() {
   useWave("flows.importRemaining");
   const items = SHIPS.map(({ i }) => { const r = (f) => me(`ships.${i}.${f}`), unit = r("unit"); return `${r("cargo")} ${fmt(r("remaining"))} ${unit}${unit !== "t" ? ` (${fmt(r("remainingTons"))} t)` : ""}`; });
   return h(Box, { sx: { mb: .5 } },
-    h(Box, { id: "hud-import-cargo", sx: { color: "text.primary" } }, items.join(" · ")),
-    h(Box, { sx: { color: "text.disabled" } }, "by product: ships[i].cargo, ships[i].remaining + ships[i].unit (facts), ships[i].remainingTons (rule)"));
+    h(Box, { id: "hud-import-cargo", sx: { color: MAP_INK.primary } }, items.join(" · ")),
+    h(Box, { sx: { color: MAP_INK.disabled } }, "by product: ships[i].cargo, ships[i].remaining + ships[i].unit (facts), ships[i].remainingTons (rule)"));
 }
 // ── HUD expression popover: what produced each chip's value (kernel explain() or the adapter's constants) ──
 const hudX = createStore({ key: null });
@@ -736,8 +741,8 @@ function ExprPath({ path }) {   // one kernel path: rule (expression + inputs fr
   useWave(path);
   const { me } = G.useMe();
   let ex = null; try { ex = me.explain(path); } catch (e) { /* — */ }
-  const em = (t) => h(Box, { component: "span", sx: { color: "primary.main" } }, t);
-  const dim = (t) => h(Box, { component: "span", sx: { color: "text.disabled" } }, t);
+  const em = (t) => h(Box, { component: "span", sx: { color: MAP_INK.accent } }, t);
+  const dim = (t) => h(Box, { component: "span", sx: { color: MAP_INK.disabled } }, t);
   const val = (v) => (v === undefined ? "undefined" : typeof v === "string" ? `"${v}"` : fmt(v));
   if (!ex?.expr) return h(Box, { sx: { mb: .5 } }, h("code", null, path), " = ", em(val(me(path))), "  ", dim(factWriter(path)));
   const m = ex.meta || {};
@@ -764,16 +769,16 @@ function HudExpr(p) {
   if (!d) return h(Box, { ...nodeAttrs(p), id: "hud-expr", "data-open": "0", sx: { display: "none" } });
   return h(Box, { ...nodeAttrs(p), ref, id: "hud-expr", "data-open": "1", "data-key": key, role: "region", "aria-label": `${d.title}: .me expression`,
     sx: (t) => ({ position: "absolute", left: 0, bottom: "calc(100% + 6px)", width: "min(480px, 100%)", maxHeight: 210, overflowY: "auto", overscrollBehavior: "contain", boxSizing: "border-box", pointerEvents: "auto", zIndex: 3,
-      p: "6px 8px", bgcolor: "rgba(11,13,16,0.97)", border: 1, borderStyle: d.adapter ? "dashed" : "solid", borderColor: d.adapter ? accentColor(t, "ember") : t.palette.primary.main, borderRadius: "3px",
-      fontFamily: MONO, fontSize: 9.5, lineHeight: 1.5, color: "text.secondary", "& code": { fontFamily: MONO, color: "text.primary", wordBreak: "break-word" } }) },
+      p: "6px 8px", bgcolor: "rgba(11,13,16,0.97)", border: 1, borderStyle: d.adapter ? "dashed" : "solid", borderColor: d.adapter ? MAP_INK.ember : MAP_INK.accent, borderRadius: "3px",
+      fontFamily: MONO, fontSize: 9.5, lineHeight: 1.5, color: MAP_INK.secondary, "& code": { fontFamily: MONO, color: MAP_INK.primary, wordBreak: "break-word" } }) },
     h(Box, { sx: { display: "flex", alignItems: "center", gap: .75, mb: .5, position: "sticky", top: -6, bgcolor: "rgba(11,13,16,0.97)" } },
-      h(Box, { component: "span", sx: { color: "text.primary" } }, d.title),
-      d.badge === null ? null : h(Box, { component: "span", sx: { fontSize: 8, letterSpacing: ".08em", textTransform: "uppercase", px: "4px", border: 1, borderRadius: "2px", color: "primary.main" } }, d.badge || "kernel"),
-      h(Button, { size: "small", "data-gui-inspector-control": "true", "aria-label": "Close the expression", onClick: () => hudX.set({ key: null }), sx: { ml: "auto", minWidth: 20, height: 18, p: 0, fontFamily: MONO, fontSize: 11, color: "text.secondary" } }, "×")),
+      h(Box, { component: "span", sx: { color: MAP_INK.primary } }, d.title),
+      d.badge === null ? null : h(Box, { component: "span", sx: { fontSize: 8, letterSpacing: ".08em", textTransform: "uppercase", px: "4px", border: 1, borderRadius: "2px", color: MAP_INK.accent } }, d.badge || "kernel"),
+      h(Button, { size: "small", "data-gui-inspector-control": "true", "aria-label": "Close the expression", onClick: () => hudX.set({ key: null }), sx: { ml: "auto", minWidth: 20, height: 18, p: 0, fontFamily: MONO, fontSize: 11, color: MAP_INK.secondary } }, "×")),
     d.extra ? h(d.extra, { key: "extra" }) : null,
     ...(d.paths || []).map((path) => h(ExprPath, { key: path, path })),
-    ...(d.notes ? d.notes() : []).map((n, i) => h(Box, { key: `n${i}`, sx: { color: "text.disabled", mt: .25 } }, n)),
-    d.source ? h(Box, { key: "src", sx: { mt: .25 } }, h(Link, { href: d.source, target: "_blank", rel: "noopener", "data-gui-inspector-control": "true", sx: { fontFamily: MONO, fontSize: 9.5 } }, "source: port-traffic.js")) : null);
+    ...(d.notes ? d.notes() : []).map((n, i) => h(Box, { key: `n${i}`, sx: { color: MAP_INK.disabled, mt: .25 } }, n)),
+    d.source ? h(Box, { key: "src", sx: { mt: .25 } }, h(Link, { href: d.source, target: "_blank", rel: "noopener", "data-gui-inspector-control": "true", sx: { fontFamily: MONO, fontSize: 9.5, color: MAP_INK.accent } }, "source: port-traffic.js")) : null);
 }
 const SvgGroup = (p) => { const { children, "data-gui-component": _c, ...rest } = p; return h("g", rest, children); };
 
@@ -977,7 +982,7 @@ const explainPanel = (s = "panel-explain") => PANEL(s, "Explain · why", [["kern
 
 function legend(s = "legend") {
   const LR = (label, dot, children) => N("PortLegendRow", `${s}/${label}`, { label, dot }, children);
-  return N("Paper", s, { id: "legend", variant: "outlined", sx: { position: "absolute", top: 10, right: 12, pointerEvents: "none", fontFamily: MONO, fontSize: 9.5, bgcolor: "rgba(11,13,16,0.86)", borderRadius: "3px", p: "5px 7px", color: "text.secondary", lineHeight: 1.5, width: 200 } }, [
+  return N("Paper", s, { id: "legend", variant: "outlined", sx: { position: "absolute", top: 10, right: 12, pointerEvents: "none", fontFamily: MONO, fontSize: 9.5, bgcolor: "rgba(11,13,16,0.86)", borderColor: MAP_INK.divider, borderRadius: "3px", p: "5px 7px", color: MAP_INK.secondary, lineHeight: 1.5, width: 200 } }, [
     N("Box", `${s}/heavy`, { sx: LGH_SX }, "heavy · 400"),
     LR("import, laden", { bgcolor: "#7eb8c9" }, V(s, "trucks.import.enRoute")),
     LR("export, laden", { bgcolor: "#c9b87e" }, V(s, "trucks.export.enRoute")),
@@ -990,7 +995,7 @@ function legend(s = "legend") {
     LR("load · idle", { bgcolor: "#6a4a5e", width: 5, height: 5 }, J(V(s, "trucks.lastMile.loading"), V(s, "trucks.lastMile.available"))),
     LR("band ↑ · ↓", { border: "1px solid #e0a050", boxShadow: "4px 0 0 -2px #5ec8e0" }, J(V(s, "lastMile.unitsAbove"), V(s, "lastMile.unitsBelow"))),
     LR("trips ○ · ✓ · ✗", { bgcolor: "#f4e6b8", borderRadius: 0, width: 4, height: 4 }, J(V(s, "trips.pending"), V(s, "trips.done"), V(s, "trips.unscheduled"))),
-    N("Box", `${s}/foot`, { sx: { borderTop: 1, borderColor: "divider", mt: .5, pt: .4, fontSize: 9, color: "text.disabled" } }, ["kernel counts · ", N("PortOffMap", `${s}/off-map`), " off-map (adapter)"]),
+    N("Box", `${s}/foot`, { sx: { borderTop: 1, borderColor: MAP_INK.divider, mt: .5, pt: .4, fontSize: 9, color: MAP_INK.disabled } }, ["kernel counts · ", N("PortOffMap", `${s}/off-map`), " off-map (adapter)"]),
   ]);
 }
 // HUD sits 24 px up so the map's OSM attribution strip (bottom-right, 17 px) never sits under a chip.
@@ -1144,8 +1149,9 @@ function brandBarSpec(s = "brand") {
     N("Box", `${s}/tag:link`, { component: "a", href: SCENARIO_SRC, target: "_blank", rel: "noopener",
       title: `Scenario recipe: port-sim.js (HEAVY = ${HEAVY}, LAST_MILE = ${LAST_MILE})`,
       // The scenario tag gives way before the Inspector does: hidden where it alone would wrap the bar
-      // (content box 474–699px: one row fits without it, not with it) and below 359px (no room on row two).
-      sx: { display: "inline-flex", textDecoration: "none", cursor: "pointer", "@container brandbar (min-width: 474px) and (max-width: 699.98px)": { display: "none" }, "@container brandbar (max-width: 358.98px)": { display: "none" } } },
+      // (content box 558–783px: one row fits without it, not with it) and below 450px (no room on row two).
+      // (Widths include the theme picker + light/dark toggle in the actions.)
+      sx: { display: "inline-flex", textDecoration: "none", cursor: "pointer", "@container brandbar (min-width: 558px) and (max-width: 783.98px)": { display: "none" }, "@container brandbar (max-width: 449.98px)": { display: "none" } } },
       [TAG(`${s}/tag`, "adapter", `port operations · ${HEAVY + LAST_MILE} trucks · guided`)]),
     N("Box", `${s}/actions`, { sx: { ml: "auto", display: "inline-flex", alignItems: "center", gap: 1.25, flexWrap: "wrap" } }, [
       // Spec can't hold a live React element; PortBrandActions mounts the inspector + Docs / GitHub.
@@ -1168,7 +1174,53 @@ function BrandActions(p) {
       target: "_blank", rel: "noopener", title: "GitHub · neurons-me/.me", "aria-label": "GitHub",
       sx: { display: "inline-flex", alignItems: "center", lineHeight: 0, color: "text.secondary", "&:hover": { color: "text.primary" } } },
       h("svg", { viewBox: "0 0 16 16", width: 18, height: 18, fill: "currentColor", "aria-hidden": "true" },
-        h("path", { d: GITHUB_MARK }))));
+        h("path", { d: GITHUB_MARK }))),
+    h(ThemeControls, { "data-gui-node-id": "brand/theme" }));
+}
+// Theme picker + light/dark toggle, both .GUI's own: GUI.ThemesCatalog (the 8-theme catalog, compact row layout)
+// in a GUI.Menu, and GUI.ThemeModeToggle. They act on the Theme that GUI.mount wraps the page in (PageTheme), which
+// persists to the page-scoped keys in window.__thisGuiThemeScope. The ed06869 build exports neither
+// useThemeContext nor GuiThemes, so the button's label follows Theme's own "this.gui:themeId:changed" event
+// (seeded from the scoped key). The map's page CSS (basemap, markers, canvas) and the legend / HUD backgrounds do not
+// follow the theme.
+// data-gui-inspector-control: these keep acting while the Semantic Inspector is on (like ThemeLauncher).
+const THEME_ID_KEY = (window.__thisGuiThemeScope && window.__thisGuiThemeScope.themeIdKey) || "veracruz-port-gui.themeId";
+const readThemeId = () => { try { return localStorage.getItem(THEME_ID_KEY) || "neurons.me"; } catch { return "neurons.me"; } };
+const THEME_BTN_SX = { ...INSPECTOR_SX, px: .75, gap: .5, minWidth: 0, "& .theme-picker__label": { "@container brandbar (max-width: 1072px)": { display: "none" } } };
+function themeMenuKeys(e) {
+  if (e.key === "Tab") { e.stopPropagation(); return; }
+  if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+  const btns = [...e.currentTarget.querySelectorAll("button")], i = btns.indexOf(document.activeElement);
+  const next = btns[(i < 0 ? 0 : i + (e.key === "ArrowDown" ? 1 : btns.length - 1)) % btns.length];
+  if (next) { e.preventDefault(); e.stopPropagation(); next.focus(); }
+}
+function ThemeControls(p) {
+  const [anchor, setAnchor] = React.useState(null);
+  const [themeId, setThemeIdLabel] = React.useState(readThemeId);
+  React.useEffect(() => {
+    const on = (e) => { const id = e && e.detail && e.detail.themeId; if (id) setThemeIdLabel(String(id)); };
+    window.addEventListener("this.gui:themeId:changed", on);
+    return () => window.removeEventListener("this.gui:themeId:changed", on);
+  }, []);
+  const close = () => setAnchor(null);
+  return h(Box, { "data-gui-node-id": p["data-gui-node-id"], "data-gui-inspector-control": "true", sx: { display: "inline-flex", alignItems: "center", gap: .25, flexShrink: 0 } },
+    h(Button, { id: "theme-picker", size: "small", variant: "outlined", "data-gui-inspector-control": "true",
+      "aria-label": `Theme: ${themeId}`, "aria-haspopup": "true", "aria-expanded": anchor ? "true" : "false", "aria-controls": anchor ? "theme-menu" : undefined,
+      title: `Theme: ${themeId} (.GUI theme catalog)`, onClick: (e) => setAnchor(e.currentTarget), sx: THEME_BTN_SX },
+      h(G.Icon, { name: "palette", fontSize: 15, "aria-hidden": "true" }),
+      h(Box, { component: "span", className: "theme-picker__label" }, themeId),
+      h(G.Icon, { name: "expand_more", fontSize: 15, "aria-hidden": "true" })),
+    h(G.Molecules.Menu, { id: "theme-menu", anchorEl: anchor, open: !!anchor, onClose: close,
+      anchorOrigin: { vertical: "bottom", horizontal: "right" }, transformOrigin: { vertical: "top", horizontal: "right" },
+      slotProps: { list: { "aria-label": "Themes", dense: true }, paper: { "data-gui-inspector-control": "true", "data-gui-node-id": "brand/theme.menu", sx: { width: 220, p: .5, mt: .5 } } } },
+      // Keyboard: Tab / Shift+Tab and ↑ / ↓ move between the catalog's theme buttons (MUI Menu closes on Tab and
+      // only arrows through MenuItems, so those keys stop here); Enter picks; Escape / click-away close.
+      h(Box, { onKeyDown: themeMenuKeys },
+        // The catalog marks the active row with sx background "action.selected", which is not a CSS color (the
+        // button falls back to the browser's light button face, hiding its light label in dark mode): set it here.
+        h(G.ThemesCatalog, { sidebarView: "expanded", onThemeSelect: close, sx: { '& button[aria-pressed="true"]': { bgcolor: "action.selected" } } }))),
+    h(G.ThemeModeToggle, { id: "theme-mode-toggle", variant: "minimal", iconSize: "small", "data-testid": "theme-mode-toggle",
+      sx: { p: "2px", color: "text.secondary" } }));
 }
 function asideSpec(live) {
   // Nothing sits below the aside (the old page footer now lives in the kernel strip), so in the stacked layout
@@ -1210,7 +1262,8 @@ function pageSpec(live) {
 // Built once: the same spec objects are handed to every mount() call (before / after the kernel loads).
 const SPEC_BOOT = pageSpec(false), SPEC_LIVE = pageSpec(true);
 
-// The page theme is handed to GUI.mount (which wraps the tree, inspector included, in gui.Theme).
+// The page theme is handed to GUI.mount (which wraps the tree, inspector included, in gui.Theme). These are only the
+// defaults: the topbar ThemeControls change theme / mode and Theme persists them to the page-scoped keys.
 const PageTheme = ({ children }) => h(G.Theme, { initialThemeId: "neurons.me", initialMode: "dark" }, children);
 
 // ══════════════════════════ adapter: map layer, loop, kernel lifecycle ══════════════════════════
