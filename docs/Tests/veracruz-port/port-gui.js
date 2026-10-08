@@ -1,5 +1,5 @@
-// Port of Veracruz: .GUI interface (this.gui 4.1.0, LOCAL build of neurons-me/GUI map/s7, not on npm yet; served from
-// /gui-local/, SRI-pinned in the HTML and sha256-checked in the browser below). The map is GUI.OpenStreetMap with its own
+// Port of Veracruz: .GUI interface (this.gui@4.1.0 from npm via jsDelivr, SRI-pinned in the HTML and sha256-checked in
+// the browser below). The map is GUI.OpenStreetMap with its own
 // themed Legend, Chips, Overlays, Controls and MarkerList: it follows the page theme (no page map CSS, no pinned ink).
 // over the real, unmodified this.me@4.1.0 kernel (sha256-checked here before import).
 //
@@ -25,15 +25,13 @@ const KERNEL = {
   sha256: "47cc8f9a9b5ee2921a59023d400e694d6c9b9f80a0782db850b06156cbb46afa",
   urls: ["https://cdn.jsdelivr.net/npm/this.me@4.1.0/dist/me.es.js", "https://unpkg.com/this.me@4.1.0/dist/me.es.js"],
 };
-// .GUI build: this.gui 4.1.0 is not on npm yet. Until it is, the page loads the UMD built locally from the GUI branch
-// map/s7 (served at /gui-local/ by a local static server, NOT deployed). After `npm publish` the switch is: point the
-// <script> in index.html and `url` below at `cdn` (the SRI / sha256 stay the same if the published dist is byte-identical
-// to this build; re-check after publishing). The previous self-hosted vendor/this.gui-ed06869.umd.js stays in the repo
-// until the switch is verified.
-const GUI_PIN = { label: "this.gui 4.1.0 (local build)", version: "4.1.0", branch: "map/s7", commit: "fc4ff11", short: "4.1.0-local",
-  repo: "https://github.com/neurons-me/GUI", url: new URL("/gui-local/this.gui.umd.js", location.origin).href,
-  cdn: "https://cdn.jsdelivr.net/npm/this.gui@4.1.0/dist/this.gui.umd.js",
-  sha256: "fe42e0fc93dfe51503e34d58224d1644703a751d2a27a308b6a7feafa3d2c27b", sri: "sha384-c1QSB7xsjAfoJyjs8HK+Cf0L5DqUiicKOregKoIv/KweHXXxk34gAr1+xsIq+dKC" };
+// .GUI build: this.gui@4.1.0 as published on npm (built from neurons-me/GUI main @3b0bfc7: #2 + #3), loaded from jsDelivr.
+// The same file the <script> in index.html loads (SRI there); re-hashed here (sha256) before anything runs.
+// The previous self-hosted vendor/this.gui-ed06869.umd.js stays in the repo, unused.
+const GUI_PIN = { label: "this.gui@4.1.0", version: "4.1.0", branch: "main", commit: "3b0bfc7", short: "4.1.0",
+  repo: "https://github.com/neurons-me/GUI", npm: "https://www.npmjs.com/package/this.gui/v/4.1.0",
+  url: "https://cdn.jsdelivr.net/npm/this.gui@4.1.0/dist/this.gui.umd.js", cdn: "https://cdn.jsdelivr.net/npm/this.gui@4.1.0/dist/this.gui.umd.js",
+  sha256: "d50e32f6a4f7603804228c074fc59df1cfdea73a4f3d5ad93ba9475227b2a577", sri: "sha384-umBxi9YB2FkfPkyuR4Ej4TvKyweGkUbZnvIQh/ZzaF0YGstAGl5I6xJ9fnLC+76O" };
 
 const G = window.GUI, h = React.createElement;
 const { Box, Button, Typography, Chip, Progress, Paper, Link, TextField } = G.Atoms;
@@ -395,9 +393,8 @@ function GuiBuildInfo(p) {
   const a = (href, text, title) => h(Link, { href, target: "_blank", rel: "noopener", underline: "hover", title }, text);
   const check = gui?.state === "ok" ? h("b", { key: "v" }, "verified") : gui?.state === "error" ? h(Box, { component: "span", sx: { color: "error.main" } }, "check failed") : "checking…";
   return h(Box, { component: "span", ...nodeAttrs(p) },
-    a(GUI_PIN.repo, GUI_PIN.label, "neurons-me/GUI"), ` · built from ${GUI_PIN.branch} @${GUI_PIN.commit}, not on npm yet, served locally, SRI + sha256 · `,
+    a(GUI_PIN.npm, GUI_PIN.label, "npm: this.gui@4.1.0"), " · ", a(GUI_PIN.repo, "neurons-me/GUI", "neurons-me/GUI"), ` @${GUI_PIN.commit} · jsDelivr, SRI + sha256 · `,
     a(GUI_PIN.url, "this.gui.umd.js", `sha256 ${GUI_PIN.sha256}`), " sha256 ", GUI_PIN.sha256.slice(0, 12), "… ", check,
-    " · after publish: ", a(GUI_PIN.cdn, "jsDelivr this.gui@4.1.0", GUI_PIN.cdn),
     " · docs: ", ...GUI_DOCS.flatMap(([t, u], i) => [i ? " · " : "", a(u, t)]));
 }
 // Kernel failure line (in the kernel strip and the overview). Only on error: while loading, the strip's

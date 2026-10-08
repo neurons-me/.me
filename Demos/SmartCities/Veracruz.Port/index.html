@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>Port of Veracruz: live operations (.GUI) · .me</title>
-<meta name="description" content="Port of Veracruz on a .GUI interface (this.gui 4.1.0 local build, map = GUI.OpenStreetMap following the page theme) over the real this.me@4.1.0 kernel: 500 trucks on real OpenStreetMap roads; every readout is a GUI component subscribed to a kernel path."/>
+<meta name="description" content="Port of Veracruz on a .GUI interface (this.gui 4.1.0, map = GUI.OpenStreetMap following the page theme) over the real this.me@4.1.0 kernel: 500 trucks on real OpenStreetMap roads; every readout is a GUI component subscribed to a kernel path."/>
 <link rel="canonical" href="https://neurons-me.github.io/.me/Demos/SmartCities/Veracruz.Port/"/>
 <meta property="og:title" content="Port of Veracruz: live operations (.GUI) · .me"/>
 <meta property="og:description" content="500 trucks on real OSM roads; .GUI components subscribed to live .me kernel paths. Every haul is a real kernel write; watch k, ask explain()."/>
@@ -25,15 +25,13 @@
   } catch (e) {}
 </script>
 <!-- Pinned dependencies (jsDelivr, exact versions, Subresource Integrity). React 18 = last React with UMD builds. -->
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/this.gui@4.0.0/dist/material-symbols.css" integrity="sha384-dvUfVVY6nb2ef6F+dRTsSozZpefoOvMox4Ay4fQP86bSU+6yHovoYYKaRtwS+mca" crossorigin="anonymous"/>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/this.gui@4.1.0/dist/material-symbols.css" integrity="sha384-dvUfVVY6nb2ef6F+dRTsSozZpefoOvMox4Ay4fQP86bSU+6yHovoYYKaRtwS+mca" crossorigin="anonymous"/>
 <script src="https://cdn.jsdelivr.net/npm/react@18.3.1/umd/react.production.min.js" integrity="sha384-DGyLxAyjq0f9SPpVevD6IgztCFlnMF6oW/XQGmfe+IsZ8TqEiDrcHkMLKI6fiB/Z" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/react-dom@18.3.1/umd/react-dom.production.min.js" integrity="sha384-gTGxhz21lVGYNMcdJOyq01Edg0jhn/c22nsx0kyqP0TxaV5WVdsSH1fSDUf5YJj1" crossorigin="anonymous"></script>
-<!-- .GUI: this.gui 4.1.0, a LOCAL build of neurons-me/GUI map/s7 @fc4ff11 (not on npm yet), served from /gui-local/ by
-     the local preview server. SRI-pinned below; port-gui.js also re-checks its sha256 in the browser before the page runs.
-     After `npm publish` of 4.1.0, switch to the CDN (same bytes → same SRI; re-check after publish):
-       https://cdn.jsdelivr.net/npm/this.gui@4.1.0/dist/this.gui.umd.js
-     The previous branch build (vendor/this.gui-ed06869.umd.js) is kept in the repo, unused. -->
-<script src="/gui-local/this.gui.umd.js" integrity="sha384-c1QSB7xsjAfoJyjs8HK+Cf0L5DqUiicKOregKoIv/KweHXXxk34gAr1+xsIq+dKC" crossorigin="anonymous"></script>
+<!-- .GUI: this.gui@4.1.0 from npm (neurons-me/GUI main @3b0bfc7, PRs #2 + #3: GUI.OpenStreetMap), SRI-pinned below;
+     port-gui.js also re-checks its sha256 in the browser before the page runs (same as the kernel).
+     The previous self-hosted branch build (vendor/this.gui-ed06869.umd.js) is kept in the repo, unused. -->
+<script src="https://cdn.jsdelivr.net/npm/this.gui@4.1.0/dist/this.gui.umd.js" integrity="sha384-umBxi9YB2FkfPkyuR4Ej4TvKyweGkUbZnvIQh/ZzaF0YGstAGl5I6xJ9fnLC+76O" crossorigin="anonymous"></script>
 <style>
   /* Page shell only. GUI.OpenStreetMap themes the basemap, pins, legend, chips, pin list, controls and the traffic canvas
      from the page theme; the few page SVG layers below (flow edges, exit labels, spotlight) use the map's theme variables. */
@@ -57,7 +55,7 @@
 </head>
 <body>
 <div id="root"></div>
-<div id="boot-error">.GUI (this.gui 4.1.0 local build) or React failed to load, so this page cannot render. The <a href="/.me/docs/Tests/veracruz-port.html" style="color:inherit">classic page</a> runs without .GUI.</div>
+<div id="boot-error">.GUI (this.gui@4.1.0) or React failed to load, so this page cannot render. The <a href="/.me/docs/Tests/veracruz-port.html" style="color:inherit">classic page</a> runs without .GUI.</div>
 <!-- Basemap data: the existing output of veracruz-port/build_basemap.py (same geometry as basemap.svg), kept as data.
      GUI.OpenStreetMap presents it; the page only reads it into layers. -->
 <template id="basemap-tpl">
