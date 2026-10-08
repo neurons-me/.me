@@ -1,5 +1,6 @@
-// Port of Veracruz: .GUI interface (this.gui feat/openstreetmap @ed06869, unreleased branch build, self-hosted UMD,
-// SRI-pinned in the HTML and sha256-checked in the browser below). The map is GUI.OpenStreetMap.
+// Port of Veracruz: .GUI interface (this.gui 4.1.0, LOCAL build of neurons-me/GUI map/s7, not on npm yet; served from
+// /gui-local/, SRI-pinned in the HTML and sha256-checked in the browser below). The map is GUI.OpenStreetMap with its own
+// themed Legend, Chips, Overlays, Controls and MarkerList: it follows the page theme (no page map CSS, no pinned ink).
 // over the real, unmodified this.me@4.1.0 kernel (sha256-checked here before import).
 //
 // Who owns what:
@@ -24,10 +25,15 @@ const KERNEL = {
   sha256: "47cc8f9a9b5ee2921a59023d400e694d6c9b9f80a0782db850b06156cbb46afa",
   urls: ["https://cdn.jsdelivr.net/npm/this.me@4.1.0/dist/me.es.js", "https://unpkg.com/this.me@4.1.0/dist/me.es.js"],
 };
-// .GUI build: not on npm yet, so the exact UMD built from the PR head commit is self-hosted next to this file.
-const GUI_PIN = { label: "this.gui feat/openstreetmap @ed06869", branch: "feat/openstreetmap", commit: "ed06869b65a6ee921ce7b51b371e35015886af1f", short: "ed06869",
-  pr: "https://github.com/neurons-me/GUI/pull/3", url: new URL("vendor/this.gui-ed06869.umd.js", import.meta.url).href,
-  sha256: "d5b256370f999fcae68f9c6ccef3ad0b09528f0bd8378c6e1bb58966d62e668a", sri: "sha384-LXkXfVwL5RIcJ3MHsgVViBYklGX0njWyjo6N/jxEQYFDL4Coy8qiWGxKUfCSQmfA" };
+// .GUI build: this.gui 4.1.0 is not on npm yet. Until it is, the page loads the UMD built locally from the GUI branch
+// map/s7 (served at /gui-local/ by a local static server, NOT deployed). After `npm publish` the switch is: point the
+// <script> in index.html and `url` below at `cdn` (the SRI / sha256 stay the same if the published dist is byte-identical
+// to this build; re-check after publishing). The previous self-hosted vendor/this.gui-ed06869.umd.js stays in the repo
+// until the switch is verified.
+const GUI_PIN = { label: "this.gui 4.1.0 (local build)", version: "4.1.0", branch: "map/s7", commit: "fc4ff11", short: "4.1.0-local",
+  repo: "https://github.com/neurons-me/GUI", url: new URL("/gui-local/this.gui.umd.js", location.origin).href,
+  cdn: "https://cdn.jsdelivr.net/npm/this.gui@4.1.0/dist/this.gui.umd.js",
+  sha256: "fe42e0fc93dfe51503e34d58224d1644703a751d2a27a308b6a7feafa3d2c27b", sri: "sha384-c1QSB7xsjAfoJyjs8HK+Cf0L5DqUiicKOregKoIv/KweHXXxk34gAr1+xsIq+dKC" };
 
 const G = window.GUI, h = React.createElement;
 const { Box, Button, Typography, Chip, Progress, Paper, Link, TextField } = G.Atoms;
@@ -389,8 +395,9 @@ function GuiBuildInfo(p) {
   const a = (href, text, title) => h(Link, { href, target: "_blank", rel: "noopener", underline: "hover", title }, text);
   const check = gui?.state === "ok" ? h("b", { key: "v" }, "verified") : gui?.state === "error" ? h(Box, { component: "span", sx: { color: "error.main" } }, "check failed") : "checking…";
   return h(Box, { component: "span", ...nodeAttrs(p) },
-    a(GUI_PIN.pr, GUI_PIN.label, "Pull request #3 (neurons-me/GUI)"), " · unreleased branch build (PR #3, not on npm yet), self-hosted, SRI + sha256 · ",
-    a(GUI_PIN.url, `this.gui-${GUI_PIN.short}.umd.js`, `sha256 ${GUI_PIN.sha256}`), " sha256 ", GUI_PIN.sha256.slice(0, 12), "… ", check,
+    a(GUI_PIN.repo, GUI_PIN.label, "neurons-me/GUI"), ` · built from ${GUI_PIN.branch} @${GUI_PIN.commit}, not on npm yet, served locally, SRI + sha256 · `,
+    a(GUI_PIN.url, "this.gui.umd.js", `sha256 ${GUI_PIN.sha256}`), " sha256 ", GUI_PIN.sha256.slice(0, 12), "… ", check,
+    " · after publish: ", a(GUI_PIN.cdn, "jsDelivr this.gui@4.1.0", GUI_PIN.cdn),
     " · docs: ", ...GUI_DOCS.flatMap(([t, u], i) => [i ? " · " : "", a(u, t)]));
 }
 // Kernel failure line (in the kernel strip and the overview). Only on error: while loading, the strip's
@@ -572,14 +579,14 @@ function ClassExplain(p) {
     line("last wave", m.sourcePath ? h(React.Fragment, null, "write ", em(m.sourcePath), ` · k=${m.k}`) : "not recomputed yet (press Start traffic)", (m.recomputed || []).join(", ")));
 }
 
-// Map overlay ink: the legend, HUD chips + expression popover and truck card sit on the map, which keeps its dark
-// page colors in every theme, so their text / border colors are pinned to the neurons.me dark palette (this.gui
-// ed06869: text.primary / secondary / disabled, divider, primary.main, warning.main = the "ember" accent) instead of
-// following the page theme. In neurons.me dark these are the exact values the theme tokens resolved to.
-const MAP_INK = { primary: "#e8eded", secondary: "#98a7b3", disabled: "rgba(255, 255, 255, 0.5)", divider: "rgba(232,237,237,0.10)", accent: "#90caf9", ember: "#f4c95d" };
-// The truck instance picked on the map: me.trucks.unit[n] live, with one me.explain(). Map overlay with a
-// fixed size (absolute, so it never moves anything); before a pick it is a one-line hint. Clicks on the map
-// are hit-tested by the adapter against the dot positions it drew (positions are adapter, not kernel).
+// Map overlay colours: the truck card and the HUD expression popover are page content docked INSIDE GUI.OpenStreetMap
+// (OpenStreetMap.Overlay), so they use the map's own theme-derived overlay variables (set on the map root for the
+// current theme and mode). Nothing on the map is pinned to dark ink any more; it follows the page theme.
+const OV = { primary: "var(--gui-osm-overlay-strong)", secondary: "var(--gui-osm-overlay-text)", disabled: "var(--gui-osm-overlay-muted)",
+  divider: "var(--gui-osm-overlay-border)", accent: "var(--gui-osm-overlay-accent)", ember: "var(--gui-osm-tone-warning)", bg: "var(--gui-osm-overlay-bg)" };
+// The truck instance picked on the map: me.trucks.unit[n] live, with one me.explain(). A docked map overlay with a
+// fixed size (so it never moves anything); before a pick it is a one-line hint. Clicks on the map are hit-tested
+// by the adapter against the dot positions it drew (positions are adapter, not kernel).
 const TC_LINE = { display: "grid", gridTemplateColumns: "70px minmax(0, 1fr)", gap: .5, height: 16, lineHeight: "16px" };
 const TC_H = 222;
 function TruckCard(p) {
@@ -588,37 +595,39 @@ function TruckCard(p) {
   useWave(`${base}.state`); useWave(`${base}.working`);
   const { me } = G.useMe();
   const ctl = { "data-gui-inspector-control": "true" };
-  const boxSx = { position: "absolute", top: 10, left: 12, zIndex: 2, fontFamily: MONO, fontSize: 9.5, bgcolor: "rgba(11,13,16,0.97)", border: 1, borderColor: MAP_INK.divider, borderRadius: "3px", color: MAP_INK.secondary };
-  if (!n || !me) return h(Box, { ...nodeAttrs(p), id: "truck-card", "data-state": "hint", sx: { ...boxSx, pointerEvents: "none", height: 22, lineHeight: "20px", px: "7px", maxWidth: "calc(100% - 248px)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", "@media (max-width:640px)": { display: "none" } } },
-    "click a truck dot → me.trucks.unit[n]");
+  const boxSx = { fontFamily: MONO, fontSize: 9.5, bgcolor: OV.bg, border: 1, borderColor: OV.divider, borderRadius: "4px", color: OV.secondary };
+  if (!n || !me) return h(OSM.Overlay, { position: "top-left", interactive: false, hideBelow: 640 },
+    h(Box, { ...nodeAttrs(p), id: "truck-card", "data-state": "hint", sx: { ...boxSx, height: 22, lineHeight: "20px", px: "7px", boxSizing: "border-box", whiteSpace: "nowrap" } },
+      "click a truck dot → me.trucks.unit[n]"));
   const R = (k) => me(`${base}.${k}`);
   const state = R("state"), kind = R("kind"), working = R("working"), heavy = R("heavy");
   let ex = null; try { ex = me.explain(`${base}.working`); } catch (e) { /* shown as — */ }
   const m = ex?.meta || {}, inputs = ex?.derivation?.inputs || [];
   // live values sit in fixed-width slots (or end the line), so nothing after them moves when they change (CLS 0)
-  const em = (t, path, v, ch) => h(Box, { component: "span", sx: { color: MAP_INK.accent, ...(ch ? { display: "inline-block", width: `${ch}ch` } : {}) }, ...(path ? { "data-me-path": path, "data-me-value": String(v) } : {}) }, t);
-  const line = (k, v, title) => h(Box, { key: k, sx: TC_LINE }, h(Box, { component: "span", sx: { color: MAP_INK.disabled } }, k), h(Box, { component: "span", title, sx: ONE_LINE }, v));
-  const dim = (t) => h(Box, { component: "span", sx: { color: MAP_INK.disabled } }, t);
+  const em = (t, path, v, ch) => h(Box, { component: "span", sx: { color: OV.accent, ...(ch ? { display: "inline-block", width: `${ch}ch` } : {}) }, ...(path ? { "data-me-path": path, "data-me-value": String(v) } : {}) }, t);
+  const line = (k, v, title) => h(Box, { key: k, sx: TC_LINE }, h(Box, { component: "span", sx: { color: OV.disabled } }, k), h(Box, { component: "span", title, sx: ONE_LINE }, v));
+  const dim = (t) => h(Box, { component: "span", sx: { color: OV.disabled } }, t);
   const st = TRUCK_STATES[state];
   const step = (d) => pick.set({ n: ((n - 1 + d + FLEET) % FLEET) + 1 });
-  const btn = (label, title, onClick) => h(Button, { size: "small", title, "aria-label": title, onClick, ...ctl, sx: { minWidth: 20, height: 18, p: 0, fontFamily: MONO, fontSize: 11, color: MAP_INK.secondary } }, label);
-  return h(Box, { ...nodeAttrs(p), id: "truck-card", "data-state": "picked", "data-unit": n, role: "region", "aria-label": `Truck instance me.trucks.unit[${n}]`,
-    sx: { ...boxSx, width: 316, height: TC_H, p: "5px 7px", boxSizing: "border-box", overflow: "hidden", "@media (max-width:640px)": { left: 8, right: 8, top: 8, width: "auto" } } },
-    h(Box, { sx: { display: "flex", alignItems: "center", gap: .25, height: 20, mb: .25 } },
-      h(Box, { component: "span", sx: { ...ONE_LINE, flex: 1, minWidth: 0, color: MAP_INK.primary, fontSize: 10.5 } }, `me.trucks.unit[${n}]`),
-      btn("‹", "Previous truck instance", () => step(-1)), btn("›", "Next truck instance", () => step(1)), btn("×", "Close truck instance", () => pick.set({ n: null }))),
-    line("state", h(React.Fragment, null, em(fmt(state), `${base}.state`, state, 3), dim("adapter fact · "), st ?? "?"), `trucks.unit.${n}.state = ${state} (${st}); the adapter writes it on each transition`),
-    line("kind", h(React.Fragment, null, em(fmt(kind), `${base}.kind`, kind, 3), dim("fact · "), TRUCK_KIND[kind] ?? "?")),
-    line("working", h(React.Fragment, null, em(String(working), `${base}.working`, working, 6), dim("template state > 1"))),
-    line("heavy", h(React.Fragment, null, em(String(heavy), `${base}.heavy`, heavy, 6), dim("template kind == 1"))),
-    h(Box, { sx: { ...ONE_LINE, height: 18, lineHeight: "18px", mt: .5, pt: "2px", borderTop: 1, borderColor: MAP_INK.divider, color: MAP_INK.secondary } }, `me.explain("${base}.working")`),
-    line("expression", h(React.Fragment, null, ex?.expr ?? "—", dim(`  · trucks.unit["[i]"] template`)), ex?.expr),
-    line("inputs", inputs.length ? inputs.map((x, j) => h(React.Fragment, { key: j }, j ? " · " : "", `${x.path} = `, em(fmt(x.value)))) : "—", inputs.map((x) => `${x.path} = ${x.value}`).join(" · ")),
-    line("value", em(String(ex?.value))),
-    line("last wave", m.sourcePath ? h(React.Fragment, null, "write ", em(m.sourcePath), ` · k=${m.k}`) : "not recomputed yet (no state write since seed)", (m.recomputed || []).join(", ")),
-    h(Box, { sx: { ...TC_LINE, mt: .5, pt: "2px", height: 18, borderTop: 1, borderColor: MAP_INK.divider } }, h(Box, { component: "span", sx: { color: MAP_INK.disabled } }, "counted in"),
-      h(Box, { component: "span", sx: ONE_LINE, title: "Counter fact the adapter writes; the kernel does not count instances" }, dim("adapter-written "), h(Box, { component: "span", sx: { color: MAP_INK.primary } }, COUNTER_OF[st] ?? "—"))),
-    line("position", dim("adapter only (route, x/y, timers)")));
+  const btn = (label, title, onClick) => h(Button, { size: "small", title, "aria-label": title, onClick, ...ctl, sx: { minWidth: 20, height: 18, p: 0, fontFamily: MONO, fontSize: 11, color: OV.secondary } }, label);
+  return h(OSM.Overlay, { position: "top-left" },
+    h(Box, { ...nodeAttrs(p), id: "truck-card", "data-state": "picked", "data-unit": n, role: "region", "aria-label": `Truck instance me.trucks.unit[${n}]`,
+      sx: { ...boxSx, width: 316, maxWidth: "100%", height: TC_H, p: "5px 7px", boxSizing: "border-box", overflow: "hidden" } },
+      h(Box, { sx: { display: "flex", alignItems: "center", gap: .25, height: 20, mb: .25 } },
+        h(Box, { component: "span", sx: { ...ONE_LINE, flex: 1, minWidth: 0, color: OV.primary, fontSize: 10.5 } }, `me.trucks.unit[${n}]`),
+        btn("‹", "Previous truck instance", () => step(-1)), btn("›", "Next truck instance", () => step(1)), btn("×", "Close truck instance", () => pick.set({ n: null }))),
+      line("state", h(React.Fragment, null, em(fmt(state), `${base}.state`, state, 3), dim("adapter fact · "), st ?? "?"), `trucks.unit.${n}.state = ${state} (${st}); the adapter writes it on each transition`),
+      line("kind", h(React.Fragment, null, em(fmt(kind), `${base}.kind`, kind, 3), dim("fact · "), TRUCK_KIND[kind] ?? "?")),
+      line("working", h(React.Fragment, null, em(String(working), `${base}.working`, working, 6), dim("template state > 1"))),
+      line("heavy", h(React.Fragment, null, em(String(heavy), `${base}.heavy`, heavy, 6), dim("template kind == 1"))),
+      h(Box, { sx: { ...ONE_LINE, height: 18, lineHeight: "18px", mt: .5, pt: "2px", borderTop: 1, borderColor: OV.divider, color: OV.secondary } }, `me.explain("${base}.working")`),
+      line("expression", h(React.Fragment, null, ex?.expr ?? "—", dim(`  · trucks.unit["[i]"] template`)), ex?.expr),
+      line("inputs", inputs.length ? inputs.map((x, j) => h(React.Fragment, { key: j }, j ? " · " : "", `${x.path} = `, em(fmt(x.value)))) : "—", inputs.map((x) => `${x.path} = ${x.value}`).join(" · ")),
+      line("value", em(String(ex?.value))),
+      line("last wave", m.sourcePath ? h(React.Fragment, null, "write ", em(m.sourcePath), ` · k=${m.k}`) : "not recomputed yet (no state write since seed)", (m.recomputed || []).join(", ")),
+      h(Box, { sx: { ...TC_LINE, mt: .5, pt: "2px", height: 18, borderTop: 1, borderColor: OV.divider } }, h(Box, { component: "span", sx: { color: OV.disabled } }, "counted in"),
+        h(Box, { component: "span", sx: ONE_LINE, title: "Counter fact the adapter writes; the kernel does not count instances" }, dim("adapter-written "), h(Box, { component: "span", sx: { color: OV.primary } }, COUNTER_OF[st] ?? "—"))),
+      line("position", dim("adapter only (route, x/y, timers)"))));
 }
 
 function LmStrip(p) {   // per-unit strip (adapter view); band lines read from the kernel
@@ -669,45 +678,19 @@ function KernelWait(p) {   // aside placeholder before the kernel is loaded
 }
 
 // ── map overlays ──
-function LgRow(p) {
-  const { dot, label, children } = p;
-  return h(Box, { ...nodeAttrs(p), sx: { display: "flex", alignItems: "center", gap: .75 } },
-    h(Box, { component: "i", sx: { width: 7, height: 7, borderRadius: "50%", display: "inline-block", flexShrink: 0, ...dot } }), label,
-    h(Box, { component: "b", sx: { ml: "auto", color: MAP_INK.primary, fontWeight: 500 } }, children));
-}
 function OffMap(p) { useStore(sim); return h("span", { id: "lg-off", ...nodeAttrs(p) }, String(offMap)); }
-const LGH_SX = { fontSize: 8.5, letterSpacing: ".1em", textTransform: "uppercase", color: MAP_INK.disabled, mb: .25 };
 function SimClock(p) { useStore(sim); const { speed } = useStore(ui); return h("strong", { id: "hud-tick", ...nodeAttrs(p) }, `${T ? clock(T.simTime) : clock(0)} · ×${speed}`); }
-function HudChip(p) {   // strong: wrap the children in <strong> (with strongSx: a styled one); otherwise children as given
-  const { label, adapter, strong, strongSx, exprKey, minCh = 0, more } = p;
-  // more: the last child (a PortHudMore) sits after the reserved value span, so hiding it on a narrow map frees its width
-  const kids = React.Children.toArray(p.children), children = more ? kids.slice(0, -1) : p.children, tail = more ? kids[kids.length - 1] : null;
-  const { key: openKey } = useStore(hudX);
-  const open = !!exprKey && openKey === exprKey;
-  // Live values keep their widest width (as in Row): the HUD wraps from the bottom, so a chip growing by a digit
-  // could re-wrap it and move the rows above (e.g. on the narrower map while the inspector panel is open).
-  const ref = useReservedWidth(minCh);
-  const value = h(Box, { component: "span", ref, sx: { display: "inline-block" } }, !strong ? children : strongSx ? h(Box, { component: "strong", sx: strongSx }, children) : h("strong", null, children));
-  // the small ƒ is an inspector control: with the Semantic Inspector on, a click on the chip inspects it, a click on ƒ still opens the expression
-  const fx = exprKey ? h(Box, { component: "span", "data-gui-inspector-control": "true", "aria-hidden": true, sx: { ml: .6, px: "3px", border: 1, borderRadius: "2px", borderColor: open ? MAP_INK.accent : MAP_INK.divider, color: open ? MAP_INK.accent : MAP_INK.disabled, fontSize: 9, lineHeight: "11px", fontStyle: "italic" } }, "ƒ") : null;
-  const toggle = exprKey ? () => toggleHudExpr(exprKey) : undefined;
-  return h(Chip, { ...nodeAttrs(p), size: "small", variant: "outlined", label: h(React.Fragment, null, label, " ", value, tail, fx),
-    ...(exprKey ? { onClick: toggle, role: "button", tabIndex: 0, "aria-expanded": open, "aria-controls": "hud-expr", "aria-label": `${label}: show the .me expression`, title: open ? "Hide the .me expression" : "Show the .me expression behind this value",
-      onKeyDown: (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggle(); } else if (e.key === "Escape") hudX.set({ key: null }); } } : {}),
-    sx: (t) => ({ fontFamily: MONO, fontSize: 10, bgcolor: "rgba(11,13,16,0.88)", borderRadius: "3px", color: MAP_INK.secondary, borderStyle: adapter ? "dashed" : "solid", borderColor: open ? MAP_INK.accent : adapter ? MAP_INK.ember : MAP_INK.divider, "& strong": { color: MAP_INK.primary, fontWeight: 500 },
-      ...(exprKey ? { pointerEvents: "auto", cursor: "pointer", "&:hover": { borderColor: MAP_INK.accent } } : {}) }) });
-}
-// Compact extra text in a chip, shown only while the HUD is at least minHud px wide (it never re-wraps the HUD rows;
+// Compact extra text in a chip, shown only while the map is at least minMap px wide (it never re-wraps the chip rows;
 // below that width the same facts are in the chip's popover). Measured before paint, and again when the map resizes.
 function HudMore(p) {
-  const { minHud = 0, children } = p;
+  const { minMap = 0, children } = p;
   const ref = React.useRef(null);
   const [show, setShow] = React.useState(false);
   React.useLayoutEffect(() => {
-    const hudEl = ref.current?.closest("#hud"); if (!hudEl) return undefined;
-    const fit = () => setShow(hudEl.clientWidth >= minHud);
-    fit(); const ro = new ResizeObserver(fit); ro.observe(hudEl); return () => ro.disconnect();
-  }, [minHud]);
+    const mapEl = ref.current?.closest(".gui-osm"); if (!mapEl) return undefined;
+    const fit = () => setShow(mapEl.clientWidth >= minMap);
+    fit(); const ro = new ResizeObserver(fit); ro.observe(mapEl); return () => ro.disconnect();
+  }, [minMap]);
   return h(Box, { component: "span", ref, ...nodeAttrs(p), "data-shown": show ? "1" : "0", sx: { display: show ? "inline" : "none" } }, children);
 }
 // Remaining import per ship and product, read from the kernel: ships[i].cargo, remaining + unit (facts), remainingTons (rule)
@@ -716,8 +699,8 @@ function ImportCargo() {
   useWave("flows.importRemaining");
   const items = SHIPS.map(({ i }) => { const r = (f) => me(`ships.${i}.${f}`), unit = r("unit"); return `${r("cargo")} ${fmt(r("remaining"))} ${unit}${unit !== "t" ? ` (${fmt(r("remainingTons"))} t)` : ""}`; });
   return h(Box, { sx: { mb: .5 } },
-    h(Box, { id: "hud-import-cargo", sx: { color: MAP_INK.primary } }, items.join(" · ")),
-    h(Box, { sx: { color: MAP_INK.disabled } }, "by product: ships[i].cargo, ships[i].remaining + ships[i].unit (facts), ships[i].remainingTons (rule)"));
+    h(Box, { id: "hud-import-cargo", sx: { color: OV.primary } }, items.join(" · ")),
+    h(Box, { sx: { color: OV.disabled } }, "by product: ships[i].cargo, ships[i].remaining + ships[i].unit (facts), ships[i].remainingTons (rule)"));
 }
 // ── HUD expression popover: what produced each chip's value (kernel explain() or the adapter's constants) ──
 const hudX = createStore({ key: null });
@@ -741,8 +724,8 @@ function ExprPath({ path }) {   // one kernel path: rule (expression + inputs fr
   useWave(path);
   const { me } = G.useMe();
   let ex = null; try { ex = me.explain(path); } catch (e) { /* — */ }
-  const em = (t) => h(Box, { component: "span", sx: { color: MAP_INK.accent } }, t);
-  const dim = (t) => h(Box, { component: "span", sx: { color: MAP_INK.disabled } }, t);
+  const em = (t) => h(Box, { component: "span", sx: { color: OV.accent } }, t);
+  const dim = (t) => h(Box, { component: "span", sx: { color: OV.disabled } }, t);
   const val = (v) => (v === undefined ? "undefined" : typeof v === "string" ? `"${v}"` : fmt(v));
   if (!ex?.expr) return h(Box, { sx: { mb: .5 } }, h("code", null, path), " = ", em(val(me(path))), "  ", dim(factWriter(path)));
   const m = ex.meta || {};
@@ -759,26 +742,80 @@ function HudExpr(p) {
   useStore(sim);
   React.useEffect(() => { if (!key) return undefined; const esc = (e) => { if (e.key === "Escape") hudX.set({ key: null }); }; window.addEventListener("keydown", esc); return () => window.removeEventListener("keydown", esc); }, [key]);
   const d = key && HUD_EXPR[key];
-  // fixed max size, but never taller than the map space above the HUD (narrow screens: the HUD sits high)
-  const ref = React.useRef(null);
-  React.useLayoutEffect(() => {
-    const el = ref.current; if (!el || !d) return undefined;
-    const fit = () => { const hudEl = el.closest("#hud"); el.style.maxHeight = Math.max(80, Math.min(210, (hudEl?.offsetTop || 220) - 14)) + "px"; };
-    fit(); window.addEventListener("resize", fit); return () => window.removeEventListener("resize", fit);
-  }, [key]);
-  if (!d) return h(Box, { ...nodeAttrs(p), id: "hud-expr", "data-open": "0", sx: { display: "none" } });
-  return h(Box, { ...nodeAttrs(p), ref, id: "hud-expr", "data-open": "1", "data-key": key, role: "region", "aria-label": `${d.title}: .me expression`,
-    sx: (t) => ({ position: "absolute", left: 0, bottom: "calc(100% + 6px)", width: "min(480px, 100%)", maxHeight: 210, overflowY: "auto", overscrollBehavior: "contain", boxSizing: "border-box", pointerEvents: "auto", zIndex: 3,
-      p: "6px 8px", bgcolor: "rgba(11,13,16,0.97)", border: 1, borderStyle: d.adapter ? "dashed" : "solid", borderColor: d.adapter ? MAP_INK.ember : MAP_INK.accent, borderRadius: "3px",
-      fontFamily: MONO, fontSize: 9.5, lineHeight: 1.5, color: MAP_INK.secondary, "& code": { fontFamily: MONO, color: MAP_INK.primary, wordBreak: "break-word" } }) },
-    h(Box, { sx: { display: "flex", alignItems: "center", gap: .75, mb: .5, position: "sticky", top: -6, bgcolor: "rgba(11,13,16,0.97)" } },
-      h(Box, { component: "span", sx: { color: MAP_INK.primary } }, d.title),
-      d.badge === null ? null : h(Box, { component: "span", sx: { fontSize: 8, letterSpacing: ".08em", textTransform: "uppercase", px: "4px", border: 1, borderRadius: "2px", color: MAP_INK.accent } }, d.badge || "kernel"),
-      h(Button, { size: "small", "data-gui-inspector-control": "true", "aria-label": "Close the expression", onClick: () => hudX.set({ key: null }), sx: { ml: "auto", minWidth: 20, height: 18, p: 0, fontFamily: MONO, fontSize: 11, color: MAP_INK.secondary } }, "×")),
+  // One popover, docked by the map as a full-width row above the chips (same bottom dock), fixed max size with
+  // internal scroll, so opening it never moves anything else on the map.
+  if (!d) return null;
+  return h(OSM.Overlay, { position: "bottom", style: { flexBasis: "100%", order: -1 } }, h(Box, { ...nodeAttrs(p), id: "hud-expr", "data-open": "1", "data-key": key, role: "region", "aria-label": `${d.title}: .me expression`,
+    sx: { width: "min(480px, 100%)", maxHeight: 210, overflowY: "auto", overscrollBehavior: "contain", boxSizing: "border-box",
+      p: "6px 8px", bgcolor: OV.bg, backdropFilter: "blur(2px)", border: 1, borderStyle: d.adapter ? "dashed" : "solid", borderColor: d.adapter ? OV.ember : OV.accent, borderRadius: "4px",
+      fontFamily: MONO, fontSize: 9.5, lineHeight: 1.5, color: OV.secondary, "& code": { fontFamily: MONO, color: OV.primary, wordBreak: "break-word" } } },
+    h(Box, { sx: { display: "flex", alignItems: "center", gap: .75, mb: .5, position: "sticky", top: -6, bgcolor: OV.bg } },
+      h(Box, { component: "span", sx: { color: OV.primary } }, d.title),
+      d.badge === null ? null : h(Box, { component: "span", sx: { fontSize: 8, letterSpacing: ".08em", textTransform: "uppercase", px: "4px", border: 1, borderRadius: "2px", color: OV.accent } }, d.badge || "kernel"),
+      h(Button, { size: "small", "data-gui-inspector-control": "true", "aria-label": "Close the expression", onClick: () => hudX.set({ key: null }), sx: { ml: "auto", minWidth: 20, height: 18, p: 0, fontFamily: MONO, fontSize: 11, color: OV.secondary } }, "×")),
     d.extra ? h(d.extra, { key: "extra" }) : null,
     ...(d.paths || []).map((path) => h(ExprPath, { key: path, path })),
-    ...(d.notes ? d.notes() : []).map((n, i) => h(Box, { key: `n${i}`, sx: { color: MAP_INK.disabled, mt: .25 } }, n)),
-    d.source ? h(Box, { key: "src", sx: { mt: .25 } }, h(Link, { href: d.source, target: "_blank", rel: "noopener", "data-gui-inspector-control": "true", sx: { fontFamily: MONO, fontSize: 9.5, color: MAP_INK.accent } }, "source: port-traffic.js")) : null);
+    ...(d.notes ? d.notes() : []).map((n, i) => h(Box, { key: `n${i}`, sx: { color: OV.disabled, mt: .25 } }, n)),
+    d.source ? h(Box, { key: "src", sx: { mt: .25 } }, h(Link, { href: d.source, target: "_blank", rel: "noopener", "data-gui-inspector-control": "true", sx: { fontFamily: MONO, fontSize: 9.5, color: OV.accent } }, "source: port-traffic.js")) : null));
+}
+// One kernel readout that is not its own spec node (legend rows, chip values): subscribed through the page's runtime
+// (G.useMeValue re-reads me(path) whenever the bridge announces the path) and tagged for __port.consistency().
+function MeVal({ path, f = fmt, suffix = "", ch, strong }) {
+  const v = G.useMeValue(path);
+  const el = h("span", { "data-me-path": path, "data-me-value": String(v), style: ch ? { display: "inline-block", minWidth: `${ch}ch`, textAlign: "right" } : undefined }, f(v) + suffix);
+  return strong ? h("strong", null, el) : el;
+}
+const MV = (path, o) => h(MeVal, { path, ...o });
+function MeSum({ paths }) {   // display-side sum of two kernel reads (legend only; the paths panel says so)
+  const a = G.useMeValue(paths[0]), b = G.useMeValue(paths[1]);
+  return fmt((Number(a) || 0) + (Number(b) || 0));
+}
+const JOIN = (...xs) => h(React.Fragment, null, ...xs.flatMap((x, i) => (i ? [" · ", x] : [x])));
+
+// Legend: GUI.OpenStreetMap.Legend (themed, docked top-right, passive so clicks reach the map). Swatch tones are the
+// same theme tones the canvas uses for the truck dots (drawTrucks), so the legend always matches the map.
+const LEGEND_ITEMS = [
+  { heading: `heavy · ${HEAVY}` },
+  { label: "import, laden", tone: "ship", value: MV("trucks.import.enRoute") },
+  { label: "export, laden", tone: "train", value: MV("trucks.export.enRoute") },
+  { label: "load / unload", tone: "yard", value: h(MeSum, { paths: ["trucks.import.loading", "trucks.export.loading"] }) },
+  { label: "queued", tone: "secondary", value: MV("trucks.inQueue") },
+  { label: "returning", tone: "neutral", value: h(MeSum, { paths: ["trucks.import.returning", "trucks.export.returning"] }) },
+  { label: "pool", tone: "neutral", swatch: "ring", value: MV("trucks.heavy.available") },
+  { heading: `last-mile · ${LAST_MILE}` },
+  { label: "out · back", tone: "error", swatch: { size: 5 }, value: JOIN(MV("trucks.lastMile.enRoute"), MV("trucks.lastMile.returning")) },
+  { label: "load · idle", tone: "error", swatch: { shape: "ring", size: 6 }, value: JOIN(MV("trucks.lastMile.loading"), MV("trucks.lastMile.available")) },
+  { label: "band ↑ · ↓", tone: "warning", swatch: "ring", value: JOIN(MV("lastMile.unitsAbove"), MV("lastMile.unitsBelow")) },
+  { label: "trips ○ · ✓ · ✗", tone: "warning", swatch: { shape: "square", size: 5 }, value: JOIN(MV("trips.pending"), MV("trips.done"), MV("trips.unscheduled")) },
+];
+function PortLegend(p) {
+  return h(OSM.Legend, { "data-gui-node-id": p["data-gui-node-id"], id: "legend", mono: true, width: 200, items: LEGEND_ITEMS,
+    footer: h(React.Fragment, null, "kernel counts · ", h(OffMap, {}), " off-map (adapter)") });
+}
+
+// HUD: GUI.OpenStreetMap.Chip × 8 in the map's bottom dock (they wrap above the OSM attribution, never under it).
+// Each chip with ƒ opens its .me expression in ONE docked popover (HudExpr) above the chips; the expressions are
+// read from the kernel (explain()) and from the adapter's own constants, never typed by hand. The simulation clock is
+// the adapter's (not a kernel path): dashed adapter chip.
+const IMPORT_CH = fmt(SHIPS.reduce((a, x) => a + x.total * x.tonsPerUnit, 0)).length + 2;   // "128,000 t"
+const KMH = (v) => (typeof v === "number" ? v.toFixed(1) : "—");   // — while undefined (0 moving)
+function PortHud(p) {
+  const { key } = useStore(hudX);
+  const s = p["data-gui-node-id"] || "hud";
+  const chip = (k, label, props, value, more) => h(OSM.Chip, { key: k, "data-gui-node-id": `${s}/${k}`, mono: true, label, value, fx: true, active: key === k,
+    onClick: () => toggleHudExpr(k), "aria-controls": "hud-expr", title: key === k ? "Hide the .me expression" : "Show the .me expression behind this value", ...props }, more);
+  return h(React.Fragment, null,
+    h(HudExpr, { "data-gui-node-id": `${s}/expr` }),
+    chip("import", "import left", { tone: "ship", minValueCh: IMPORT_CH }, MV("flows.importRemaining", { suffix: " t" }),
+      h(HudMore, { minMap: 944 }, ...SHIPS.flatMap(({ i, total }) => [" · ", MV(`ships.${i}.cargo`, { f: S }), " ", MV(`ships.${i}.remaining`, { ch: fmt(total).length, strong: true }), " ", MV(`ships.${i}.unit`, { f: S })]))),
+    chip("export", "export left", { tone: "train", minValueCh: fmt(TRAIN.total).length + 2 }, MV("flows.exportRemaining", { suffix: " t" }),
+      h(HudMore, { minMap: 624 }, " · ", MV("train.1.cargo", { f: S }))),
+    chip("working", "trucks.working", { minValueCh: 9 }, h(React.Fragment, null, MV("trucks.working", { ch: 3 }), " / ", MV("trucks.fleet"))),
+    chip("balanced", "trucks.balanced", {}, MV("trucks.balanced", { f: S })),
+    chip("speed-all", "avg km/h, moving trucks · all", { minValueCh: 4 }, MV("trucks.speed.avg", { f: KMH })),
+    chip("speed-heavy", "heavy", { minValueCh: 4 }, MV("trucks.speed.heavy.avg", { f: KMH })),
+    chip("speed-lastMile", "last-mile", { minValueCh: 4 }, MV("trucks.speed.lastMile.avg", { f: KMH })),
+    chip("sim", "simulation", { variant: "adapter" }, h(SimClock, {})));
 }
 const SvgGroup = (p) => { const { children, "data-gui-component": _c, ...rest } = p; return h("g", rest, children); };
 
@@ -786,9 +823,9 @@ const SvgGroup = (p) => { const { children, "data-gui-component": _c, ...rest } 
 const pageType = (type, C) => ({ type, resolve: (spec) => { const { key: _k, ...p } = spec.props || {}; return h(C, p); } });
 const PAGE_TYPES = Object.fromEntries([
   ["PortValue", ValView], ["PortSum", SumView], ["PortBar", BarView], ["PortRow", Row], ["PortFormula", Formula], ["PortPanel", Panel], ["PortSectionHeader", SectionHeader], ["PortSectionToggle", SectionToggle], ["PortSectionBody", SectionBody],
-  ["PortLegendRow", LgRow], ["PortHudChip", HudChip], ["PortHudMore", HudMore], ["PortSvgGroup", SvgGroup],
+  ["PortLegend", PortLegend], ["PortHud", PortHud], ["PortMarker", PortMarker], ["PortSvgGroup", SvgGroup],
   ["PortTour", TourStrip], ["PortKernelStrip", KernelStrip], ["PortBrandLogo", BrandLogo], ["PortBrandActions", BrandActions], ["PortKernelLink", KernelLink], ["PortRunControls", RunControls], ["PortStats", Stats], ["PortWrites", Writes],
-  ["PortExplain", ExplainLeaf], ["PortClassExplain", ClassExplain], ["PortHudExpr", HudExpr], ["PortGuiBuild", GuiBuildInfo], ["PortTruckCard", TruckCard], ["PortLmStrip", LmStrip], ["PortLmEstimate", LmEstimate], ["PortLmFeed", LmFeed], ["PortSeed", SeedCode],
+  ["PortExplain", ExplainLeaf], ["PortClassExplain", ClassExplain], ["PortGuiBuild", GuiBuildInfo], ["PortTruckCard", TruckCard], ["PortLmStrip", LmStrip], ["PortLmEstimate", LmEstimate], ["PortLmFeed", LmFeed], ["PortSeed", SeedCode],
   ["PortVerifyOut", VerifyOut], ["PortKernelWait", KernelWait], ["PortOffMap", OffMap], ["PortSimClock", SimClock],
 ].map(([t, C]) => [t, pageType(t, C)]).concat([
   // GUI's registered Link resolver drops target / rel / title / data-gui-node-id, so links use GUI.Atoms.Link as is
@@ -980,48 +1017,6 @@ const pathsPanel = (s = "panel-paths") => PANEL(s, "Map numbers → kernel paths
 const mutatePanel = (s = "panel-mutate") => PANEL(s, "Mutate · live traffic", [["kernel", "kernel writes"]], [N("PortStats", `${s}/stats`), N("PortWrites", `${s}/writes`)]);
 const explainPanel = (s = "panel-explain") => PANEL(s, "Explain · why", [["kernel", "me.explain()"]], [N("PortExplain", `${s}/explain`)]);
 
-function legend(s = "legend") {
-  const LR = (label, dot, children) => N("PortLegendRow", `${s}/${label}`, { label, dot }, children);
-  return N("Paper", s, { id: "legend", variant: "outlined", sx: { position: "absolute", top: 10, right: 12, pointerEvents: "none", fontFamily: MONO, fontSize: 9.5, bgcolor: "rgba(11,13,16,0.86)", borderColor: MAP_INK.divider, borderRadius: "3px", p: "5px 7px", color: MAP_INK.secondary, lineHeight: 1.5, width: 200 } }, [
-    N("Box", `${s}/heavy`, { sx: LGH_SX }, "heavy · 400"),
-    LR("import, laden", { bgcolor: "#7eb8c9" }, V(s, "trucks.import.enRoute")),
-    LR("export, laden", { bgcolor: "#c9b87e" }, V(s, "trucks.export.enRoute")),
-    LR("load / unload", { bgcolor: "#7ec99a" }, SUM(s, ["trucks.import.loading", "trucks.export.loading"])),
-    LR("queued", { bgcolor: "#b39ddb" }, V(s, "trucks.inQueue")),
-    LR("returning", { bgcolor: "#5f6b78" }, SUM(s, ["trucks.import.returning", "trucks.export.returning"])),
-    LR("pool", { bgcolor: "#3a424e", border: "1px solid #6a7380" }, V(s, "trucks.heavy.available")),
-    N("Box", `${s}/last-mile`, { sx: { ...LGH_SX, mt: .4 } }, "last-mile · 100"),
-    LR("out · back", { bgcolor: "#e58fc0", width: 5, height: 5 }, J(V(s, "trucks.lastMile.enRoute"), V(s, "trucks.lastMile.returning"))),
-    LR("load · idle", { bgcolor: "#6a4a5e", width: 5, height: 5 }, J(V(s, "trucks.lastMile.loading"), V(s, "trucks.lastMile.available"))),
-    LR("band ↑ · ↓", { border: "1px solid #e0a050", boxShadow: "4px 0 0 -2px #5ec8e0" }, J(V(s, "lastMile.unitsAbove"), V(s, "lastMile.unitsBelow"))),
-    LR("trips ○ · ✓ · ✗", { bgcolor: "#f4e6b8", borderRadius: 0, width: 4, height: 4 }, J(V(s, "trips.pending"), V(s, "trips.done"), V(s, "trips.unscheduled"))),
-    N("Box", `${s}/foot`, { sx: { borderTop: 1, borderColor: MAP_INK.divider, mt: .5, pt: .4, fontSize: 9, color: MAP_INK.disabled } }, ["kernel counts · ", N("PortOffMap", `${s}/off-map`), " off-map (adapter)"]),
-  ]);
-}
-// HUD sits 24 px up so the map's OSM attribution strip (bottom-right, 17 px) never sits under a chip.
-// Each chip opens its .me expression (click; click again to close) in ONE popover above the HUD (absolute, fixed
-// max size, internal scroll), so nothing in the map moves. The expressions are read from the kernel (explain())
-// and from the adapter's own constants, never typed by hand.
-const IMPORT_CH = fmt(SHIPS.reduce((a, x) => a + x.total * x.tonsPerUnit, 0)).length + 2;   // "128,000 t"
-function hud(s = "hud") {
-  const CHIP = (key, label, props, children) => N("PortHudChip", `${s}/${key}`, { label, exprKey: key, ...props }, children);
-  const KMH = { f: (v) => (typeof v === "number" ? v.toFixed(1) : "—") };   // — while undefined (0 moving)
-  return N("Box", s, { id: "hud", sx: { position: "absolute", left: 12, bottom: 24, right: 12, display: "flex", flexWrap: "wrap", gap: 1, pointerEvents: "none" } }, [
-    // totals in fixed slots (they only shrink); the per-product text follows (labels are the kernel facts ships[i].cargo / unit, train[1].cargo)
-    CHIP("import", "import left", { strong: true, strongSx: { color: "#7eb8c9 !important" }, more: true }, [V(s, "flows.importRemaining", { suffix: " t", ch: IMPORT_CH }),
-      N("PortHudMore", `${s}/import-cargo`, { minHud: 920 }, SHIPS.flatMap(({ i, total }) => [" · ", V(s, `ships.${i}.cargo`, { f: S }), " ", V(s, `ships.${i}.remaining`, { ch: fmt(total).length, wrap: "strong" }), " ", V(s, `ships.${i}.unit`, { f: S })]))]),
-    CHIP("export", "export left", { strong: true, strongSx: { color: "#c9b87e !important" }, more: true }, [V(s, "flows.exportRemaining", { suffix: " t", ch: fmt(TRAIN.total).length + 2 }),
-      N("PortHudMore", `${s}/export-cargo`, { minHud: 600 }, [" · ", V(s, "train.1.cargo", { f: S })])]),
-    CHIP("working", "trucks.working", { strong: true }, [N("Box", `${s}/working-slot`, { component: "span", sx: { display: "inline-block", minWidth: "3ch", textAlign: "right" } }, V(s, "trucks.working")), " / ", V(s, "trucks.fleet")]),
-    CHIP("balanced", "trucks.balanced", { strong: true }, V(s, "trucks.balanced", { f: S })),
-    CHIP("speed-all", "avg km/h, moving trucks · all", { strong: true, minCh: 4 }, V(s, "trucks.speed.avg", KMH)),
-    CHIP("speed-heavy", "heavy", { strong: true, minCh: 4 }, V(s, "trucks.speed.heavy.avg", KMH)),
-    CHIP("speed-lastMile", "last-mile", { strong: true, minCh: 4 }, V(s, "trucks.speed.lastMile.avg", KMH)),
-    CHIP("sim", "simulation", { adapter: true }, N("PortSimClock", `${s}/sim-clock`)),
-    N("PortHudExpr", `${s}/expr`),
-  ]);
-}
-
 // ── map: GUI.OpenStreetMap over the EXISTING build_basemap.py output (GUI presents; this adapter only reads it) ──
 const OSM = G.OpenStreetMap;
 const FRAME = { bbox: { south: PROJ.south, west: PROJ.west, north: PROJ.north, east: PROJ.east }, width: PROJ.W, height: PROJ.H, pad: PROJ.PAD };
@@ -1068,55 +1063,90 @@ function exitLabelData() {
 }
 const EXIT_LABELS = exitLabelData();
 
-// node meta lines: GUI subscriptions to kernel paths (re-read when the bridge announces those paths)
-function ShipMeta({ s }) { const work = G.useMeValue(`ships.${s.i}.hasWork`), rem = G.useMeValue(`ships.${s.i}.remaining`); return `${work ? "unloading" : "done"} · ${fmt(rem)} ${s.unit}`; }
-function TrainMeta() { const work = G.useMeValue("train.1.hasWork"), rem = G.useMeValue("train.1.remainingToLoad"); return `${work ? "loading" : "done"} · ${fmt(rem)} t`; }
-function QueueMeta({ q }) { const n = G.useMeValue(`queues.${q}.length`), busy = G.useMeValue(`queues.${q}.busy`); return `${n} queued${busy ? "" : " · idle"}`; }
-function YardMeta() { useStore(sim); const heavy = G.useMeValue("trucks.heavy.available"); return `pool: ${fmt(heavy)} heavy · ${T ? T.units.filter((u) => u.home === 0 && u.st === "lmPool").length : 0} small (adapter)`; }
-function PortMeta() { const busy = G.useMeValue("port.busy"); return busy ? "port.busy = true" : "port.busy = false"; }
-// node positions are the page's existing map pixels, converted to lat/lon with the map's own projection.
+// Node meta lines: GUI subscriptions to kernel paths (re-read when the bridge announces those paths). Plain strings, so
+// the map can measure each label, put it in the pin's accessible name and list it in the MarkerList.
+const useShipMeta = ({ s }) => { const work = G.useMeValue(`ships.${s.i}.hasWork`), rem = G.useMeValue(`ships.${s.i}.remaining`); return `${work ? "unloading" : "done"} · ${fmt(rem)} ${s.unit}`; };
+const useTrainMeta = () => { const work = G.useMeValue("train.1.hasWork"), rem = G.useMeValue("train.1.remainingToLoad"); return `${work ? "loading" : "done"} · ${fmt(rem)} t`; };
+const useQueueMeta = ({ q }) => { const n = G.useMeValue(`queues.${q}.length`), busy = G.useMeValue(`queues.${q}.busy`); return `${n} queued${busy ? "" : " · idle"}`; };
+const useYardMeta = () => { useStore(sim); const heavy = G.useMeValue("trucks.heavy.available"); return `pool: ${fmt(heavy)} heavy · ${T ? T.units.filter((u) => u.home === 0 && u.st === "lmPool").length : 0} small (adapter)`; };
+const usePortMeta = () => (G.useMeValue("port.busy") ? "port.busy = true" : "port.busy = false");
+// Node positions are the page's existing map pixels, converted to lat/lon with the map's own projection.
 // `path` = the derived kernel path each marker carries as provenance.semanticPath (Explain in the inspector).
+// `work` = the kernel flag behind the busy / done marker state. Colours are theme tones (port, ship, train, queue, yard).
 const NODES = [
-  { id: "n-port", kind: "port", path: "port.busy", x: 600.0, y: 255.4, shape: "circle", size: 28, gap: 7, icon: "anchor", color: "#7eb8c9", label: "VERACRUZ", Meta: PortMeta },
-  ...SHIPS_META.map((s, i) => ({ id: `n-ship${s.i}`, kind: "ship", path: `ships.${s.i}.hasWork`, x: [801.6, 888.0, 945.6][i], y: [168.6, 284.3, 382.6][i], shape: "rect", w: 32, hh: 18, gap: 5, icon: "directions_boat", color: "#6a9bb0", label: `SHIP[${s.i}] ${["coffee", "sugar", "TEU"][i]}`, Meta: ShipMeta, mp: { s } })),
-  { id: "n-train", kind: "train", path: "train.1.hasWork", x: 340.8, y: 342.2, shape: "rect", w: 36, hh: 16, gap: 5, place: "left", icon: "train", color: "#b0a06a", label: "TRAIN[1]", Meta: TrainMeta },
-  { id: "n-qimp", kind: "queue", path: "queues.import.busy", x: 686.4, y: 313.2, shape: "circle", size: 24, gap: 4, icon: "local_shipping", color: "#7a7a90", label: "Q.IMPORT", Meta: QueueMeta, mp: { q: "import" } },
-  { id: "n-qexp", kind: "queue", path: "queues.export.busy", x: 484.8, y: 284.3, shape: "circle", size: 24, gap: 4, place: "left", icon: "local_shipping", color: "#7a7a90", label: "Q.EXPORT", Meta: QueueMeta, mp: { q: "export" } },
-  { id: "n-yard", kind: "yard", path: "cargo.bulkTons", x: 513.6, y: 457.8, shape: "square", size: 28, gap: 7, icon: "warehouse", color: "#7a9a7a", label: "CARGO YARD · CEDIS A", Meta: YardMeta },
-  { id: "n-cedisb", kind: "yard", path: "trips.pending", x: 220.7, y: 529.8, shape: "square", size: 18, gap: 5, icon: "inventory_2", color: "#7a9a7a", label: "CEDIS B", meta: "example site" },
+  { id: "n-port", kind: "port", tone: "port", path: "port.busy", x: 600.0, y: 255.4, shape: "circle", size: 28, gap: 7, icon: "anchor", label: "VERACRUZ", useMeta: usePortMeta },
+  ...SHIPS_META.map((s, i) => ({ id: `n-ship${s.i}`, kind: "ship", tone: "ship", path: `ships.${s.i}.hasWork`, work: `ships.${s.i}.hasWork`, x: [801.6, 888.0, 945.6][i], y: [168.6, 284.3, 382.6][i], shape: "rect", w: 32, hh: 18, gap: 5, icon: "directions_boat", label: `SHIP[${s.i}] ${["coffee", "sugar", "TEU"][i]}`, useMeta: useShipMeta, mp: { s } })),
+  { id: "n-train", kind: "train", tone: "train", path: "train.1.hasWork", work: "train.1.hasWork", x: 340.8, y: 342.2, shape: "rect", w: 36, hh: 16, gap: 5, place: "left", icon: "train", label: "TRAIN[1]", useMeta: useTrainMeta },
+  { id: "n-qimp", kind: "queue", tone: "queue", path: "queues.import.busy", x: 686.4, y: 313.2, shape: "circle", size: 24, gap: 4, icon: "local_shipping", label: "Q.IMPORT", useMeta: useQueueMeta, mp: { q: "import" } },
+  { id: "n-qexp", kind: "queue", tone: "queue", path: "queues.export.busy", x: 484.8, y: 284.3, shape: "circle", size: 24, gap: 4, place: "left", icon: "local_shipping", label: "Q.EXPORT", useMeta: useQueueMeta, mp: { q: "export" } },
+  { id: "n-yard", kind: "yard", tone: "yard", path: "cargo.bulkTons", x: 513.6, y: 457.8, shape: "square", size: 28, gap: 7, icon: "warehouse", label: "CARGO YARD · CEDIS A", useMeta: useYardMeta },
+  { id: "n-cedisb", kind: "yard", tone: "yard", path: "trips.pending", x: 220.7, y: 529.8, shape: "square", size: 18, gap: 5, icon: "inventory_2", label: "CEDIS B", meta: "example site" },
 ].map((n) => ({ ...n, ...OSM_PROJ.unproject(n.x, n.y) }));
-const markerSpec = (n, live) => N("OpenStreetMapMarker", `map.${n.id}`, { id: n.id, className: `node ${n.kind}`, lat: n.lat, lon: n.lon, shape: n.shape, size: n.size, width: n.w, height: n.hh,
-  color: n.color, icon: n.icon, iconColor: n.color, label: n.label, labelPlacement: n.place || "right", labelOffset: n.gap,
-  meta: n.Meta ? (live ? h(n.Meta, n.mp || {}) : "—") : n.meta }, undefined, { semanticPath: n.path });
+const NODE_BY_ID = Object.fromEntries(NODES.map((n) => [n.id, n]));
+// Default pin selection (page state, not kernel): the port, the ships with cargo at the start of the scenario (all
+// three ships in port-sim.js), and the cargo yard. The rest are dots until picked on the map or in the pin list.
+const DEFAULT_SELECTED = ["n-port", ...SHIPS.filter((x) => x.total > 0).map((x) => `n-ship${x.i}`), "n-yard"];
+const markerProps = (n) => ({ id: n.id, className: `node ${n.kind}`, lat: n.lat, lon: n.lon, shape: n.shape, size: n.size, width: n.w, height: n.hh,
+  tone: n.tone, icon: n.icon, label: n.label, labelPlacement: n.place || "right", labelOffset: n.gap });
+// Boot (no kernel yet): plain markers. Live: PortMarker, a page type that reads the node's meta + work flag from the kernel
+// and the tour step, and renders GUI.OpenStreetMap.Marker with a theme `state`:
+//   in the current tour step: busy / done from the kernel flag, else highlight;   not in the step: dimmed.
+const markerSpec = (n, live) => live
+  ? N("PortMarker", `map.${n.id}`, { nodeId: n.id }, undefined, { semanticPath: n.path })
+  : N("OpenStreetMapMarker", `map.${n.id}`, { ...markerProps(n), meta: n.meta || "—" }, undefined, { semanticPath: n.path });
+const NO_META = () => undefined, NO_WORK = () => undefined;
+function PortMarker(p) {
+  const n = NODE_BY_ID[p.nodeId];
+  const { step } = useStore(ui);
+  const meta = (n.useMeta || NO_META)(n.mp || {}) ?? n.meta;
+  const work = n.work ? G.useMeValue(n.work) : NO_WORK();
+  const inStep = TOUR[step].hlNodes.includes(n.id);
+  const state = !inStep ? "dimmed" : work === true ? "busy" : work === false ? "done" : "highlight";
+  return h(OSM.Marker, { ...markerProps(n), meta, state, "data-gui-node-id": p["data-gui-node-id"] });
+}
 let mapMounted = false;
+const isOverlayTarget = (t) => !!t?.closest?.(".gui-osm-marker, .gui-osm-legend, .gui-osm-chip, .gui-osm-pins, .gui-osm-controls, .gui-osm-overlay, .gui-osm__attribution");
 function MapLifecycle() {   // no element: marks the map as mounted for the adapter's DOM highlights
-  React.useEffect(() => { mapMounted = true; lastHlStep = 0; applyMapHighlights(); renderMapLabels(); return () => { mapMounted = false; }; }, []);
+  React.useEffect(() => { mapMounted = true; lastHlStep = 0; applyMapHighlights(); return () => { mapMounted = false; }; }, []);
   // truck pick: a click / tap on the map is hit-tested against the drawn dots (adapter). pointerdown/up, not
-  // click, so it also works while the .GUI inspector (which captures clicks) is on.
+  // click, so it also works while the .GUI inspector (which captures clicks) is on. Clicks on pins and on the
+  // map's overlays (legend, chips, pin list, controls, truck card) are theirs, not a truck pick.
   React.useEffect(() => {
     const root = document.querySelector('[data-gui-node-id="map"]'); if (!root) return undefined;
     let down = null;
-    const pd = (e) => { down = e.isPrimary ? [e.clientX, e.clientY] : null; };
+    const pd = (e) => { down = e.isPrimary && !isOverlayTarget(e.target) ? [e.clientX, e.clientY] : null; };
     const pu = (e) => {
       if (!down || Math.hypot(e.clientX - down[0], e.clientY - down[1]) > 6) return;
       down = null;
       const n = truckAt(e.clientX, e.clientY, mapSvg(root), e.pointerType === "touch" ? 14 : 9);
       if (n) pick.set({ n });
     };
-    const pm = (e) => { if (e.pointerType === "mouse") root.style.cursor = truckAt(e.clientX, e.clientY, mapSvg(root)) ? "pointer" : ""; };
+    const pm = (e) => { if (e.pointerType === "mouse") root.style.cursor = !isOverlayTarget(e.target) && truckAt(e.clientX, e.clientY, mapSvg(root)) ? "pointer" : ""; };
     root.addEventListener("pointerdown", pd); root.addEventListener("pointerup", pu); root.addEventListener("pointermove", pm);
     return () => { root.removeEventListener("pointerdown", pd); root.removeEventListener("pointerup", pu); root.removeEventListener("pointermove", pm); };
   }, []);
   return null;
 }
+// The map: theme basemap (by layer kind), markerScale "screen" (pins keep their CSS size while zooming), cooperative
+// wheel (the component default: Ctrl/⌘ + wheel or a focused map zooms; otherwise the page scrolls), pin selection with
+// edge pins, and the map's own overlays: Legend (top-right), HUD chips (bottom), pin list + truck card (top-left),
+// Controls with the layer toggle (right). Flow edges and exit labels stay page SVG drawn in the map's theme variables.
 function mapSpec(live) {
-  return N("OpenStreetMap", "map", { ...FRAME, basemap: BASEMAP, source: OSM_SOURCE, ariaLabel: "Veracruz port operations", attribution: { position: "bottom-right" } }, [
+  return N("OpenStreetMap", "map", { ...FRAME, basemap: BASEMAP, source: OSM_SOURCE, ariaLabel: "Veracruz port operations", attribution: { position: "bottom-right" },
+    markerScale: "screen", defaultSelected: DEFAULT_SELECTED }, [   // in the boot spec too: the map keeps its instance (and selection) when the live spec arrives
     N("PortSvgGroup", "map.edges", { id: "edges" }, EDGES.map(([id, cls, d]) => h("path", { key: id, id, className: cls, d }))),
     N("PortSvgGroup", "map.exit-labels", { id: "exit-labels" }, EXIT_LABELS.map((l) => h("text", { key: l.key, className: "exit-label", x: l.x, y: l.y, textAnchor: l.anchor }, l.text))),
     h("circle", { key: "spotlight", className: "spotlight", id: "spotlight", cx: 0, cy: 0, r: 30, visibility: "hidden" }),
-    N("PortSvgGroup", "map.nodes", { id: "nodes" }, NODES.map((n) => markerSpec(n, live))),
+    ...NODES.map((n) => markerSpec(n, live)),
     { type: MapLifecycle },
     N(OSM.Canvas, "map.traffic", { id: "traffic", className: "traffic", onFrame: onMapFrame }),
+    ...(live ? [
+      N("OpenStreetMapMarkerList", "map.pins", { title: "Pins", mono: true, width: 236, maxHeight: 230, hideBelow: 820 }),
+      N("PortTruckCard", "map.truck-card"),
+      N("PortLegend", "map.legend"),
+      N("PortHud", "map.hud"),
+      N("OpenStreetMapControls", "map.controls", { layers: true }),
+    ] : []),
   ]);
 }
 
@@ -1179,13 +1209,9 @@ function BrandActions(p) {
 }
 // Theme picker + light/dark toggle, both .GUI's own: GUI.ThemesCatalog (the 8-theme catalog, compact row layout)
 // in a GUI.Menu, and GUI.ThemeModeToggle. They act on the Theme that GUI.mount wraps the page in (PageTheme), which
-// persists to the page-scoped keys in window.__thisGuiThemeScope. The ed06869 build exports neither
-// useThemeContext nor GuiThemes, so the button's label follows Theme's own "this.gui:themeId:changed" event
-// (seeded from the scoped key). The map's page CSS (basemap, markers, canvas) and the legend / HUD backgrounds do not
-// follow the theme.
+// persists to the page-scoped keys in window.__thisGuiThemeScope. The button's label is the Theme's own state
+// (GUI.useThemeContext, exported since 4.1.0). The whole map follows the same theme: basemap, pins, overlays, canvas ink.
 // data-gui-inspector-control: these keep acting while the Semantic Inspector is on (like ThemeLauncher).
-const THEME_ID_KEY = (window.__thisGuiThemeScope && window.__thisGuiThemeScope.themeIdKey) || "veracruz-port-gui.themeId";
-const readThemeId = () => { try { return localStorage.getItem(THEME_ID_KEY) || "neurons.me"; } catch { return "neurons.me"; } };
 const THEME_BTN_SX = { ...INSPECTOR_SX, px: .75, gap: .5, minWidth: 0, "& .theme-picker__label": { "@container brandbar (max-width: 1072px)": { display: "none" } } };
 function themeMenuKeys(e) {
   if (e.key === "Tab") { e.stopPropagation(); return; }
@@ -1196,12 +1222,7 @@ function themeMenuKeys(e) {
 }
 function ThemeControls(p) {
   const [anchor, setAnchor] = React.useState(null);
-  const [themeId, setThemeIdLabel] = React.useState(readThemeId);
-  React.useEffect(() => {
-    const on = (e) => { const id = e && e.detail && e.detail.themeId; if (id) setThemeIdLabel(String(id)); };
-    window.addEventListener("this.gui:themeId:changed", on);
-    return () => window.removeEventListener("this.gui:themeId:changed", on);
-  }, []);
+  const { themeId } = G.useThemeContext();
   const close = () => setAnchor(null);
   return h(Box, { "data-gui-node-id": p["data-gui-node-id"], "data-gui-inspector-control": "true", sx: { display: "inline-flex", alignItems: "center", gap: .25, flexShrink: 0 } },
     h(Button, { id: "theme-picker", size: "small", variant: "outlined", "data-gui-inspector-control": "true",
@@ -1216,9 +1237,7 @@ function ThemeControls(p) {
       // Keyboard: Tab / Shift+Tab and ↑ / ↓ move between the catalog's theme buttons (MUI Menu closes on Tab and
       // only arrows through MenuItems, so those keys stop here); Enter picks; Escape / click-away close.
       h(Box, { onKeyDown: themeMenuKeys },
-        // The catalog marks the active row with sx background "action.selected", which is not a CSS color (the
-        // button falls back to the browser's light button face, hiding its light label in dark mode): set it here.
-        h(G.ThemesCatalog, { sidebarView: "expanded", onThemeSelect: close, sx: { '& button[aria-pressed="true"]': { bgcolor: "action.selected" } } }))),
+        h(G.ThemesCatalog, { sidebarView: "expanded", onThemeSelect: close }))),
     h(G.ThemeModeToggle, { id: "theme-mode-toggle", variant: "minimal", iconSize: "small", "data-testid": "theme-mode-toggle",
       sx: { p: "2px", color: "text.secondary" } }));
 }
@@ -1233,8 +1252,8 @@ function asideSpec(live) {
       live ? [modelPanel(), pathsPanel(), mutatePanel(), explainPanel(), shipsPanel(), trainPanel(), trucksPanel(), lastMilePanel(), stocksPanel(), adapterPanel(live)] : [N("PortKernelWait", "aside/waiting")]),
   ]);
 }
-const mapPanelSpec = (live) => N("Box", "map-panel", { className: "map-wrap", sx: { position: "relative", overflow: "hidden", bgcolor: "#0b0d10", minHeight: 300 } },
-  live ? [mapSpec(true), legend(), hud(), N("PortTruckCard", "map.truck-card")] : [mapSpec(false)]);
+const mapPanelSpec = (live) => N("Box", "map-panel", { className: "map-wrap", sx: { position: "relative", overflow: "hidden", bgcolor: "background.default", minHeight: 300 } },
+  [mapSpec(live)]);
 // Build provenance (formerly the page footer), inside the kernel strip under its header line. The kernel's
 // version and sha256 are on that header line (npm link), so they are not repeated here. The map keeps its own
 // "© OpenStreetMap contributors · ODbL" corner attribution at all times (license), whatever this strip shows.
@@ -1272,24 +1291,18 @@ let lastHlStep = 0;
 function applyMapHighlights() {
   const step = ui.state.step; if (!mapMounted || step === lastHlStep) return; lastHlStep = step;
   const t = TOUR[step];
-  $$("#nodes .node").forEach((n) => { n.classList.remove("hl", "dimmed"); n.classList.add(t.hlNodes.includes(n.id) ? "hl" : "dimmed"); });
   $$("#edges .edge").forEach((e) => { e.classList.remove("hl", "dimmed"); e.classList.add(t.hlEdges.includes(e.id) ? "hl" : "dimmed"); });
 }
 ui.subscribe(applyMapHighlights);
 
-// node state classes (adapter-side highlight of the GUI markers; the meta text lines are GUI bindings)
-function renderMapLabels() {
-  if (!P || !mapMounted) return;
-  const R = P.read;
-  for (const s of SHIPS_META) { const work = R(`ships.${s.i}.hasWork`); $(`#n-ship${s.i}`)?.classList.toggle("done", !work); $(`#n-ship${s.i}`)?.classList.toggle("busy", !!work); }
-  const tw = R("train.1.hasWork");
-  $("#n-train")?.classList.toggle("done", !tw); $("#n-train")?.classList.toggle("busy", !!tw);
-}
+// Marker busy / done / highlight / dimmed are GUI marker states now (PortMarker: kernel flag + tour step). The adapter
+// only flashes the kernel writes on the map: a short "hit" class on the pins whose paths were written, and the wave on
+// edges between two hit pins.
 function lightHits() {
   if (!mapMounted) return;
   const lit = new Set([...hitPaths].map(nodeOfPath).filter(Boolean));
   hitPaths.clear();
-  $$("#nodes .node").forEach((n) => n.classList.toggle("hit", lit.has(n.id)));
+  $$(".gui-osm-marker.node").forEach((n) => n.classList.toggle("hit", lit.has(n.id)));
   for (const [eid, [a, b]] of Object.entries(EDGE_ENDS)) document.getElementById(eid)?.classList.toggle("wave", lit.has(a) && lit.has(b));
 }
 function onFlush(writes, now) {
@@ -1300,11 +1313,15 @@ function onFlush(writes, now) {
   for (const w of writes) { hitPaths.add(w.source); pendingPaths.add(w.source); for (const p of w.recomputed) { hitPaths.add(p); pendingPaths.add(p); } }
 }
 // one UI tick: kernel-reported paths → GUI subscribers; adapter state → GUI; map labels
-function uiTick() { announceKernelPaths(); sim.set(); renderMapLabels(); lightHits(); }
-function uiRefreshAll() { announceAll(); sim.set(); renderMapLabels(); }
+function uiTick() { announceKernelPaths(); sim.set(); lightHits(); }
+function uiRefreshAll() { announceAll(); sim.set(); }
 
-const COLORS = { enRouteImp: "#7eb8c9", enRouteExp: "#c9b87e", loading: "#7ec99a", queued: "#b39ddb", returning: "#5f6b78", idle: "#4a535e",
-  lmEnRoute: "#e58fc0", lmReturning: "#9a6585", lmLoading: "#e58fc0", lmIdle: "#6a4a5e" };
+// Truck / address colours are the map's theme palette (Canvas onFrame → palette), the same tones the legend swatches use:
+// [colour from the palette, alpha]. Positions stay adapter-only; only the ink follows the theme.
+const COLORS = {
+  enRouteImp: (p) => [p.domain.ship, 1], enRouteExp: (p) => [p.domain.train, 1], loading: (p) => [p.domain.yard, 1], queued: (p) => [p.tones.secondary, 1],
+  returning: (p) => [p.tones.neutral, 0.85], idle: (p) => [p.tones.neutral, 0.5],
+  lmEnRoute: (p) => [p.tones.error, 1], lmReturning: (p) => [p.tones.error, 0.6], lmLoading: (p) => [p.tones.error, 1], lmIdle: (p) => [p.tones.error, 0.35] };
 const DRAW_ORDER = ["idle", "returning", "queued", "enRouteExp", "enRouteImp", "loading", "lmIdle", "lmReturning", "lmLoading", "lmEnRoute"];
 const MOVING = new Set(MOVING_STATES);   // driving along a route (the adapter's own list)
 const jit = (id, k) => ((Math.sin(id * 12.9898 + k * 78.233) * 43758.5453) % 1) * 1.6;   // lane offset per truck
@@ -1312,7 +1329,7 @@ const POOL = { x: 470, y: 478, cols: 20, gap: 3.2 };
 const LM_POOL = [{ x: 540, y: 478 }, { x: CEDIS[1].pt[0] - 14, y: CEDIS[1].pt[1] + 14 }];
 const BERTH_OFF = (slot) => [-12 + (slot % 8) * 4.2, -2 + Math.floor(slot / 8) * 4.2];
 const buckets = Object.fromEntries(DRAW_ORDER.map((k) => [k, []]));
-const ADDR = { planned: "#4a3a45", unassigned: "#4a3a45", active: "#b0789a", done: "#f4e6b8", unscheduled: "#8a3a3a" };
+const ADDR = { planned: (p) => [p.tones.neutral, 0.35], unassigned: (p) => [p.tones.neutral, 0.35], active: (p) => [p.tones.error, 0.7], done: (p) => [p.tones.warning, 0.9], unscheduled: (p) => [p.tones.error, 0.3] };
 const ADDR_ORDER = ["planned", "unassigned", "unscheduled", "active", "done"];
 const addrB = Object.fromEntries(ADDR_ORDER.map((k) => [k, []]));
 const ringAbove = [], ringBelow = [];
@@ -1325,17 +1342,19 @@ function truckAt(clientX, clientY, svg, tolPx = 9) {   // client point → neare
   for (let i = 0; i < FLEET; i++) if (drawnOn[i]) { const dx = drawnX[i] - pt.x, dy = drawnY[i] - pt.y, d = dx * dx + dy * dy; if (d < bd) { bd = d; best = i; } }
   return best < 0 ? null : best + 1;
 }
-const mapSvg = (root) => root?.querySelector(`svg[viewBox="0 0 ${PROJ.W} ${PROJ.H}"]`) || root?.querySelector("svg");
+const mapSvg = (root) => root?.querySelector("svg.gui-osm__svg");   // the map's own SVG (not a control glyph); its CTM follows zoom / pan
 
-function drawTrucks(ctx) {   // ctx: from GUI.OpenStreetMap.Canvas (map pixels, cleared, clipped to the frame)
+// ctx / pal / ms: from GUI.OpenStreetMap.Canvas (map pixels, cleared, clipped; theme palette; markerScale, so with
+// markerScale "screen" the dots and rings keep their on-screen size while zooming; positions are still map pixels).
+function drawTrucks(ctx, pal, ms = 1) {
   if (!T) return;
   // 1,000 address points: dim until delivered
   for (const k of ADDR_ORDER) addrB[k].length = 0;
   for (const tp of T.trips) addrB[tp.st].push(tp.x, tp.y);
   for (const k of ADDR_ORDER) {
     const b = addrB[k]; if (!b.length) continue;
-    const r = k === "done" ? 1.4 : 1.1;
-    ctx.fillStyle = ADDR[k]; ctx.globalAlpha = k === "done" ? 0.9 : 0.8;
+    const r = (k === "done" ? 1.4 : 1.1) * ms;
+    [ctx.fillStyle, ctx.globalAlpha] = ADDR[k](pal);
     for (let i = 0; i < b.length; i += 2) ctx.fillRect(b[i] - r, b[i + 1] - r, 2 * r, 2 * r);
   }
   ctx.globalAlpha = 1;
@@ -1363,29 +1382,28 @@ function drawTrucks(ctx) {   // ctx: from GUI.OpenStreetMap.Canvas (map pixels, 
   if (moving > maxMoving) maxMoving = moving;
   for (const k of DRAW_ORDER) {
     const b = buckets[k]; if (!b.length) continue;
-    const r = k === "idle" ? 1.2 : k.startsWith("lm") ? (k === "lmIdle" ? 1.1 : 1.9) : 2.2;
-    ctx.fillStyle = COLORS[k];
-    ctx.globalAlpha = k === "returning" || k === "lmReturning" ? 0.85 : 1;
+    const r = (k === "idle" ? 1.2 : k.startsWith("lm") ? (k === "lmIdle" ? 1.1 : 1.9) : 2.2) * ms;
+    [ctx.fillStyle, ctx.globalAlpha] = COLORS[k](pal);
     ctx.beginPath();
     for (let i = 0; i < b.length; i += 2) { ctx.moveTo(b[i] + r, b[i + 1]); ctx.arc(b[i], b[i + 1], r, 0, 6.2832); }
     ctx.fill();
   }
-  ctx.globalAlpha = 1; ctx.lineWidth = 0.9;
-  for (const [b, col] of [[ringAbove, "#e0a050"], [ringBelow, "#5ec8e0"]]) {
+  ctx.globalAlpha = 1; ctx.lineWidth = 0.9 * ms;
+  for (const [b, col] of [[ringAbove, pal.tones.warning], [ringBelow, pal.tones.info]]) {
     if (!b.length) continue;
     ctx.strokeStyle = col; ctx.beginPath();
-    for (let i = 0; i < b.length; i += 2) { ctx.moveTo(b[i] + 3, b[i + 1]); ctx.arc(b[i], b[i + 1], 3, 0, 6.2832); }
+    for (let i = 0; i < b.length; i += 2) { ctx.moveTo(b[i] + 3 * ms, b[i + 1]); ctx.arc(b[i], b[i + 1], 3 * ms, 0, 6.2832); }
     ctx.stroke();
   }
   const sel = pick.state.n;   // ring around the picked truck instance (if it is on the map)
-  if (sel && drawnOn[sel - 1]) { ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 1.3; ctx.beginPath(); ctx.arc(drawnX[sel - 1], drawnY[sel - 1], 5.5, 0, 6.2832); ctx.stroke(); }
+  if (sel && drawnOn[sel - 1]) { ctx.strokeStyle = pal.states.highlight; ctx.lineWidth = 1.3 * ms; ctx.beginPath(); ctx.arc(drawnX[sel - 1], drawnY[sel - 1], 5.5 * ms, 0, 6.2832); ctx.stroke(); }
 }
 
 
 // ── main loop: adapter steps → one flush per animation tick → kernel writes (driven by the map canvas layer) ──
 let lastNow = 0, lastSpeedAt = -1e9;
 const SPEED_SAMPLE_MS = 250;   // the per-fleet speed facts are sampled at most 4×/s (they only feed averages)
-function onMapFrame({ ctx, now }) {
+function onMapFrame({ ctx, now, palette, markerScale }) {
   const dtReal = lastNow ? Math.min(0.1, (now - lastNow) / 1000) : 0;
   lastNow = now;
   frameLog.push(now); if (frameLog.length > 240) frameLog = frameLog.filter((t) => now - t <= 1000);
@@ -1397,7 +1415,7 @@ function onMapFrame({ ctx, now }) {
     if (writes.length) onFlush(writes, now);
     if (T.done()) setRunning(false, true);
   }
-  drawTrucks(ctx);
+  drawTrucks(ctx, palette, markerScale);
   if (now - lastUi > 250) { lastUi = now; if (P) uiTick(); }
 }
 
