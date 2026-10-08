@@ -51,9 +51,9 @@ The icon font CSS still comes from the this.gui@4.0.0 release (unchanged in the 
 - **Trucks:** the 500 dots are drawn by `GUI.OpenStreetMap.Canvas`'s per-frame `onFrame({ ctx, … })`, which also drives the adapter loop. Canvas suits this many moving points; SVG overlays or markers are also possible.
 - **Check vs the previous hand-written map** (headless, same seed): identical node positions (0 px), Verify 241/241, identical drain totals, and frame time / main-thread time within run-to-run noise (details in GUI#3).
 
-**Page-local leaves (rendered by page registry types inside the spec, opaque to the inspector below their node):** the tour strip, run controls, stats, writes list, explain picker/view, last-mile strip/estimate/feed, seed code, verify output, sim clock, kernel links, glossary item bodies, marker meta lines, and the map's edge/label/spotlight SVG children.
+**Page-local leaves (rendered by page registry types inside the spec, opaque to the inspector below their node):** the tour strip, run controls, stats, writes list, explain picker/view, last-mile strip/estimate/feed, seed code, verify output, simulation clock, kernel links, glossary item bodies, marker meta lines, and the map's edge/label/spotlight SVG children.
 
-**Still manual (adapter, labeled):** the edge/exit-label overlay data, the node highlight classes, the per-unit last-mile strip canvas, the SVG node labels, page stats (fps, moving dots), the sim clock, the redirect feed, the completion estimate, and the path-notification schedule.
+**Still manual (adapter, labeled):** the edge/exit-label overlay data, the node highlight classes, the per-unit last-mile strip canvas, the SVG node labels, page stats (fps, moving dots), the simulation clock (HUD "simulation" chip), the redirect feed, the completion estimate, and the path-notification schedule.
 
 ## 500 trucks, one kernel
 
