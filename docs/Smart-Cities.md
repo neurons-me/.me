@@ -18,7 +18,7 @@ title: Smart Cities As Reactive Semantic Trees
 <nav class="sc-topnav" aria-label="Smart Cities">
   <a href="https://neurons-me.github.io/smart-cities/">Smart Cities</a>
   <a class="active" href="https://neurons-me.github.io/.me/docs/Smart-Cities.html">Syntax</a>
-  <a href="https://neurons-me.github.io/.me/docs/Tests/gtfs-madrid-universe.html">GTFS</a>
+  <a href="https://neurons-me.github.io/.me/Tests/gtfs-madrid-universe.html">GTFS</a>
   <a href="https://neurons-me.github.io/.me/docs/Tests/madrid-knowledge.html">Fares</a>
 </nav>
 

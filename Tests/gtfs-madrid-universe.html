@@ -1,20 +1,56 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-accent="neutral">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>.me — Semantic graph / reactive (GTFS Madrid)</title>
-  <meta name="description" content="GTFS Madrid as a semantic graph in this.me: click a node → me.explain(path), dependsOn + recomputed wave, .me syntax + explain JSON." />
+  <title>.me — GTFS Madrid live knowledge universe</title>
+  <meta name="description" content="Real GTFS Madrid shaped as a reactive knowledge graph in this.me: relationships → dependencies, mutate → affected set k. n vs k; scale result briefly." />
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content=".me — GTFS Madrid live knowledge universe" />
+  <meta property="og:description" content="Real GTFS Madrid shaped as a reactive knowledge graph in this.me: relationships → dependencies, mutate → affected set k. n vs k; scale result briefly." />
+  <link rel="canonical" href="https://neurons-me.github.io/.me/Tests/gtfs-madrid-universe.html" />
+  <meta property="og:url" content="https://neurons-me.github.io/.me/Tests/gtfs-madrid-universe.html" />
+  <meta property="og:image" content="https://suign.github.io/assets/imgs/MADRID-GTFS-DATA-me.jpg" />
+  <meta property="og:image:alt" content="Madrid GTFS data in .me" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content=".me — GTFS Madrid live knowledge universe" />
+  <meta name="twitter:description" content="Real GTFS Madrid shaped as a reactive knowledge graph in this.me: relationships → dependencies, mutate → affected set k. n vs k; scale result briefly." />
+  <meta name="twitter:image" content="https://suign.github.io/assets/imgs/MADRID-GTFS-DATA-me.jpg" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/this.gui@1.4.6/dist/styles.css" />
   <link rel="icon" type="image/png" href="https://res.cloudinary.com/dkwnxf6gm/image/upload/v1769890772/this.me.png">
   <style>
+    /* Smart Cities chrome tokens — me-theme aligned, accent=neutral */
+    :root {
+      --sc-fg: #24292f;
+      --sc-muted: #57606a;
+      --sc-border: #d0d7de;
+      --sc-subtle: #f6f8fa;
+      --sc-accent: #0969da;
+      --sc-nav-bg: rgba(255, 255, 255, 0.86);
+      --sc-active: rgba(15, 106, 120, 0.14);
+      --sc-active-fg: #0f6a78;
+      --sc-hover: rgba(15, 106, 120, 0.1);
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --sc-fg: #c9d1d9;
+        --sc-muted: #8b949e;
+        --sc-border: #30363d;
+        --sc-subtle: #161b22;
+        --sc-accent: #58a6ff;
+        --sc-nav-bg: rgba(11, 17, 20, 0.86);
+        --sc-active: rgba(79, 209, 197, 0.16);
+        --sc-active-fg: #4fd1c5;
+        --sc-hover: rgba(79, 209, 197, 0.1);
+      }
+    }
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: "Inter", "Helvetica Neue", Helvetica, Arial, sans-serif; background: #f4f7f8; color: #0f1720; min-height: 100vh; -webkit-font-smoothing: antialiased; }
-    .page { max-width: 1180px; margin: 0 auto; padding: 40px 16px 28px; }
-    .breadcrumb { font-size: 0.78rem; color: #51606d; margin-bottom: 6px; display: flex; gap: 8px; flex-wrap: wrap; }
-    .breadcrumb a { color: #0f6a78; text-decoration: none; }
-    .breadcrumb a:hover { text-decoration: underline; }
-    .kicker { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; color: #51606d; margin-bottom: 4px; }
+    .page { max-width: 980px; margin: 0 auto; padding: 28px 16px 28px; }
+    .kicker { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; color: #51606d; margin-bottom: 4px; display: flex; align-items: center; gap: 0.55rem; flex-wrap: wrap; }
+    .kicker a { color: #0f6a78; text-decoration: none; }
+    .kicker a:hover { text-decoration: underline; }
+    .kicker .separator { color: #8996a0; }
     h1 { font-size: 1.55rem; font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; margin-bottom: 6px; }
     .rule { font-size: 0.9rem; line-height: 1.5; color: #1f2d38; max-width: 820px; margin-bottom: 8px; }
     .rule code, p code, li code, td code, .meta code, .stat code, .pill code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.86em; background: rgba(15,23,32,0.06); padding: 1px 5px; border-radius: 4px; }
@@ -133,18 +169,46 @@
     .foot { margin-top: 28px; font-size: 0.78rem; color: #51606d; line-height: 1.6; }
     .foot a { color: #0f6a78; }
 
-    .topnav { position:fixed; top:0; left:0; right:0; z-index:100; display:flex; align-items:center; gap:4px; padding:8px 20px; background:rgba(244,247,248,0.92); backdrop-filter:blur(8px); border-bottom:1px solid rgba(15,23,32,0.08); font-size:0.82rem; font-weight:600; }
-    .topnav button { background:none; border:none; cursor:pointer; font:inherit; padding:4px 8px; border-radius:6px; color:inherit; transition:background 120ms; }
-    .topnav button:hover, .topnav a:hover { background:rgba(15,106,120,0.1); }
-    .topnav a { text-decoration:none; color:inherit; padding:4px 10px; border-radius:6px; transition:background 120ms; }
-    .topnav .spacer { flex:1; }
-    body { padding-top: 40px; }
+
+    /* Topbar: one me:// path line + Docs + GitHub mark (same as Smart Cities / Demos), light + dark */
+    .topnav { position: sticky; top: 0; z-index: 200; height: 48px; display: flex; align-items: center; gap: 12px; padding: 0 20px;
+      background: var(--sc-nav-bg); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); border-bottom: 1px solid var(--sc-border); color: var(--sc-fg); }
+    .topnav a { text-decoration: none; }
+    .topnav .logo { display: inline-flex; line-height: 0; }
+    .topnav .logo img { width: 28px; height: 28px; object-fit: contain; display: block; }
+    .mepath { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; line-height: 1.5; }
+    .mepath a { color: var(--sc-active-fg); }
+    .mepath a:hover { text-decoration: underline; }
+    .mepath .sep { color: var(--sc-muted); opacity: .6; margin: 0 1px; }
+    .mepath .here { font-weight: 600; color: var(--sc-fg); }
+    .topnav .spacer { flex: 1; }
+    .topnav .act { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; color: var(--sc-muted); }
+    .topnav .act:hover { color: var(--sc-active-fg); text-decoration: underline; }
+    .topnav .gh { display: inline-flex; line-height: 0; color: var(--sc-muted); }
+    .topnav .gh:hover { color: var(--sc-fg); }
+    @media (max-width: 420px) { .topnav { padding: 0 14px; gap: 10px; } }
+
+
+    .sc-topnav {
+      display: flex; align-items: center; gap: 4px; flex-wrap: wrap;
+      padding: 8px 32px; margin: 0 auto; max-width: 980px;
+      border-bottom: 1px solid var(--sc-border);
+      font-size: 0.82rem; font-weight: 600;
+      background: transparent; min-height: 40px; box-sizing: border-box;
+    }
+    .sc-topnav a { text-decoration: none; color: var(--sc-muted); padding: 5px 10px; border-radius: 6px; transition: background .15s, color .15s; }
+    .sc-topnav a:hover { color: var(--sc-fg); background: var(--sc-hover); }
+    .sc-topnav a.active { color: var(--sc-active-fg); background: var(--sc-active); }
+    @media (max-width: 767px) {
+      .sc-topnav { padding: 8px 16px; }
+    }
+
 
     @media (prefers-color-scheme: dark) {
       body { background: #0b1114; color: #e8eded; }
-      .kicker, .breadcrumb, .meta, .h2-note, .status .kernel, .foot, .viz-sub, .stat .lbl, .stat-src, .density-note, .legend, .wave-strip-head .lbl, .wave-steps li.empty, .side-lbl { color: #98a7b3; }
+      .kicker, .meta, .h2-note, .status .kernel, .foot, .viz-sub, .stat .lbl, .stat-src, .density-note, .legend, .wave-strip-head .lbl, .wave-steps li.empty, .side-lbl { color: #98a7b3; }
       .rule { color: #d5dde2; }
-      .breadcrumb a, .meta a, .foot a { color: #4fd1c5; }
+      .meta a, .foot a { color: #4fd1c5; }
       h2 { border-color: rgba(232,237,237,0.08); }
       .rule code, p code, li code, .meta code, .stat code, .pill code, .stat-src code { background: rgba(232,237,237,0.08); }
       .status, .viz-card, .side-card, .code-card, .wave-strip { background: #111a1f; border-color: rgba(232,237,237,0.08); }
@@ -157,8 +221,11 @@
       .density button.active { background: rgba(79,209,197,0.16); }
       .note { background: rgba(255,255,255,0.03); color: #98a7b3; }
       .note.warn { color: #f5c26b; }
-      .topnav { background:rgba(11,17,20,0.92); border-bottom-color:rgba(232,237,237,0.08); }
-      .topnav button:hover, .topnav a:hover { background:rgba(79,209,197,0.1); }
+
+      .kicker a { color: #4fd1c5; }
+      .sc-topnav { border-bottom-color: var(--sc-border); }
+      .sc-topnav a.active { background: var(--sc-active); color: var(--sc-active-fg); }
+      .sc-topnav a:hover { background: var(--sc-hover); color: var(--sc-fg); }
       .pill { background: rgba(255,255,255,0.06); color: #98a7b3; }
       .wave-steps li { background: rgba(255,255,255,0.05); color: #98a7b3; }
       .wave-steps li.done { background: rgba(244,63,94,0.16); color: #fda4af; }
@@ -167,24 +234,29 @@
   </style>
 </head>
 <body>
-  <nav class="topnav">
-    <button onclick="history.back()" title="Back">←</button>
-    <a href="https://neurons-me.github.io">⌂ Home</a>
+  <nav class="topnav" aria-label="me path">
+    <a class="logo" href="https://neurons-me.github.io/" title="neurons.me"><img src="https://res.cloudinary.com/dkwnxf6gm/image/upload/v1760629064/neurons.me_b50f6a.png" alt="neurons.me" width="28" height="28" /></a>
+    <div class="mepath"><a href="https://neurons-me.github.io/.me/" title=".me">me://</a><a href="https://neurons-me.github.io/.me/docs/Tests/" title=".me Tests">Tests</a><span class="sep">/</span><span class="here" aria-current="page">GTFS-Madrid</span></div>
     <span class="spacer"></span>
-    <a href="https://github.com/neurons-me/.me" target="_blank" rel="noopener"><svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" style="vertical-align:middle;margin-right:4px"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg> GitHub</a>
+    <a class="act" href="https://neurons-me.github.io/.me/docs/">Docs</a>
+    <a class="gh" href="https://github.com/neurons-me/.me" target="_blank" rel="noopener" title="GitHub · neurons-me/.me" aria-label="GitHub"><svg viewBox="0 0 16 16" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg></a>
   </nav>
-
+    <nav class="sc-topnav" aria-label="Smart Cities">
+    <a href="https://neurons-me.github.io/smart-cities/">Smart Cities</a>
+    <a href="https://neurons-me.github.io/.me/docs/Smart-Cities.html">Syntax</a>
+    <a href="https://neurons-me.github.io/.me/Tests/gtfs-madrid-universe.html" class="active">GTFS</a>
+    <a href="https://neurons-me.github.io/.me/docs/Tests/madrid-knowledge.html">Fares</a>
+  </nav>
   <div class="page">
-    <p class="breadcrumb">
-      <a href="../">← .me Docs</a>
-      <span>/</span>
-      <a href="./">Tests</a>
-    </p>
-    <p class="kicker">this.me / Tests / Semantic</p>
-    <h1>Semantic graph — GTFS Madrid reactive</h1>
+    <h1>Live knowledge universe</h1>
     <p class="rule" style="margin-bottom:6px">
-      Services / routes / trips / stopTimes / idx as typed nodes with <code>=</code> formula edges.
-      <strong>Click a node</strong> → <code>me.explain(path)</code> (no mutation needed). Mutate to watch <strong>k</strong> and the recomputed wave.
+      We loaded real evolving <strong>GTFS Madrid</strong> into <code>.me</code>: routes, trips, services, stop times —
+      with relationships expressed as live dependencies. Change a fact → the kernel follows the affected set <strong>k</strong>,
+      not the whole universe <strong>n</strong>.
+    </p>
+    <p class="rule" style="margin-bottom:6px">
+      On the full benchmark, <strong>n</strong> grew ~100× (stop times 2.3k → 236k) while <strong>k</strong> p95/max stayed flat (~18 / 27).
+      This page is the interactive subset: <strong>click a node</strong> → <code>me.explain(path)</code>; mutate to watch the wave.
     </p>
 
     <div class="status" id="status">
@@ -197,7 +269,7 @@
       <div class="viz-card">
         <div class="viz-head">
           <div>
-            <div class="viz-title">GTFS Madrid semantic graph</div>
+            <div class="viz-title">GTFS semantic dependency graph</div>
             <div class="viz-sub" id="viz-sub">waiting for kernel…</div>
           </div>
           <div class="pill-row" id="value-pills"></div>
@@ -279,39 +351,48 @@
 
     <h2>What this is</h2>
     <p class="rule">
-      A tiny GTFS-Madrid-shaped knowledge universe runs live on the
-      <code>this.me</code> kernel. Click any node to select it and call
-      <code>me.explain(path)</code> — <code>dependsOn</code> highlights in cyan;
-      after a mutation the recomputed wave is red. Selected node keeps a gold ring.
+      A tiny GTFS-Madrid-shaped knowledge universe on the live <code>this.me</code> kernel —
+      same idea as the full evolving workload, scaled down so you can see it.
+      Click a node → <code>me.explain(path)</code> (<code>dependsOn</code> in cyan).
+      Mutate → recomputed wave in red. Gold ring = selected.
+    </p>
+    <p class="rule">
+      <strong>n</strong> = universe size · <strong>k</strong> = what one change touches.
+      They are different variables: growing the world does not have to grow every mutation’s wave.
+      That is what the scale-1 → 10 → 100 result on the real GTFS adapter showed.
     </p>
     <p class="note">
-      Honesty, matching the blog and the benchmark README:
-      this is <strong>not</strong> an RML/RDF materialization run.
-      CREATE is measured via explicit <code>gtfs.idx</code> membership slots (flip <code>0→1</code>),
-      not as “natural GTFS CREATE k=1”.
-      Loading a larger snapshot costs more; that is not the same as recomputation after a mutation.
-      Density adds ghost points for visual scale only — they are not wired into the kernel.
+      Honesty (same as the blog / benchmark README):
+      this is <strong>not</strong> an RML/RDF materialization run, and we are <strong>not</strong> claiming mutations are O(k).
+      Dependency propagation stayed local to <strong>k</strong>; structural DELETE apply can still cost with corpus size —
+      that bottleneck is real and separate from recompute.
+      CREATE here uses explicit <code>gtfs.idx</code> membership slots (flip <code>0→1</code>), not “natural GTFS CREATE k=1”.
+      Loading a larger snapshot costs more with <strong>n</strong>; that is not the same as recomputation after a mutation.
+      Density ghosts are visual-only — not wired into the kernel.
     </p>
     <p class="note warn" id="kernel-note">
       Kernel: published <code>this.me@4.1.0</code> (hash-pinned). Isolation demos still pin 4.0.2;
       DELETE via <code>me["-"]</code> needs 4.1.0 for ABSENCE invalidation. Append <code>?local=1</code>
-      to load <code>../../Typescript/dist/me.es.js</code> instead (static serve from repo root).
+      to load <code>../Typescript/dist/me.es.js</code> instead (static serve from repo root).
     </p>
     <p class="meta">
-      Same demo graph as
-      <a href="../../Tests/gtfs-madrid-universe.html">GTFS Madrid / k</a>
-      · human story:
-      <a href="./madrid-knowledge.html">Madrid knowledge</a>
-      · JSON:
-      <a href="./gtfs-madrid-demo-graph.json"><code>gtfs-madrid-demo-graph.json</code></a>
-      · package:
-      <a href="https://www.npmjs.com/package/this.me">this.me@4.1.0</a>
+      Graph JSON: <a href="../docs/Tests/gtfs-madrid-demo-graph.json"><code>gtfs-madrid-demo-graph.json</code></a>
+      · kernel:
+      <a href="https://github.com/neurons-me/.me">neurons-me/.me</a>
+      · benchmark (main):
+      <a href="https://github.com/neurons-me/.me/tree/main/Typescript/tests/Benchmarks/GTFS-Madrid"><code>GTFS-Madrid/</code></a>
+      · blog:
+      <a href="https://dev.to/suign/what-happened-when-we-loaded-madrids-gtfs-data-into-a-reactive-knowledge-graph-1ngh">What happened when we loaded Madrid’s GTFS…</a>
+      · human door (fares / abono):
+      <a href="../docs/Tests/madrid-knowledge.html">Madrid knowledge</a>
+      · dataset:
+      <a href="https://neurons-me.github.io/mlearning.studio/datasets/madrid-gtfs/">Madrid GTFS</a>
+      (<a href="https://neurons-me.github.io/mlearning.studio/GTFS/">mlearning.studio/GTFS</a>)
     </p>
 
     <p class="foot" id="foot">
-      Primary semantic demo: GTFS entities with real <code>.me</code> paths.
-      Click a node to <code>explain()</code> without mutating; Escape / background clears selection.
-      Density ×100 and graph-at-top match the universe page.
+      Same adapter conceptually as <code>Typescript/tests/Benchmarks/GTFS-Madrid/</code> on main.
+      Full mutation sweeps stay in Node; this page is the interactive subset.
     </p>
   </div>
 
@@ -324,7 +405,7 @@ const KERNEL = {
     "https://cdn.jsdelivr.net/npm/this.me@4.1.0/dist/me.es.js",
     "https://unpkg.com/this.me@4.1.0/dist/me.es.js",
   ],
-  localRel: "../../Typescript/dist/me.es.js",
+  localRel: "../Typescript/dist/me.es.js",
   whyNot402: "4.0.2 evaluates absolute cross-branch `=` but does not invalidate dependents after me[\"-\"] DELETE (ABSENCE).",
 };
 
@@ -510,14 +591,19 @@ function buildVizModel(g) {
   const ns = [];
   const es = [];
   const col = { service: "#38bdf8", route: "#a78bfa", trip: "#34d399", stopTime: "#fbbf24", idx: "#fb7185" };
-  // Spread service→idx across full canvas height (small margins) — no dead zone under idx.
+  const canvasWidth = $("universe").clientWidth || 760;
+  // Keep labels and node rings inside the responsive canvas, rather than the old
+  // 760px design width. Extra vertical breathing room keeps idx labels clear of
+  // the legend below the canvas.
+  const xPad = Math.max(44, Math.min(64, canvasWidth * 0.1));
+  const xMin = xPad, xMax = Math.max(xMin, canvasWidth - xPad);
   const laneKeys = ["service", "route", "trip", "stopTime", "idx"];
-  const yTop = 36, yBot = CANVAS_H - 28;
+  const yTop = 52, yBot = CANVAS_H - 58;
   const laneY = Object.fromEntries(laneKeys.map((k, i) => [k, yTop + (i / (laneKeys.length - 1)) * (yBot - yTop)]));
   const place = (kind, list, keyFn, labelFn, pathFn) => {
     const n = list.length;
     list.forEach((item, i) => {
-      const x = 60 + ((i + 0.5) / Math.max(n, 1)) * 640;
+      const x = xMin + ((i + 0.5) / Math.max(n, 1)) * (xMax - xMin);
       ns.push({
         id: pathFn(item),
         kind,
@@ -546,7 +632,7 @@ function buildVizModel(g) {
     ...Object.keys(g.idx.stopTimeMembers).map((t) => ({ id: `gtfs.idx.trips.${t}.stopTimeCount`, label: `${t}.stCount` })),
   ];
   idxNodes.forEach((item, i) => {
-    const x = 50 + ((i + 0.5) / idxNodes.length) * 660;
+    const x = xMin + ((i + 0.5) / idxNodes.length) * (xMax - xMin);
     ns.push({ id: item.id, kind: "idx", label: item.label, x, y: laneY.idx, color: col.idx, r: 8 });
   });
 
@@ -575,9 +661,11 @@ function buildVizModel(g) {
 
 function makeGhosts(count) {
   const out = [];
+  const canvasWidth = $("universe").clientWidth || 760;
+  const pad = Math.max(12, Math.min(30, canvasWidth * 0.05));
   for (let i = 0; i < count; i++) {
     out.push({
-      x: 30 + Math.random() * 700,
+      x: pad + Math.random() * Math.max(0, canvasWidth - pad * 2),
       y: 24 + Math.random() * (CANVAS_H - 48),
       r: 2 + Math.random() * 2.5,
     });
@@ -1084,6 +1172,14 @@ function runMutation(key) {
   updateStats(probe?.meta ?? null, label, ms);
 }
 
+function relayoutViz() {
+  if (!graph) return;
+  const model = buildVizModel(graph);
+  nodes = model.nodes;
+  edges = model.edges;
+  draw();
+}
+
 function rebuild() {
   me = new ME();
   seedMe(me, graph);
@@ -1120,7 +1216,7 @@ function rebuild() {
 
 async function loadGraph() {
   try {
-    const res = await fetch(new URL("./gtfs-madrid-demo-graph.json", location.href), { cache: "no-store" });
+    const res = await fetch(new URL("../docs/Tests/gtfs-madrid-demo-graph.json", location.href), { cache: "no-store" });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return await res.json();
   } catch (e) {
@@ -1203,7 +1299,12 @@ async function main() {
   window.addEventListener("keydown", (ev) => {
     if (ev.key === "Escape") clearSelection();
   });
-  window.addEventListener("resize", () => draw());
+  // Coordinates are based on the current column width; reflow them when the
+  // responsive layout changes instead of letting the fixed-width model clip.
+  if (!window.__gtfsMadridResizeBound) {
+    window.__gtfsMadridResizeBound = true;
+    window.addEventListener("resize", relayoutViz);
+  }
 
   let kernel;
   try {
