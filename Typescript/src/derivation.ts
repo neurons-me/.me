@@ -1,4 +1,5 @@
-import { pathStartsWith } from "./operators.ts";
+import { isPointer, pathStartsWith } from "./operators.ts";
+import { hasPointerOnPath, pointerReadTrajectory } from "./core-index.ts";
 import { resolveBranchScope } from "./secret.ts";
 import type {
   MEDerivationRecord,
@@ -164,15 +165,18 @@ function hasValue(self: MEKernelLike, path: string): boolean {
 // Whether a change at `changedPath` can alter what the evaluator reads for this
 // ref. A change to the relative candidate always can (it either now shadows the
 // root, or just emptied and the root shows through). A change to the root
-// candidate only can while the relative one holds no value.
+// candidate only can while the relative one holds no value. A change on a
+// candidate's pointer trajectory (`via`) counts as a change on that candidate.
 function refChangeMatters(
   self: MEKernelLike,
   ref: MEDerivationRecord["refs"][number],
   changedPath: string,
 ): boolean {
   const [rel, abs] = ref.candidates;
-  if (changedPath === rel) return true;
-  if (abs !== undefined && changedPath === abs) return !hasValue(self, rel);
+  if (changedPath === rel || (ref.via && ref.via[0]?.includes(changedPath))) return true;
+  if (abs !== undefined && (changedPath === abs || (ref.via && ref.via[1]?.includes(changedPath)))) {
+    return !hasValue(self, rel);
+  }
   return false;
 }
 
@@ -183,20 +187,132 @@ function derivationReadsChange(self: MEKernelLike, d: MEDerivationRecord, change
 function derivationRefPaths(d: MEDerivationRecord): string[] {
   if (d.refPaths) return d.refPaths;
   const out = new Set<string>();
-  for (const ref of d.refs) for (const p of ref.candidates) out.add(p);
+  for (const ref of d.refs) {
+    for (const p of ref.candidates) out.add(p);
+    if (ref.via) for (const list of ref.via) if (list) for (const p of list) out.add(p);
+  }
   return (d.refPaths = [...out]);
+}
+
+// ─── subscriptions ───────────────────────────────────────────────────────────
+// refSubscribers plus a prefix index over its keys (prefix → child prefixes
+// with a subscribed path at or below them), so a pointer written at P finds the
+// subscribed paths under P without scanning every key. Cached per
+// refSubscribers object (replaced wholesale on reset/import), built lazily.
+
+const subscribedPrefixIndexCache = new WeakMap<Record<string, Set<string>>, Map<string, Set<string>>>();
+
+function parentKey(key: string): string | null {
+  const i = key.lastIndexOf(".");
+  return i < 0 ? null : key.slice(0, i);
+}
+
+function indexSubscribedKey(index: Map<string, Set<string>>, key: string): void {
+  let child = key;
+  let parent = parentKey(child);
+  while (parent !== null) {
+    let children = index.get(parent);
+    if (!children) index.set(parent, (children = new Set()));
+    else if (children.has(child)) return; // ancestors already indexed
+    children.add(child);
+    child = parent;
+    parent = parentKey(child);
+  }
+}
+
+function unindexSubscribedKey(self: MEKernelLike, index: Map<string, Set<string>>, key: string): void {
+  let child = key;
+  let parent = parentKey(child);
+  while (parent !== null) {
+    if (self.refSubscribers[child] || index.get(child)?.size) return; // still needed
+    const children = index.get(parent);
+    if (!children) return;
+    children.delete(child);
+    if (children.size > 0) return;
+    index.delete(parent);
+    child = parent;
+    parent = parentKey(child);
+  }
+}
+
+function getSubscribedPrefixIndex(self: MEKernelLike): Map<string, Set<string>> {
+  let index = subscribedPrefixIndexCache.get(self.refSubscribers);
+  if (index) return index;
+  index = new Map();
+  for (const key of Object.keys(self.refSubscribers)) indexSubscribedKey(index, key);
+  subscribedPrefixIndexCache.set(self.refSubscribers, index);
+  return index;
+}
+
+function subscribe(self: MEKernelLike, path: string, targetKey: string): void {
+  let s = self.refSubscribers[path];
+  if (!s) {
+    s = self.refSubscribers[path] = new Set();
+    const index = subscribedPrefixIndexCache.get(self.refSubscribers);
+    if (index) indexSubscribedKey(index, path);
+  }
+  s.add(targetKey);
+}
+
+function unsubscribe(self: MEKernelLike, path: string, targetKey: string): void {
+  const s = self.refSubscribers[path];
+  if (!s) return;
+  s.delete(targetKey);
+  if (s.size > 0) return;
+  delete self.refSubscribers[path];
+  const index = subscribedPrefixIndexCache.get(self.refSubscribers);
+  if (index) unindexSubscribedKey(self, index, path);
+}
+
+/** Subscribed paths strictly below `prefix`. */
+function subscribedPathsUnder(self: MEKernelLike, prefix: string): string[] {
+  const index = getSubscribedPrefixIndex(self);
+  const out: string[] = [];
+  const stack = [...(index.get(prefix) || [])];
+  while (stack.length > 0) {
+    const key = stack.pop()!;
+    if (self.refSubscribers[key]) out.push(key);
+    const children = index.get(key);
+    if (children) for (const c of children) stack.push(c);
+  }
+  return out;
+}
+
+// ─── pointer trajectories ────────────────────────────────────────────────────
+// A ref read through pointers also depends on the pointer locations followed
+// and the paths they lead to (`via`, per candidate). They are resolved at
+// registration and again whenever the derivation commits a value, if it had a
+// trajectory or a pointer write flagged it; the subscription set is diffed so
+// a redirected pointer stops depending on its old target.
+
+function resolveRefVia(self: MEKernelLike, ref: MEDerivationRecord["refs"][number]): void {
+  let via: string[][] | undefined;
+  for (let i = 0; i < ref.candidates.length; i++) {
+    const candidate = ref.candidates[i];
+    if (!hasPointerOnPath(self, candidate)) continue; // common case: no pointer involved
+    const trace = pointerReadTrajectory(self, candidate.split(".").filter(Boolean));
+    const list = [...new Set(trace)].filter((p) => p !== candidate);
+    if (list.length > 0) (via ||= [])[i] = list;
+  }
+  if (via) ref.via = via;
+  else if (ref.via) delete ref.via;
+}
+
+function refreshPointerTrajectories(self: MEKernelLike, targetKey: string, d: MEDerivationRecord): void {
+  d.viaStale = false;
+  const before = derivationRefPaths(d);
+  for (const ref of d.refs) resolveRefVia(self, ref);
+  d.refPaths = undefined;
+  const after = derivationRefPaths(d);
+  const afterSet = new Set(after);
+  for (const p of before) if (!afterSet.has(p)) unsubscribe(self, p, targetKey);
+  for (const p of after) subscribe(self, p, targetKey);
 }
 
 export function unregisterDerivation(self: MEKernelLike, targetKey: string): void {
   const old = self.derivations[targetKey];
   if (!old) return;
-  for (const path of derivationRefPaths(old)) {
-    const s = self.refSubscribers[path];
-    if (s) {
-      s.delete(targetKey);
-      if (s.size === 0) delete self.refSubscribers[path];
-    }
-  }
+  for (const path of derivationRefPaths(old)) unsubscribe(self, path, targetKey);
   delete self.derivations[targetKey];
   delete self.derivationRefVersions[targetKey];
   delete self.lastRecomputeWaveByTarget[targetKey];
@@ -233,19 +349,18 @@ export function registerDerivation(
   for (const label of labels) {
     const candidates = refCandidatePaths(label, evalScope);
     if (candidates.length === 0) continue;
-    refs.push({ label, candidates });
-    for (const path of candidates) {
-      const s = self.refSubscribers[path] || (self.refSubscribers[path] = new Set());
-      s.add(targetKey);
-    }
+    const ref: MEDerivationRecord["refs"][number] = { label, candidates };
+    resolveRefVia(self, ref);
+    refs.push(ref);
   }
 
-  self.derivations[targetKey] = {
+  const d: MEDerivationRecord = (self.derivations[targetKey] = {
     expression: expr,
     evalScope: [...evalScope],
     refs,
     lastComputedAt: Date.now(),
-  };
+  });
+  for (const path of derivationRefPaths(d)) subscribe(self, path, targetKey);
   snapshotDerivationRefVersions(self, targetKey);
   self.staleDerivations.delete(targetKey);
 }
@@ -295,6 +410,7 @@ function commitDerivedValue(
     bumpRefVersion(self, targetKey);
   }
   d.lastValue = value;
+  if (d.viaStale || d.refs.some((ref) => ref.via)) refreshPointerTrajectories(self, targetKey, d);
   snapshotDerivationRefVersions(self, targetKey);
   self.staleDerivations.delete(targetKey);
   return changed;
@@ -425,6 +541,27 @@ export function invalidateFromPaths(self: MEKernelLike, roots: string[]): void {
     // direct write to a derived path): its cached value is no longer known.
     const own = self.derivations[root];
     if (own) delete own.lastValue;
+  }
+  // A pointer written at a root redirects every subscribed path below it (and
+  // the root itself): those readers recompute and re-resolve their trajectory.
+  // Paths already on a trajectory are reached by their own subscription; this
+  // covers a pointer created where a formula read a plain path.
+  let sourceSet: Set<string> | null = null;
+  const written = sources.length;
+  for (let i = 0; i < written; i++) {
+    const root = sources[i];
+    if (!isPointer(self.index[root])) continue;
+    sourceSet ||= new Set(sources);
+    for (const path of [root, ...subscribedPathsUnder(self, root)]) {
+      for (const target of self.refSubscribers[path] || []) {
+        const d = self.derivations[target];
+        if (d) d.viaStale = true;
+      }
+      if (sourceSet.has(path)) continue;
+      sourceSet.add(path);
+      sources.push(path);
+      bumpRefVersion(self, path);
+    }
   }
 
   if (self.recomputeMode === "lazy") {

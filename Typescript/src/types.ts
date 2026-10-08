@@ -619,14 +619,20 @@ export type MEDerivationUnresolved =
 export interface MEDerivationRecord {
   expression: string;
   evalScope: SemanticPath;
-  /** Each identifier in the expression and every path the evaluator may read for it (relative first, then root). */
-  refs: Array<{ label: string; candidates: string[] }>;
+  /**
+   * Each identifier in the expression and every path the evaluator may read for it (relative first, then root).
+   * `via[i]`, when present, lists what reading `candidates[i]` currently goes through: each pointer location
+   * followed and each path it leads to. The derivation is subscribed to these too.
+   */
+  refs: Array<{ label: string; candidates: string[]; via?: string[][] }>;
   lastComputedAt: number;
   unresolved?: MEDerivationUnresolved;
   /** Every candidate path of every ref, deduplicated (cached). */
   refPaths?: string[];
   /** Value this derivation last wrote itself; absent when unknown (then the stored value is read). */
   lastValue?: any;
+  /** A pointer was written on or above one of its paths: re-resolve `via` on the next commit. */
+  viaStale?: boolean;
 }
 
 /** A `[i]` derivation kept as a template so children added later get it too. */

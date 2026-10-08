@@ -21,7 +21,7 @@
     "preview": "vite preview --config vite.config.ts",
     "test:ts": "tsc --noEmit",
     "test:readme": "node tests/readme.examples.test.mjs",
-    "test:derivations": "node tests/derivation-refs.test.ts && node tests/derivation-wave.test.ts",
+    "test:derivations": "node tests/derivation-refs.test.ts && node tests/derivation-wave.test.ts && node tests/pointer-target-invalidation.test.ts",
     "test:paths": "node tests/path-identity.test.ts",
     "test:me-uri": "node tests/me-uri.test.ts",
     "test:demos:run-all": "node tests/Demos/run-all.ts",
