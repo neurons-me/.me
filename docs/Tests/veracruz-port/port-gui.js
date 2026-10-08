@@ -820,7 +820,7 @@ const SvgGroup = (p) => { const { children, "data-gui-component": _c, ...rest } 
 const pageType = (type, C) => ({ type, resolve: (spec) => { const { key: _k, ...p } = spec.props || {}; return h(C, p); } });
 const PAGE_TYPES = Object.fromEntries([
   ["PortValue", ValView], ["PortSum", SumView], ["PortBar", BarView], ["PortRow", Row], ["PortFormula", Formula], ["PortPanel", Panel], ["PortSectionHeader", SectionHeader], ["PortSectionToggle", SectionToggle], ["PortSectionBody", SectionBody],
-  ["PortLegend", PortLegend], ["PortHud", PortHud], ["PortMarker", PortMarker], ["PortSvgGroup", SvgGroup],
+  ["PortLegend", PortLegend], ["PortHud", PortHud], ["PortMarker", PortMarker], ["PortPins", PortPins], ["PortSvgGroup", SvgGroup],
   ["PortTour", TourStrip], ["PortKernelStrip", KernelStrip], ["PortBrandLogo", BrandLogo], ["PortBrandActions", BrandActions], ["PortKernelLink", KernelLink], ["PortRunControls", RunControls], ["PortStats", Stats], ["PortWrites", Writes],
   ["PortExplain", ExplainLeaf], ["PortClassExplain", ClassExplain], ["PortGuiBuild", GuiBuildInfo], ["PortTruckCard", TruckCard], ["PortLmStrip", LmStrip], ["PortLmEstimate", LmEstimate], ["PortLmFeed", LmFeed], ["PortSeed", SeedCode],
   ["PortVerifyOut", VerifyOut], ["PortKernelWait", KernelWait], ["PortOffMap", OffMap], ["PortSimClock", SimClock],
@@ -1080,9 +1080,9 @@ const NODES = [
   { id: "n-cedisb", kind: "yard", tone: "yard", path: "trips.pending", x: 220.7, y: 529.8, shape: "square", size: 18, gap: 5, icon: "inventory_2", label: "CEDIS B", meta: "example site" },
 ].map((n) => ({ ...n, ...OSM_PROJ.unproject(n.x, n.y) }));
 const NODE_BY_ID = Object.fromEntries(NODES.map((n) => [n.id, n]));
-// Default pin selection (page state, not kernel): the port, the ships with cargo at the start of the scenario (all
-// three ships in port-sim.js), and the cargo yard. The rest are dots until picked on the map or in the pin list.
-const DEFAULT_SELECTED = ["n-port", ...SHIPS.filter((x) => x.total > 0).map((x) => `n-ship${x.i}`), "n-yard"];
+// Default pin selection (page state, not kernel): every node, so each pin shows its label and live meta line (ships,
+// train, queues, yard, CEDIS B) as before the migration. Unpick pins on the map or in the pin list to reduce them to dots.
+const DEFAULT_SELECTED = NODES.map((n) => n.id);
 const markerProps = (n) => ({ id: n.id, className: `node ${n.kind}`, lat: n.lat, lon: n.lon, shape: n.shape, size: n.size, width: n.w, height: n.hh,
   tone: n.tone, icon: n.icon, label: n.label, labelPlacement: n.place || "right", labelOffset: n.gap });
 // Boot (no kernel yet): plain markers. Live: PortMarker, a page type that reads the node's meta + work flag from the kernel
@@ -1100,6 +1100,17 @@ function PortMarker(p) {
   const inStep = TOUR[step].hlNodes.includes(n.id);
   const state = !inStep ? "dimmed" : work === true ? "busy" : work === false ? "done" : "highlight";
   return h(OSM.Marker, { ...markerProps(n), meta, state, "data-gui-node-id": p["data-gui-node-id"] });
+}
+// Pin list ("what is on the map": port, ships, train, queues, yards with their live meta) behind a "pins" chip, so it is
+// reachable at every width: open by default when the map is wide, folded on narrow maps (phones) where it would cover it.
+const mapIsWide = () => (window.innerWidth > 1000 ? window.innerWidth - 380 : window.innerWidth) >= 820;
+function PortPins(p) {
+  const [open, setOpen] = React.useState(mapIsWide);
+  const s = p["data-gui-node-id"] || "map.pins";
+  return h(React.Fragment, null,
+    h(OSM.Chip, { "data-gui-node-id": `${s}/toggle`, position: "top-left", mono: true, label: "pins", value: open ? "hide ▴" : "show ▾", active: open,
+      onClick: () => setOpen((o) => !o), "aria-controls": "map-pins", title: open ? "Hide the pin list" : "Show the pin list (ships, train, queues, yards)" }),
+    open ? h(OSM.MarkerList, { "data-gui-node-id": s, id: "map-pins", title: "Pins", mono: true, width: 236, maxHeight: 230 }) : null);
 }
 let mapMounted = false;
 const isOverlayTarget = (t) => !!t?.closest?.(".gui-osm-marker, .gui-osm-legend, .gui-osm-chip, .gui-osm-pins, .gui-osm-controls, .gui-osm-overlay, .gui-osm__attribution");
@@ -1138,7 +1149,7 @@ function mapSpec(live) {
     { type: MapLifecycle },
     N(OSM.Canvas, "map.traffic", { id: "traffic", className: "traffic", onFrame: onMapFrame }),
     ...(live ? [
-      N("OpenStreetMapMarkerList", "map.pins", { title: "Pins", mono: true, width: 236, maxHeight: 230, hideBelow: 820 }),
+      N("PortPins", "map.pins"),
       N("PortTruckCard", "map.truck-card"),
       N("PortLegend", "map.legend"),
       N("PortHud", "map.hud"),
