@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Autonomous Robots in Space · .me</title>
+<meta name="description" content="A short story in seven passages: three small robots on three small asteroids, Earth far away. Cut the link and watch one point of control (n=1) fail while each robot, with its own this.me@4.1.0 kernel, checks its invariants and decides by itself. Every value is a real kernel read; explain() shows why."/>
+<link rel="canonical" href="https://neurons-me.github.io/.me/Demos/Robots/Space/"/>
+<meta property="og:title" content="Autonomous Robots in Space · .me"/>
+<meta property="og:description" content="Three small robots, three small rocks, Earth far away. Cut the link: n=1 stalls, each robot's own .me kernel keeps deciding. explain() shows why."/>
+<meta property="og:image" content="https://neurons-me.github.io/.me/Demos/Robots/Space/assets/space-robots-og.png"/>
+<meta property="og:image:width" content="1200"/>
+<meta property="og:image:height" content="630"/>
+<meta property="og:image:type" content="image/png"/>
+<meta property="og:image:alt" content="Three small robots on three small asteroids, the Sun on the left and Earth a blue dot far away, linked by thin dashed lines"/>
+<meta property="og:url" content="https://neurons-me.github.io/.me/Demos/Robots/Space/"/>
+<meta property="og:type" content="website"/>
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:image" content="https://neurons-me.github.io/.me/Demos/Robots/Space/assets/space-robots-og.png"/>
+<link rel="icon" type="image/png" href="https://res.cloudinary.com/dkwnxf6gm/image/upload/v1760629064/neurons.me_b50f6a.png"/>
+<!-- .GUI theme: page-scoped storage keys, neurons.me dark by default (space reads best dark; light reads like a book page). -->
+<script>
+  window.__thisGuiThemeScope = { scopeId: "space-robots", themeModeKey: "space-robots.themeMode", themeIdKey: "space-robots.themeId", defaultMode: "dark" };
+  try {
+    if (!localStorage.getItem("space-robots.themeMode")) localStorage.setItem("space-robots.themeMode", "dark");
+    if (!localStorage.getItem("space-robots.themeId")) localStorage.setItem("space-robots.themeId", "neurons.me");
+  } catch (e) {}
+</script>
+<!-- Pinned dependencies (jsDelivr, exact versions, Subresource Integrity). React 18 = last React with UMD builds. -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/this.gui@4.1.0/dist/material-symbols.css" integrity="sha384-dvUfVVY6nb2ef6F+dRTsSozZpefoOvMox4Ay4fQP86bSU+6yHovoYYKaRtwS+mca" crossorigin="anonymous"/>
+<script src="https://cdn.jsdelivr.net/npm/react@18.3.1/umd/react.production.min.js" integrity="sha384-DGyLxAyjq0f9SPpVevD6IgztCFlnMF6oW/XQGmfe+IsZ8TqEiDrcHkMLKI6fiB/Z" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/react-dom@18.3.1/umd/react-dom.production.min.js" integrity="sha384-gTGxhz21lVGYNMcdJOyq01Edg0jhn/c22nsx0kyqP0TxaV5WVdsSH1fSDUf5YJj1" crossorigin="anonymous"></script>
+<!-- .GUI: this.gui@4.1.0 from npm, SRI-pinned; space-gui.js re-checks its sha256 in the browser (same as the kernel). -->
+<script src="https://cdn.jsdelivr.net/npm/this.gui@4.1.0/dist/this.gui.umd.js" integrity="sha384-umBxi9YB2FkfPkyuR4Ej4TvKyweGkUbZnvIQh/ZzaF0YGstAGl5I6xJ9fnLC+76O" crossorigin="anonymous"></script>
+<style>
+  html, body { margin: 0; }
+  #boot-error { font: 13px/1.5 ui-monospace, Menlo, monospace; color: #c97e7e; padding: 24px; display: none; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<div id="boot-error">.GUI (this.gui@4.1.0) or React failed to load, so this page cannot render.</div>
+<script>if (!window.GUI || !window.React || !window.ReactDOM) document.getElementById("boot-error").style.display = "block";</script>
+<script type="module" src="./space-gui.js"></script>
+</body>
+</html>
