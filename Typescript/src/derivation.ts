@@ -20,30 +20,98 @@ import {
   type AggregateRef,
 } from "./path-expr.ts";
 
-// Explain entry for one aggregate reference. Stage S2 parses `[]` but does not evaluate it yet, so the entry says
-// `unsupported`; S3 replaces this with the contract's statuses. Context and coverage come only from the evaluation
-// context (public-view in this implementation), never from the data.
-function aggregateInput(ref: AggregateRef): NonNullable<MEExplainResult["derivation"]>["inputs"][number] {
+// ─── aggregates: result, explain entry, primary reason ─────────────────────────
+
+/** Evaluation context of an aggregate (contract v4.1 §2.3). Fixed by the request, never by the data. */
+export type AggregateContext = "public-view" | "authorized";
+
+export interface AggregateResult {
+  value: number | undefined;
+  /** "resolved" | "absent" | "incomplete" | "deferred" | "non-finite" | "cycle" | "unsupported" */
+  status: string;
+  reason?: string;
+  members: number | null;
+  terms: number | null;
+  domain: "number" | "boolean" | null;
+  problems?: { count: number; sample: Array<{ path: string; kind: string }> };
+}
+
+/**
+ * The value of one aggregate reference in a context. STAGE S2: parsed, not evaluated, so every aggregate is
+ * `unsupported` (reason "not-implemented"); S3 replaces this body with the reference evaluator.
+ */
+export function aggregateResult(
+  _self: MEKernelLike,
+  _ref: AggregateRef,
+  _context: AggregateContext,
+  _targetKey?: string,
+): AggregateResult {
+  return { value: undefined, status: "unsupported", reason: "not-implemented", members: null, terms: null, domain: null };
+}
+
+// Explain entry for one aggregate reference. Context and coverage come only from the evaluation context, never
+// from the data.
+function aggregateInput(
+  ref: AggregateRef,
+  context: AggregateContext,
+  r: AggregateResult,
+): NonNullable<MEExplainResult["derivation"]>["inputs"][number] {
   return {
     label: ref.text,
     path: renderAggregate(ref),
     kind: "aggregate",
-    value: undefined,
+    value: r.value,
     origin: "public",
     masked: false,
+    status: r.status,
     aggregate: {
       collection: renderSegments(ref.collection),
       field: ref.field ? ref.field.join(".") : null,
       op: ref.op,
-      context: "public-view",
-      coverage: "public-view",
-      status: "unsupported",
-      reason: "not-implemented",
-      members: null,
-      terms: null,
-      domain: null,
+      context,
+      coverage: context,
+      status: r.status,
+      ...(r.reason ? { reason: r.reason } : {}),
+      members: r.members,
+      terms: r.terms,
+      domain: r.domain,
+      ...(r.problems ? { problems: r.problems } : {}),
     },
   };
+}
+
+const byPath = (a: { path: string }, b: { path: string }) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
+
+/**
+ * Primary reason of a formula (or ad hoc aggregate) that has aggregate inputs, by a FIXED precedence that does not
+ * depend on evaluation or input order (contract v3 §11 I5):
+ *   cycle > missing-input > incomplete > evaluation-failed
+ * - missing-input: a scalar input has no value, or an aggregate is `absent` (empty collection);
+ * - incomplete: an aggregate has members whose term is missing or not admissible;
+ * - evaluation-failed: an aggregate is `unsupported`, `deferred` or `non-finite`.
+ * `inputs` (sorted) are the inputs behind the primary reason; `causes` (sorted) every unresolved input with its own
+ * status, so a missing input and an incomplete aggregate are both visible. An unsupported aggregate always stays
+ * `unsupported` in `causes`, whatever the primary reason.
+ */
+export function primaryUnresolved(
+  targetKey: string | undefined,
+  missingScalars: string[],
+  aggs: Array<{ path: string; status: string }>,
+): MEDerivationUnresolved {
+  const causes = [
+    ...missingScalars.map((path) => ({ path, status: "missing" })),
+    ...aggs.filter((a) => a.status !== "resolved").map((a) => ({ path: a.path, status: a.status })),
+  ].sort(byPath);
+  const sorted = (xs: string[]) => [...new Set(xs)].sort();
+  if (aggs.some((a) => a.status === "cycle")) return { reason: "cycle", cycle: [targetKey ?? ""] };
+  const absent = aggs.filter((a) => a.status === "absent").map((a) => a.path);
+  if (missingScalars.length > 0 || absent.length > 0) {
+    return { reason: "missing-input", inputs: sorted([...missingScalars, ...absent]), causes };
+  }
+  const incomplete = aggs.filter((a) => a.status === "incomplete").map((a) => a.path);
+  if (incomplete.length > 0) return { reason: "incomplete", inputs: sorted(incomplete), causes };
+  const failed = aggs.filter((a) => a.status !== "resolved").map((a) => a.path);
+  return { reason: "evaluation-failed", inputs: sorted(failed), causes };
 }
 
 function renderWave(wave: any) {
@@ -60,15 +128,18 @@ export function explain(self: MEKernelLike, path: string): MEExplainResult {
   const raw = String(path ?? "").trim();
   const parsed = classifyPathExpression(raw);
   if (parsed.kind === "aggregate") {
-    const entry = aggregateInput(parsed.ref);
+    // Ad hoc: always the public-view context, for every caller (contract v4.1 §2.3).
+    const r = aggregateResult(self, parsed.ref, "public-view");
+    const entry = aggregateInput(parsed.ref, "public-view", r);
+    const unresolved = r.status === "resolved" ? undefined : primaryUnresolved(undefined, [], [{ path: entry.path, status: r.status }]);
     return {
       path: entry.path,
-      value: undefined,
+      value: r.value,
       expr: parsed.ref.text,
       derivation: { expression: parsed.ref.text, inputs: [entry] },
       meta: {
         dependsOn: [entry.path],
-        unresolved: { reason: "evaluation-failed", inputs: [entry.path] },
+        ...(unresolved ? { unresolved } : {}),
       },
     };
   }
@@ -122,17 +193,25 @@ export function explain(self: MEKernelLike, path: string): MEExplainResult {
       value: isStealth ? "●●●●" : raw,
       origin: (isStealth ? "stealth" : "public") as "public" | "stealth",
       masked: isStealth,
+      status: isStealth ? "masked" : raw === undefined || raw === null ? "missing" : "resolved",
     };
   });
-  const aggregateInputs = (d.aggregates ?? []).map((ref) => aggregateInput(ref));
+  const context = derivationContext(self, key);
+  const aggregateInputs = (d.aggregates ?? []).map((ref) => aggregateInput(ref, context, aggregateResult(self, ref, context, key)));
   inputs.push(...aggregateInputs);
 
-  const unresolved = d.unresolved
-    ? d.unresolved.reason === "missing-input"
-      ? { ...d.unresolved, inputs: d.unresolved.inputs.map((p) => renderKey(p)) }
-      : d.unresolved.reason === "cycle"
-        ? { ...d.unresolved, cycle: d.unresolved.cycle.map((p) => renderKey(p)) }
-        : d.unresolved
+  // Stored paths are storage keys (rendered here, I8); aggregate paths are stored already rendered.
+  const aggPaths = new Set(aggregateInputs.map((a) => a.path));
+  const rk = (p: string) => (aggPaths.has(p) ? p : renderKey(p));
+  const u = d.unresolved;
+  const unresolved = u
+    ? u.reason === "cycle"
+      ? { ...u, cycle: u.cycle.map(rk) }
+      : {
+          ...u,
+          ...("inputs" in u && u.inputs ? { inputs: u.inputs.map(rk) } : {}),
+          ...("causes" in u && u.causes ? { causes: u.causes.map((c) => ({ ...c, path: rk(c.path) })) } : {}),
+        }
     : undefined;
 
   return {
@@ -217,12 +296,13 @@ function scanExpressionTokens(raw: string): Array<{ text: string; aggregate: boo
 /**
  * True when formula text holds a path form the contract rejects (v3 §3): a `[]` that is not part of an accepted
  * aggregate reference (`z.[].w`, `x[].y[]`, `x[][2]`), an aggregate token that classifies as rejected
- * (`x[a > 1][]`, `x[].f[2]`), or a whitespace-only selector (`z[ ].w`). Such a formula is `evaluation-failed`,
+ * (`x[a > 1][]`, `x[].f[2]`), a whitespace-only selector (`z[ ].w`), or a dotted literal selector (`z.["[]"].w`). Such a formula is `evaluation-failed`,
  * never `missing-input` for the words around the bracket.
  */
 export function hasRejectedPathForm(expr: string): boolean {
   const raw = String(expr ?? "");
   if (!raw.includes("[")) return false;
+  if (/\.\[\s*(["'])[^"']*[\[\]][^"']*\1\s*\]/.test(raw)) return true;   // dotted literal selector z.["[]"]
   if (/\[\s+\]/.test(raw.replace(/"[^"]*"|'[^']*'/g, '""'))) return true;
   const covered: Array<[number, number]> = [];
   const re = new RegExp(String.raw`${AGGREGATE_TOKEN_SOURCE(EXPR_SEG)}`, "g");
@@ -496,21 +576,53 @@ export function registerDerivation(
 export function computeDerivation(
   self: MEKernelLike,
   d: MEDerivationRecord,
+  targetKey?: string,
 ): { value: any; unresolved?: MEDerivationUnresolved } {
   if (d.rejectedPathForm) return { value: undefined, unresolved: { reason: "evaluation-failed", detail: "rejected-path-form" } };
+  const missingScalars = () => {
+    const missing: string[] = [];
+    for (const ref of d.refs) {
+      if (ref.candidates.some((p) => hasValue(self, p))) continue;
+      missing.push(ref.candidates[0]);
+    }
+    return missing;
+  };
+  let aggregateValues: Map<string, number> | undefined;
   if (d.aggregates && d.aggregates.length > 0) {
-    // Stage S2: `[]` is parsed, not evaluated. The formula has no value yet; explain names the aggregates.
-    return { value: undefined, unresolved: { reason: "evaluation-failed", inputs: d.aggregates.map((a) => renderAggregate(a)) } };
+    // Every aggregate is evaluated (all of them, whatever the expression order), then the primary reason is picked
+    // by precedence. The formula only evaluates when every aggregate resolved.
+    const context = derivationContext(self, targetKey);
+    const results = d.aggregates.map((a) => ({ ref: a, path: renderAggregate(a), r: aggregateResult(self, a, context, targetKey) }));
+    if (results.some((x) => x.r.status !== "resolved")) {
+      return {
+        value: undefined,
+        unresolved: primaryUnresolved(targetKey, missingScalars(), results.map((x) => ({ path: x.path, status: x.r.status }))),
+      };
+    }
+    aggregateValues = new Map(results.map((x) => [x.ref.text, x.r.value as number]));
   }
-  const evaluated = tryEvaluateAssignExpression(self, d.evalScope, d.expression);
+  const evaluated = tryEvaluateAssignExpression(self, d.evalScope, d.expression, aggregateValues);
   if (evaluated.ok) return { value: evaluated.value };
-  const missing: string[] = [];
-  for (const ref of d.refs) {
-    if (ref.candidates.some((p) => hasValue(self, p))) continue;
-    missing.push(ref.candidates[0]);
+  const missing = missingScalars();
+  if (aggregateValues) {
+    if (missing.length > 0) return { value: undefined, unresolved: primaryUnresolved(targetKey, missing, []) };
+    return { value: undefined, unresolved: { reason: "evaluation-failed" } };
   }
   if (missing.length > 0) return { value: undefined, unresolved: { reason: "missing-input", inputs: missing } };
   return { value: undefined, unresolved: { reason: "evaluation-failed" } };
+}
+
+/**
+ * Context of a formula's aggregates (contract v4.1 §2.3): `authorized` when the target is inside a secret scope
+ * (root or branch), `public-view` otherwise. Decided by where the target is, never by the collection's data.
+ */
+export function derivationContext(self: MEKernelLike, targetKey: string | undefined): AggregateContext {
+  if (targetKey === undefined) return "public-view";
+  const parts = targetKey.split(".").filter(Boolean);
+  for (let i = parts.length; i >= 0; i--) {
+    if (Object.prototype.hasOwnProperty.call(self.localSecrets, parts.slice(0, i).join("."))) return "authorized";
+  }
+  return "public-view";
 }
 
 // Primitive values that are Object.is-equal need no write. Objects and arrays
@@ -549,7 +661,7 @@ function commitDerivedValue(
 export function recomputeTarget(self: MEKernelLike, targetKey: string): boolean {
   const d = self.derivations[targetKey];
   if (!d) return false;
-  const { value, unresolved } = computeDerivation(self, d);
+  const { value, unresolved } = computeDerivation(self, d, targetKey);
   return commitDerivedValue(self, targetKey, value, unresolved);
 }
 
@@ -638,7 +750,7 @@ export function ensureTargetFresh(
       !ctx.resolvedAsCycle.has(targetKey) &&
       (self.staleDerivations.has(targetKey) || isDerivationVersionStale(self, targetKey));
     if (needsRefresh) {
-      const { value, unresolved } = computeDerivation(self, d);
+      const { value, unresolved } = computeDerivation(self, d, targetKey);
       changed = entry.reentered
         ? failCycle(self, [targetKey]).size > 0
         : commitDerivedValue(self, targetKey, value, unresolved);

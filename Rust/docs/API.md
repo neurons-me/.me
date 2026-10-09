@@ -75,6 +75,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 `[]` is grammar for plurality, not a Rust array type.
 
+> **Version note: TypeScript aggregate contract 4.2.** The Rust port implements the 4.1 path grammar. An
+> empty `[]` is dropped (`Selector::EmptyPlural`), so `"items[].count"` addresses the plain path
+> `items.count`, exactly as TypeScript 4.1.0 does. The proposed TypeScript 4.2 contract gives a bare `[]` a
+> meaning of its own: there, `items[].count` is a valid aggregate reference, the **sum of field `count`** over
+> the members of `items`, not a plain path. The Rust port does **not** implement contract 4.2 yet, so none of
+> its changes apply here today. When the port adopts it, it must pass the same contract tests as TypeScript
+> (aggregate values, rejected forms, the literal `["[]"]`, root routing), and this example will change.
+
 ## Eager And Lazy Derivations
 
 Eager mode recomputes dependents when a source changes. Lazy mode keeps writes

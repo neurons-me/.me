@@ -26,7 +26,7 @@
  *   - "plain":     not aggregate-like, and no quoted selector (or one whose text contains ".", kept as 4.1).
  *   - "literal":   not aggregate-like, has quoted selectors. `segments` are the storage segments.
  *   - "aggregate": aggregate-like and matches the grammar above.
- *   - "rejected":  aggregate-like and does not match it.
+ *   - "rejected":  aggregate-like and does not match it; or a dotted literal selector `z.["[]"]` (any string).
  *
  * Proxy properties are never parsed here: they are always literal segments (O5).
  */
@@ -57,7 +57,8 @@ export type RejectReason =
   | "selector-on-collection"    // x[a>1][], x[1..2][], x[[1,3]][], x[c => c.f][]
   | "invalid-field"             // x[].f[2], x[]x, x[].
   | "empty-collection-path"     // "[]" with nothing before it
-  | "invalid-collection-path";  // a name with whitespace, a quoted selector after a dot, "a..b[]"
+  | "invalid-collection-path"   // a name with whitespace, a quoted selector after a dot, "a..b[]"
+  | "dotted-literal-selector";  // z.["[]"].w — the canonical literal is z["[]"].w (S2 close, decision 1)
 
 export type PathExprClass =
   | { kind: "plain" }
@@ -154,6 +155,13 @@ export function classifyPathExpression(input: string): PathExprClass {
   const ops = groups.filter((g) => !g.quoted && g.content === "");
   const blank = groups.filter((g) => !g.quoted && g.content !== "" && g.content.trim() === "");
   const quoted = groups.filter((g) => g.quoted);
+
+  // S2 close (decision 1): a quoted selector holding "[" or "]" right after a dot (`z.["[]"].w`, the 4.1 storage
+  // rendering) is rejected; the canonical literal is `z["[]"].w`. Quoted selectors without brackets after a dot
+  // (`z.["x"].w`) read the same in 4.1 and here, so they keep the 4.1 route.
+  if (quoted.some((g) => g.start > 0 && s[g.start - 1] === "." && /[\[\]]/.test(g.literal ?? ""))) {
+    return { kind: "rejected", reason: "dotted-literal-selector" };
+  }
 
   // Contract v3 §3: a quoted selector whose content contains "." is not specified; 4.1 behaviour is kept.
   const quotedDot = quoted.some((g) => (g.literal ?? "").includes("."));

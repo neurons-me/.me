@@ -1,13 +1,21 @@
 # La Forma Escrita En Memoria
 
-Si escribes en `.me` algo como:
+Si describes en `.me` una forma como esta:
 
 ```txt
+// notación, no sintaxis ejecutable
 jabellae.netget.port[80].request[]
 |request[]| <= 128
 slot(n) = n mod 128
 order = timestamp
 ```
+
+> **Notación, no sintaxis ejecutable.** `request[]`, `|request[]| <= 128` y `slot(n)` son notación matemática
+> para un plural (que tiene miembros, su cardinalidad, dónde va cada miembro). No son paths para `me()` ni texto
+> de fórmula. Lo que se escribe de verdad son claves y fórmulas normales (por ejemplo
+> `me.netget.port[80]["|Whatever[]|<="](128)`, que guarda `128` en una clave con ese nombre literal; ver
+> [Plurality Is Grammar](../Plurality-Is-Grammar.md) §4). En la 4.2 propuesta (contrato de agregados, sin
+> publicar), `me("x[]")` lee el número de miembros y `me("x[].f")` una suma; `|x[]|` no es válido ahí.
 
 y luego te vas, eso no desaparece como "config temporal". Queda como memoria semántica del kernel: en `memories`, en el `index`, exportable por snapshot, rehidratable después. Igual que hoy quedan dominios, secretos, derivaciones, identidad, etc.
 
@@ -59,6 +67,7 @@ Tú te vas, pero la derivación queda. Cuando cambian `price` o `quantity`, `.me
 La idea sería que con pluralidad pase igual:
 
 ```txt
+// notación
 request[] has cardinality 128
 request[n] maps to n mod 128
 ```

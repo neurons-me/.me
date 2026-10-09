@@ -121,7 +121,10 @@ rej("x[].a b", "invalid-field");
 rej("x.my list[].f", "invalid-collection-path");   // name with whitespace
 rej("my list[]", "invalid-collection-path");
 rej("[2][]", "invalid-collection-path");           // head must be a seg or a QUOTED selector
-rej('z.["[]"][]', "invalid-collection-path");      // quoted selector after a dot is not in the grammar
+rej('z.["[]"][]', "dotted-literal-selector");      // S2 close: dotted literal selector rejected
+rej('z.["[]"].w', "dotted-literal-selector");
+rej("z.['[]'].w", "dotted-literal-selector");
+rej('z.["[]"]', "dotted-literal-selector");
 rej("a..b[]", "invalid-collection-path");
 rej("a+b[]", "invalid-collection-path");
 rej("|Whatever[]|", "invalid-field");
@@ -358,7 +361,7 @@ for (const mode of ["eager", "lazy"] as Mode[]) {
     assert.deepEqual(d.refs.map((r: any) => r.label), ["y"]);
     assert.deepEqual(d.aggregates.map((a: any) => [a.collection, a.field, a.op]), [[["x"], ["f"], "sum"]]);
     const e = me.explain("s.v");
-    assert.deepEqual(e.meta.unresolved, { reason: "evaluation-failed", inputs: ["x[].f"] });
+    assert.deepEqual(e.meta.unresolved, { reason: "evaluation-failed", inputs: ["x[].f"], causes: [{ path: "x[].f", status: "unsupported" }] });
     assert.deepEqual(e.meta.dependsOn, ["y", "x[].f"]);
   });
   t("I4b: rejected forms in formulas evaluate to undefined, evaluation-failed", () => {
@@ -375,7 +378,9 @@ for (const mode of ["eager", "lazy"] as Mode[]) {
     me.y(1);
     me.s["="]("v", "x[] + y");
     const [scalar, aggregate] = me.explain("s.v").derivation.inputs;
-    assert.deepEqual(Object.keys(scalar).sort(), ["label", "masked", "origin", "path", "value"]);
+    assert.deepEqual(Object.keys(scalar).sort(), ["label", "masked", "origin", "path", "status", "value"]);
+    assert.equal(scalar.status, "resolved");
+    assert.equal(aggregate.status, aggregate.aggregate.status);
     assert.equal(aggregate.kind, "aggregate");
     assert.equal(aggregate.aggregate.op, "count");
     assert.equal(aggregate.aggregate.field, null);
@@ -544,16 +549,40 @@ for (const mode of ["eager", "lazy"] as Mode[]) {
     assert.deepEqual(Object.keys(me.localNoises), ["z.[]"]);
   });
 
-  // open questions, pinned as PROVISIONAL S2 behaviour (contract §12.2b; not decided)
-  t("PROVISIONAL (open Q1): z.[\"[]\"].w reads the literal child, like z[\"[]\"].w (4.1: raw segment)", () => {
+  // S2 close, decision 1: z.["[]"].w is rejected (the canonical literal is z["[]"].w)
+  t("decision 1: z.[\"[]\"].w (and z.['[]'].w, z.[\"[]\"]) is rejected: undefined, no root value, no memory, no index change", () => {
+    for (const s of ['z.["[]"].w', "z.['[]'].w", 'z.["[]"]', 'z.["[]"][]']) {
+      const me = base(mode);
+      me.z['["[]"]'].w(7);                       // a raw-segment key exists too: still not read
+      assert.equal(readsNothingWritten(me, s), undefined, s);
+      assert.equal(me.as(null)(s), undefined, s);
+      const e = me.explain(s);
+      assert.deepEqual([e.value, e.derivation, e.meta.unresolved], [undefined, null, { reason: "evaluation-failed", detail: "dotted-literal-selector" }], s);
+    }
     const me = base(mode);
-    me.z['["[]"]'].w(7);
-    assert.equal(me('z.["[]"].w'), 1);
+    assert.equal(me('z["[]"].w'), 1, "the canonical literal still reads");
+    me.t["="]("o", 'z.["[]"].w + 1');
+    assert.equal(me("t.o"), undefined);
+    assert.deepEqual(me.explain("t.o").meta.unresolved, { reason: "evaluation-failed", detail: "rejected-path-form" });
+    const keep = fresh(mode);
+    keep.z.x.w(5);
+    assert.equal(keep('z.["x"].w'), 5, "a quoted selector after a dot without brackets keeps the 4.1 read");
   });
-  t("PROVISIONAL (open Q2): scalar missing + aggregate in one formula → S2 placeholder evaluation-failed", () => {
-    const me = fresh(mode);
-    me.s["="]("v", "nothere + x[].f");
-    assert.deepEqual(me.explain("s.v").meta.unresolved, { reason: "evaluation-failed", inputs: ["x[].f"] });
+  // S2 close, decision 2: per-input causes, fixed precedence, both input orders
+  t("decision 2: missing scalar + unsupported aggregate → missing-input; causes keep both; same in both orders", () => {
+    const outs = ["nothere + x[].f", "x[].f + nothere"].map((expr) => {
+      const me = fresh(mode);
+      me.s["="]("v", expr);
+      const e = me.explain("s.v");
+      return { u: e.meta.unresolved, st: e.derivation.inputs.map((i: any) => [i.path, i.status]).sort() };
+    });
+    assert.deepEqual(outs[0], outs[1], "independent of input order");
+    assert.deepEqual(outs[0].u, {
+      reason: "missing-input",
+      inputs: ["s.nothere"],
+      causes: [{ path: "s.nothere", status: "missing" }, { path: "x[].f", status: "unsupported" }],
+    });
+    assert.deepEqual(outs[0].st, [["nothere", "missing"], ["x[].f", "unsupported"]], "unsupported stays unsupported");
   });
 
   // the demo's case

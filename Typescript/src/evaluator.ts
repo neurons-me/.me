@@ -160,6 +160,8 @@ export function tryEvaluateAssignExpression(
   self: MEKernelLike,
   evalScopePath: SemanticPath,
   expr: string,
+  /** Values of the aggregate references, by reference text, already resolved by the caller (derivation.ts). */
+  aggregateValues?: Map<string, number>,
 ): { ok: true; value: number | boolean } | { ok: false } {
   const raw = String(expr ?? "").trim();
   if (!raw) return { ok: false };
@@ -275,8 +277,11 @@ export function tryEvaluateAssignExpression(
     }
 
     if (token.kind === "aggregate") {
-      // Stage S2: aggregates are parsed but not evaluated yet, so the formula has no value.
-      return { ok: false };
+      // Resolved by the caller before evaluation; an aggregate without a value means the formula has none.
+      const v = aggregateValues?.get(token.ref.text);
+      if (v === undefined) return { ok: false };
+      stack.push(v);
+      continue;
     }
 
     if (token.kind === "identifier") {

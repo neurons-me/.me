@@ -1129,7 +1129,7 @@ function instantiateIteratorRule(self: MEKernelLike, rule: MEIteratorRule, idx: 
 function declareDerivation(self: MEKernelLike, assignTarget: SemanticPath, evalScope: SemanticPath, expr: string): any {
   registerDerivation(self, assignTarget, evalScope, expr);
   const d = self.derivations[assignTarget.join(".")];
-  const { value, unresolved } = computeDerivation(self, d);
+  const { value, unresolved } = computeDerivation(self, d, assignTarget.join("."));
   d.unresolved = unresolved;
   const out = postulate(self, assignTarget, value, "=");
   d.lastValue = value;
