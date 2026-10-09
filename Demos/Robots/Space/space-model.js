@@ -91,12 +91,58 @@ export const omega = (rock) => SPEED / rock.R;   // rad per simulated minute
 export const lightDistOf = (pos) => Math.max(0, Math.abs(wrap(pos)) - (HALF_PI - LIT_IN));
 export const litAt = (pos) => Math.abs(wrap(pos)) < HALF_PI;
 
-export function installRules(me) { for (const [n, e] of RULES) me.robots["[i]"]["="](n, e); }
+export function installRules(me, script) { for (const [n, e] of RULES) { me.robots["[i]"]["="](n, e); script?.push(ruleCode([n, e])); } }
+// the code of one write, exactly as the call is made: "robots.1.battery" + 82 → me.robots[1].battery(82)
+export const codeOf = (path, value) => "me" + path.split(".").map((s) => (/^\d+$/.test(s) ? `[${s}]` : `.${s}`)).join("") + `(${JSON.stringify(value)})`;
+
+// ── the story: each act told with .me lines that really run ──
+// A line is either fixed code that the kernel ran while it was set up (verify checks it is in that kernel's setup
+// script, word for word), or { live: path }: the latest real write to that path in that kernel, shown as written.
+// { value: path } adds "→ value" read from the same kernel. who: the kernel (robot id), or "all" (in all three).
+const rule = (n) => ruleCode(RULES.find(([x]) => x === n));
+const seed = (id, f) => codeOf(`robots.${id}.${f}`, f === "name" ? ROBOTS[id - 1].name : f === "role" ? ROBOTS[id - 1].role : ROBOTS[id - 1][f]);
+const ROCK_KEY = (id) => ROCKS.find((x) => x.id === ROBOTS[id - 1].rock).key;
+const homeLines = (id) => [seed(id, "name"), codeOf(`rocks.${ROCK_KEY(id)}.name`, ROCKS.find((x) => x.key === ROCK_KEY(id)).name), `me.robots[${id}].home["->"]("rocks.${ROCK_KEY(id)}")`];
+const meaning = (id, f, n) => [seed(id, "role"), seed(id, f), { live: "objects.ice.seen" }, { code: rule(n), value: `robots.${id}.${n}` }];
+export const STORY = [null,
+  { title: "Two small rocks", text: "Two small rocks, three spider robots, and nobody drives them. Each spider keeps its own .me kernel and first writes down who it is and where it lives. Tap a spider in the sky or in the code.",
+    groups: [{ who: 1, lines: homeLines(1) }, { who: 2, lines: homeLines(2) }, { who: 3, lines: homeLines(3) }] },
+  { title: "Each one decides", text: "Every simulated minute each spider writes what it measures; its own rules decide when to walk to the sun.",
+    groups: [{ who: 2, lines: [{ live: "robots.2.battery" }, { code: rule("reserve"), value: "robots.2.reserve" }, { code: rule("mustCharge"), value: "robots.2.mustCharge" }, { code: rule("goCharge"), value: "robots.2.goCharge" }] }] },
+  { title: "One ice, three meanings", text: "The same ice and the same rule text in every kernel: what the ice means comes from each spider's role.",
+    groups: [{ who: 1, lines: meaning(1, "mines", "iceIsFuel") }, { who: 2, lines: meaning(2, "slips", "iceIsHazard") }, { who: 3, lines: meaning(3, "studies", "iceIsSample") }] },
+  { title: "Talking across the void", text: "Small radios with a short range. What a spider hears is written only into its own kernel.",
+    groups: [{ who: 3, lines: [{ live: "robots.3.sent" }] },
+      { who: 1, lines: [{ live: "robots.1.heard.3.battery", none: "nothing heard from Lua yet" }, { live: "robots.1.heard.3.at", none: "" }] },
+      { who: 2, lines: [{ live: "robots.2.heard.3.battery", none: "nothing heard from Lua yet" }, { live: "robots.2.heard.3.at", none: "" }] }] },
+  { title: "Heard is not known", text: "Nobody writes into another spider's kernel. A tip lands in the inbox, and the receiver's own rule decides.",
+    groups: [{ who: "all", lines: [rule("acceptTip")] },
+      { who: 2, lines: [{ live: "robots.2.inboxFrom" }, { live: "robots.2.inboxRock" }, { live: "robots.2.tipFrom" }] },
+      { who: 3, lines: [{ live: "robots.3.inboxFrom" }, { live: "robots.3.inboxRock" }, { live: "robots.3.tipFrom" }] }] },
+  { title: "Drifting apart", text: "B 325 drifts. Out of range nothing arrives, and what was heard keeps its age.",
+    groups: [{ who: 1, lines: [{ live: "objects.rock.inRange" }, { live: "robots.1.now" }, { live: "robots.1.heard.3.at", none: "nothing heard from Lua yet" }] },
+      { who: 3, lines: [{ live: "objects.rock.inRange" }, { live: "robots.3.now" }, { live: "robots.3.heard.1.at", none: "nothing heard from Oli yet" }] }] },
+  { title: "A small cost", text: "Each write recomputes only the paths that read it: that number is k. Verify rebuilds all three kernels and compares.",
+    groups: [{ who: 1, lines: [{ live: "robots.1.battery", k: true }, { live: "robots.1.lightDist", k: true }, { live: "robots.1.now", k: true }] }] },
+];
+// check one act against the world's kernels: fixed lines in the setup script, live lines = the latest real write
+export function storyLines(w, act) {
+  const out = [];
+  for (const g of STORY[act].groups) for (const ln of g.lines) {
+    const ks = (g.who === "all" ? w.robots : [w.robots.find((r) => r.id === g.who)]).map((r) => r.k);
+    const L = typeof ln === "string" ? { code: ln } : ln;
+    if (L.code) out.push({ who: g.who, code: L.code, ok: ks.every((k) => k.script.includes(L.code)) });
+    else { const x = ks[0].last[L.live]; out.push({ who: g.who, live: L.live, code: x?.code, ok: !x || (x.code === codeOf(L.live, ks[0].read(L.live)) && x.value === ks[0].read(L.live)) }); }
+  }
+  return out;
+}
 
 // One robot kernel. write() = one real kernel write; returns the kernel's wave for it (k, recomputed, changed).
 export function createKernel(ME, id) {
   const me = new ME();
   const writes = [];
+  const script = [];   // every call made while the kernel was set up (seed writes, the pointer, the rules), as code
+  const last = {};     // path → its latest write (code, k), the setup included
   const reader = {};   // fact path → one derived path that reads it (from the kernel's own dependsOn)
   function waveOf(path) {
     const d = reader[path]; if (!d) return { k: 0, recomputed: [], changed: [] };
@@ -109,12 +155,15 @@ export function createKernel(ME, id) {
     const t0 = performance.now();
     segs.slice(0, -1).reduce((n, s) => n[s], me)[segs[segs.length - 1]](value);
     const us = (performance.now() - t0) * 1000;
-    const w = { path, value, us, code: "me" + segs.map((s) => (typeof s === "number" ? `[${s}]` : `.${s}`)).join("") + `(${JSON.stringify(value)})`, ...waveOf(path) };
-    if (log) { writes.push(w); if (writes.length > 400) writes.splice(0, 200); }
+    const w = { path, value, us, code: codeOf(path, value), ...waveOf(path) };
+    if (log) { writes.push(w); if (writes.length > 400) writes.splice(0, 200); } else script.push(w.code);
+    last[path] = w;
     return w;
   }
   function index() { for (const n of RULE_NAMES) { const p = `robots.${id}.${n}`; me(p); for (const s of me.explain(p)?.meta?.dependsOn || []) reader[s] ??= p; } }
-  return { me, write, index, writes, read: (p) => me(p) };
+  // a pointer, made with the .me operator ["->"]
+  function point(path, target) { path.split(".").map((s) => (/^\d+$/.test(s) ? Number(s) : s)).reduce((n, s) => n[s], me)["->"](target); script.push(`${codeOf(path, target).replace(/\((.*)\)$/, '["->"]($1)')}`); }
+  return { me, write, point, index, writes, script, last, read: (p) => me(p) };
 }
 
 // deterministic random numbers (the same simulation every time: verify can replay it)
@@ -130,7 +179,7 @@ export function createWorld(ME, opts = {}) {
     k.write(`${base}.id`, def.id, false); k.write(`${base}.name`, def.name, false);
     // the robot's home rock, and a pointer to it (read through; no formula reads through it)
     k.write(`rocks.${rock.key}.name`, rock.name, false); k.write(`rocks.${rock.key}.radius`, rock.R, false);
-    k.me.robots[def.id].home["->"](`rocks.${rock.key}`);
+    k.point(`${base}.home`, `rocks.${rock.key}`);
     const facts = { battery: def.battery, pos: def.pos, lightDist: r4(lightDistOf(def.pos)), charging: false, now: 0,
       tipRock: 0, tipPos: 0, tipAt: NEVER, tipFrom: 0, inboxRock: 0, inboxPos: 0, inboxAt: NEVER, inboxFrom: 0,
       myRock: rock.id, maxAge: 120, costPerRad: r4(DRAIN_MOVE / omega(rock)), margin: 8, full: 95, ice: 0, found: 0, sent: 0, received: 0,
@@ -138,7 +187,7 @@ export function createWorld(ME, opts = {}) {
       "objects.ice.seen": false, "objects.ice.near": false, "objects.comet.near": false, "objects.rock.inRange": false };
     for (const [f, v] of Object.entries(facts)) k.write(factPath(def.id, f), v, false);
     k.write("objects.ice.name", "ice", false); k.write("objects.comet.name", "comet", false); k.write("objects.rock.name", ROCKS.find((x) => x.id !== rock.id).name, false);
-    installRules(k.me); k.index();
+    installRules(k.me, k.script); k.index();
     w.robots.push({ ...def, def, rockObj: rock, k, truth: { pos: def.pos, battery: def.battery }, written: { ...facts }, moving: 0, walked: 0,
       dead: false, drillT: 0, outbox: [], known: new Set(), lastSend: -SEND_GAP, nextHello: 3 + def.id * 7, seen: new Set(), action: "explore", status: "exploring", dest: "around the rock", lastBatch: [], heardFrom: {} });
   }
