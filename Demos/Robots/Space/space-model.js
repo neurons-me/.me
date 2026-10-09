@@ -2,8 +2,10 @@
 // KERNEL (this.me@4.1.0, unmodified): one kernel per robot. Every robot fact, every derived value, k, explain().
 // ADAPTER (plain JS, here): the physical truth (where a spider really stands, its real battery, where the rocks are),
 // walking, the radios (range, line of sight, delay, bandwidth, loss) and which action a spider takes from its flags.
-// No robot ever writes into another robot's kernel: a message only reaches the receiver's adapter, and the receiver
-// writes it into its OWN kernel as something heard; its own rule (acceptTip) decides whether it becomes a plan.
+// A robot's own readings (its batteries, its sensors) and its communications (outbox / inbox) are kept apart.
+// No robot ever writes into another robot's kernel: the sender writes what it sends into its OWN outbox; a message
+// only reaches the receiver's adapter, and the receiver writes it (same message id) into its OWN inbox, where its own
+// rule (inbox[id].acceptTip) decides whether an ice tip becomes its plan.
 // No imports: the page passes the kernel constructor it loaded (sha256-checked); Node does the same.
 
 export const VB = { w: 1000, h: 600 };
@@ -14,7 +16,12 @@ export const DRAIN_MOVE = 0.22, DRAIN_STILL = 0.06, CHARGE_STILL = 0.3, CHARGE_M
 export const LIT_IN = 0.25;                       // a spider charges once it stands this far inside the lit half (rad)
 export const RANGE = 410;                         // radio range across the void, px
 export const MSG_SPEED = 30, MSG_BASE = 1;        // message travel: 1 min + distance / 30 px per min (slowed down to be seen)
-export const SEND_GAP = 6, OUTBOX = 3, HELLO_EVERY = 40;   // bandwidth: one message per 6 min, an outbox of 3
+export const SEND_GAP = 6, QUEUE = 3, HELLO_EVERY = 40;    // bandwidth: one message per 6 min, a send queue of 3
+export const KEEP = 2;                            // inbox and outbox keep the last 2 messages per peer (+ the tip it accepted, in the inbox)
+// Each spider carries two batteries (Wh). Its battery level is a rule over them: total charge as a % of total capacity.
+// The adapter fills batteries[1] first and drains batteries[2] first.
+export const BATTERIES = [{ i: 1, name: "main", capacity: 60 }, { i: 2, name: "spare", capacity: 40 }];
+export const CAPACITY = BATTERIES.reduce((a, b) => a + b.capacity, 0);
 export const DRILL_MIN = 12;                      // minutes per unit of ice
 export const LOSS_NEAR = 0.03, LOSS_FAR = 0.08, LOSS_FAR_EXTRA = 0.4;   // chance a message is lost on the way
 
@@ -41,7 +48,9 @@ export const ROCK_NAME = Object.fromEntries(ROCKS.map((r) => [r.id, r.name]));
 
 // The rules: ONE text per rule, installed as a class template me.robots["[i]"]["="](name, expr) in every kernel.
 // No rule reads through a pointer (this.me 4.1.0 known issue #4: such a formula is not recomputed when its target changes).
+export const BATTERY_RULE = "(batteries[1].charge + batteries[2].charge) / (batteries[1].capacity + batteries[2].capacity) * 100";
 export const RULES = [
+  ["battery", BATTERY_RULE],
   ["reserve", "lightDist * costPerRad + margin"],
   ["mustCharge", "battery < reserve"],
   ["charged", "battery >= full"],
@@ -62,25 +71,32 @@ export const RULES = [
   ["tipMine", "tipRock == myRock"],
   ["followTip", "!goCharge && !objects.comet.near && tipFresh && tipMine && !slips"],
   ["explore", "!goCharge && !shelter && !watchComet && !followTip"],
-  ["inboxAge", "now - inboxAt"],
-  ["acceptTip", "inboxAge <= maxAge && inboxRock == myRock && !tipFresh"],
 ];
+// The inbox rule: a class template on the robot's OWN inbox, so it is computed on every message it receives. A formula
+// on a message sees that message's facts by name; the robot's facts are named by their full path (robots[N].myRock):
+// .me 4.1.0 has no nested ["[i]"] template and no "parent" name, so the text names its own robot: one text per kernel.
+// It has no string literals either, so the kind is not compared: a hello has no rock, and the rule stays undefined.
+export const inboxRule = (id) => `rock == robots[${id}].myRock && got - at <= robots[${id}].maxAge && !robots[${id}].tipFresh`;
+export const inboxRuleCode = (id) => `me.robots[${id}].inbox["[i]"]["="]("acceptTip", ${JSON.stringify(inboxRule(id))})`;
 export const RULE_NAMES = RULES.map(([n]) => n);
 export const ruleCode = ([n, e]) => `me.robots["[i]"]["="](${JSON.stringify(n)}, ${JSON.stringify(e)})`;
 // The same rules in plain JS (verify compares the kernel against these).
 export function rulesJS(f) {
-  const reserve = f.lightDist * f.costPerRad + f.margin, mustCharge = f.battery < reserve, charged = f.battery >= f.full;
-  const goCharge = mustCharge || (f.charging && !charged), asleep = f.battery <= 0;
+  const battery = (f["batteries.1.charge"] + f["batteries.2.charge"]) / (f["batteries.1.capacity"] + f["batteries.2.capacity"]) * 100;
+  const reserve = f.lightDist * f.costPerRad + f.margin, mustCharge = battery < reserve, charged = battery >= f.full;
+  const goCharge = mustCharge || (f.charging && !charged), asleep = battery <= 0;
   const iceSeen = f["objects.ice.seen"], cometNear = f["objects.comet.near"];
   const iceIsFuel = f.mines && iceSeen, iceIsHazard = f.slips && iceSeen, iceIsSample = f.studies && iceSeen;
   const cometIsHazard = !f.studies && cometNear, cometIsSample = f.studies && cometNear, rockInReach = f["objects.rock.inRange"];
   const shelter = !goCharge && cometIsHazard, watchComet = !goCharge && cometIsSample, avoidIce = iceIsHazard && f["objects.ice.near"];
   const tipAge = f.now - f.tipAt, tipFresh = tipAge <= f.maxAge, tipMine = f.tipRock === f.myRock;
   const followTip = !goCharge && !cometNear && tipFresh && tipMine && !f.slips, explore = !goCharge && !shelter && !watchComet && !followTip;
-  const inboxAge = f.now - f.inboxAt, acceptTip = inboxAge <= f.maxAge && f.inboxRock === f.myRock && !tipFresh;
-  return { reserve, mustCharge, charged, goCharge, asleep, iceIsFuel, iceIsHazard, iceIsSample, cometIsHazard, cometIsSample, rockInReach, shelter, watchComet, avoidIce, tipAge, tipFresh, tipMine, followTip, explore, inboxAge, acceptTip };
+  return { battery, reserve, mustCharge, charged, goCharge, asleep, iceIsFuel, iceIsHazard, iceIsSample, cometIsHazard, cometIsSample, rockInReach, shelter, watchComet, avoidIce, tipAge, tipFresh, tipMine, followTip, explore };
 }
-export const FACTS = ["battery", "lightDist", "charging", "now", "tipRock", "tipAt", "inboxRock", "inboxAt", "myRock", "maxAge", "costPerRad", "margin", "full",
+// the inbox rule in plain JS, for one message m (its own facts) in robot f's kernel
+export const acceptTipJS = (f, m) => (m.rock === undefined ? undefined : m.rock === f.myRock && m.got - m.at <= f.maxAge && !rulesJS(f).tipFresh);
+export const MSG_FACTS = ["from", "to", "kind", "battery", "rock", "pos", "at", "got", "accepted"];
+export const FACTS = ["batteries.1.charge", "batteries.1.capacity", "batteries.2.charge", "batteries.2.capacity", "lightDist", "charging", "now", "tipRock", "tipAt", "myRock", "maxAge", "costPerRad", "margin", "full",
   "mines", "slips", "studies", "objects.ice.seen", "objects.ice.near", "objects.comet.near", "objects.rock.inRange"];
 // a fact name → its path in robot i's kernel ("objects.*" facts live at the kernel's top level: that robot's view of the object)
 export const factPath = (i, f) => (f.startsWith("objects.") ? f : `robots.${i}.${f}`);
@@ -91,7 +107,15 @@ export const omega = (rock) => SPEED / rock.R;   // rad per simulated minute
 export const lightDistOf = (pos) => Math.max(0, Math.abs(wrap(pos)) - (HALF_PI - LIT_IN));
 export const litAt = (pos) => Math.abs(wrap(pos)) < HALF_PI;
 
-export function installRules(me, script) { for (const [n, e] of RULES) { me.robots["[i]"]["="](n, e); script?.push(ruleCode([n, e])); } }
+export function installRules(me, script, id) {
+  for (const [n, e] of RULES) { me.robots["[i]"]["="](n, e); script?.push(ruleCode([n, e])); }
+  if (id != null) { me.robots[id].inbox["[i]"]["="]("acceptTip", inboxRule(id)); script?.push(inboxRuleCode(id)); }
+}
+// a battery level (%) → the charge in each battery (Wh): fill batteries[1] first, drain batteries[2] first
+export function charges(pct) {
+  const wh = (pct * CAPACITY) / 100; let before = 0;
+  return BATTERIES.map((b) => { const c = r4(Math.max(0, Math.min(b.capacity, wh - before))); before += b.capacity; return c; });
+}
 // the code of one write, exactly as the call is made: "robots.1.battery" + 82 → me.robots[1].battery(82)
 export const codeOf = (path, value) => "me" + path.split(".").map((s) => (/^\d+$/.test(s) ? `[${s}]` : `.${s}`)).join("") + `(${JSON.stringify(value)})`;
 
@@ -99,53 +123,74 @@ export const codeOf = (path, value) => "me" + path.split(".").map((s) => (/^\d+$
 // A line is either fixed code that the kernel ran while it was set up (verify checks it is in that kernel's setup
 // script, word for word), or { live: path }: the latest real write to that path in that kernel, shown as written.
 // { value: path } adds "→ value" read from the same kernel. who: the kernel (robot id), or "all" (in all three).
+// { msg: { box, peer | kind, fields } } stands for one message in that kernel's inbox or outbox, found by the page
+// (the latest to / from that peer through the lastTo / lastFrom pointer, or the newest of that kind); it expands
+// into live lines: the pointer (when used) and the message's own writes, e.g. me.robots[1].inbox[42].battery(71).
+// { msgs: { box, fields } }: every message the box keeps, newest first.
 const rule = (n) => ruleCode(RULES.find(([x]) => x === n));
 const seed = (id, f) => codeOf(`robots.${id}.${f}`, f === "name" ? ROBOTS[id - 1].name : f === "role" ? ROBOTS[id - 1].role : ROBOTS[id - 1][f]);
 const ROCK_KEY = (id) => ROCKS.find((x) => x.id === ROBOTS[id - 1].rock).key;
 const homeLines = (id) => [seed(id, "name"), codeOf(`rocks.${ROCK_KEY(id)}.name`, ROCKS.find((x) => x.key === ROCK_KEY(id)).name), `me.robots[${id}].home["->"]("rocks.${ROCK_KEY(id)}")`];
 const meaning = (id, f, n) => [seed(id, "role"), seed(id, f), { live: "objects.ice.seen" }, { code: rule(n), value: `robots.${id}.${n}` }];
+const MSG_SHOW = ["from", "to", "kind", "battery", "rock", "at"];
 export const STORY = [null,
   { title: "Two small rocks", text: "Two small rocks, three spider robots, and nobody drives them. Each spider keeps its own .me kernel and first writes down who it is and where it lives. Tap a spider in the sky or in the code.", link: { text: ".me kernel", href: "https://neurons-me.github.io/.me/" },
     groups: [{ who: 1, lines: homeLines(1) }, { who: 2, lines: homeLines(2) }, { who: 3, lines: homeLines(3) }] },
-  { title: "Each one decides", text: "Every simulated minute each spider writes what it measures; its own rules decide when to walk to the sun.",
-    groups: [{ who: 2, lines: [{ live: "robots.2.battery" }, { code: rule("reserve"), value: "robots.2.reserve" }, { code: rule("mustCharge"), value: "robots.2.mustCharge" }, { code: rule("goCharge"), value: "robots.2.goCharge" }] }] },
+  { title: "Each one decides", text: "Every simulated minute each spider measures its two batteries; its own rules add them up and decide when to walk to the sun.",
+    groups: [{ who: 2, lines: [{ live: "robots.2.batteries.1.charge" }, { live: "robots.2.batteries.2.charge" }, { code: rule("battery"), value: "robots.2.battery" }, { code: rule("mustCharge"), value: "robots.2.mustCharge" }, { code: rule("goCharge"), value: "robots.2.goCharge" }] }] },
   { title: "One ice, three meanings", text: "The same ice and the same rule text in every kernel: what the ice means comes from each spider's role.",
     groups: [{ who: 1, lines: meaning(1, "mines", "iceIsFuel") }, { who: 2, lines: meaning(2, "slips", "iceIsHazard") }, { who: 3, lines: meaning(3, "studies", "iceIsSample") }] },
-  { title: "Talking across the void", text: "Small radios with a short range. What a spider hears is written only into its own kernel.",
-    groups: [{ who: 3, lines: [{ live: "robots.3.sent" }] },
-      { who: 1, lines: [{ live: "robots.1.heard.3.battery", none: "nothing heard from Lua yet" }, { live: "robots.1.heard.3.at", none: "" }] },
-      { who: 2, lines: [{ live: "robots.2.heard.3.battery", none: "nothing heard from Lua yet" }, { live: "robots.2.heard.3.at", none: "" }] }] },
-  { title: "Heard is not known", text: "Nobody writes into another spider's kernel. A tip lands in the inbox, and the receiver's own rule decides.",
-    groups: [{ who: "all", lines: [rule("acceptTip")] },
-      { who: 2, lines: [{ live: "robots.2.inboxFrom" }, { live: "robots.2.inboxRock" }, { live: "robots.2.tipFrom" }] },
-      { who: 3, lines: [{ live: "robots.3.inboxFrom" }, { live: "robots.3.inboxRock" }, { live: "robots.3.tipFrom" }] }] },
-  { title: "Drifting apart", text: "B 325 drifts. Out of range nothing arrives, and what was heard keeps its age.",
-    groups: [{ who: 1, lines: [{ live: "objects.rock.inRange" }, { live: "robots.1.now" }, { live: "robots.1.heard.3.at", none: "nothing heard from Lua yet" }] },
-      { who: 3, lines: [{ live: "objects.rock.inRange" }, { live: "robots.3.now" }, { live: "robots.3.heard.1.at", none: "nothing heard from Oli yet" }] }] },
+  { title: "Talking across the void", text: "Small radios with a short range. The sender writes each message in its own outbox; the receiver writes the same message id in its own inbox, only if it arrives.",
+    groups: [{ who: 3, lines: [{ msg: { box: "outbox", peer: 1, fields: MSG_SHOW }, none: "nothing sent to Oli yet" }] },
+      { who: 1, lines: [{ msg: { box: "inbox", peer: 3, fields: MSG_SHOW }, none: "nothing from Lua yet" }] }] },
+  { title: "An inbox, not orders", text: "Nobody writes into another spider's kernel. An ice tip lands in the receiver's inbox, and its own rule there decides.",
+    groups: [{ who: 2, lines: [inboxRuleCode(2), { msg: { box: "inbox", kind: "ice", fields: ["from", "rock", "accepted"] }, none: "no ice tip in Tiko's inbox yet" }, { live: "robots.2.tipMsg", none: "" }] },
+      { who: 3, lines: [inboxRuleCode(3), { msg: { box: "inbox", kind: "ice", fields: ["from", "rock", "accepted"] }, none: "no ice tip in Lua's inbox yet" }] }] },
+  { title: "Drifting apart", text: "B 325 drifts. Out of range nothing arrives, and the last message in the inbox keeps its age.",
+    groups: [{ who: 1, lines: [{ live: "objects.rock.inRange" }, { live: "robots.1.now" }, { msg: { box: "inbox", peer: 3, fields: ["at"] }, none: "nothing from Lua yet" }] },
+      { who: 3, lines: [{ live: "objects.rock.inRange" }, { live: "robots.3.now" }, { msg: { box: "inbox", peer: 1, fields: ["at"] }, none: "nothing from Oli yet" }] }] },
   { title: "A small cost", text: "Each write recomputes only the paths that read it: that number is k. Verify rebuilds all three kernels and compares.",
-    groups: [{ who: 1, lines: [{ live: "robots.1.battery", k: true }, { live: "robots.1.lightDist", k: true }, { live: "robots.1.now", k: true }] }] },
+    groups: [{ who: 1, lines: [{ live: "robots.1.batteries.1.charge", k: true }, { live: "robots.1.batteries.2.charge", k: true }, { live: "robots.1.lightDist", k: true }, { live: "robots.1.now", k: true }] }] },
 ];
+// the message ids a robot's box keeps, newest first (the adapter's index of what it wrote; the facts are in the kernel)
+export const msgIds = (r, box) => Object.values(r.ring[box]).flat().filter((id) => r.k.last[`robots.${r.id}.${box}.${id}.at`]).sort((a, b) => b - a);
+const ptrId = (k, path) => { const t = k.read(path)?.__ptr; const m = t && /\.(\d+)$/.exec(t); return m && k.last[`${t}.at`] ? Number(m[1]) : null; };
+// one group → its concrete lines in that kernel (msg / msgs specs expanded into live lines)
+export function expandLines(w, g) {
+  const r = g.who === "all" ? null : w.robots.find((x) => x.id === g.who), out = [];
+  for (const ln of g.lines) {
+    const L = typeof ln === "string" ? { code: ln } : ln, spec = L.msg || L.msgs;
+    if (!spec) { out.push(L); continue; }
+    const base = `robots.${r.id}`, ptr = L.msg?.peer != null ? `${base}.${spec.box === "inbox" ? "lastFrom" : "lastTo"}.${spec.peer}` : null;
+    const ids = L.msgs ? msgIds(r, spec.box) : [ptr ? ptrId(r.k, ptr) : msgIds(r, spec.box).find((id) => r.k.read(`${base}.${spec.box}.${id}.kind`) === spec.kind)].filter((x) => x != null);
+    if (!ids.length) { out.push({ none: L.none ?? "" }); continue; }
+    if (ptr) out.push({ live: ptr });
+    for (const id of ids) for (const f of spec.fields) { const path = `${base}.${spec.box}.${id}.${f}`; if (r.k.last[path]) out.push({ live: path, box: spec.box, mid: id, field: f, hint: L.hint }); }
+  }
+  return out;
+}
 // check lines against the world's kernels: fixed lines in the setup script, live lines = the latest real write
 export function checkGroups(w, groups) {
   const out = [];
-  for (const g of groups) for (const ln of g.lines) {
+  for (const g of groups) for (const L of expandLines(w, g)) {
+    if (L.none !== undefined && !L.live && !L.code) continue;
     const ks = (g.who === "all" ? w.robots : [w.robots.find((r) => r.id === g.who)]).map((r) => r.k);
-    const L = typeof ln === "string" ? { code: ln } : ln;
-    if (L.code) out.push({ who: g.who, code: L.code, ok: ks.every((k) => k.script.includes(L.code)) });
-    else { const x = ks[0].last[L.live]; out.push({ who: g.who, live: L.live, code: x?.code, ok: !x || (x.code === codeOf(L.live, ks[0].read(L.live)) && x.value === ks[0].read(L.live)) }); }
+    if (L.code) { out.push({ who: g.who, code: L.code, ok: ks.every((k) => k.script.includes(L.code)) }); continue; }
+    const k = ks[0], x = k.last[L.live], v = k.read(L.live);
+    const ok = !x || (x.ptr ? v?.__ptr === x.value && x.code === `${codeOf(L.live, x.value).replace(/\((.*)\)$/, '["->"]($1)')}` : x.code === codeOf(L.live, v) && x.value === v);
+    out.push({ who: g.who, live: L.live, code: x?.code, ok });
   }
   return out;
 }
 export const storyLines = (w, act) => checkGroups(w, STORY[act].groups);
 
-// The robot panel: what a robot knows (its own sensors) and what it heard, as the real facts in its own kernel.
-// Every line is live: the latest write to that path in that robot's kernel (k.last), exactly as it was made.
+// The robot panel. "It knows": its own readings (its batteries, its sensors). "Inbox" / "Outbox": its communications,
+// every message the box keeps, by id. Every line is live: the latest write to that path in that robot's own kernel.
 export const PANEL = (id) => [
-  { key: "knows", title: "It knows", sub: "own sensors", who: id,
-    lines: [{ live: `robots.${id}.lightDist`, hint: "light" }, { live: "objects.ice.seen", hint: "ice" }, { live: "objects.comet.near", hint: "comet" }, { live: "objects.rock.inRange", hint: "reach" }] },
-  { key: "heard", title: "It heard", sub: "may be old", who: id,
-    lines: [...IDS.filter((o) => o !== id).flatMap((o) => [{ live: `robots.${id}.heard.${o}.battery`, hint: "said", from: o }, { live: `robots.${id}.heard.${o}.at`, hint: "ago", from: o }]),
-      { live: `robots.${id}.inboxFrom`, hint: "tip" }, { live: `robots.${id}.inboxRock`, hint: "tipRock" }, { live: `robots.${id}.tipFrom`, hint: "accepted" }] },
+  { key: "knows", title: "It knows", sub: "its own readings", who: id,
+    lines: [...BATTERIES.map((b) => ({ live: `robots.${id}.batteries.${b.i}.charge`, hint: "charge", bat: b })), { live: `robots.${id}.lightDist`, hint: "light" }, { live: "objects.ice.seen", hint: "ice" }, { live: "objects.comet.near", hint: "comet" }, { live: "objects.rock.inRange", hint: "reach" }] },
+  { key: "inbox", title: "Inbox", sub: `what arrived: the last ${KEEP} from each`, who: id, lines: [{ msgs: { box: "inbox", fields: ["from", "battery", "rock"] }, none: "nothing has arrived yet" }] },
+  { key: "outbox", title: "Outbox", sub: `what it sent: the last ${KEEP} to each`, who: id, lines: [{ msgs: { box: "outbox", fields: ["to", "battery", "rock"] }, none: "nothing sent yet" }] },
 ];
 export const panelLines = (w, id) => checkGroups(w, PANEL(id));
 
@@ -157,7 +202,9 @@ export function createKernel(ME, id) {
   const last = {};     // path → its latest write (code, k), the setup included
   const reader = {};   // fact path → one derived path that reads it (from the kernel's own dependsOn)
   function waveOf(path) {
-    const d = reader[path]; if (!d) return { k: 0, recomputed: [], changed: [] };
+    // a fact of a received message is read by that message's own acceptTip
+    const mm = /^(robots\.\d+\.inbox\.\d+)\.\w+$/.exec(path);
+    const d = reader[path] || (mm && `${mm[1]}.acceptTip`); if (!d) return { k: 0, recomputed: [], changed: [] };
     const m = me.explain(d)?.meta || {};
     if (m.sourcePath !== path) return { k: 0, recomputed: [], changed: [] };
     return { k: m.k ?? 0, recomputed: m.recomputed || [], changed: m.changed || [] };
@@ -173,9 +220,22 @@ export function createKernel(ME, id) {
     return w;
   }
   function index() { for (const n of RULE_NAMES) { const p = `robots.${id}.${n}`; me(p); for (const s of me.explain(p)?.meta?.dependsOn || []) reader[s] ??= p; } }
-  // a pointer, made with the .me operator ["->"]
-  function point(path, target) { path.split(".").map((s) => (/^\d+$/.test(s) ? Number(s) : s)).reduce((n, s) => n[s], me)["->"](target); script.push(`${codeOf(path, target).replace(/\((.*)\)$/, '["->"]($1)')}`); }
-  return { me, write, point, index, writes, script, last, read: (p) => me(p) };
+  const node = (path) => path.split(".").map((s) => (/^\d+$/.test(s) ? Number(s) : s)).reduce((n, s) => n[s], me);
+  // a pointer, made with the .me operator ["->"] (log = a live write, kept in last[path] like any other write)
+  function point(path, target, log = false) {
+    const t0 = performance.now(); node(path)["->"](target);
+    const w = { path, value: target, ptr: true, us: (performance.now() - t0) * 1000, code: `${codeOf(path, target).replace(/\((.*)\)$/, '["->"]($1)')}`, k: 0, recomputed: [], changed: [] };
+    if (log) { writes.push(w); if (writes.length > 400) writes.splice(0, 200); } else script.push(w.code);
+    last[path] = w; return w;
+  }
+  // remove a branch, with the .me operator ["-"] (an old message, a pointer no longer needed)
+  function remove(path) {
+    const t0 = performance.now(); node(path)["-"]();
+    for (const p of Object.keys(last)) if (p === path || p.startsWith(path + ".")) delete last[p];
+    const w = { path, removed: true, us: (performance.now() - t0) * 1000, code: `${codeOf(path, 0).replace(/\((.*)\)$/, '["-"]()')}`, k: 0, recomputed: [], changed: [] };
+    writes.push(w); if (writes.length > 400) writes.splice(0, 200); return w;
+  }
+  return { me, write, point, remove, index, writes, script, last, read: (p) => me(p) };
 }
 
 // deterministic random numbers (the same simulation every time: verify can replay it)
@@ -183,7 +243,7 @@ function rng(seed) { let a = seed >>> 0; return () => { a = (a + 0x6d2b79f5) >>>
 
 // ── the world ──
 export function createWorld(ME, opts = {}) {
-  const w = { t: 0, rand: rng(opts.seed ?? 7), rocks: [], robots: [], packets: [], events: [], lost: 0, delivered: 0, unheard: 0, log: [], comet: { on: false, x: 0, y: 0, n: 0 } };
+  const w = { t: 0, rand: rng(opts.seed ?? 7), rocks: [], robots: [], packets: [], events: [], lost: 0, delivered: 0, unheard: 0, nextMsg: 1, log: [], comet: { on: false, x: 0, y: 0, n: 0 } };
   for (const rk of ROCKS) w.rocks.push({ ...rk, x: rk.home.x, y: rk.home.y, pinned: null, phase: 0, spots: rk.ice.map((a, i) => ({ id: `${rk.id}.${i}`, rock: rk.id, pos: a, left: 3 })) });
   for (const def of ROBOTS) {
     const rock = w.rocks.find((x) => x.id === def.rock);
@@ -192,16 +252,17 @@ export function createWorld(ME, opts = {}) {
     // the robot's home rock, and a pointer to it (read through; no formula reads through it)
     k.write(`rocks.${rock.key}.name`, rock.name, false); k.write(`rocks.${rock.key}.radius`, rock.R, false);
     k.point(`${base}.home`, `rocks.${rock.key}`);
-    const facts = { battery: def.battery, pos: def.pos, lightDist: r4(lightDistOf(def.pos)), charging: false, now: 0,
-      tipRock: 0, tipPos: 0, tipAt: NEVER, tipFrom: 0, inboxRock: 0, inboxPos: 0, inboxAt: NEVER, inboxFrom: 0,
+    const c0 = charges(def.battery), bat = Object.fromEntries(BATTERIES.flatMap((b, j) => [[`batteries.${b.i}.capacity`, b.capacity], [`batteries.${b.i}.charge`, c0[j]]]));
+    const facts = { ...bat, pos: def.pos, lightDist: r4(lightDistOf(def.pos)), charging: false, now: 0,
+      tipRock: 0, tipPos: 0, tipAt: NEVER,
       myRock: rock.id, maxAge: 120, costPerRad: r4(DRAIN_MOVE / omega(rock)), margin: 8, full: 95, ice: 0, found: 0, sent: 0, received: 0,
       role: def.role, mines: def.mines, slips: def.slips, studies: def.studies,
       "objects.ice.seen": false, "objects.ice.near": false, "objects.comet.near": false, "objects.rock.inRange": false };
     for (const [f, v] of Object.entries(facts)) k.write(factPath(def.id, f), v, false);
     k.write("objects.ice.name", "ice", false); k.write("objects.comet.name", "comet", false); k.write("objects.rock.name", ROCKS.find((x) => x.id !== rock.id).name, false);
-    installRules(k.me, k.script); k.index();
+    installRules(k.me, k.script, def.id); k.index();
     w.robots.push({ ...def, def, rockObj: rock, k, truth: { pos: def.pos, battery: def.battery }, written: { ...facts }, moving: 0, walked: 0,
-      dead: false, drillT: 0, outbox: [], known: new Set(), lastSend: -SEND_GAP, nextHello: 3 + def.id * 7, seen: new Set(), action: "explore", status: "exploring", dest: "around the rock", lastBatch: [], heardFrom: {} });
+      dead: false, drillT: 0, queue: [], ring: { inbox: {}, outbox: {} }, tipMsg: null, known: new Set(), lastSend: -SEND_GAP, nextHello: 3 + def.id * 7, seen: new Set(), action: "explore", status: "exploring", dest: "around the rock", lastBatch: [] });
   }
   return w;
 }
@@ -236,56 +297,72 @@ export function radio(w, a, b) {   // can a hear b right now? and why not
 }
 const lossChance = (link) => (link.same ? LOSS_NEAR : LOSS_FAR + LOSS_FAR_EXTRA * (link.d / RANGE) ** 2);
 
-// the radio: one message per SEND_GAP minutes; an outbox of OUTBOX (when full, the oldest waiting message is dropped)
+// the radio: one message per SEND_GAP minutes; a send queue of QUEUE (when full, the oldest waiting message is dropped)
 export function enqueue(w, r, msg) {
   if (r.dead) return false;
-  if (r.outbox.length >= OUTBOX) { r.outbox.shift(); w.events.push({ t: w.t, kind: "dropped", from: r.id }); }
-  r.outbox.push(msg); return true;
+  if (r.queue.length >= QUEUE) { r.queue.shift(); w.events.push({ t: w.t, kind: "dropped", from: r.id }); }
+  r.queue.push(msg); return true;
 }
+// what a message says, as facts: a hello carries a battery level, an ice tip a rock and a place on it
+const msgFacts = (p) => (p.kind === "tip" ? { kind: "ice", rock: p.rock, pos: p.pos, at: p.at } : { kind: "hello", battery: p.battery, at: p.at });
+// keep the last KEEP messages per peer in a box (never the message of the tip it is following); older ones are removed
+function trim(r, box, peer, b) {
+  const ids = (r.ring[box][peer] ??= []);
+  while (ids.length > KEEP) { const j = ids.findIndex((x) => !(box === "inbox" && x === r.tipMsg)); if (j < 0 || j >= ids.length - 1) break; b.push(r.k.remove(`robots.${r.id}.${box}.${ids.splice(j, 1)[0]}`)); }
+}
+// one message per peer, each with its own id: the sender writes it into its OWN outbox, whether or not it will arrive
 function transmit(w, r) {
-  if (r.dead || !r.outbox.length || w.t - r.lastSend < SEND_GAP) return;
-  const msg = r.outbox.shift(); r.lastSend = w.t;
-  const batch = r.lastBatch; batch.push(r.k.write(`robots.${r.id}.sent`, (r.written.sent += 1)));
-  const from = robotXY(w, r, 8); let reached = 0;
+  if (r.dead || !r.queue.length || w.t - r.lastSend < SEND_GAP) return;
+  const msg = r.queue.shift(); r.lastSend = w.t;
+  const batch = r.lastBatch, base = `robots.${r.id}`; batch.push(r.k.write(`${base}.sent`, (r.written.sent += 1)));
+  const from = robotXY(w, r, 8); let reached = 0; const ids = [];
   for (const o of w.robots) {
     if (o === r) continue;
-    const link = radio(w, r, o);
+    const id = w.nextMsg++, box = `${base}.outbox.${id}`;
+    batch.push(r.k.write(`${box}.to`, o.id)); for (const [f, v] of Object.entries(msgFacts(msg))) batch.push(r.k.write(`${box}.${f}`, v));
+    batch.push(r.k.point(`${base}.lastTo.${o.id}`, box, true));
+    (r.ring.outbox[o.id] ??= []).push(id); trim(r, "outbox", o.id, batch);
+    const link = radio(w, r, o); ids.push({ id, to: o.id, ok: link.ok });
     if (!link.ok) { w.unheard++; continue; }
     reached++;
-    w.packets.push({ ...msg, from: r.id, to: o.id, sentAt: w.t, arriveAt: w.t + MSG_BASE + link.d / MSG_SPEED, x0: from.x, y0: from.y, roll: w.rand() });
+    w.packets.push({ ...msg, id, from: r.id, to: o.id, sentAt: w.t, arriveAt: w.t + MSG_BASE + link.d / MSG_SPEED, x0: from.x, y0: from.y, roll: w.rand() });
   }
-  w.events.push({ t: w.t, kind: "send", from: r.id, msg: msg.kind, reached, x: from.x, y: from.y });
+  w.events.push({ t: w.t, kind: "send", from: r.id, msg: msg.kind, reached, ids, x: from.x, y: from.y });
 }
 // arrival: the link must still be there, and the message must survive the trip
 function arrive(w, p) {
   const to = robotOf(w, p.to), from = robotOf(w, p.from), link = radio(w, from, to);
   const at = robotXY(w, to, 8);
-  if (to.dead || !link.ok || p.roll < lossChance(link)) { w.lost++; w.events.push({ t: w.t, kind: "lost", from: p.from, to: p.to, why: to.dead ? "asleep" : !link.ok ? link.why : "noise", x: at.x, y: at.y }); return; }
-  w.delivered++; w.events.push({ t: w.t, kind: "delivered", from: p.from, to: p.to, msg: p.kind, x: at.x, y: at.y, cross: !link.same, d: link.d });
+  if (to.dead || !link.ok || p.roll < lossChance(link)) { w.lost++; w.events.push({ t: w.t, kind: "lost", id: p.id, from: p.from, to: p.to, why: to.dead ? "asleep" : !link.ok ? link.why : "noise", x: at.x, y: at.y }); return; }
+  w.delivered++; w.events.push({ t: w.t, kind: "delivered", id: p.id, from: p.from, to: p.to, msg: p.kind, x: at.x, y: at.y, cross: !link.same, d: link.d });
   receive(w, to, p);
 }
-// the receiver writes what it heard into ITS OWN kernel, then its own rule decides what to accept
+// the receiver writes the message (same id) into ITS OWN inbox, then its own rule there decides what to accept
 export function receive(w, r, p) {
-  const base = `robots.${r.id}`, k = r.k, b = [];
+  const base = `robots.${r.id}`, k = r.k, b = [], id = p.id ?? w.nextMsg++, box = `${base}.inbox.${id}`;
   const put = (f, v) => { r.written[f] = v; b.push(k.write(factPath(r.id, f), v)); };
   put("received", r.written.received + 1);
-  r.heardFrom[p.from] = (r.heardFrom[p.from] || 0) + 1;
-  if (p.kind === "hello") { b.push(k.write(`${base}.heard.${p.from}.battery`, p.battery)); b.push(k.write(`${base}.heard.${p.from}.at`, p.at)); }
+  b.push(k.write(`${box}.from`, p.from)); for (const [f, v] of Object.entries(msgFacts(p))) b.push(k.write(`${box}.${f}`, v));
+  b.push(k.write(`${box}.got`, w.t));
+  b.push(k.point(`${base}.lastFrom.${p.from}`, box, true));
   let accepted = null;
   if (p.kind === "tip") {
-    put("inboxFrom", p.from); put("inboxRock", p.rock); put("inboxPos", p.pos); put("inboxAt", p.at);
-    accepted = !!k.read(`${base}.acceptTip`);
+    accepted = !!k.read(`${box}.acceptTip`);
+    b.push(k.write(`${box}.accepted`, accepted));   // what its rule said when the tip arrived
     if (accepted) {
-      put("tipFrom", p.from); put("tipRock", p.rock); put("tipPos", p.pos); put("tipAt", p.at);
+      put("tipRock", p.rock); put("tipPos", p.pos); put("tipAt", p.at);
+      b.push(k.point(`${base}.tipMsg`, box, true)); r.tipMsg = id;   // where the plan came from (read through, never by a rule)
       if (p.spot) r.known.add(p.spot);
       if (!r.written["objects.ice.seen"]) { r.written["objects.ice.seen"] = true; b.push(k.write("objects.ice.seen", true)); }   // an accepted observation: it now knows there is ice
     }
-    r.lastTip = { from: p.from, rock: p.rock, at: p.at, heardAt: w.t, accepted };
-    w.events.push({ t: w.t, kind: "tip", to: r.id, from: p.from, rock: p.rock, accepted, age: w.t - p.at });
+    w.events.push({ t: w.t, kind: "tip", to: r.id, from: p.from, rock: p.rock, accepted, age: w.t - p.at, id });
   }
+  (r.ring.inbox[p.from] ??= []).push(id); trim(r, "inbox", p.from, b);
   r.lastBatch.push(...b);
-  return { batch: b, accepted };
+  return { batch: b, accepted, id };
 }
+// the plan no longer comes from a message (it found ice itself, or the tip is used up / forgotten)
+function dropTipMsg(r, batch) { if (r.tipMsg != null) { batch.push(r.k.remove(`robots.${r.id}.tipMsg`)); r.tipMsg = null; } }
 
 // the comet: every COMET.every minutes it crosses the void, passing close to one rock, then the other
 function placeComet(w) {
@@ -314,6 +391,7 @@ function stepRobot(w, r, dt) {
   put("objects.ice.near", !!ki && Math.abs(wrap(ki.pos - r.truth.pos)) < 0.4);
   if (r.dead) { r.status = "asleep"; r.action = "sleep"; r.dest = "nowhere"; r.moving = 0; return; }
   const flags = { charge: k.read(`${base}.goCharge`), shelter: k.read(`${base}.shelter`), watch: k.read(`${base}.watchComet`), follow: k.read(`${base}.followTip`), avoid: k.read(`${base}.avoidIce`) };
+  const tipFrom = r.tipMsg != null ? k.read(`${base}.tipMsg.from`) : null;   // whose tip its plan is, read through the pointer as it decides
   const om = omega(rk) * dt, pos = r.truth.pos;
   let target = null, action, mv = 0;
   if (flags.charge) { action = "charge"; if (lightDistOf(pos) > 1e-9) target = Math.sign(wrap(pos) || 1) * (HALF_PI - LIT_IN); }
@@ -338,7 +416,7 @@ function stepRobot(w, r, dt) {
     if (s.left > 0 && !r.known.has(s.id) && Math.abs(wrap(s.pos - r.truth.pos)) < om + 0.02) {
       r.known.add(s.id);
       put("found", r.written.found + 1); put("objects.ice.seen", true);
-      if (!r.slips) { r.truth.pos = s.pos; put("tipFrom", r.id); put("tipRock", rk.id); put("tipPos", s.pos); put("tipAt", w.t); }
+      if (!r.slips) { r.truth.pos = s.pos; put("tipRock", rk.id); put("tipPos", s.pos); put("tipAt", w.t); dropTipMsg(r, batch); }
       enqueue(w, r, { kind: "tip", rock: rk.id, pos: s.pos, at: w.t, spot: s.id });
       w.events.push({ t: w.t, kind: "found", by: r.id, spot: s.id });
       break;
@@ -351,21 +429,21 @@ function stepRobot(w, r, dt) {
     if (s && s.left > 0) {
       drilling = true; r.known.add(s.id); r.drillT += dt; put("tipAt", w.t);   // it sees the ice itself now
       if (r.drillT >= DRILL_MIN) { r.drillT = 0; s.left -= 1; put("ice", r.written.ice + 1); }
-      if (s.left <= 0) { put("tipAt", NEVER); drilling = false; }       // nothing left: forget the tip
-    } else put("tipAt", NEVER);                                         // nothing there (any more): forget the tip
+      if (s.left <= 0) { put("tipAt", NEVER); dropTipMsg(r, batch); drilling = false; }   // nothing left: forget the tip
+    } else { put("tipAt", NEVER); dropTipMsg(r, batch); }                                 // nothing there (any more): forget the tip
   } else r.drillT = 0;
-  put("pos", r4(r.truth.pos)); put("lightDist", r4(lightDistOf(r.truth.pos))); put("battery", r4(r.truth.battery));
+  put("pos", r4(r.truth.pos)); put("lightDist", r4(lightDistOf(r.truth.pos)));
+  charges(r4(r.truth.battery)).forEach((c, j) => put(`batteries.${BATTERIES[j].i}.charge`, c));   // it measures each of its batteries
   // charging = "I have decided to charge": it stays true until the battery is full (goCharge reads it back)
   put("charging", action === "charge" && !r.dead);
   const charging = action === "charge" && lightDistOf(r.truth.pos) <= 1e-9 && !r.dead;
   if (w.t >= r.nextHello) { r.nextHello = w.t + HELLO_EVERY; enqueue(w, r, { kind: "hello", battery: Math.round(r.truth.battery), at: w.t }); }
-  const tipFrom = k.read(`${base}.tipFrom`);
   const work = r.studies ? "studying the ice" : "mining ice";
   r.status = r.dead ? "asleep" : action === "charge" ? (charging ? "charging" : "going to the sun")
     : action === "shelter" ? "hiding from the comet dust" : action === "watch" ? "studying the comet"
     : action === "tip" ? (drilling ? work : "going to the ice") : (r.avoidedAt != null && w.t - r.avoidedAt < 25 ? "turning away from the ice" : "exploring");
   r.dest = r.dead ? "nowhere: it is asleep" : action === "charge" ? (charging ? "stays here, in the sun" : "the sunny side") : action === "shelter" || action === "watch" ? "stays where it is"
-    : action === "tip" ? (drilling ? "stays here, at the ice" : tipFrom !== r.id ? `the ice ${NAME[tipFrom]} told it about` : "the ice it found") : "around its rock, looking";
+    : action === "tip" ? (drilling ? "stays here, at the ice" : tipFrom ? `the ice ${NAME[tipFrom]} told it about` : "the ice it found") : "around its rock, looking";
 }
 
 export function step(w, dt = 1) {
@@ -380,10 +458,10 @@ export function step(w, dt = 1) {
 }
 
 // ── interactions (the user acts on the world, or presses a robot's radio button; never on another robot's kernel) ──
-export function setBattery(w, id, value) {   // the slider / "drain": the real battery changes, and the robot measures it at once
+export function setBattery(w, id, value) {   // the slider / "drain": the real battery changes, and the robot measures its batteries at once
   const r = robotOf(w, id); if (r.dead && value > 0) r.dead = false;
-  r.truth.battery = value; r.written.battery = value; r.lastBatch = [];
-  return r.k.write(`robots.${id}.battery`, value);
+  r.truth.battery = value; r.lastBatch = [];
+  return charges(value).map((c, j) => { const f = `batteries.${BATTERIES[j].i}.charge`; r.written[f] = c; return r.k.write(factPath(id, f), c); });
 }
 export function sayHello(w, id) { const r = robotOf(w, id); return enqueue(w, r, { kind: "hello", battery: Math.round(r.truth.battery), at: w.t }); }
 export function shareTip(w, id) {   // the robot's radio sends a tip about the nearest crater with ice left on its own rock
@@ -402,14 +480,23 @@ export function verifyWorld(ME, w) {
   for (const r of w.robots) {
     const i = r.id, fresh = new ME();
     const facts = Object.fromEntries(FACTS.map((f) => [f, r.k.read(factPath(i, f))]));
-    for (const f of FACTS) factPath(i, f).split(".").map((x) => (/^\d+$/.test(x) ? Number(x) : x)).reduce((n, seg, j, arr) => (j === arr.length - 1 ? n[seg](facts[f]) : n[seg]), fresh);
-    installRules(fresh);
+    const put = (path, v) => path.split(".").map((x) => (/^\d+$/.test(x) ? Number(x) : x)).reduce((n, seg, j, arr) => (j === arr.length - 1 ? n[seg](v) : n[seg]), fresh);
+    for (const f of FACTS) put(factPath(i, f), facts[f]);
+    // every message its inbox keeps, with its own facts (acceptTip is computed on each of them)
+    const inbox = msgIds(r, "inbox").map((id) => { const m = { id }; for (const f of MSG_FACTS) { const v = r.k.read(`robots.${i}.inbox.${id}.${f}`); if (v != null) { m[f] = v; put(`robots.${i}.inbox.${id}.${f}`, v); } } return m; });
+    installRules(fresh, null, i);
     const js = rulesJS(facts);
     for (const n of RULE_NAMES) {
       const p = `robots.${i}.${n}`, a = r.k.read(p), b = fresh(p), c = js[n];
       checked++; if (!eq(a, b)) mismatches.push({ who: r.name, path: p, live: a, fresh: b });
       checked++; if (!eq(a, c)) mismatches.push({ who: r.name, path: p + " (JS)", live: a, js: c });
       checked++; if (a === undefined) mismatches.push({ who: r.name, path: p + " (undefined)" });
+    }
+    for (const m of inbox) {   // a hello has no rock: its acceptTip is undefined in the kernel, the rebuild and JS alike
+      const p = `robots.${i}.inbox.${m.id}.acceptTip`, a = r.k.read(p) ?? undefined, b = fresh(p) ?? undefined, c = acceptTipJS(facts, m);
+      checked++; if (!eq(a, b)) mismatches.push({ who: r.name, path: p, live: a, fresh: b });
+      checked++; if (!eq(a, c)) mismatches.push({ who: r.name, path: p + " (JS)", live: a, js: c });
+      checked++; if (m.kind === "ice" && typeof a !== "boolean") mismatches.push({ who: r.name, path: p + " (an ice tip, not decided)", live: a });
     }
   }
   return { ok: mismatches.length === 0, checked, mismatches };

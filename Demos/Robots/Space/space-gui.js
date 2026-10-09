@@ -32,7 +32,10 @@ if (SYN && SYN.watchTheme) SYN.watchTheme(); // re-measures the colours whenever
 function resolveInstance(path, ctx) {
   let m;
   if ((m = /^robots\.(\d+)$/.exec(path))) return M.NAME[m[1]] ? `robot:${m[1]}` : null;
-  if ((m = /^robots\.\d+\.heard\.(\d+)$/.exec(path))) return M.NAME[m[1]] ? `robot:${m[1]}` : null;   // what it heard from robot m
+  // a message names its peer: inbox[id] / its .from → the sender, outbox[id] / its .to → the receiver (read in that kernel)
+  if ((m = /^robots\.(\d+)\.(inbox|outbox)\.(\d+)(?:\.(?:from|to))?$/.exec(path))) { const peer = FME(`robots.${m[1]}.${m[2]}.${m[3]}.${m[2] === "inbox" ? "from" : "to"}`); return M.NAME[peer] ? `robot:${peer}` : null; }
+  if ((m = /^robots\.\d+\.(?:lastFrom|lastTo)\.(\d+)$/.exec(path))) return M.NAME[m[1]] ? `robot:${m[1]}` : null;   // the pointer to the latest from / to robot m
+  if ((m = /^robots\.(\d+)\.tipMsg$/.exec(path))) { const f = FME(`robots.${m[1]}.tipMsg.from`); return M.NAME[f] ? `robot:${f}` : null; }   // whose tip it keeps
   if ((m = /^robots\.(\d+)\.home$/.exec(path))) { const r = M.ROBOTS.find((x) => x.id === Number(m[1])); return r ? `rock:${r.rock}` : null; }   // the pointer → its rock
   if ((m = /^rocks\.(\w+)$/.exec(path))) { const rk = M.ROCKS.find((x) => x.key === m[1]); return rk ? `rock:${rk.id}` : null; }
   if (path === "objects.ice" || path === "objects.comet") return `object:${path.slice(8)}`;
@@ -387,10 +390,7 @@ function Passage(p) {   // a compact card under the scene: the story, one passag
       h(Typography, { component: "p", id: "passage-body", sx: { fontFamily: SERIF, fontSize: { xs: 13.5, md: 14 }, lineHeight: 1.45, color: "text.primary", m: 0 } }, ...storyText(ps)),
       h(StoryCode, { act: step }),
       h(Box, { sx: { display: "flex", alignItems: "center", gap: .75, mt: .75, flexWrap: "wrap" } },
-        ...ps.tries.map(([label, fn], i) => h(Button, { key: i, className: "try", variant: "contained", disableElevation: true, size: "small", disabled: !W, onClick: fn, sx: btn }, label))),
-      h(Box, { id: "honest-line", sx: { mt: .9, pt: .7, borderTop: 1, borderColor: "divider", fontFamily: SERIF, fontStyle: "italic", fontSize: 12, lineHeight: 1.4, color: "text.secondary" } },
-        h(Box, { component: "b", sx: { fontWeight: 600, fontStyle: "normal", fontFamily: MONO, fontSize: 10.5, letterSpacing: ".04em", mr: .5 } }, "What .me does here:"),
-        "each spider's kernel stores its facts and the logical relations between them, and every decision is an operation over that logic (derive, explain). The walking, the radio and the animation are the page's own code: they only act on it and draw it.")));
+        ...ps.tries.map(([label, fn], i) => h(Button, { key: i, className: "try", variant: "contained", disableElevation: true, size: "small", disabled: !W, onClick: fn, sx: btn }, label)))));
 }
 
 // The act's prose; an optional link on its first occurrence of link.text (e.g. ".me kernel" → the .me docs)
@@ -401,6 +401,7 @@ function storyText(ps) {
 }
 // The act's .me lines, grouped by the kernel they run in. A fixed line is the code that kernel ran when it was set
 // up; a live line is the latest write to that path in that kernel, exactly as it was made (with k, in act VII).
+// A message line (acts IV-VI) expands into that message's real writes, by id (M.expandLines).
 const kernelLabel = (who) => (who === "all" ? "every kernel" : `${M.NAME[who]}'s kernel`);
 function StoryCode({ act: n }) {
   const story = M.STORY[n]; if (!story) return null;
@@ -416,7 +417,7 @@ function StoryCode({ act: n }) {
   return h(Box, { id: "story-code", "data-act": n, sx: { mt: .75, display: "grid", gap: { xs: .75, md: 1 }, gridTemplateColumns: { xs: "minmax(0, 1fr)", sm: "repeat(auto-fit, minmax(240px, 1fr))" } } },
     ...story.groups.map((g, gi) => h(Box, { key: gi, className: "story-group", "data-who": String(g.who), sx: { minWidth: 0, borderLeft: 2, borderColor: "divider", pl: 1 } },
       h(Box, { sx: { fontFamily: MONO, fontSize: 9.5, letterSpacing: ".1em", textTransform: "uppercase", color: "text.secondary", mb: .25 } }, kernelLabel(g.who)),
-      ...g.lines.map((ln, i) => line(g.who, ln, i)))));
+      ...(W ? M.expandLines(W, g) : g.lines).map((ln, i) => line(g.who, ln, i)))));
 }
 
 // ── aside: controls, the dashboard, what things mean, under the hood ──
@@ -480,7 +481,7 @@ function RobotPanel(p) {
       h(Card, { id: "card-doing", icon: STATUS_ICON[r.status] || "look", label: "Doing", color: r.dead ? "error.main" : undefined }, h(Bound, { path: `${base}.${flag}`, value: flagV }, DOING_WORDS[r.status] || r.status)),
       h(Card, { id: "card-going", icon: "go", label: "Going to" }, r.dest),
       h(Card, { id: "card-msgs", icon: "radio", label: "Messages" }, h(Box, { component: "span" },
-        h(Bound, { path: `${base}.sent`, value: sent }, `${fmt(sent)} sent`), ", ", h(Bound, { path: `${base}.received`, value: recv }, `${fmt(recv)} heard`))),
+        h(Bound, { path: `${base}.sent`, value: sent }, `${fmt(sent)} sent`), ", ", h(Bound, { path: `${base}.received`, value: recv }, `${fmt(recv)} received`))),
       h(Card, { id: "card-ice", icon: r.studies ? "flask" : r.slips ? "ice" : "pick", label: r.studies ? "Ice samples" : r.slips ? "Ice spots found" : "Ice mined" },
         r.slips ? h(Bound, { path: `${base}.found`, value: found }, fmt(found)) : h(Bound, { path: `${base}.ice`, value: ice }, fmt(ice)))),
     h(KnowsHeard, { r }),
@@ -489,36 +490,49 @@ function RobotPanel(p) {
       h(Button, { id: "btn-tip", size: "small", variant: "outlined", onClick: () => act.tip(id), sx: { ...btn, flex: 1 } }, "Share an ice tip"),
       h(Button, { id: "btn-drain", size: "small", variant: "outlined", color: "warning", onClick: () => act.drain(id), sx: { ...btn, flex: 1 } }, "Drain battery")));
 }
-// "It knows" / "It heard": the real facts in this robot's own kernel (M.PANEL), each the latest write to that path
-// (k.last) exactly as it was made, with a small dimmed hint in plain words read from the same kernel.
+// "It knows" (its own readings) / "Inbox" / "Outbox" (its communications): the real facts in this robot's own kernel
+// (M.PANEL), each the latest write to that path (k.last) exactly as it was made, with a small dimmed hint in plain
+// words read from the same kernel. Messages are listed by id, newest first.
 function KnowsHeard({ r }) {
   const id = r.id, k = r.k, rd = (p) => k.read(p), base = `robots.${id}`, now = rd(`${base}.now`);
+  const ago = (t) => { const m = Math.max(0, Math.round(now - t)); return m === 0 ? "just now" : `${m} min ago`; };
+  const what = (mb) => (rd(`${mb}.kind`) === "ice" ? "ice tip" : "hello");
   const hint = (L, v) => {
+    if (L.box) {
+      const mb = `${base}.${L.box}.${L.mid}`;
+      switch (L.field) {
+        case "from": return `from ${M.NAME[v]}, ${what(mb)}, ${ago(rd(`${mb}.at`))}`;
+        case "to": return `to ${M.NAME[v]}, ${what(mb)}, ${ago(rd(`${mb}.at`))}`;
+        case "battery": return L.box === "inbox" ? `${M.NAME[rd(`${mb}.from`)]} said ${v}%` : `it said ${v}%`;
+        case "rock": {
+          if (L.box === "outbox") return `about ${M.ROCK_NAME[v]}`;
+          const why = rd(`${mb}.accepted`) ? `its rock: accepted${r.tipMsg === L.mid ? ", its plan" : ""}`
+            : v !== rd(`${base}.myRock`) ? "not its rock, kept" : rd(`${mb}.got`) - rd(`${mb}.at`) > rd(`${base}.maxAge`) ? "too old, kept" : "it had a fresh tip, kept";
+          return `about ${M.ROCK_NAME[v]}: ${why}`; }
+        default: return "";
+      }
+    }
     switch (L.hint) {
+      case "charge": return `of ${L.bat.capacity} Wh, the ${L.bat.name} battery`;
       case "light": return v === 0 ? "in the sun" : "in the shade";
       case "ice": return v ? "there is ice on its rock" : "no ice seen yet";
       case "comet": return v ? "a comet is close" : "no comet close";
       case "reach": return v ? "its radio reaches the other rock" : "its radio can't reach the other rock";
-      case "said": return `what ${M.NAME[L.from]} said, in %`;
-      case "ago": return `${Math.max(0, Math.round(now - v))} min ago`;
-      case "tip": return v ? `an ice tip from ${M.NAME[v]}` : "no ice tips yet";
-      case "tipRock": return `about ${M.ROCK_NAME[v]}: ${v === rd(`${base}.myRock`) ? "its rock" : "not its rock, kept as heard"}`;
-      case "accepted": { const inF = rd(`${base}.inboxFrom`), ok = inF && v === inF && rd(`${base}.tipAt`) === rd(`${base}.inboxAt`);
-        return ok ? "accepted: it keeps this tip" : !v ? "it keeps no tip" : v === id ? "it keeps the ice it found" : `it keeps ${M.NAME[v]}'s tip`; }
       default: return "";
     }
   };
-  const lineOf = (L, i) => {
-    const x = k.last[L.live];
-    if (!x) return L.hint === "said" ? h(Box, { key: i, className: "panel-none", sx: { fontFamily: SERIF, fontStyle: "italic", fontSize: 12, color: "text.disabled", py: "1px" } }, `nothing from ${M.NAME[L.from]} yet`) : null;
-    if ((L.hint === "tipRock" || L.hint === "accepted") && !rd(`${base}.inboxFrom`)) return null;   // no tip heard yet: one line says so
-    return h(Box, { key: i, className: "panel-line", "data-live": L.live, "data-me-path": pagePath(id, L.live), "data-me-value": String(x.value), sx: { py: "1px", lineHeight: 1.45 } },
+  const lineOf = (L, i, all) => {
+    if (!L.live) return L.none ? h(Box, { key: i, className: "panel-none", sx: { fontFamily: SERIF, fontStyle: "italic", fontSize: 12, color: "text.disabled", py: "1px" } }, L.none) : null;
+    const x = k.last[L.live]; if (!x) return null;
+    const first = L.box && i > 0 && all[i - 1].mid !== L.mid;   // a little space between two messages
+    return h(Box, { key: i, className: "panel-line", "data-live": L.live, "data-msg": L.mid ?? undefined, "data-me-path": pagePath(id, L.live), "data-me-value": String(x.value), sx: { py: "1px", lineHeight: 1.45, mt: first ? .5 : 0 } },
       h(MeCode, { code: x.code, ctx: id, unmarked: `robot:${id}`, sx: { fontSize: 10, mr: .75 } }), " ",
       h(Box, { component: "span", className: "panel-hint", sx: { fontFamily: SERIF, fontStyle: "italic", fontSize: 11.5, color: "text.disabled" } }, hint(L, x.value)));
   };
   return h(Box, { id: "knows-heard", sx: { display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 1.25, mt: 1.5 } },
-    ...M.PANEL(id).map((g) => h(Box, { key: g.key, id: g.key, sx: { minWidth: 0 } }, H2(g.title, h(Box, { component: "span", sx: { fontStyle: "italic", fontFamily: SERIF, color: "text.disabled", fontSize: 11 } }, g.sub)),
-      h(Box, { sx: { borderLeft: 2, borderColor: "divider", pl: 1 } }, ...g.lines.map(lineOf)))));
+    ...M.PANEL(id).map((g) => { const ls = M.expandLines(W, g);
+      return h(Box, { key: g.key, id: g.key, sx: { minWidth: 0 } }, H2(g.title, h(Box, { component: "span", sx: { fontStyle: "italic", fontFamily: SERIF, color: "text.disabled", fontSize: 11 } }, g.sub)),
+        h(Box, { sx: { borderLeft: 2, borderColor: "divider", pl: 1 } }, ...ls.map(lineOf))); }));
 }
 // What does a shared object mean to each spider? One column per kernel, each read from that robot's own kernel.
 const MEANINGS = {
@@ -572,25 +586,41 @@ function HoodObjects() {
 function HoodRobot() {
   const { sel, explain } = useStore(ui); useStore(tick); if (!W) return null;
   const r = robot(sel), base = `robots.${sel}`, lw = lastWrites.get(sel), bat = FME(`${base}.battery`);
-  const facts = ["battery", "pos", "lightDist", "charging", "now", "role", "myRock", "tipFrom", "tipRock", "tipPos", "tipAt", "inboxFrom", "inboxRock", "inboxAt", "sent", "received", "ice", "found", "maxAge", "costPerRad", "margin", "full"];
+  const facts = [...M.BATTERIES.flatMap((b) => [`batteries.${b.i}.charge`, `batteries.${b.i}.capacity`]), "pos", "lightDist", "charging", "now", "role", "myRock", "tipRock", "tipPos", "tipAt", "sent", "received", "ice", "found", "maxAge", "costPerRad", "margin", "full"];
+  const key = (f) => f.replace(/\.(\d+)\./g, "[$1].");
+  // a pointer, read through: lastFrom[i] / lastTo[i] → the message, tipMsg → the tip it accepted
+  const ptr = (p, label, sub) => { const t = FME(p)?.__ptr, m = t && /\.(inbox|outbox)\.(\d+)$/.exec(t), there = t && FME(`${t}.at`) != null;
+    return KV(label, !t ? h(Box, { component: "span", sx: { color: "text.disabled" } }, "nothing yet (undefined)") : !there ? h(Box, { component: "span", sx: { color: "text.disabled" } }, `${m[1]}[${m[2]}] (removed)`)
+      : h(Box, { component: "span" }, `${m[1]}[${m[2]}] · ${FME(`${t}.kind`)} · `, FME(`${t}.kind`) === "ice" ? `rock ${FME(`${t}.rock`)}` : `${FME(`${t}.battery`)}%`, ` · at ${FME(`${t}.at`)}`), sub); };
   return h(Box, { id: "hood-robot", sx: { mt: 1.5 } },
     H2(`${r.name}'s kernel`, h(MeCode, { code: `me.robots[${sel}]`, ctx: sel, sx: { fontSize: 9.5 } })),
-    h(Box, null, ...facts.map((f) => KV(f, h(MeVal, { path: `${base}.${f}` })))),
-    ...M.IDS.filter((i) => i !== sel).map((i) => KV(`heard[${i}]`, FME(`${base}.heard.${i}.at`) === undefined ? h(Box, { component: "span", sx: { color: "text.disabled" } }, "nothing yet (undefined)") : h(Box, { component: "span" }, h(MeVal, { path: `${base}.heard.${i}.battery` }), " % at ", h(MeVal, { path: `${base}.heard.${i}.at` })), `what ${M.NAME[i]} said`)),
+    h(Box, null, ...facts.map((f) => KV(key(f), h(MeVal, { path: `${base}.${f}` })))),
+    ...M.IDS.filter((i) => i !== sel).flatMap((i) => [ptr(`${base}.lastFrom.${i}`, `lastFrom[${i}] →`, `the latest from ${M.NAME[i]}`), ptr(`${base}.lastTo.${i}`, `lastTo[${i}] →`, `the latest to ${M.NAME[i]}`)]),
+    ptr(`${base}.tipMsg`, "tipMsg →", "the tip it accepted"),
+    KV("inbox · outbox", `${M.msgIds(r, "inbox").map((x) => `[${x}]`).join(" ") || "—"} · ${M.msgIds(r, "outbox").map((x) => `[${x}]`).join(" ") || "—"}`, `the last ${M.KEEP} per peer`),
     KV("home →", h(Box, { component: "span" }, `${FME(`${base}.home.name`)} · radius ${FME(`${base}.home.radius`)}`), "pointer, read through"),
     h(Box, { sx: { mt: 1 } }, H2("Rules (the same text in every kernel)"),
       ...M.RULES.map(([n, e]) => h(Box, { key: n, className: "rule", sx: { ...ROW_SX, cursor: "pointer", "&:hover": { bgcolor: "action.hover" } }, onClick: () => ui.set({ explain: n }), title: `explain ${n}` },
         h(Box, { component: "span", sx: { minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: explain === n ? "primary.main" : "text.secondary" } }, n, h(MeCode, { code: e, sx: { ml: .75, fontSize: 9.5, whiteSpace: "nowrap", opacity: .85 } })),
-        h(Box, { component: "span", sx: { textAlign: "right" } }, h(MeVal, { path: `${base}.${n}` }))))),
-    h(Box, { sx: { mt: 1 } }, H2("Battery (writes one value)"),
+        h(Box, { component: "span", sx: { textAlign: "right" } }, h(MeVal, { path: `${base}.${n}` })))),
+      H2("Its inbox rule (computed on each message it receives)"),
+      h(Box, { className: "rule", id: "inbox-rule", sx: { ...ROW_SX, gridTemplateColumns: "minmax(0, 1fr)", cursor: "pointer", "&:hover": { bgcolor: "action.hover" } }, onClick: () => ui.set({ explain: "inbox" }), title: "explain acceptTip on its newest ice tip" },
+        h(MeCode, { code: M.inboxRuleCode(sel), ctx: sel, sx: { fontSize: 9.5, color: explain === "inbox" ? "primary.main" : undefined } }))),
+    h(Box, { sx: { mt: 1 } }, H2("Battery (measures its two batteries)"),
       Slider ? h(Slider, { id: "battery-slider", size: "small", min: 0, max: 100, step: 1, value: Math.max(0, Math.min(100, Math.round(typeof bat === "number" ? bat : 0))), onChange: (e, v) => act.battery(sel, v), "aria-label": `${r.name} battery`, sx: { mx: 1, width: "calc(100% - 16px)" } })
         : h("input", { id: "battery-slider", type: "range", min: 0, max: 100, value: Math.round(bat || 0), onChange: (e) => act.battery(sel, Number(e.target.value)), style: { width: "100%" } })),
-    h(ExplainView, { path: `${base}.${explain}` }),
+    h(ExplainView, { path: explainPath(r, explain) }),
     h(Box, { sx: { mt: 1.25 } }, H2("Last writes", lw ? h("span", null, `${lw.manual ? "your write" : "control step"} · ${clock(lw.t)}`) : null),
       h(Box, { component: "ul", id: "writes", sx: { listStyle: "none", m: 0, p: 0, fontFamily: MONO, fontSize: 9.5, minHeight: 40 } },
         ...(lw ? lw.batch.slice(-7).map((x, i) => h(Box, { component: "li", key: i, sx: { py: .25, borderBottom: 1, borderColor: "divider", overflowWrap: "anywhere", "&:last-of-type": { borderBottom: 0 } } },
           h(MeCode, { code: x.code, ctx: sel, sx: { fontSize: 9.5 } }), h(Box, { component: "span", sx: { color: "warning.main", ml: .75 } }, `k=${x.k}`), h(Box, { component: "span", sx: { color: "text.disabled", ml: .75 } }, `${x.us.toFixed(0)} µs`)))
           : [h(Box, { component: "li", key: "e", sx: { color: "text.disabled" } }, "No writes yet: play the simulation.")]))));
+}
+// what explain() shows: a rule of the robot, or ("inbox") acceptTip on the newest ice tip its inbox keeps
+function explainPath(r, explain) {
+  const base = `robots.${r.id}`; if (explain !== "inbox") return `${base}.${explain}`;
+  const ids = M.msgIds(r, "inbox"), id = ids.find((x) => FME(`${base}.inbox.${x}.kind`) === "ice") ?? ids[0];
+  return id != null ? `${base}.inbox.${id}.acceptTip` : `${base}.tipFresh`;
 }
 function HoodStats() {
   useStore(tick); if (!W) return null;
