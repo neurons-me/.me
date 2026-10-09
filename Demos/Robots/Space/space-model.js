@@ -24,7 +24,7 @@ export const ROCKS = [
 ];
 // Roles: the same objects mean different things to each spider (as in the Robots ContextLab: one canister, many meanings).
 export const ROBOTS = [
-  { id: 1, name: "Pip", role: "miner", rock: 1, pos: 0.4, battery: 82, dir: 1, mines: true, slips: false, studies: false },
+  { id: 1, name: "Oli", role: "miner", rock: 1, pos: 0.4, battery: 82, dir: 1, mines: true, slips: false, studies: false },
   { id: 2, name: "Tiko", role: "light scout", rock: 1, pos: -1.2, battery: 64, dir: -1, mines: false, slips: true, studies: false },
   { id: 3, name: "Lua", role: "scientist", rock: 2, pos: 1.4, battery: 71, dir: 1, mines: false, slips: false, studies: true },
 ];
@@ -303,8 +303,8 @@ function stepRobot(w, r, dt) {
   r.status = r.dead ? "asleep" : action === "charge" ? (charging ? "charging" : "going to the sun")
     : action === "shelter" ? "hiding from the comet dust" : action === "watch" ? "studying the comet"
     : action === "tip" ? (drilling ? work : "going to the ice") : (r.avoidedAt != null && w.t - r.avoidedAt < 25 ? "turning away from the ice" : "exploring");
-  r.dest = r.dead ? "nowhere" : action === "charge" ? (charging ? "here, in the sun" : "the sunny side") : action === "shelter" || action === "watch" ? "nowhere: it stays still"
-    : action === "tip" ? (drilling ? "here, at the ice" : `the ice${tipFrom !== r.id ? `, ${NAME[tipFrom]} said` : ""}`) : "around the rock, looking";
+  r.dest = r.dead ? "nowhere: it is asleep" : action === "charge" ? (charging ? "stays here, in the sun" : "the sunny side") : action === "shelter" || action === "watch" ? "stays where it is"
+    : action === "tip" ? (drilling ? "stays here, at the ice" : tipFrom !== r.id ? `the ice ${NAME[tipFrom]} told it about` : "the ice it found") : "around its rock, looking";
 }
 
 export function step(w, dt = 1) {
