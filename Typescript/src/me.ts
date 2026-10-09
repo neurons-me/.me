@@ -1556,7 +1556,8 @@ export class ME {
   /**
    * Return a handle bound to a caller scope for stealth reads.
    *
-   * - `me.as(null)` — guest: secret scopes are indistinguishable from absent.
+   * - `me.as(null)` — guest: paths under a `_()` secret are indistinguishable from
+   *   paths that do not exist (`undefined`). **Public** paths remain readable.
    * - `me.as("scope-key")` — key holder: paths under that `_()` secret are readable.
    * - Omit / use the owner `me` — full session privileges (`_currentCallerScope` unset).
    *
@@ -1565,9 +1566,15 @@ export class ME {
    *
    * @example
    * ```ts
+   * me.shop.label("Cafe");
+   * me.ops["_"]("downtown-ops-key");
+   * me.ops.beansKg(3);
+   *
    * const guest = me.as(null);
-   * guest("ops.beansKg"); // undefined — stealth
-   * me("ops.beansKg");    // owner still sees the value
+   * guest("shop.label");   // "Cafe" — public, still readable
+   * guest("ops.beansKg");  // undefined — protected (same as a missing path)
+   * guest("ops.missing");  // undefined — does not exist (indistinguishable)
+   * me("ops.beansKg");     // 3 — owner
    * ```
    */
   as(scope: string | null): ME {
@@ -1590,7 +1597,9 @@ export class ME {
    * handle. Guests are not escalated, but the owner is not demoted either.
    *
    * **Do not use this as an authorization boundary.** Migrate to `me.as(key | null)`
-   * and perform all restricted reads through the returned handle:
+   * and perform restricted reads through the returned handle. A guest handle still
+   * reads **public** paths; `undefined` means the path is protected *or* absent
+   * (those two cases are not distinguishable):
    *
    * ```ts
    * // before (ineffective demotion — do not rely on this)
@@ -1598,7 +1607,8 @@ export class ME {
    *
    * // after
    * const guest = me.as(null);
-   * guest("ops.beansKg"); // undefined
+   * guest("shop.label");  // public value — still readable
+   * guest("ops.beansKg"); // undefined — protected or missing (indistinguishable)
    * ```
    *
    * Kept exported for compatibility only; runtime behavior is unchanged (aside from a

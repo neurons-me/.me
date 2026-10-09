@@ -16,9 +16,11 @@ Migration:
 // before — ineffective demotion (do not rely on this)
 me.withScope(null, () => me("ops.beansKg"));
 
-// after — restricted handle
+// after — restricted handle (guest can still read public paths)
 const guest = me.as(null);
-guest("ops.beansKg"); // undefined for a guest
+guest("shop.label");  // public value — still readable
+guest("ops.beansKg"); // undefined — protected path, or one that does not exist
+                      // (those two cases are indistinguishable to a guest)
 ```
 
 Key holders:

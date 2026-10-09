@@ -41,12 +41,22 @@ async function main() {
     const seed = kind === "root" ? seedRoot : seedBranch;
     const dblPath = kind === "root" ? "dbl" : "notes.dbl";
 
-    await test(`[${kind}] CURRENT BEHAVIOR: as(null) blocks secret leaves (canonical guest)`, () => {
+    await test(`[${kind}] CURRENT BEHAVIOR: as(null) hides secret leaves but still reads public paths`, () => {
       const me: any = new ME();
+      me.shop.label("Cafe"); // public (sibling of a branch scope; under root _ it becomes stealth)
+      assert.equal(me.as(null)("shop.label"), "Cafe", "with no _ yet, guest reads public paths");
       seed(me);
-      assert.equal(me.as(null)("notes.pin"), undefined);
-      assert.equal(me.as(null)("notes.other"), undefined);
-      assert.equal(me.as(null)(dblPath), undefined);
+      const guest = me.as(null);
+      if (kind === "branch") {
+        assert.equal(guest("shop.label"), "Cafe", "branch _ does not hide sibling public paths");
+      } else {
+        // bare me["_"] covers the whole tree — former public paths are stealth to guests
+        assert.equal(guest("shop.label"), undefined, "root _ : prior public path ≡ absent for guest");
+      }
+      assert.equal(guest("notes.pin"), undefined, "protected ≡ absent for guest");
+      assert.equal(guest("notes.other"), undefined);
+      assert.equal(guest(dblPath), undefined);
+      assert.equal(guest("notes.noSuchField"), undefined, "missing path also undefined");
     });
 
     await test(`[${kind}] CURRENT BEHAVIOR: owner reads secrets (baseline)`, () => {
@@ -137,7 +147,19 @@ async function main() {
     });
   }
 
-  await test("CURRENT BEHAVIOR: nested withScope set/restore of the field does not affect owner proxy reads", () => {
+  await test("CURRENT BEHAVIOR: as(null) reads public paths when only a branch scope is secret", () => {
+    const me: any = new ME();
+    me.shop.label("Cafe");
+    me.ops["_"]("rk");
+    me.ops.beansKg(3);
+    const guest = me.as(null);
+    assert.equal(guest("shop.label"), "Cafe", "public still readable");
+    assert.equal(guest("ops.beansKg"), undefined, "protected ≡ absent");
+    assert.equal(guest("ops.missing"), undefined, "missing ≡ same undefined");
+    assert.equal(me("ops.beansKg"), 3, "owner still reads protected leaf");
+  });
+
+    await test("CURRENT BEHAVIOR: nested withScope set/restore of the field does not affect owner proxy reads", () => {
     const me: any = new ME();
     seedRoot(me);
     const got = me.withScope(null, () =>
