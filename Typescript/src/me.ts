@@ -1506,7 +1506,10 @@ export class ME {
   private isStealthBlocked(path: SemanticPath, callerScope: string | null | undefined): boolean {
     if (callerScope === undefined) return false;
     const normalized = Utils.normalizeSelectorPath(path);
-    for (let i = normalized.length; i > 0; i--) {
+    // i >= 0 so the root scope key "" (bare me["_"](...)) is checked too.
+    // The previous bound i > 0 skipped it, so guests could read root-scoped
+    // leaves in the clear (see tests/Security/root-secret-stealth.test.ts).
+    for (let i = normalized.length; i >= 0; i--) {
       const ancestorKey = normalized.slice(0, i).join(".");
       const secretScope = this.localSecrets[ancestorKey];
       if (secretScope !== undefined && secretScope !== callerScope) {
