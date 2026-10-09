@@ -1,5 +1,33 @@
 # TypeScript .me Changelog
 
+## Unreleased
+
+### Deprecated: `withScope` — use `as()`
+
+`ME#withScope` is deprecated. It does **not** restrict reads on existing handles
+(the owner proxy keeps its captured owner scope), so it must not be used as an
+authorization boundary. Prefer `me.as(key | null)` and read through the returned
+handle. The method remains exported for compatibility; behavior is unchanged
+aside from a one-time `console.warn` per process.
+
+Migration:
+
+```ts
+// before — ineffective demotion (do not rely on this)
+me.withScope(null, () => me("ops.beansKg"));
+
+// after — restricted handle
+const guest = me.as(null);
+guest("ops.beansKg"); // undefined for a guest
+```
+
+Key holders:
+
+```ts
+const ops = me.as("downtown-ops-key");
+ops("ops.beansKg"); // readable when the key matches
+```
+
 ## 4.1.0 - unreleased
 
 Correctness release for derived values (`=`). Several cases returned a stale

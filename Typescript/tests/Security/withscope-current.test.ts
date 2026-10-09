@@ -1,21 +1,24 @@
 /// <reference types="node" />
 /**
- * CURRENT BEHAVIOR — withScope vs as() (no fix)
+ * DIAGNOSIS — deprecated `withScope` vs `as()` (not a permanent contract)
  *
- * Pins today's semantics so a later contract change is measurable.
- * See /workspace/research/withscope/FINDINGS.md and CONTRACT.md.
+ * These tests pin the **deprecated** behaviour of `ME#withScope` for diagnosis
+ * and regression visibility. They may change or be removed once callers have
+ * migrated to `me.as(key|null)`. See CHANGELOG Unreleased, TypeDoc on
+ * `withScope`, and /workspace/research/withscope/CONTRACT.md (option D).
  *
- * Framing: withScope(null) fails open as a restriction on the OWNER handle
+ * Framing: `withScope(null)` fails open as a restriction on the OWNER handle
  * (proxy re-applies the scope captured at handle creation). Guests / wrong-key
- * handles do NOT gain privilege inside withScope. This is NOT privilege
- * escalation; it is an ineffective demotion.
+ * handles do NOT gain privilege inside `withScope`. That is an ineffective
+ * demotion, not privilege escalation — which is why the API is deprecated in
+ * favour of reading through `me.as(...)`.
  *
- * Every assertion below is labeled CURRENT BEHAVIOR. Do not "fix" this file
- * by changing expectations without an explicit contract decision.
+ * Labels below still say CURRENT BEHAVIOR so failures stay searchable; treat
+ * them as diagnosis pins, not a promise to keep forever.
  */
 import { MEConstructor as ME, assert, makeSuite } from "./helpers.ts";
 
-const { test, summarize } = makeSuite("CURRENT BEHAVIOR: withScope");
+const { test, summarize } = makeSuite("DIAGNOSIS (deprecated withScope)");
 
 function seedRoot(me: any) {
   me["_"]("rk");
@@ -32,7 +35,7 @@ function seedBranch(me: any) {
 }
 
 async function main() {
-  console.log("\n### CURRENT BEHAVIOR — withScope (owner demotion fails open; no guest escalation)");
+  console.log("\n### DIAGNOSIS — deprecated withScope (owner demotion fails open; migrate to as())");
 
   for (const kind of ["root", "branch"] as const) {
     const seed = kind === "root" ? seedRoot : seedBranch;

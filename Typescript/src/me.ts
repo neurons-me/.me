@@ -239,6 +239,18 @@ function resolveSeed(seed: unknown): string {
  *   [Operators](/Operators), and
  *   [Syntax](/Syntax)
  */
+
+/** One-time process warning for deprecated {@link ME.withScope}. */
+let withScopeDeprecationWarned = false;
+function warnWithScopeDeprecatedOnce(): void {
+  if (withScopeDeprecationWarned) return;
+  withScopeDeprecationWarned = true;
+  console.warn(
+    "[this.me] ME#withScope is deprecated and does not restrict reads on existing handles. " +
+      "Migrate to me.as(key|null) and read through the returned handle. See CHANGELOG / TypeDoc.",
+  );
+}
+
 export class ME {
   [key: string]: any;
   private static readonly RUNTIME_ESCAPE_TOKEN = ProxyRuntime.RUNTIME_ESCAPE_TOKEN;
@@ -1541,6 +1553,23 @@ export class ME {
     return Core.readPath(this as unknown as MEKernelLike, path);
   }
 
+  /**
+   * Return a handle bound to a caller scope for stealth reads.
+   *
+   * - `me.as(null)` — guest: secret scopes are indistinguishable from absent.
+   * - `me.as("scope-key")` — key holder: paths under that `_()` secret are readable.
+   * - Omit / use the owner `me` — full session privileges (`_currentCallerScope` unset).
+   *
+   * Always read through the **returned** handle. This is the supported audience API
+   * (see axiom A3b). Prefer this over {@link ME.withScope}, which is deprecated.
+   *
+   * @example
+   * ```ts
+   * const guest = me.as(null);
+   * guest("ops.beansKg"); // undefined — stealth
+   * me("ops.beansKg");    // owner still sees the value
+   * ```
+   */
   as(scope: string | null): ME {
     const prev = this._currentCallerScope;
     this._currentCallerScope = scope;
@@ -1551,7 +1580,32 @@ export class ME {
     }
   }
 
+  /**
+   * @deprecated Does **not** restrict reads the way its name suggests. Prefer {@link ME.as}.
+   *
+   * `withScope(scope, fn)` only assigns `_currentCallerScope` for the duration of `fn`.
+   * Reads through an existing handle (including the owner `me` proxy) re-apply the
+   * scope captured when that handle was created, so
+   * `withScope(null, () => me("secret.leaf"))` still returns the secret on the owner
+   * handle. Guests are not escalated, but the owner is not demoted either.
+   *
+   * **Do not use this as an authorization boundary.** Migrate to `me.as(key | null)`
+   * and perform all restricted reads through the returned handle:
+   *
+   * ```ts
+   * // before (ineffective demotion — do not rely on this)
+   * me.withScope(null, () => me("ops.beansKg"));
+   *
+   * // after
+   * const guest = me.as(null);
+   * guest("ops.beansKg"); // undefined
+   * ```
+   *
+   * Kept exported for compatibility only; runtime behavior is unchanged (aside from a
+   * one-time `console.warn` per process).
+   */
   withScope<T>(scope: string | null, fn: () => T): T {
+    warnWithScopeDeprecatedOnce();
     const prev = this._currentCallerScope;
     this._currentCallerScope = scope;
     try {
