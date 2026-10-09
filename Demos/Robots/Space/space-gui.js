@@ -23,6 +23,12 @@ const { Box, Button, Typography, Link, TextField } = G.Atoms;
 const { MenuItem } = G.Molecules;
 const Slider = G.Atoms.Slider || G.Molecules.Slider || null;
 const MONO = '"IBM Plex Mono", "SF Mono", ui-monospace, Menlo, Consolas, monospace';
+// .me code on screen goes through the shared highlighter (assets/me-syntax): colours from the .GUI theme, text unchanged.
+const SYN = window.MeSyntax || null;
+if (SYN && SYN.watchTheme) SYN.watchTheme(); // re-measures the colours whenever .GUI writes a new theme / mode
+function MeCode({ code, sx, id, className }) {
+  return h(Box, { component: "code", id, className: `me-code${className ? " " + className : ""}`, sx: { fontFamily: MONO, minWidth: 0, ...(sx || {}) } }, ...(SYN ? SYN.render(h, code) : [code]));
+}
 const SERIF = '"Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Times New Roman", serif';
 const alpha = (c, a) => `color-mix(in srgb, ${c} ${Math.round(a * 100)}%, transparent)`;
 const fmt = (v, d = 2) => (typeof v === "number" ? (Number.isInteger(v) ? String(v) : v.toFixed(d)) : v === undefined ? "—" : String(v));
@@ -128,7 +134,7 @@ const act = {
 };
 
 // ── the story ──
-const C = (s) => `<code>${s}</code>`;
+const C = (s) => `<code class="me-code">${SYN ? SYN.toHTML(s) : s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`)}</code>`;
 const PASSAGES = [null,
   { title: "Two small rocks",
     body: `In the void there are two small rocks. On the bigger one, B 612, live two spider robots, Oli and Tiko. On the smaller one, B 325, lives Lua. Nobody drives them. Each one carries its own .me kernel: what it knows lives there, in ${C("me.robots[1]")} for Oli, and nowhere else. Tap a spider to see how it is doing.`,
@@ -371,7 +377,7 @@ function Passage(p) {   // a compact card under the scene: the story, one passag
       h(Typography, { component: "p", id: "passage-body", sx: { fontFamily: SERIF, fontSize: { xs: 13.5, md: 14 }, lineHeight: 1.45, color: "text.primary", m: 0, "& code": { fontFamily: MONO, fontSize: ".82em", color: "primary.main" } }, dangerouslySetInnerHTML: { __html: ps.body } }),
       h(Box, { sx: { display: "flex", alignItems: "center", gap: .75, mt: .75, flexWrap: "wrap" } },
         ...ps.tries.map(([label, fn], i) => h(Button, { key: i, className: "try", variant: "contained", disableElevation: true, size: "small", disabled: !W, onClick: fn, sx: btn }, label)),
-        h(Box, { component: "code", sx: { flex: "1 1 220px", minWidth: 0, fontFamily: MONO, fontSize: 10.5, color: "primary.main", whiteSpace: "pre-wrap", wordBreak: "break-word" } }, ps.code)),
+        h(MeCode, { id: "passage-code", code: ps.code, sx: { flex: "1 1 220px", fontSize: 10.5 } })),
       h(Box, { id: "honest-line", sx: { mt: .9, pt: .7, borderTop: 1, borderColor: "divider", fontFamily: SERIF, fontStyle: "italic", fontSize: 12, lineHeight: 1.4, color: "text.secondary" } },
         h(Box, { component: "b", sx: { fontWeight: 600, fontStyle: "normal", fontFamily: MONO, fontSize: 10.5, letterSpacing: ".04em", mr: .5 } }, "What .me does here:"),
         "each spider's kernel stores its facts and the logical relations between them, and every decision is an operation over that logic (derive, explain). The walking, the radio and the animation are the page's own code: they only act on it and draw it.")));
@@ -501,14 +507,14 @@ function Hood(p) {
       hood ? "Hide the kernels" : "Under the hood: show the kernels"),
     hood ? h(Box, { id: "hood-body", sx: { mt: 1.25 } }, h(HoodObjects), h(HoodRobot), h(HoodStats), h(KernelInfo)) : null);
 }
-function MeVal({ path, d = 3 }) { const v = G.useMeValue(path); return h(Box, { component: "span", "data-me-path": path, "data-me-value": String(v), sx: { color: v === false ? "text.secondary" : v === true ? "primary.main" : "inherit" } }, fmt(v, d)); }
+function MeVal({ path, d = 3, syn }) { const v = G.useMeValue(path); return h(Box, { component: "span", "data-me-path": path, "data-me-value": String(v), className: syn && SYN ? SYN.valueClass(v) : undefined, sx: syn && SYN ? {} : { color: v === false ? "text.secondary" : v === true ? "primary.main" : "inherit" } }, fmt(v, d)); }
 const KV = (k, v, sub) => h(Box, { sx: ROW_SX, key: k }, h(Box, { component: "span", sx: { color: "text.secondary", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }, title: sub || k }, k, sub ? h(Box, { component: "span", sx: { color: "text.disabled", ml: .75, fontSize: 9.5 } }, sub) : null), h(Box, { component: "span", sx: { color: "primary.main", textAlign: "right", whiteSpace: "nowrap" } }, v));
 // Like the ContextLab steps: the script lines in each kernel, beside what they give in that kernel.
 function HoodObjects() {
   const { obj } = useStore(ui); useStore(tick); if (!W) return null;
   const def = MEANINGS[obj], o = M.OBJECTS.find((x) => x.key === obj), rules = M.RULES.filter(([n]) => def.rules.includes(n));
   const line = (code, path, key) => h(Box, { key, sx: { display: "grid", gridTemplateColumns: "minmax(0, 1fr) auto", gap: 1, py: .25, borderBottom: 1, borderColor: "divider", "&:last-of-type": { borderBottom: 0 } } },
-    h(Box, { component: "code", sx: { fontFamily: MONO, fontSize: 9.5, color: "text.primary", overflowWrap: "anywhere", minWidth: 0 } }, code), h(Box, { component: "span", sx: { fontFamily: MONO, fontSize: 9.5, textAlign: "right" } }, "→ ", h(MeVal, { path })));
+    h(MeCode, { code, sx: { fontSize: 9.5 } }), h(Box, { component: "span", className: "me-code", sx: { fontFamily: MONO, fontSize: 9.5, textAlign: "right", whiteSpace: "nowrap" } }, h("span", { className: "mes-arrow" }, "→ "), h(MeVal, { path, syn: true })));
   return h(Box, { id: "hood-objects" }, H2(`${def.title} in each kernel`, h(Box, { component: "span", sx: { fontFamily: SERIF, fontStyle: "italic" } }, "script line → value in that kernel")),
     ...W.robots.map((r) => h(Box, { key: r.id, className: "hood-kernel", sx: { mb: 1, border: 1, borderColor: "divider", borderRadius: 1, px: 1, py: .5 } },
       h(Box, { sx: { fontFamily: MONO, fontSize: 10, fontWeight: 600, mb: .25 } }, `${r.name}'s kernel · the ${r.role}`),
@@ -521,13 +527,13 @@ function HoodRobot() {
   const r = robot(sel), base = `robots.${sel}`, lw = lastWrites.get(sel), bat = FME(`${base}.battery`);
   const facts = ["battery", "pos", "lightDist", "charging", "now", "role", "myRock", "tipFrom", "tipRock", "tipPos", "tipAt", "inboxFrom", "inboxRock", "inboxAt", "sent", "received", "ice", "found", "maxAge", "costPerRad", "margin", "full"];
   return h(Box, { id: "hood-robot", sx: { mt: 1.5 } },
-    H2(`${r.name}'s kernel`, h(Box, { component: "code", sx: { fontFamily: MONO, fontSize: 9.5, color: "primary.main" } }, `me.robots[${sel}]`)),
+    H2(`${r.name}'s kernel`, h(MeCode, { code: `me.robots[${sel}]`, sx: { fontSize: 9.5 } })),
     h(Box, null, ...facts.map((f) => KV(f, h(MeVal, { path: `${base}.${f}` })))),
     ...M.IDS.filter((i) => i !== sel).map((i) => KV(`heard[${i}]`, FME(`${base}.heard.${i}.at`) === undefined ? h(Box, { component: "span", sx: { color: "text.disabled" } }, "nothing yet (undefined)") : h(Box, { component: "span" }, h(MeVal, { path: `${base}.heard.${i}.battery` }), " % at ", h(MeVal, { path: `${base}.heard.${i}.at` })), `what ${M.NAME[i]} said`)),
     KV("home →", h(Box, { component: "span" }, `${FME(`${base}.home.name`)} · radius ${FME(`${base}.home.radius`)}`), "pointer, read through"),
     h(Box, { sx: { mt: 1 } }, H2("Rules (the same text in every kernel)"),
       ...M.RULES.map(([n, e]) => h(Box, { key: n, className: "rule", sx: { ...ROW_SX, cursor: "pointer", "&:hover": { bgcolor: "action.hover" } }, onClick: () => ui.set({ explain: n }), title: `explain ${n}` },
-        h(Box, { component: "span", sx: { minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: explain === n ? "primary.main" : "text.secondary" } }, n, h(Box, { component: "span", sx: { color: "text.disabled", ml: .75, fontSize: 9.5 } }, e)),
+        h(Box, { component: "span", sx: { minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: explain === n ? "primary.main" : "text.secondary" } }, n, h(MeCode, { code: e, sx: { ml: .75, fontSize: 9.5, whiteSpace: "nowrap", opacity: .85 } })),
         h(Box, { component: "span", sx: { textAlign: "right" } }, h(MeVal, { path: `${base}.${n}` }))))),
     h(Box, { sx: { mt: 1 } }, H2("Battery (writes one value)"),
       Slider ? h(Slider, { id: "battery-slider", size: "small", min: 0, max: 100, step: 1, value: Math.max(0, Math.min(100, Math.round(typeof bat === "number" ? bat : 0))), onChange: (e, v) => act.battery(sel, v), "aria-label": `${r.name} battery`, sx: { mx: 1, width: "calc(100% - 16px)" } })
@@ -536,7 +542,7 @@ function HoodRobot() {
     h(Box, { sx: { mt: 1.25 } }, H2("Last writes", lw ? h("span", null, `${lw.manual ? "your write" : "control step"} · ${clock(lw.t)}`) : null),
       h(Box, { component: "ul", id: "writes", sx: { listStyle: "none", m: 0, p: 0, fontFamily: MONO, fontSize: 9.5, minHeight: 40 } },
         ...(lw ? lw.batch.slice(-7).map((x, i) => h(Box, { component: "li", key: i, sx: { py: .25, borderBottom: 1, borderColor: "divider", overflowWrap: "anywhere", "&:last-of-type": { borderBottom: 0 } } },
-          h(Box, { component: "code", sx: { color: "text.primary" } }, x.code), h(Box, { component: "span", sx: { color: "warning.main", ml: .75 } }, `k=${x.k}`), h(Box, { component: "span", sx: { color: "text.disabled", ml: .75 } }, `${x.us.toFixed(0)} µs`)))
+          h(MeCode, { code: x.code, sx: { fontSize: 9.5 } }), h(Box, { component: "span", sx: { color: "warning.main", ml: .75 } }, `k=${x.k}`), h(Box, { component: "span", sx: { color: "text.disabled", ml: .75 } }, `${x.us.toFixed(0)} µs`)))
           : [h(Box, { component: "li", key: "e", sx: { color: "text.disabled" } }, "No writes yet: play the simulation.")]))));
 }
 function HoodStats() {
@@ -551,10 +557,10 @@ function ExplainView({ path }) {
   let ex = null, err = null; try { ex = FME.explain(path); } catch (e) { err = e?.message || String(e); }
   if (err || !ex) return h(Typography, { sx: { fontFamily: MONO, fontSize: 9.5, color: "error.main" } }, "explain failed: " + (err || "no result"));
   const m = ex.meta || {}, em = (s) => h(Box, { component: "span", sx: { color: "primary.main" } }, s);
-  const rows = [["value", em(fmt(ex.value, 4))], ["expression", ex.expr ?? "— (fact)"],
+  const rows = [["value", em(fmt(ex.value, 4))], ["expression", ex.expr != null ? h(MeCode, { code: ex.expr, sx: { fontSize: 9.5 } }) : "— (fact)"],
     ["inputs", (ex.derivation?.inputs || []).length ? ex.derivation.inputs.map((i, j) => h(Box, { component: "span", key: j, sx: { display: "block" } }, `${i.label} = `, em(fmt(i.value, 4)))) : "—"],
     ["last wave", m.sourcePath ? h(React.Fragment, null, "write to ", em(m.sourcePath), ` · k = ${m.k} · recomputed: ${(m.recomputed || []).map((x) => x.split(".").pop()).join(", ")}`) : "not recomputed since the seed"]];
-  return h(Box, { id: "explain", sx: { mt: 1.25 } }, H2(`explain()`, h(Box, { component: "code", sx: { fontFamily: MONO, fontSize: 9.5, color: "primary.main" } }, `me.explain("${path}")`)),
+  return h(Box, { id: "explain", sx: { mt: 1.25 } }, H2(`explain()`, h(MeCode, { code: `me.explain("${path}")`, sx: { fontSize: 9.5 } })),
     h(Box, { sx: { fontFamily: MONO, fontSize: 9.5, lineHeight: 1.5, border: 1, borderColor: "divider", borderRadius: "4px", px: 1, py: .5 } },
       ...rows.map(([l, v]) => h(Box, { key: l, sx: { display: "grid", gridTemplateColumns: "70px minmax(0, 1fr)", gap: .5, py: .25, borderBottom: 1, borderColor: "divider", "&:last-of-type": { borderBottom: 0 } } },
         h(Box, { component: "span", sx: { color: "text.disabled" } }, l), h(Box, { component: "span", className: `ex-${l.replace(" ", "-")}`, sx: { wordBreak: "break-word", minWidth: 0 } }, v)))));

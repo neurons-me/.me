@@ -28,6 +28,7 @@ by all three, and mean something different in each kernel.
 | `space-gui.js` | the .GUI page: one spec resolved by `GUI.mount`, the scene, the passages, the dashboard, under the hood |
 | `verify.mjs` | Node verification against this.me@4.1.0 |
 | `assets/space-robots-og.png` | og:image, 1200×630 |
+| `../../../assets/me-syntax/` | shared .me syntax highlighter (JS + CSS), used for every line of .me code on the page |
 
 ## Kernels
 
@@ -117,3 +118,7 @@ the explain() card (as on the Veracruz page), and every icon: inline SVG glyphs,
 button. The page does not load the Material Symbols font (`dist/material-symbols.css` pulls a 5.1 MB woff2 with
 `font-display: block`; on a slow connection its ligature names, e.g. `battery_full`, showed as text). A CSS guard hides
 any icon-font span a .GUI component might still render.
+
+.me code on the page (story lines, under the hood, rules, explain) goes through the shared highlighter in
+[`assets/me-syntax`](../../../assets/me-syntax/). Its colours come from the active .GUI theme through one mapping
+layer; .GUI itself is unchanged. Only the colour changes: the text, and what copy / paste gives, is the code as written.

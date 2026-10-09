@@ -1,0 +1,76 @@
+/*! me-syntax 1.0.0 · colours for .me code · MIT · neurons.me
+ *
+ * One mapping layer: every token colour is a --me-syn-* variable, resolved in this order
+ *   1. a .GUI theme syntax token, if the theme defines one   (--mui-palette-syntax-<name> / --gui-syntax-<name>)
+ *   2. derived from the active .GUI theme's existing tokens   (--mui-palette-primary-main, ...), mixed toward the
+ *      theme's text colour so small code text keeps its contrast in light and dark
+ *   3. a plain fallback for pages without .GUI                (light / dark by prefers-color-scheme)
+ * With me-syntax.js, MeSyntax.watchTheme() measures the active theme and writes --me-syn-* on <html>: per role it picks
+ * the first theme hue that reaches 4.5:1 on the theme background and paper with the least mixing toward the text
+ * colour and stays distinct from neighbouring roles (e.g. operator vs false). The ratios below are the static
+ * fallback: the most saturated fixed mix that still passes 4.5:1 in all 8 .GUI themes, light and dark.
+ */
+:root {
+  --me-syn-ink: var(--mui-palette-text-primary, #1f2328);
+  --me-syn-ink2: var(--mui-palette-text-secondary, #59636e);
+  --me-syn-base-primary: var(--mui-palette-primary-main, #0969da);
+  --me-syn-base-secondary: var(--mui-palette-secondary-main, #8250df);
+  --me-syn-base-info: var(--mui-palette-info-main, #0550ae);
+  --me-syn-base-success: var(--mui-palette-success-main, #1a7f37);
+  --me-syn-base-error: var(--mui-palette-error-main, #cf222e);
+  --me-syn-base-warning: var(--mui-palette-warning-main, #9a6700);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --me-syn-ink: var(--mui-palette-text-primary, #e6edf3);
+    --me-syn-ink2: var(--mui-palette-text-secondary, #9198a1);
+    --me-syn-base-primary: var(--mui-palette-primary-main, #58a6ff);
+    --me-syn-base-secondary: var(--mui-palette-secondary-main, #d2a8ff);
+    --me-syn-base-info: var(--mui-palette-info-main, #79c0ff);
+    --me-syn-base-success: var(--mui-palette-success-main, #3fb950);
+    --me-syn-base-error: var(--mui-palette-error-main, #ff7b72);
+    --me-syn-base-warning: var(--mui-palette-warning-main, #d29922);
+  }
+}
+/* the static mapping (used until / unless MeSyntax.syncTheme() writes measured values on <html>) */
+:root {
+  /* the mapping (token → theme token); a theme's own syntax.* token wins when present */
+  --me-syn-root:     var(--mui-palette-syntax-root,     var(--gui-syntax-root,     color-mix(in srgb, var(--me-syn-base-primary) 55%, var(--me-syn-ink))));
+  --me-syn-path:     var(--mui-palette-syntax-path,     var(--gui-syntax-path,     var(--me-syn-ink)));
+  --me-syn-punct:    var(--mui-palette-syntax-punct,    var(--gui-syntax-punct,    var(--me-syn-ink2)));
+  --me-syn-index:    var(--mui-palette-syntax-index,    var(--gui-syntax-index,    color-mix(in srgb, var(--me-syn-base-info) 45%, var(--me-syn-ink))));
+  --me-syn-operator: var(--mui-palette-syntax-operator, var(--gui-syntax-operator, color-mix(in srgb, var(--me-syn-base-info) 45%, var(--me-syn-ink))));
+  --me-syn-string:   var(--mui-palette-syntax-string,   var(--gui-syntax-string,   color-mix(in srgb, var(--me-syn-base-warning) 45%, var(--me-syn-ink))));
+  --me-syn-derived:  var(--mui-palette-syntax-derived,  var(--gui-syntax-derived,  color-mix(in srgb, var(--me-syn-base-primary) 55%, var(--me-syn-ink))));
+  --me-syn-formula:  var(--mui-palette-syntax-formula,  var(--gui-syntax-formula,  var(--me-syn-ink)));
+  --me-syn-formula-bg: var(--mui-palette-syntax-formulaBg, var(--gui-syntax-formula-bg, color-mix(in srgb, var(--me-syn-base-info) 10%, transparent)));
+  --me-syn-logic:    var(--mui-palette-syntax-logic,    var(--gui-syntax-logic,    color-mix(in srgb, var(--me-syn-base-info) 45%, var(--me-syn-ink))));
+  --me-syn-number:   var(--mui-palette-syntax-number,   var(--gui-syntax-number,   color-mix(in srgb, var(--me-syn-base-info) 45%, var(--me-syn-ink))));
+  --me-syn-true:     var(--mui-palette-syntax-true,     var(--gui-syntax-true,     color-mix(in srgb, var(--me-syn-base-success) 55%, var(--me-syn-ink))));
+  --me-syn-false:    var(--mui-palette-syntax-false,    var(--gui-syntax-false,    color-mix(in srgb, var(--me-syn-base-error) 50%, var(--me-syn-ink))));
+  --me-syn-null:     var(--mui-palette-syntax-null,     var(--gui-syntax-null,     var(--me-syn-ink2)));
+  --me-syn-comment:  var(--mui-palette-syntax-comment,  var(--gui-syntax-comment,  var(--me-syn-ink2)));
+  --me-syn-arrow:    var(--mui-palette-syntax-arrow,    var(--gui-syntax-arrow,    var(--me-syn-ink2)));
+  --me-syn-keyword:  var(--mui-palette-syntax-keyword,  var(--gui-syntax-keyword,  color-mix(in srgb, var(--me-syn-base-info) 45%, var(--me-syn-ink))));
+}
+/* a code block or line: wraps long lines (break hints sit after dots and commas, and before && / ||) */
+.me-code { white-space: pre-wrap; overflow-wrap: anywhere; word-break: normal; tab-size: 2; color: var(--me-syn-path); }
+.me-code .mes-root    { color: var(--me-syn-root); font-weight: 700; }
+.me-code .mes-key     { color: var(--me-syn-path); }
+.me-code .mes-punct, .me-code .mes-paren { color: var(--me-syn-punct); }
+.me-code .mes-index   { color: var(--me-syn-index); }
+.me-code .mes-op      { color: var(--me-syn-operator); font-weight: 700; }
+.me-code .mes-str     { color: var(--me-syn-string); }
+.me-code .mes-def     { color: var(--me-syn-derived); font-weight: 700; font-style: italic; }
+.me-code .mes-in-fx   { background: var(--me-syn-formula-bg); -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+.me-code .mes-quote   { color: var(--me-syn-string); }
+.me-code .mes-fx-id   { color: var(--me-syn-formula); }
+.me-code .mes-fx-op   { color: var(--me-syn-logic); font-weight: 700; }
+.me-code .mes-num     { color: var(--me-syn-number); }
+.me-code .mes-true, .mes-true   { color: var(--me-syn-true); font-weight: 700; }
+.me-code .mes-false, .mes-false { color: var(--me-syn-false); font-weight: 700; }
+.me-code .mes-null    { color: var(--me-syn-null); font-style: italic; }
+.me-code .mes-comment { color: var(--me-syn-comment); font-style: italic; }
+.me-code .mes-arrow, .mes-arrow { color: var(--me-syn-arrow); }
+.me-code .mes-kw      { color: var(--me-syn-keyword); }
+.me-code .mes-id      { color: var(--me-syn-path); }
