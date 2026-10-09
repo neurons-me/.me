@@ -1268,5 +1268,5 @@ export function removeSubtree(self: MEKernelLike, targetPath: SemanticPath) {
   const removedRoots = Object.keys(self.refSubscribers).filter(
     (key) => pathStr === "" || key === pathStr || key.startsWith(pathStr + "."),
   );
-  invalidateFromPaths(self, removedRoots);
+  invalidateFromPaths(self, removedRoots, pathStr);
 }

@@ -156,6 +156,40 @@ export function tokenizeEvalExpression(
   return tokens;
 }
 
+/**
+ * Whether formula text is well-formed without reading any value: it tokenizes, operators sit where the evaluator
+ * accepts them, no value follows a value (`x[] .2`, known issue #5), and parentheses balance. Used so a malformed
+ * formula with aggregates fails as text (evaluation-failed) rather than by its inputs.
+ */
+export function isTokenizableExpression(expr: string): boolean {
+  const raw = String(expr ?? "").trim();
+  if (!raw || !/^[A-Za-z0-9_\s+\-*/%().<>=!&|\[\]"']+$/.test(raw)) return false;
+  const tokens = tokenizeEvalExpression(raw);
+  if (!tokens || tokens.length === 0) return false;
+  let prev: "start" | "value" | "op" | "lparen" | "rparen" = "start";
+  let depth = 0;
+  for (const token of tokens) {
+    const after = prev === "value" || prev === "rparen";
+    if (token.kind === "literal" || token.kind === "identifier" || token.kind === "aggregate") {
+      if (after) return false;
+      prev = "value";
+    } else if (token.kind === "lparen") {
+      if (after) return false;
+      depth++;
+      prev = "lparen";
+    } else if (token.kind === "rparen") {
+      if (!after || depth === 0) return false;
+      depth--;
+      prev = "rparen";
+    } else {
+      const op = token.value;
+      if (op === "!" ? after : !after && op !== "-") return false;
+      prev = "op";
+    }
+  }
+  return depth === 0 && (prev === "value" || prev === "rparen");
+}
+
 export function tryEvaluateAssignExpression(
   self: MEKernelLike,
   evalScopePath: SemanticPath,

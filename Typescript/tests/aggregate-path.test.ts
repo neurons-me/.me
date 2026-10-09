@@ -1,13 +1,12 @@
 /// <reference types="node" />
 // Stage S2 of .me 4.2: the path parser for the collection aggregate `[]` (contract v4.1, v3 §3 / §10.4 / §11).
 //
-// Parse only. Aggregates are recognised in path strings (me("..."), explain("..."), formula text) but NOT
-// evaluated yet: an aggregate read is `undefined`, writes nothing, and explain marks it `unsupported`
-// (S3 brings values). Covered here:
+// The parser and routing. Since S3 aggregates are evaluated (values asserted here where routing depends on them;
+// the evaluator's own contract suite is tests/aggregate-eval.test.ts). Covered here:
 //   - the grammar (classifyPathExpression), the round-trip renderer and the quote-aware normalizer;
 //   - every §12.2 lit.* case, at the level S2 can check (values that need evaluation are asserted as
 //     "recognised as an aggregate, undefined, nothing written");
-//   - incompatibilities I1–I8;
+//   - incompatibilities I1–I10 and the S2-close decisions (z.["[]"].w rejected; error precedence);
 //   - robots[i].batteries[] in a [i] template.
 // Every kernel case runs in eager and lazy mode.
 //
@@ -208,11 +207,12 @@ for (const mode of ["eager", "lazy"] as Mode[]) {
     assert.equal(readsNothingWritten(me, 'z["[]"].w'), 1);
     assert.equal(readsNothingWritten(me, "z['[]'].w"), 1);
   });
-  t("lit.bare-is-operator (S2): z[] and z[].w are aggregates, undefined, nothing written (not z.w = 99)", () => {
+  t("lit.bare-is-operator: z[] counts z's members, z[].w sums their w (never z.w = 99), nothing written", () => {
     for (const noLeaf of [false, true]) {
       const me = base(mode, noLeaf);
-      assert.equal(readsNothingWritten(me, "z[]"), undefined);
-      assert.equal(readsNothingWritten(me, "z[].w"), undefined);
+      // members of z: "[]" (literal key), "a", and "w" when z.w exists (its own entry makes it a member)
+      assert.equal(readsNothingWritten(me, "z[]"), noLeaf ? 2 : 3);
+      assert.equal(readsNothingWritten(me, "z[].w"), noLeaf ? 6 : undefined, "z.w.w is missing → incomplete");
       const e = me.explain("z[].w");
       assert.equal(e.derivation.inputs[0].kind, "aggregate");
       assert.equal(e.derivation.inputs[0].aggregate.collection, "z");
@@ -324,10 +324,11 @@ for (const mode of ["eager", "lazy"] as Mode[]) {
   });
 
   // §11 incompatibilities
-  t("I1: me('x[]') reads (S2: undefined), root and memories unchanged", () => {
+  t("I1: me('x[]') reads the count, root and memories unchanged", () => {
     const me = fresh(mode);
     me.x[1].f(2); me.x[2].f(3);
-    assert.equal(readsNothingWritten(me, "x[]"), undefined);
+    assert.equal(readsNothingWritten(me, "x[]"), 2);
+    assert.equal(readsNothingWritten(me, "x[].f"), 5);
   });
   t("I2: me('x[].f') / me('a[].b.c') no longer read x.f / a.b.c; .[] and [ ] forms rejected, no write", () => {
     const me = fresh(mode);
@@ -349,10 +350,12 @@ for (const mode of ["eager", "lazy"] as Mode[]) {
     const a = e.derivation.inputs[0];
     assert.equal(a.kind, "aggregate");
     assert.deepEqual([a.aggregate.collection, a.aggregate.field, a.aggregate.op], ["x", "f", "sum"]);
-    assert.deepEqual([a.aggregate.context, a.aggregate.coverage, a.aggregate.status], ["public-view", "public-view", "unsupported"]);
+    // x has one member, "f" (the key x.f); its term x.f.f is missing → incomplete, never x.f = 99
+    assert.deepEqual([a.aggregate.context, a.aggregate.coverage, a.aggregate.status], ["public-view", "public-view", "incomplete"]);
+    assert.deepEqual(a.aggregate.problems, { count: 1, sample: [{ path: "x.f.f", kind: "missing" }] });
     assert.equal(e.derivation.inputs.length, 1);
   });
-  t("I4: formula with [] is parsed: no scalar refs x / f, evaluation-failed naming the aggregate (S2)", () => {
+  t("I4: formula with [] has no scalar refs x / f; x[].f over {1: f=2, f: 99} is incomplete (x.f.f missing)", () => {
     const me = fresh(mode);
     me.x[1].f(2); me.x.f(99); me.y(1);
     me.s["="]("v", "x[].f + y");
@@ -361,7 +364,7 @@ for (const mode of ["eager", "lazy"] as Mode[]) {
     assert.deepEqual(d.refs.map((r: any) => r.label), ["y"]);
     assert.deepEqual(d.aggregates.map((a: any) => [a.collection, a.field, a.op]), [[["x"], ["f"], "sum"]]);
     const e = me.explain("s.v");
-    assert.deepEqual(e.meta.unresolved, { reason: "evaluation-failed", inputs: ["x[].f"], causes: [{ path: "x[].f", status: "unsupported" }] });
+    assert.deepEqual(e.meta.unresolved, { reason: "incomplete", inputs: ["x[].f"], causes: [{ path: "x[].f", status: "incomplete" }] });
     assert.deepEqual(e.meta.dependsOn, ["y", "x[].f"]);
   });
   t("I4b: rejected forms in formulas evaluate to undefined, evaluation-failed", () => {
@@ -413,7 +416,7 @@ for (const mode of ["eager", "lazy"] as Mode[]) {
   // root routing: only aggregates change route; rejected forms change only where 4.1 already read
   t("root routing: valid aggregates read; ANY invalid []-form fails as a read (undefined, no write, no memory)", () => {
     const reads: Array<[string, any]> = [
-      ["x[]", undefined], ["x[].f", undefined], ["z[]", undefined], ['z["[]"][]', undefined], ['["z[]"][]', undefined],
+      ["x[]", 3], ["x[].f", undefined], ["z[]", 3], ['z["[]"][]', 1], ['["z[]"][]', undefined], ["z[].w", undefined],
       ['z["[]"].w', 1], ["z['[]'].w", 1], ["x[2].f", 3], ["x[ 2 ].f", 3], ['x[""].f', 11], ["z.w", 99],
     ];
     for (const [s, v] of reads) {
@@ -569,20 +572,36 @@ for (const mode of ["eager", "lazy"] as Mode[]) {
     assert.equal(keep('z.["x"].w'), 5, "a quoted selector after a dot without brackets keeps the 4.1 read");
   });
   // S2 close, decision 2: per-input causes, fixed precedence, both input orders
-  t("decision 2: missing scalar + unsupported aggregate → missing-input; causes keep both; same in both orders", () => {
-    const outs = ["nothere + x[].f", "x[].f + nothere"].map((expr) => {
+  t("decision 2: per-input causes and fixed precedence, identical in both input orders", () => {
+    const run = (expr: string, setup: (me: any) => void, target = ["s", "v"]) => {
       const me = fresh(mode);
-      me.s["="]("v", expr);
-      const e = me.explain("s.v");
-      return { u: e.meta.unresolved, st: e.derivation.inputs.map((i: any) => [i.path, i.status]).sort() };
-    });
-    assert.deepEqual(outs[0], outs[1], "independent of input order");
-    assert.deepEqual(outs[0].u, {
-      reason: "missing-input",
-      inputs: ["s.nothere"],
-      causes: [{ path: "s.nothere", status: "missing" }, { path: "x[].f", status: "unsupported" }],
-    });
-    assert.deepEqual(outs[0].st, [["nothere", "missing"], ["x[].f", "unsupported"]], "unsupported stays unsupported");
+      me.x[1].f(1); me.x[2].g(1);                 // x[].f is incomplete (x.2.f missing)
+      setup(me);
+      me[target[0]]["="](target[1], expr);
+      const e = me.explain(target.join("."));
+      return { v: me(target.join(".")), u: e.meta.unresolved, st: e.derivation.inputs.map((i: any) => [i.path, i.status]).sort() };
+    };
+    const both = (a: string, b: string, setup: (me: any) => void = () => {}, target?: string[]) => {
+      const r1 = run(a, setup, target), r2 = run(b, setup, target);
+      assert.deepEqual(r1, r2, `${a} vs ${b}`);
+      return r1;
+    };
+    // missing scalar + incomplete aggregate → missing-input; both causes kept
+    let r = both("nothere + x[].f", "x[].f + nothere");
+    assert.deepEqual(r.u, { reason: "missing-input", inputs: ["s.nothere"], causes: [{ path: "s.nothere", status: "missing" }, { path: "x[].f", status: "incomplete" }] });
+    assert.deepEqual(r.st, [["nothere", "missing"], ["x[].f", "incomplete"]]);
+    // absent aggregate (empty collection) + incomplete aggregate → missing-input
+    r = both("y[].f + x[].f", "x[].f + y[].f");
+    assert.deepEqual(r.u, { reason: "missing-input", inputs: ["y[].f"], causes: [{ path: "x[].f", status: "incomplete" }, { path: "y[].f", status: "absent" }] });
+    // incomplete only → incomplete
+    r = both("x[].f + 1", "1 + x[].f");
+    assert.deepEqual(r.u, { reason: "incomplete", inputs: ["x[].f"], causes: [{ path: "x[].f", status: "incomplete" }] });
+    // authorized context (target inside a scope): the aggregate stays unsupported, never incomplete
+    r = both("nothere + x[].f", "x[].f + nothere", (me) => me.w["_"]("k"), ["w", "t"]);
+    assert.deepEqual(r.u, { reason: "missing-input", inputs: ["w.nothere"], causes: [{ path: "w.nothere", status: "missing" }, { path: "x[].f", status: "unsupported" }] });
+    r = both("x[].f + 1", "1 + x[].f", (me) => me.w["_"]("k"), ["w", "t"]);
+    assert.deepEqual(r.u, { reason: "evaluation-failed", inputs: ["x[].f"], causes: [{ path: "x[].f", status: "unsupported" }] });
+    assert.equal(r.v, undefined);
   });
 
   // the demo's case
@@ -599,10 +618,12 @@ for (const mode of ["eager", "lazy"] as Mode[]) {
         [[`robots.${r}.batteries[].charge`, `robots.${r}.batteries`, "charge", "sum"],
          [`robots.${r}.batteries[].capacity`, `robots.${r}.batteries`, "capacity", "sum"]],
       );
-      assert.equal(me(`robots.${r}.battery`), undefined);
     }
-    assert.equal(readsNothingWritten(me, "robots[1].batteries[]"), undefined);
-    assert.equal(readsNothingWritten(me, "robots.1.batteries[].charge"), undefined);
+    assert.equal(me("robots.1.battery"), 40);
+    assert.equal(me("robots.2.battery"), undefined, "robot 2 has no capacity → capacity sum incomplete");
+    assert.equal(me.explain("robots.2.battery").meta.unresolved.reason, "incomplete");
+    assert.equal(readsNothingWritten(me, "robots[1].batteries[]"), 1);
+    assert.equal(readsNothingWritten(me, "robots.1.batteries[].charge"), 40);
   });
 
   // guards

@@ -12,6 +12,7 @@
  * ---------------------------------------------------------
  */
 import sha3 from "js-sha3";
+import { evaluateAggregate } from "./aggregate.ts";
 import {
   deriveBranchProofSeed,
   detectBlobVersion,
@@ -1521,12 +1522,14 @@ export class ME {
 
   /**
    * Root string read for a string the path-expression parser classified (path-expr.ts, handleCall.ts):
-   * - aggregate (`x[]`, `x[].f`): stage S2 parses only, so no value yet (`undefined`); nothing is written;
-   * - rejected aggregate-like form (any route): `undefined`; nothing is written.
+   * - aggregate (`x[]`, `x[].f`): evaluated in the public-view context for EVERY caller (contract v4.1 §2.3), so
+   *   the owner, `me.as(null)` and `me.as(key)` get the same value; nothing is written;
+   * - rejected form (any route): `undefined`; nothing is written.
    * Plain and quoted-literal strings never come here: they keep the 4.1 route (readPath).
    */
-  private readPathExpression(_parsed: PathExprClass, _raw: string): any {
-    return undefined;
+  private readPathExpression(parsed: PathExprClass, _raw: string): any {
+    if (parsed.kind !== "aggregate") return undefined;
+    return evaluateAggregate(this as unknown as MEKernelLike, parsed.ref, "public-view").value;
   }
 
   private readPath(path: SemanticPath): any {
