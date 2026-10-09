@@ -3,27 +3,40 @@
  *
  * Parse only (stage S2). Nothing here evaluates an aggregate.
  *
- * Grammar (after `[i]` substitution):
+ * A string is "aggregate-like" when it holds, outside quotes, a bare `[]` or a whitespace-only selector `[ ]`.
+ * Only aggregate-like strings are classified as `aggregate` or `rejected`. Every other string is `plain` (no
+ * quoted selector) or `literal` (has one) and keeps the 4.1 route; see §3 "Scope of the parser" in the contract.
  *
+ * Grammar of an aggregate reference (after `[i]` substitution):
+ *
+ *   aggregate-ref := path-expr "[]" [ "." field ]
  *   path-expr     := head { "." seg }
  *   head          := seg | quoted
  *   seg           := name { selector }
  *   selector      := "[" fixed-key "]" | quoted
  *   quoted        := "[" '"' lit '"' "]" | "[" "'" lit "'" "]"     (the literal segment lit)
- *   aggregate-ref := path-expr "[]" [ "." field ]
- *   field         := name { "." name }                          (plain names only)
+ *   field         := name { "." name }                            (plain names only)
+ *   name          := 1+ characters, none of  .  [  ]  "  '  whitespace  + * / % ( ) < > = ! & | ,
+ *   fixed-key     := non-blank selector text that the 4.1 selector parsers do NOT interpret:
+ *                    not a transform (parseTransformSelector), not a range or list (parseSelectorKeys),
+ *                    not a filter (parseLogicalFilterExpression). This is exactly the set 4.1 reads as a fixed
+ *                    child segment through normalizeSelectorPath.
  *
- * Classification of a path-expression string:
- *   - "plain":     no bare `[]`, no whitespace-only selector, no quoted selector. Callers keep the 4.1 route.
- *   - "literal":   contains quoted selectors (and no operator). `segments` are the storage segments; `exact` is
- *                  true when every selector is a fixed key or a quoted literal, so the segments can be read as-is.
- *   - "aggregate": exactly one bare `[]` in an accepted position.
- *   - "rejected":  a form the contract rejects (it evaluates to `undefined`, `evaluation-failed`, writes nothing).
+ * Classes:
+ *   - "plain":     not aggregate-like, and no quoted selector (or one whose text contains ".", kept as 4.1).
+ *   - "literal":   not aggregate-like, has quoted selectors. `segments` are the storage segments.
+ *   - "aggregate": aggregate-like and matches the grammar above.
+ *   - "rejected":  aggregate-like and does not match it.
  *
  * Proxy properties are never parsed here: they are always literal segments (O5).
  */
 import type { SemanticPath } from "./types.ts";
-import { normalizeSelectorPath } from "./utils.ts";
+import {
+  normalizeSelectorPath,
+  parseLogicalFilterExpression,
+  parseSelectorKeys,
+  parseTransformSelector,
+} from "./utils.ts";
 
 export type AggregateOp = "count" | "sum";
 
@@ -43,11 +56,12 @@ export type RejectReason =
   | "whitespace-selector"       // z[ ].w
   | "selector-on-collection"    // x[a>1][], x[1..2][], x[[1,3]][], x[c => c.f][]
   | "invalid-field"             // x[].f[2], x[]x, x[].
-  | "empty-collection-path";    // "[]" with nothing before it
+  | "empty-collection-path"     // "[]" with nothing before it
+  | "invalid-collection-path";  // a name with whitespace, a quoted selector after a dot, "a..b[]"
 
 export type PathExprClass =
   | { kind: "plain" }
-  | { kind: "literal"; segments: SemanticPath; exact: boolean }
+  | { kind: "literal"; segments: SemanticPath }
   | { kind: "aggregate"; ref: AggregateRef }
   | { kind: "rejected"; reason: RejectReason };
 
@@ -90,11 +104,42 @@ function scanGroups(input: string): Group[] | null {
   return groups;
 }
 
-const FIXED_KEY = /^[A-Za-z0-9_-]+$/;
-const FIELD = /^(?:\.[A-Za-z_][A-Za-z0-9_]*)+$/;
+// No ".", brackets, quotes, whitespace, or formula operator characters (they delimit formula tokens).
+const NAME = String.raw`[^.\[\]"'\s+*/%()<>=!&|,]+`;
+const FIELD = new RegExp(String.raw`^(?:\.${NAME})+$`);
+
+/** A selector the 4.1 kernel reads as a fixed child (see the grammar). Quoted selectors are always fixed. */
+export function isFixedKeySelector(content: string, quoted = false): boolean {
+  if (quoted) return true;
+  const c = String(content ?? "").trim();
+  if (!c) return false;
+  if (parseTransformSelector(c)) return false;
+  if (parseSelectorKeys(c) !== null) return false;
+  if (parseLogicalFilterExpression(c)) return false;
+  return true;
+}
 
 function isFixedOrQuoted(g: Group): boolean {
-  return g.quoted || FIXED_KEY.test(g.content.trim());
+  return isFixedKeySelector(g.content, g.quoted);
+}
+
+/** The collection prefix `head { "." seg }`, with selectors removed, must consist of names (grammar above). */
+function prefixHasValidNames(prefix: string, groups: Group[]): boolean {
+  let stripped = "";
+  let i = 0;
+  for (const g of groups) {
+    stripped += prefix.slice(i, g.start) + "\u0000";
+    i = g.end;
+  }
+  stripped += prefix.slice(i);
+  const parts = stripped.split(".");
+  return parts.every((part, idx) => {
+    if (part === "") return false;
+    const name = part.replace(/\u0000/g, "");
+    if (name === "") return idx === 0 && part.startsWith("\u0000");   // only the head may be a bare quoted selector
+    if (!new RegExp(`^${NAME}$`).test(name)) return false;
+    return !/\u0000[^\u0000]/.test(part);                              // selectors only after the name
+  });
 }
 
 const PLAIN: PathExprClass = Object.freeze({ kind: "plain" }) as PathExprClass;
@@ -104,20 +149,23 @@ export function classifyPathExpression(input: string): PathExprClass {
   const s = String(input ?? "").trim();
   if (!s.includes("[")) return PLAIN;              // fast path: no selector at all
   const groups = scanGroups(s);
-  if (!groups) return { kind: "plain" };            // unbalanced: leave it to the 4.1 route
+  if (!groups) return PLAIN;                       // unbalanced brackets: not aggregate-like, 4.1 route
 
   const ops = groups.filter((g) => !g.quoted && g.content === "");
   const blank = groups.filter((g) => !g.quoted && g.content !== "" && g.content.trim() === "");
   const quoted = groups.filter((g) => g.quoted);
 
-  if (ops.length === 0 && blank.length === 0 && quoted.length === 0) return { kind: "plain" };
-  if (blank.length > 0) return { kind: "rejected", reason: "whitespace-selector" };
-  if (ops.length > 1) return { kind: "rejected", reason: "nested-aggregate" };
-
-  if (ops.length === 0) {
-    const exact = groups.every(isFixedOrQuoted);
-    return { kind: "literal", segments: normalizeSelectorPath(splitPathExpression(s)), exact };
+  // Contract v3 §3: a quoted selector whose content contains "." is not specified; 4.1 behaviour is kept.
+  const quotedDot = quoted.some((g) => (g.literal ?? "").includes("."));
+  if (ops.length === 0 && blank.length === 0) {
+    if (quoted.length === 0 || quotedDot) return PLAIN;
+    return { kind: "literal", segments: normalizeSelectorPath(splitPathExpression(s)) };
   }
+
+  // aggregate-like from here on
+  if (blank.length > 0) return { kind: "rejected", reason: "whitespace-selector" };
+  if (quotedDot) return { kind: "rejected", reason: "invalid-collection-path" };   // lit := no "." (grammar)
+  if (ops.length > 1) return { kind: "rejected", reason: "nested-aggregate" };
 
   const op = ops[0];
   const prefix = s.slice(0, op.start);
@@ -126,6 +174,10 @@ export function classifyPathExpression(input: string): PathExprClass {
   if (prefix.endsWith(".")) return { kind: "rejected", reason: "operator-as-segment" };
   if (suffix !== "" && !FIELD.test(suffix)) return { kind: "rejected", reason: "invalid-field" };
   const prefixGroups = groups.filter((g) => g.end <= op.start);
+  if (prefix.startsWith("[") && !(prefixGroups[0] && prefixGroups[0].start === 0 && prefixGroups[0].quoted)) {
+    return { kind: "rejected", reason: "invalid-collection-path" };   // head := seg | quoted
+  }
+  if (!prefixHasValidNames(prefix, prefixGroups)) return { kind: "rejected", reason: "invalid-collection-path" };
   if (!prefixGroups.every(isFixedOrQuoted)) return { kind: "rejected", reason: "selector-on-collection" };
 
   const collection = normalizeSelectorPath(splitPathExpression(prefix));

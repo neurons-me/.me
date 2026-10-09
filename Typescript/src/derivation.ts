@@ -19,7 +19,6 @@ import {
   renderSegments,
   type AggregateRef,
 } from "./path-expr.ts";
-import { readNormalizedPath } from "./core.ts";
 
 // Explain entry for one aggregate reference. Stage S2 parses `[]` but does not evaluate it yet, so the entry says
 // `unsupported`; S3 replaces this with the contract's statuses. Context and coverage come only from the evaluation
@@ -79,22 +78,25 @@ export function explain(self: MEKernelLike, path: string): MEExplainResult {
       value: undefined,
       expr: null,
       derivation: null,
-      meta: { dependsOn: [], unresolved: { reason: "evaluation-failed" } },
+      meta: { dependsOn: [], unresolved: { reason: "evaluation-failed", detail: parsed.reason } },
     };
   }
 
-  const exact = parsed.kind === "literal" && parsed.exact;
-  const target = parsed.kind === "literal"
-    ? parsed.segments
-    : normalizeSelectorPath(String(path ?? "").split(".").filter(Boolean));
+  // Same split as 4.1 (on "."), then the (quote-aware) normalizer. A quoted-literal path is read from the raw
+  // parts, normalised once, through the kernel's stealth check (like me("...")); a plain path keeps the 4.1 read.
+  const rawParts = String(path ?? "").split(".").filter(Boolean);
+  const target = normalizeSelectorPath(rawParts);
   const key = target.join(".");
   if (self.recomputeMode === "lazy") ensureTargetFresh(self, key);
-  const value = exact ? readNormalizedPath(self, target) : self.readPath(target);
+  const value = parsed.kind === "literal" ? self.readPath(rawParts) : self.readPath(target);
+  // Top-level path: a quoted-literal request is echoed in rendered form (I8). A plain request keeps the 4.1 key,
+  // even when its 4.1 parse yields non-plain segments (explain("x[1..3]") → "x.[1.3]", unchanged).
+  const topPath = parsed.kind === "literal" ? renderSegments(target) : key;
   const d = self.derivations[key];
   const wave = self.lastRecomputeWaveByTarget[key];
   if (!d) {
     return {
-      path: renderSegments(target),
+      path: topPath,
       value,
       expr: null,
       derivation: null,
@@ -134,7 +136,7 @@ export function explain(self: MEKernelLike, path: string): MEExplainResult {
     : undefined;
 
   return {
-    path: renderSegments(target),
+    path: topPath,
     value,
     expr: d.expression,
     derivation: {
@@ -495,7 +497,7 @@ export function computeDerivation(
   self: MEKernelLike,
   d: MEDerivationRecord,
 ): { value: any; unresolved?: MEDerivationUnresolved } {
-  if (d.rejectedPathForm) return { value: undefined, unresolved: { reason: "evaluation-failed" } };
+  if (d.rejectedPathForm) return { value: undefined, unresolved: { reason: "evaluation-failed", detail: "rejected-path-form" } };
   if (d.aggregates && d.aggregates.length > 0) {
     // Stage S2: `[]` is parsed, not evaluated. The formula has no value yet; explain names the aggregates.
     return { value: undefined, unresolved: { reason: "evaluation-failed", inputs: d.aggregates.map((a) => renderAggregate(a)) } };

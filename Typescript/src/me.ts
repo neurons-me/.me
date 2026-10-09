@@ -29,7 +29,7 @@ import {
   wrapSecretV1,
 } from "./crypto.ts";
 import * as Core from "./core.ts";
-import { splitPathExpression, type PathExprClass } from "./path-expr.ts";
+import type { PathExprClass } from "./path-expr.ts";
 import * as Derivation from "./derivation.ts";
 import * as Evaluator from "./evaluator.ts";
 import { createInitialKernelFields } from "./kernel-state.ts";
@@ -1517,24 +1517,12 @@ export class ME {
   }
 
   /**
-   * Root string read for a path expression that the parser classified (path-expr.ts):
-   * - literal (quoted selectors): read the parsed storage segments as they are;
-   * - aggregate (`x[]`, `x[].f`): stage S2 parses only, so no value yet (`undefined`), and nothing is written;
-   * - rejected forms: `undefined`, nothing written.
+   * Root string read for a string the path-expression parser classified (path-expr.ts, handleCall.ts):
+   * - aggregate (`x[]`, `x[].f`): stage S2 parses only, so no value yet (`undefined`); nothing is written;
+   * - rejected aggregate-like form (any route): `undefined`; nothing is written.
+   * Plain and quoted-literal strings never come here: they keep the 4.1 route (readPath).
    */
-  private readPathExpression(parsed: PathExprClass, raw: string): any {
-    if (parsed.kind === "literal") {
-      if (!parsed.exact) return this.readPath(splitPathExpression(raw));
-      const callerScope = this._currentCallerScope;
-      if (callerScope !== undefined) {
-        for (let i = parsed.segments.length; i > 0; i--) {
-          const secretScope = this.localSecrets[parsed.segments.slice(0, i).join(".")];
-          if (secretScope !== undefined && secretScope !== callerScope) return undefined;
-        }
-      }
-      return Core.readNormalizedPath(this as unknown as MEKernelLike, parsed.segments);
-    }
-    if (parsed.kind === "plain") return this.readPath(splitPathExpression(raw));
+  private readPathExpression(_parsed: PathExprClass, _raw: string): any {
     return undefined;
   }
 

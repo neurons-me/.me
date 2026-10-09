@@ -11,8 +11,8 @@ export interface HandleCallDeps {
   /** Read a semantic path (used by root GET bias). */
   readPath(path: SemanticPath): any;
   /**
-   * Read a root string the path-expression parser recognised: it contains the aggregate operator `[]`, a quoted
-   * selector, or a rejected form. Such strings always read (contract v3 I1, I7) and never write.
+   * Read a root string the path-expression parser classified as an aggregate reference (I1) or as a rejected
+   * aggregate-like form (I2). Always a read; never writes.
    */
   readPathExpression?(parsed: PathExprClass, raw: string): any;
   /** Perform a semantic write/claim at a path. May return a memory, a value, or undefined. */
@@ -89,8 +89,13 @@ export function handleCall(deps: HandleCallDeps, path: SemanticPath, args: any[]
   if (path.length === 0) {
     if (args.length === 1 && typeof args[0] === "string") {
       const s = (args[0] as string).trim();
+      // Grammar-driven routing (contract v3 §3 "Root-call routing"): only a string the parser classifies as an
+      // aggregate reference changes route, and it always reads (I1). Every other string keeps the 4.1 routing.
+      // An aggregate-like string (bare `[]` or a blank selector outside quotes) never writes: a valid aggregate
+      // reference reads (I1), an invalid one fails as a read (undefined, nothing written, I2). Every other string
+      // keeps the 4.1 routing.
       const parsed = classifyPathExpression(s);
-      if (parsed.kind !== "plain" && deps.readPathExpression) {
+      if ((parsed.kind === "aggregate" || parsed.kind === "rejected") && deps.readPathExpression) {
         return deps.readPathExpression(parsed, s);
       }
       const isOperatorPrefixed = s.startsWith("_") || s.startsWith("~") || s.startsWith("@");

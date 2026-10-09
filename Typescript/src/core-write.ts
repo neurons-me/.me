@@ -63,6 +63,7 @@ import {
   getPrevMemoryHash,
   hashFn,
   normalizeSelectorPath,
+  normalizeSecretScopePath41,
   pathContainsIterator,
   substituteIteratorInExpression,
   substituteIteratorInPath,
@@ -307,7 +308,8 @@ function seedWriteBranchCache(
 }
 
 function registerStealthScope(self: MEKernelLike, scopePath: SemanticPath, scopeValue: string): void {
-  const normalizedScopePath = normalizeSelectorPath(scopePath);
+  // 4.1 scope path on purpose: see normalizeSecretScopePath41 (historical protection over z for z["[]"]["_"]).
+  const normalizedScopePath = normalizeSecretScopePath41(scopePath);
   const scopeKey = normalizedScopePath.join(".");
   self.localSecrets[scopeKey] = scopeValue;
   self.protectedScopeKeys.add(scopeKey);
@@ -967,7 +969,8 @@ export function commitMapping(
       return commitValueMapping(self, instruction.path, instruction.value, "@");
     case "secret": {
       if (typeof instruction.value !== "string") return undefined;
-      const normalizedScopePath = normalizeSelectorPath(instruction.path);
+      // 4.1 scope path on purpose: see normalizeSecretScopePath41.
+      const normalizedScopePath = normalizeSecretScopePath41(instruction.path);
       registerStealthScope(self, normalizedScopePath, instruction.value);
       bumpSecretEpoch(self);
       return commitMemoryOnly(self, normalizedScopePath, "_", "***", "***");

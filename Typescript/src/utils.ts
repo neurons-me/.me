@@ -95,6 +95,49 @@ export function normalizeSelectorPath(path: SemanticPath): SemanticPath {
   return out;
 }
 
+/**
+ * The 4.1.0 normalizer, kept verbatim for ONE purpose: the scope path of a secret declaration `["_"](key)`.
+ *
+ * Historical protection (contract v3 §3 "Secret scopes through literal bracket segments"): in 4.1.0,
+ * `me.z["[]"]["_"]("k")` declares the secret scope on `z` (the empty selector is dropped), so the whole branch `z`
+ * is stealth. 4.2 keeps literal `[]` segments everywhere else (I6), but a secret declaration keeps the 4.1 scope,
+ * because narrowing it to `z.[]` would silently make the rest of `z` public. Not quote-aware, drops empty and
+ * blank selectors, exactly as 4.1.0 (utils.ts:33–68 at adf38cd). Do not use it anywhere else.
+ */
+export function normalizeSecretScopePath41(path: SemanticPath): SemanticPath {
+  const out: SemanticPath = [];
+  for (const segment of path) {
+    const s = String(segment).trim();
+    if (!s) continue;
+    const firstBracket = s.indexOf("[");
+    if (firstBracket === -1) {
+      out.push(s);
+      continue;
+    }
+    const base = s.slice(0, firstBracket).trim();
+    const tail = s.slice(firstBracket);
+    if (base) out.push(base);
+    const matches = Array.from(tail.matchAll(/\[([^\]]*)\]/g));
+    const reconstructed = matches.map((m) => m[0]).join("");
+    if (reconstructed !== tail) {
+      out.push(tail);
+      continue;
+    }
+    for (const m of matches) {
+      let selector = (m[1] ?? "").trim();
+      if (
+        (selector.startsWith('"') && selector.endsWith('"')) ||
+        (selector.startsWith("'") && selector.endsWith("'"))
+      ) {
+        selector = selector.slice(1, -1);
+      }
+      if (!selector) continue;
+      out.push(selector);
+    }
+  }
+  return out;
+}
+
 export function pathContainsIterator(path: SemanticPath): boolean {
   return path.some((segment) => segment.includes("[i]"));
 }

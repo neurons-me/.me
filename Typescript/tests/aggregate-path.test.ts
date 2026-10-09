@@ -16,6 +16,7 @@ import assert from "node:assert/strict";
 import ME from "../dist/index.js";
 import {
   classifyPathExpression,
+  isFixedKeySelector,
   renderAggregate,
   renderSegments,
 } from "../src/path-expr.ts";
@@ -74,20 +75,25 @@ agg('z["[]"][]', ["z", "[]"], null);
 agg("z['[]'][].w", ["z", "[]"], ["w"]);
 agg('["z[]"][]', ["z[]"], null);
 agg("  x[].f  ", ["x"], ["f"]);
+agg("x[a b][]", ["x", "a b"], null);              // fixed key with a space: 4.1 reads x["a b"] as child "a b"
+agg("stops[STOP:12].times[].min", ["stops", "STOP:12", "times"], ["min"]);
+agg("x[a=b][].f", ["x", "a=b"], ["f"]);           // "=" alone is not a 4.1 filter operator
+agg("@ana.items[]", ["@ana", "items"], null);
+agg("my-list[]", ["my-list"], null);
+agg("x[].2", ["x"], ["2"]);                       // a numeric field is a name in me() strings (formula text: #5)
 
-const lit = (s: string, segments: string[], exact = true) => test(`literal ${s}`, () => {
+const lit = (s: string, segments: string[]) => test(`literal ${s}`, () => {
   const c = classifyPathExpression(s);
   assert.equal(c.kind, "literal");
   if (c.kind !== "literal") return;
   assert.deepEqual(c.segments, segments);
-  assert.equal(c.exact, exact);
 });
 lit('z["[]"].w', ["z", "[]", "w"]);
 lit("z['[]'].w", ["z", "[]", "w"]);
 lit('z["[]"]', ["z", "[]"]);
 lit('["z[]"].w', ["z[]", "w"]);
 lit(`z['["[]"]'].w`, ["z", '["[]"]', "w"]);
-lit('robots[2]["x.y"]', ["robots", "2", "x.y"]);   // split is quote-aware; the segment keeps its dot (issue #6)
+lit('x[""].f', ["x", "f"]);                        // empty quoted selector dropped, as in 4.1
 
 const rej = (s: string, reason: string) => test(`rejected ${s} (${reason})`, () => {
   const c = classifyPathExpression(s);
@@ -110,10 +116,35 @@ rej("x[].f[2]", "invalid-field");
 rej('x[].f["k"]', "invalid-field");
 rej("x[]x", "invalid-field");
 rej("x[].", "invalid-field");
-rej("x[].2", "invalid-field");
+rej("x[].f.", "invalid-field");
+rej("x[].a b", "invalid-field");
+rej("x.my list[].f", "invalid-collection-path");   // name with whitespace
+rej("my list[]", "invalid-collection-path");
+rej("[2][]", "invalid-collection-path");           // head must be a seg or a QUOTED selector
+rej('z.["[]"][]', "invalid-collection-path");      // quoted selector after a dot is not in the grammar
+rej("a..b[]", "invalid-collection-path");
+rej("a+b[]", "invalid-collection-path");
+rej("|Whatever[]|", "invalid-field");
+rej("|Whatever[]", "invalid-collection-path");
+rej("x[].f+1", "invalid-field");
+rej('x["a.b"][]', "invalid-collection-path");     // lit := no "."
+rej("x[a>1 && b<2][]", "selector-on-collection");
+rej("x[] + 1", "invalid-field");
+rej("a[]b", "invalid-field");
 
 const plain = (s: string) => test(`plain (4.1 route) ${s}`, () => assert.equal(classifyPathExpression(s).kind, "plain"));
-for (const s of ["x", "x.f", "x[2].f", "robots[i].battery", "users[age > 18]", "x[1..3]", "x[[1,3]]", "x[c => c.f]", "_secret", "@ana", "", "a[b"]) plain(s);
+for (const s of ["x", "x.f", "x[2].f", "robots[i].battery", "users[age > 18]", "x[1..3]", "x[[1,3]]", "x[c => c.f]", "_secret", "@ana", "", "a[b", "a]b", "[1,2,3]", "hello [world]", "x[ 2 ].f", 'robots[2]["x.y"]', 'me.domains["cleaker.me"]']) plain(s);   // quoted text with "." keeps 4.1
+
+console.log("fixed-key = selector text the 4.1 parsers do not interpret");
+test("fixed keys", () => {
+  for (const k of ["2", "i", "a b", "STOP:12", "a=b", "2.5", "-1", "é", "ana@x"]) assert.equal(isFixedKeySelector(k), true, k);
+  assert.equal(isFixedKeySelector("[]\"", true), true, "quoted is always fixed");
+});
+test("not fixed: transform, range, list, filter, blank", () => {
+  for (const k of ["c => c.f", "1..3", "3..1", "[1,3]", '["a","b"]', "a > 1", "a>1 && b<2", "a == 1 || b != 2", " ", ""]) {
+    assert.equal(isFixedKeySelector(k), false, k);
+  }
+});
 
 console.log("rendering (§10.4)");
 test("plain segments render as join('.')", () => {
@@ -260,11 +291,13 @@ for (const mode of ["eager", "lazy"] as Mode[]) {
     assert.equal(readsNothingWritten(k, 'z["[]"].w'), 1);
     assert.equal(readsNothingWritten(k, "z[].w"), undefined);
   });
-  t("lit.root-routing (I1, I7): me('z[]'), me('z[\"[]\"]') read; no root write, no memory", () => {
+  t("lit.root-routing: me('z[]') reads; me('z[\"[]\"]') (no dot, not a []-form) keeps the 4.1 root write", () => {
     const me = base(mode);
     readsNothingWritten(me, "z[]");
-    readsNothingWritten(me, 'z["[]"]');
-    assert.ok(!Object.prototype.hasOwnProperty.call(me.inspect().index, ""));
+    const n = me.memories.length;
+    me('z["[]"]');
+    assert.equal(me.memories.length, n + 1);
+    assert.equal(me.inspect().index[""], 'z["[]"]');
   });
   t("lit.raw-quoted-segment: me.z['[\"[]\"]'].w(7) then z['[\"[]\"]'].w reads 7", () => {
     const me = fresh(mode);
@@ -370,6 +403,157 @@ for (const mode of ["eager", "lazy"] as Mode[]) {
     me.p.q(1); me.p["="]("r", "q + 1");
     assert.equal(me.explain("p.r").path, "p.r");
     assert.deepEqual(me.explain("p.r").meta.dependsOn, ["p.q"]);
+  });
+
+  // root routing: only aggregates change route; rejected forms change only where 4.1 already read
+  t("root routing: valid aggregates read; ANY invalid []-form fails as a read (undefined, no write, no memory)", () => {
+    const reads: Array<[string, any]> = [
+      ["x[]", undefined], ["x[].f", undefined], ["z[]", undefined], ['z["[]"][]', undefined], ['["z[]"][]', undefined],
+      ['z["[]"].w', 1], ["z['[]'].w", 1], ["x[2].f", 3], ["x[ 2 ].f", 3], ['x[""].f', 11], ["z.w", 99],
+    ];
+    for (const [s, v] of reads) {
+      const me = base(mode); me.x[2].f(3); me.x.f(11); me.x.y(4);
+      assert.equal(readsNothingWritten(me, s), v, s);
+    }
+    // invalid []-forms, dotted or not: never a root write (4.1 wrote the non-dotted ones as the root value)
+    const failing = ["z.[].w", "z[ ].w", "x[].y[]", "x[a>1][].f", "a[]b", "[]", "[ ]", "x[][]", "x[] + 1",
+      "my list[]", "[2][]", "x[a>1][]", "list [] here", "x[].f[2]", 'x["a.b"][]', "|Whatever[]|"];
+    for (const s of failing) {
+      const me = base(mode);
+      assert.equal(readsNothingWritten(me, s), undefined, s);
+      const e = me.explain(s);
+      assert.equal(e.meta.unresolved.reason, "evaluation-failed", s);
+      assert.equal(typeof e.meta.unresolved.detail, "string", `${s}: detail names the parse error`);
+    }
+  });
+  t("strings without a []-form keep the 4.1 route exactly (root write when 4.1 wrote)", () => {
+    const writes = ['z["[]"]', '["z[]"]', '["hello"]', "x[2]", "x[i]", "users[age > 18]", "[1,2,3]", "hello [world]",
+      "a[b", "a]b", "hello world"];
+    for (const s of writes) {
+      const me = base(mode);
+      const n = me.memories.length;
+      me(s);
+      assert.equal(me.memories.length, n + 1, `${s}: 4.1 root write kept`);
+      assert.equal(me.inspect().index[""], s, s);
+    }
+  });
+  t("string VALUES are never parsed: me.note('a[]b'), me.postulate([], 'a[]b') store the text", () => {
+    const me = fresh(mode);
+    me.note("a[]b");
+    assert.equal(me("note"), "a[]b");
+    me.postulate([], "x[] + 1");
+    assert.equal(me.inspect().index[""], "x[] + 1");
+    me.list.label('z["[]"].w');
+    assert.equal(me("list.label"), 'z["[]"].w');
+  });
+  t("explain of plain strings keeps the 4.1 path (no rendering of junk segments)", () => {
+    const me = base(mode);
+    assert.equal(me.explain("x[1..3]").path, "x.[1.3]");
+    assert.equal(me.explain("a]b").path, "a]b");
+    assert.equal(me.explain("z.w").path, "z.w");
+    assert.equal(me.explain("z.w").value, 99);
+  });
+  t("explain of a rejected form: undefined, evaluation-failed, no derivation, nothing written", () => {
+    for (const s of ["z.[].w", "z[ ].w", "x[].y[]", "a[]b", "[]", "x[] + 1", "x[a>1][]"]) {
+      const me = base(mode);
+      const before = state(me);
+      const e = me.explain(s);
+      assert.deepEqual(
+        { path: e.path, value: e.value, expr: e.expr, derivation: e.derivation, meta: e.meta },
+        { path: s, value: undefined, expr: null, derivation: null, meta: { dependsOn: [], unresolved: { reason: "evaluation-failed", detail: (classifyPathExpression(s) as any).reason } } },
+        s,
+      );
+      assert.equal(state(me), before, s);
+    }
+  });
+  t("formula with a whitespace-only selector (z[ ].w) is rejected: evaluation-failed (4.1 read z.w = 99)", () => {
+    const me = base(mode);
+    me.t["="]("o", "z[ ].w");
+    assert.equal(me("t.o"), undefined);
+    assert.deepEqual(me.explain("t.o").meta.unresolved, { reason: "evaluation-failed", detail: "rejected-path-form" });
+  });
+
+  // secret scope through a literal [] proxy segment: historical 4.1 scope over z (contract §3)
+  t("_ through literal []: me.z['[]']['_']('k') makes ALL of z secret, as in 4.1", () => {
+    const me = fresh(mode);
+    me.z["[]"]["_"]("k");
+    me.z.a(1);
+    me.z["[]"].w(3);
+    me.z.b(2);
+    assert.ok(Object.prototype.hasOwnProperty.call(me.localSecrets, "z"), "scope key is z");
+    assert.ok(!Object.prototype.hasOwnProperty.call(me.localSecrets, "z.[]"), "not z.[]");
+    assert.equal(me.memories.find((m: any) => m.operator === "_").path, "z");
+    for (const g of [me.as(null), me.as("wrong")]) {
+      assert.equal(g("z.a"), undefined, "guest cannot read z.a");
+      assert.equal(g("z.b"), undefined, "guest cannot read z.b");
+      assert.equal(g('z["[]"].w'), undefined, "guest cannot read the literal child");
+      assert.equal(g("z"), undefined);
+      assert.equal(g("z[]"), undefined, "aggregate read under the scope: undefined");
+    }
+    assert.equal(me("z.a"), 1, "owner reads z.a");
+    assert.equal(me("z.b"), 2);
+    assert.equal(me('z["[]"].w'), 3, "owner reads the literal child");
+    assert.equal(me.as("k")("z.a"), 1, "key holder reads z.a");
+    assert.equal(me.as("k")('z["[]"].w'), 3, "key holder reads the literal child");
+  });
+  t("_ through literal [] after a public write: same as z['_'] in 4.1 (the earlier value is hidden from all)", () => {
+    for (const declare of [(me: any) => me.z["_"]("k"), (me: any) => me.z["[]"]["_"]("k")]) {
+      const me = fresh(mode);
+      me.z.a(1);
+      declare(me);
+      me.z.b(2);
+      assert.deepEqual(
+        [me("z.a"), me("z.b"), me.as("k")("z.a"), me.as(null)("z.a"), me.as(null)("z.b")],
+        [undefined, 2, undefined, undefined, undefined],
+      );
+    }
+  });
+  t("formula text: x[].2 does not tokenize (issue #5) → evaluation-failed", () => {
+    const me = fresh(mode);
+    me.s["="]("v", "x[].2");
+    assert.equal(me("s.v"), undefined);
+    assert.equal(me.explain("s.v").meta.unresolved.reason, "evaluation-failed");
+  });
+  t("_ through literal []: declared before any write, and after hydrate (snapshot), scope stays z", () => {
+    const me = fresh(mode);
+    me.z["[]"]["_"]("k");
+    me.z.a(1);
+    assert.equal(me.as(null)("z.a"), undefined);
+    const k = fresh(mode);
+    k.hydrate(JSON.parse(JSON.stringify(me.exportSnapshot())));
+    assert.ok(Object.prototype.hasOwnProperty.call(k.localSecrets, "z"));
+    assert.equal(k.as(null)("z.a"), undefined, "guest blocked after hydrate");
+  });
+  t("_ scope paths of other bracket proxy forms are exactly 4.1's", () => {
+    const cases: Array<[(me: any) => void, string]> = [
+      [(me) => me.z["x[]"]["_"]("k"), "z.x"],
+      [(me) => me.z["[ ]"]["_"]("k"), "z"],
+      [(me) => me.z['["[]"]']["_"]("k"), 'z.["[]"]'],
+      [(me) => me.z["[2]"]["_"]("k"), "z.2"],
+      [(me) => me.z["_"]("k"), "z"],
+    ];
+    for (const [declare, key] of cases) {
+      const me = fresh(mode);
+      declare(me);
+      assert.deepEqual(Object.keys(me.localSecrets), [key]);
+    }
+  });
+  t("~ (noise) through literal [] is unchanged: raw scope z.[] as in 4.1", () => {
+    const me = fresh(mode);
+    me.z["[]"]["~"]("n");
+    assert.deepEqual(Object.keys(me.localNoises), ["z.[]"]);
+  });
+
+  // open questions, pinned as PROVISIONAL S2 behaviour (contract §12.2b; not decided)
+  t("PROVISIONAL (open Q1): z.[\"[]\"].w reads the literal child, like z[\"[]\"].w (4.1: raw segment)", () => {
+    const me = base(mode);
+    me.z['["[]"]'].w(7);
+    assert.equal(me('z.["[]"].w'), 1);
+  });
+  t("PROVISIONAL (open Q2): scalar missing + aggregate in one formula → S2 placeholder evaluation-failed", () => {
+    const me = fresh(mode);
+    me.s["="]("v", "nothere + x[].f");
+    assert.deepEqual(me.explain("s.v").meta.unresolved, { reason: "evaluation-failed", inputs: ["x[].f"] });
   });
 
   // the demo's case

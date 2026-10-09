@@ -614,7 +614,8 @@ export type MERecomputeMode = "eager" | "lazy";
 export type MEDerivationUnresolved =
   | { reason: "missing-input"; inputs: string[] }
   | { reason: "cycle"; cycle: string[] }
-  | { reason: "evaluation-failed"; inputs?: string[] };
+  /** `detail` names the parse error when the path itself is a rejected `[]` form (path-expr.ts RejectReason). */
+  | { reason: "evaluation-failed"; inputs?: string[]; detail?: string };
 
 export interface MEDerivationRecord {
   expression: string;
