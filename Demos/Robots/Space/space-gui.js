@@ -384,7 +384,7 @@ function Passage(p) {   // a compact card under the scene: the story, one passag
           h(Button, { id: "btn-back", size: "small", disabled: step <= 1, onClick: () => ui.set({ step: step - 1 }), sx: { ...btn, minWidth: 0 } }, "Back"),
           h(Button, { id: "btn-next", size: "small", variant: "outlined", onClick: () => ui.set({ step: step >= STEPS ? 1 : step + 1 }), sx: { ...btn, minWidth: 0 } }, step >= STEPS ? "From the start" : "Next"))),
       h(Typography, { component: "h2", id: "passage-title", sx: { fontFamily: SERIF, fontWeight: 400, fontStyle: "italic", fontSize: { xs: 17, md: 18 }, lineHeight: 1.2, m: 0, mb: .4, color: "text.primary" } }, `${ROMAN[step]}. ${ps.title}`),
-      h(Typography, { component: "p", id: "passage-body", sx: { fontFamily: SERIF, fontSize: { xs: 13.5, md: 14 }, lineHeight: 1.45, color: "text.primary", m: 0 } }, ps.text),
+      h(Typography, { component: "p", id: "passage-body", sx: { fontFamily: SERIF, fontSize: { xs: 13.5, md: 14 }, lineHeight: 1.45, color: "text.primary", m: 0 } }, ...storyText(ps)),
       h(StoryCode, { act: step }),
       h(Box, { sx: { display: "flex", alignItems: "center", gap: .75, mt: .75, flexWrap: "wrap" } },
         ...ps.tries.map(([label, fn], i) => h(Button, { key: i, className: "try", variant: "contained", disableElevation: true, size: "small", disabled: !W, onClick: fn, sx: btn }, label))),
@@ -393,6 +393,12 @@ function Passage(p) {   // a compact card under the scene: the story, one passag
         "each spider's kernel stores its facts and the logical relations between them, and every decision is an operation over that logic (derive, explain). The walking, the radio and the animation are the page's own code: they only act on it and draw it.")));
 }
 
+// The act's prose; an optional link on its first occurrence of link.text (e.g. ".me kernel" → the .me docs)
+function storyText(ps) {
+  const L = ps.link, i = L ? ps.text.indexOf(L.text) : -1; if (i < 0) return [ps.text];
+  return [ps.text.slice(0, i), h(Link, { key: "l", id: "story-link", href: L.href, underline: "always", onClick: (e) => e.stopPropagation(), onPointerDown: (e) => e.stopPropagation(),
+    sx: { color: "primary.main", fontWeight: 600, textUnderlineOffset: "3px", textDecorationColor: (t) => alpha(t.palette.primary.main, 0.5), "&:hover": { textDecorationColor: "currentColor" } } }, L.text), ps.text.slice(i + L.text.length)];
+}
 // The act's .me lines, grouped by the kernel they run in. A fixed line is the code that kernel ran when it was set
 // up; a live line is the latest write to that path in that kernel, exactly as it was made (with k, in act VII).
 const kernelLabel = (who) => (who === "all" ? "every kernel" : `${M.NAME[who]}'s kernel`);

@@ -105,7 +105,7 @@ const ROCK_KEY = (id) => ROCKS.find((x) => x.id === ROBOTS[id - 1].rock).key;
 const homeLines = (id) => [seed(id, "name"), codeOf(`rocks.${ROCK_KEY(id)}.name`, ROCKS.find((x) => x.key === ROCK_KEY(id)).name), `me.robots[${id}].home["->"]("rocks.${ROCK_KEY(id)}")`];
 const meaning = (id, f, n) => [seed(id, "role"), seed(id, f), { live: "objects.ice.seen" }, { code: rule(n), value: `robots.${id}.${n}` }];
 export const STORY = [null,
-  { title: "Two small rocks", text: "Two small rocks, three spider robots, and nobody drives them. Each spider keeps its own .me kernel and first writes down who it is and where it lives. Tap a spider in the sky or in the code.",
+  { title: "Two small rocks", text: "Two small rocks, three spider robots, and nobody drives them. Each spider keeps its own .me kernel and first writes down who it is and where it lives. Tap a spider in the sky or in the code.", link: { text: ".me kernel", href: "https://neurons-me.github.io/.me/" },
     groups: [{ who: 1, lines: homeLines(1) }, { who: 2, lines: homeLines(2) }, { who: 3, lines: homeLines(3) }] },
   { title: "Each one decides", text: "Every simulated minute each spider writes what it measures; its own rules decide when to walk to the sun.",
     groups: [{ who: 2, lines: [{ live: "robots.2.battery" }, { code: rule("reserve"), value: "robots.2.reserve" }, { code: rule("mustCharge"), value: "robots.2.mustCharge" }, { code: rule("goCharge"), value: "robots.2.goCharge" }] }] },
