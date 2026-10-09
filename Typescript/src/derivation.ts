@@ -19,7 +19,7 @@ import {
   renderSegments,
   type AggregateRef,
 } from "./path-expr.ts";
-import { evaluateAggregate } from "./aggregate.ts";
+import { evaluateAggregate, refreshPublicMemberFormulas } from "./aggregate.ts";
 import {
   aggregateKey,
   flushAggregateChanges,
@@ -119,6 +119,14 @@ export function primaryUnresolved(
   return { reason: "evaluation-failed", inputs: sorted(failed), causes };
 }
 
+/** The current caller (me.as(...)) is stopped by the kernel's stealth barrier at `target`. The owner never is. */
+function callerCannotRead(self: MEKernelLike, target: SemanticPath): boolean {
+  const raw = (self as any)._currentCallerScope;
+  if (raw === undefined) return false;
+  const scope = typeof raw === "string" && raw.length > 0 ? raw : null;
+  return !!(self as any).isStealthBlocked?.(target, scope);
+}
+
 function renderWave(wave: any) {
   return {
     k: wave.recomputed.size,
@@ -163,6 +171,12 @@ export function explain(self: MEKernelLike, path: string): MEExplainResult {
   const rawParts = String(path ?? "").split(".").filter(Boolean);
   const target = normalizeSelectorPath(rawParts);
   const key = target.join(".");
+  // A formula with aggregates that the caller cannot read is answered exactly like a path that does not exist (no
+  // expression, no inputs, no context or coverage, no wave), and is not refreshed on the caller's behalf.
+  // (Formulas without aggregates keep the 4.1 explain, including its known exposure of formula text to guests.)
+  if (self.derivations[key]?.aggregates?.length && callerCannotRead(self, target)) {
+    return { path: parsed.kind === "literal" ? renderSegments(target) : key, value: undefined, expr: null, derivation: null, meta: { dependsOn: [] } };
+  }
   if (self.recomputeMode === "lazy") ensureTargetFresh(self, key);
   const value = parsed.kind === "literal" ? self.readPath(rawParts) : self.readPath(target);
   // Top-level path: a quoted-literal request is echoed in rendered form (I8). A plain request keeps the 4.1 key,
@@ -777,10 +791,7 @@ export function ensureTargetFresh(
     // Members (or terms) of an aggregated collection that are themselves formulas: refresh them first, so their
     // commits reach the public index (and bump the aggregate key) before this target's staleness is decided.
     for (const a of d.aggregates ?? []) {
-      const dot = a.collection.join(".") + ".";
-      for (const key of Object.keys(self.derivations)) {
-        if (key !== targetKey && key.startsWith(dot)) ensureTargetFresh(self, key, ctx);
-      }
+      refreshPublicMemberFormulas(self, a.collection.join("."), targetKey, (key) => ensureTargetFresh(self, key, ctx));
     }
     ctx.stack.pop();
 

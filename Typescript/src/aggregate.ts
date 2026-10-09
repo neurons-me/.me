@@ -75,19 +75,29 @@ function guestBlocked(self: MEKernelLike, key: string): boolean {
   }
   return false;
 }
+/** A storage key a guest can read (no scope on it or above it, no stealth node): part of the public view. */
+export function isPublicKey(self: MEKernelLike, key: string): boolean {
+  return !guestBlocked(self, key);
+}
 function publicEntry(self: MEKernelLike, key: string): boolean {
   if (!Object.prototype.hasOwnProperty.call(self.index, key)) return false;
   if (isEncryptedBlob(self.index[key])) return false;
   return !guestBlocked(self, key);
 }
 
-/** Refresh lazy derivations at or under `prefix` (members or terms that are formulas) before reading them. */
-function refreshUnder(self: MEKernelLike, prefix: string, ownTarget?: string): void {
+/**
+ * Lazy mode: bring PUBLIC member formulas under `prefix` up to date before reading them (contract v4.1 §1.5 as
+ * amended at S3 close). This refreshes derived values only; it appends no fact. Each refresh is an ordinary
+ * derivation commit of that formula's own target (the same `=` memory a direct read of that target would make).
+ * A formula whose target is protected is not part of the public view and is never refreshed from here.
+ */
+export function refreshPublicMemberFormulas(self: MEKernelLike, prefix: string, ownTarget?: string, refresh?: (key: string) => void): void {
   if (self.recomputeMode !== "lazy") return;
   const dot = prefix + ".";
   for (const key of Object.keys(self.derivations)) {
-    if (key === ownTarget) continue;
-    if (key.startsWith(dot)) (self as any).ensureTargetFresh(key);
+    if (key === ownTarget || !key.startsWith(dot) || !isPublicKey(self, key)) continue;
+    if (refresh) refresh(key);
+    else (self as any).ensureTargetFresh(key);
   }
 }
 
@@ -118,7 +128,7 @@ export function evaluateAggregate(
     }
   }
 
-  refreshUnder(self, C, targetKey);
+  refreshPublicMemberFormulas(self, C, targetKey);
 
   // Members: direct children of C with at least one public entry at or under them (full scan of the index).
   const dot = C + ".";

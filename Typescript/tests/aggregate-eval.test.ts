@@ -505,6 +505,82 @@ for (const mode of ["eager", "lazy"] as Mode[]) {
       assert.deepEqual(o(B), o(A), `run ${run}`);
     }
   });
+  // ─── S3 close ─────────────────────────────────────────────────────────────────
+  const fact = (m: any) => ({ path: m.path, operator: m.operator, expression: m.expression, value: m.value });
+  t("S3 close A2: an aggregate read appends no fact; a lazy read commits only stale PUBLIC member formulas, exactly as reading them directly", () => {
+    const build = () => { const me = fresh(mode); me.x[1].a(1); me.x[1]["="]("f", "a * 2"); me.x[2].f(3); me("x.1.f"); me.x[1].a(5); return me; };
+    const K1 = build(), K2 = build();
+    const n1 = K1.memories.length, n2 = K2.memories.length;
+    assert.equal(K1("x[].f"), 13);
+    K2("x.1.f");
+    const new1 = K1.memories.slice(n1).map(fact), new2 = K2.memories.slice(n2).map(fact);
+    assert.deepEqual(new1, new2, "same memories as the direct read of the member formula");
+    assert.ok(new1.every((m: any) => m.operator === "=" && K1.derivations[m.path]), "only derivation commits, no new fact");
+    if (mode === "eager") assert.equal(new1.length, 0, "eager: nothing is stale, nothing is written");
+    else assert.deepEqual(new1, [{ path: "x.1.f", operator: "=", expression: 10, value: 10 }]);
+    const n = K1.memories.length;
+    K1("x[].f"); K1.explain("x[].f");
+    assert.equal(K1.memories.length, n, "a second read appends nothing");
+  });
+  t("S3 close A2: a protected member formula is never refreshed by a public-view read (owner, guest, key); twins identical", () => {
+    const A = fresh(mode); A.x[1].f(1);
+    const B = fresh(mode); B.x[1].f(1); B.x[3]["_"]("k"); B.x[3].a(1); B.x[3]["="]("f", "a * 2"); B.x[3].a(7);
+    for (const r of [B, B.as(null), B.as("k"), B.as("nope")]) {
+      const n = B.memories.length;
+      assert.equal(r("x[].f"), 1);
+      r.explain("x[].f");
+      assert.equal(B.memories.length, n, "no memory appended by the aggregate read");
+    }
+    for (const r of [null, "nope"]) assert.deepEqual(B.as(r).explain("x[].f"), A.as(r).explain("x[].f"));
+    assert.equal(B.as("k")("x.3.f"), 14, "the protected formula still follows the normal rules when read by path");
+  });
+  t("S3 close A3: explain of an aggregate formula the reader cannot see = explain of a path that does not exist", () => {
+    const E = fresh(mode);
+    for (const extra of [false, true]) {
+      const k = fresh(mode); batteriesA(k); if (extra) protectThird(k);
+      k.vault["_"]("v"); k.vault["="]("total", "batteries[].charge");
+      for (const r of [k.as(null), k.as("nope"), k.as("k")]) {
+        const n = k.memories.length;
+        assert.deepEqual(r.explain("vault.total"), E.explain("vault.total"));
+        assert.equal(r("vault.total"), undefined);
+        assert.equal(k.memories.length, n, "nothing refreshed on the reader's behalf");
+      }
+      for (const r of [k, k.as("v")]) assert.equal(r.explain("vault.total").derivation.inputs[0].aggregate.coverage, "authorized", "visible to who can read it");
+    }
+  });
+  t("S3 close A4: a write to a non-term field wakes T (later optimisation): no result changes, nothing protected shows", () => {
+    const A = fresh(mode); batteriesA(A); A.stats["="]("total", "batteries[].charge");
+    const B = fresh(mode); batteriesA(B); protectThird(B); B.stats["="]("total", "batteries[].charge");
+    for (const k of [A, B]) { k.batteries[1].label("main"); k("stats.total"); }
+    B.batteries[3].label("hidden"); B.batteries[3].charge(21);
+    for (const k of [A, B]) {
+      assert.equal(k("stats.total"), 70);
+      const m = k.explain("stats.total").meta;
+      assert.deepEqual([m.k, m.changed, m.sourcePath], [1, [], mode === "lazy" ? "stats.total" : "batteries.1.label"], "woken once by the public non-term write, value unchanged (lazy waves are named after the pulled target, as in 4.1)");
+    }
+    assert.deepEqual(observeT(B, "stats.total"), observeT(A, "stats.total"));
+  });
+  t("S3 close A5: a real example of each status, as a formula input (status, primary reason, causes)", () => {
+    const cases: Array<[string, (me: any) => void, string[], any]> = [
+      ["unsupported", (me) => { me.x[1].f(1); me.v["_"]("k"); }, ["v", "t"], { reason: "evaluation-failed", inputs: ["x[].f"], causes: [{ path: "x[].f", status: "unsupported" }] }],
+      ["cycle", (me) => { me.x[1].f(1); }, ["x", "t"], { reason: "cycle", cycle: ["x.t"] }],
+      ["deferred", (me) => { me.src.f(1); me.x[1].f(1); me.x[2]["__"]("src"); }, ["s", "t"], { reason: "evaluation-failed", inputs: ["x[].f"], causes: [{ path: "x[].f", status: "deferred" }] }],
+      ["absent", () => {}, ["s", "t"], { reason: "missing-input", inputs: ["x[].f"], causes: [{ path: "x[].f", status: "absent" }] }],
+      ["incomplete", (me) => { me.x[1].f(1); me.x[2].g(1); }, ["s", "t"], { reason: "incomplete", inputs: ["x[].f"], causes: [{ path: "x[].f", status: "incomplete" }] }],
+      ["incomplete", (me) => { me.x[1].f(1); me.x[2].f(true); }, ["s", "t"], { reason: "incomplete", inputs: ["x[].f"], causes: [{ path: "x[].f", status: "incomplete" }] }],
+      ["non-finite", (me) => { me.x[1].f(Number.MAX_VALUE); me.x[2].f(Number.MAX_VALUE); }, ["s", "t"], { reason: "evaluation-failed", inputs: ["x[].f"], causes: [{ path: "x[].f", status: "non-finite" }] }],
+    ];
+    for (const [status, setup, [a, b], unresolved] of cases) {
+      const me = fresh(mode); setup(me);
+      me[a]["="](b, "x[].f + 1");
+      const e = me.explain(`${a}.${b}`);
+      assert.equal(me(`${a}.${b}`), undefined, status);
+      assert.equal(e.derivation.inputs[0].status, status, status);
+      assert.deepEqual(e.meta.unresolved, unresolved, status);
+    }
+    const mixed = fresh(mode); mixed.x[1].f(1); mixed.x[2].f(true);
+    assert.deepEqual(mixed.explain("x[].f").derivation.inputs[0].aggregate.problems.sample, [{ path: "x.2.f", kind: "mixed-domain" }]);
+  });
   t("AC12: me('wallet') stays undefined with aggregates declared over wallet.*", () => {
     const me = fresh(mode);
     me.wallet["_"]("k"); me.wallet.items[1].v(10);
