@@ -1,4 +1,4 @@
-/*! me-syntax 1.0.0 · a small, dependency-free syntax highlighter for .me code (this.me) · MIT · neurons.me
+/*! me-syntax 1.1.0 · a small, dependency-free syntax highlighter for .me code (this.me) · MIT · neurons.me
  *
  * Usage
  *   <link rel="stylesheet" href="https://neurons-me.github.io/.me/assets/me-syntax/me-syntax.css">
@@ -8,6 +8,9 @@
  *   MeSyntax.toHTML(code)                      // escaped HTML string (static generators)
  *   MeSyntax.render(React.createElement, code) // React children (no innerHTML)
  *   MeSyntax.tokenize(code)                    // [{ c: "mes-…" | null, v: "text" }], the v's join back to code exactly
+ *   render / highlight / toHTML(code, { resolve(path, ctx) → id, ctx, selected, onSelect(id, e) })
+ *                                              // tokens naming an instance (robots[1], rocks.b612, objects.ice)
+ *                                              // become keyboard-reachable buttons; the text stays the same
  *
  * Safety: the text is never changed (the spans only add colour, and <wbr> break hints carry no text), so
  * element.textContent and copy / paste give the original code. highlight() and render() build DOM nodes / React
@@ -106,40 +109,122 @@
     return out;
   }
 
+  // ── references: tokens that name an instance (code → object) ──
+  // Every path-chain token gets t.path, the dotted path up to it: me.robots[1].home → "robots", "robots.1", "robots.1.home";
+  // the same inside path strings ("rocks.b612") and formulas ("objects.ice.seen").
+  function annotatePaths(toks) {
+    var path = null, open = false;
+    for (var i = 0; i < toks.length; i++) {
+      var t = toks[i], c = " " + (t.c || "") + " ", v = t.v;
+      if (c.indexOf(" mes-root ") >= 0) { path = []; open = true; continue; }
+      if (c.indexOf(" mes-dot ") >= 0) { if (path) open = true; continue; }
+      if (c.indexOf(" mes-key ") >= 0 || c.indexOf(" mes-fx-id ") >= 0) { if (!path || !open) path = []; path.push(v); t.path = path.join("."); open = false; continue; }
+      if (c.indexOf(" mes-index ") >= 0) { if (path) { path.push(v); t.path = path.join("."); open = false; } continue; }
+      if (t.c === "mes-punct" && /^\s*\[\s*$/.test(v)) { if (path) { open = true; t.seg = 1; } continue; }
+      if (t.c === "mes-punct" && /^\s*\]\s*$/.test(v)) continue;
+      if (t.c === "mes-str" && /^["']$/.test(v) && path) { t.seg = 1; continue; }   // the quotes of a bracketed key ["name"]
+      path = null; open = false;
+    }
+    return toks;
+  }
+  // Group tokens into runs that resolve to an instance: opts.resolve(path, opts.ctx) → an id (or null).
+  // The run covers the segment(s) that name it, e.g. robots[1] in me.robots[1].battery(82), or rocks.b612 in a string.
+  function refItems(code, opts) {
+    var toks = annotatePaths(tokenize(code)), items = [], start = -1;
+    if (!opts || typeof opts.resolve !== "function") return toks.map(function (t) { return { t: t }; });
+    for (var i = 0; i < toks.length; i++) {
+      var t = toks[i];
+      if (t.path == null) { if (t.seg && start < 0) start = i; else if (!/mes-dot|mes-punct|^mes-str$/.test(t.c || "") || /,/.test(t.v)) start = -1; continue; }
+      if (start < 0) start = i;
+      var id = opts.resolve(t.path, opts.ctx);
+      if (id != null && id !== false) {
+        var end = i; if (toks[i + 1] && toks[i + 1].c === "mes-punct" && /^\s*\]/.test(toks[i + 1].v) && /mes-index/.test(t.c)) end = i + 1;
+        for (var j = start; j <= end; j++) toks[j].ref = String(id);
+        start = -1; i = end;
+      }
+    }
+    for (var k = 0; k < toks.length; k++) {
+      var last = items[items.length - 1];
+      if (toks[k].ref && last && last.ref === toks[k].ref && last.open) last.toks.push(toks[k]);
+      else if (toks[k].ref) items.push({ ref: toks[k].ref, toks: [toks[k]], open: true });
+      else { if (last) last.open = false; items.push({ t: toks[k] }); }
+    }
+    return items;
+  }
+  function isSel(opts, id) { var s = opts && opts.selected; return typeof s === "function" ? !!s(id) : s != null && (Array.isArray(s) ? s.indexOf(id) >= 0 : String(s) === id); }
+  function refText(toks) { return toks.map(function (t) { return t.v; }).join(""); }
+  function hasTextSelection(el) { try { var s = el.ownerDocument.getSelection(); return s && !s.isCollapsed && s.toString().length > 0; } catch (e) { return false; } }
+
   function valueClass(v) {   // the class for a result value, e.g. after "→"
     return v === true || v === "true" ? "mes-true" : v === false || v === "false" ? "mes-false" : typeof v === "number" ? "mes-num" : v == null ? "mes-null" : "mes-str";
   }
 
   var ESC = { "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" };
   function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return ESC[c]; }); }
-  function toHTML(code) {
-    return tokenize(code).map(function (t) { var s = t.c ? "<span class=\"" + t.c + "\">" + esc(t.v) + "</span>" : esc(t.v); return (t.brkBefore ? "<wbr>" : "") + s + (t.brk ? "<wbr>" : ""); }).join("");
+  function tokHTML(t) { var s = t.c ? "<span class=\"" + t.c + "\">" + esc(t.v) + "</span>" : esc(t.v); return (t.brkBefore ? "<wbr>" : "") + s + (t.brk ? "<wbr>" : ""); }
+  // toHTML(code, opts?): with opts.resolve, instance runs become <span class="mes-ref" data-me-ref="id" role="button"
+  // tabindex="0">; wire them with bindRefs(root, onSelect) (static pages: no inline handlers).
+  function toHTML(code, opts) {
+    return refItems(code, opts).map(function (it) {
+      if (!it.ref) return tokHTML(it.t);
+      var on = isSel(opts, it.ref);
+      return "<span class=\"mes-ref" + (on ? " mes-ref-on" : "") + "\" data-me-ref=\"" + esc(it.ref) + "\" role=\"button\" tabindex=\"0\" aria-pressed=\"" + on + "\" title=\"" + esc((opts.title ? opts.title(it.ref, refText(it.toks)) : "select " + refText(it.toks))) + "\">" + it.toks.map(tokHTML).join("") + "</span>";
+    }).join("");
   }
-  function render(h, code) {
-    var kids = [];
-    tokenize(code).forEach(function (t, i) {
-      if (t.brkBefore) kids.push(h("wbr", { key: "b" + i }));
-      kids.push(t.c ? h("span", { key: i, className: t.c }, t.v) : t.v);
-      if (t.brk) kids.push(h("wbr", { key: "a" + i }));
+  // render(h, code, opts?): React children. opts = { resolve(path, ctx) → id, ctx, selected: id | ids | (id) → bool,
+  // onSelect(id, event), title(id, text) }. Click, Enter or Space on a reference calls onSelect; the text is unchanged.
+  function render(h, code, opts) {
+    var kids = [], n = 0;
+    function tok(t) { var out = []; if (t.brkBefore) out.push(h("wbr", { key: "b" + n })); out.push(t.c ? h("span", { key: "t" + n, className: t.c }, t.v) : t.v); if (t.brk) out.push(h("wbr", { key: "a" + n })); n++; return out; }
+    refItems(code, opts).forEach(function (it) {
+      if (!it.ref) { kids.push.apply(kids, tok(it.t)); return; }
+      var id = it.ref, on = isSel(opts, id), inner = []; it.toks.forEach(function (t) { inner.push.apply(inner, tok(t)); });
+      var fire = function (e) { if (opts.onSelect) opts.onSelect(id, e); };
+      kids.push(h("span", { key: "r" + n++, className: "mes-ref" + (on ? " mes-ref-on" : ""), "data-me-ref": id, role: "button", tabIndex: 0, "aria-pressed": on ? "true" : "false",
+        title: opts.title ? opts.title(id, refText(it.toks)) : "select " + refText(it.toks),
+        onClick: function (e) { if (hasTextSelection(e.currentTarget)) return; fire(e); },
+        onKeyDown: function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fire(e); } } }, inner));
     });
     return kids;
   }
-  function highlight(el) {
+  // highlight(el, opts?): in place, DOM nodes only; with opts.onSelect the references are wired too
+  function highlight(el, opts) {
     if (!el || el.getAttribute("data-me-highlighted") === "1") return el;
     var code = el.textContent, doc = el.ownerDocument, frag = doc.createDocumentFragment();
-    tokenize(code).forEach(function (t) {
-      if (t.brkBefore) frag.appendChild(doc.createElement("wbr"));
-      if (t.c) { var s = doc.createElement("span"); s.className = t.c; s.textContent = t.v; frag.appendChild(s); } else frag.appendChild(doc.createTextNode(t.v));
-      if (t.brk) frag.appendChild(doc.createElement("wbr"));
+    var add = function (parent, t) {
+      if (t.brkBefore) parent.appendChild(doc.createElement("wbr"));
+      if (t.c) { var s = doc.createElement("span"); s.className = t.c; s.textContent = t.v; parent.appendChild(s); } else parent.appendChild(doc.createTextNode(t.v));
+      if (t.brk) parent.appendChild(doc.createElement("wbr"));
+    };
+    refItems(code, opts).forEach(function (it) {
+      if (!it.ref) return add(frag, it.t);
+      var r = doc.createElement("span"), on = isSel(opts, it.ref); r.className = "mes-ref" + (on ? " mes-ref-on" : "");
+      r.setAttribute("data-me-ref", it.ref); r.setAttribute("role", "button"); r.setAttribute("tabindex", "0"); r.setAttribute("aria-pressed", String(on));
+      r.setAttribute("title", opts.title ? opts.title(it.ref, refText(it.toks)) : "select " + refText(it.toks));
+      it.toks.forEach(function (t) { add(r, t); }); frag.appendChild(r);
     });
     el.replaceChildren(frag);
     el.classList.add("me-code"); el.setAttribute("data-me-highlighted", "1");
+    if (opts && opts.onSelect && !el.__meRefs) { el.__meRefs = 1; bindRefs(el, opts.onSelect); }
     return el;
   }
-  function highlightAll(rootEl, selector) {
+  // one listener for every reference under root (click, Enter, Space) → onSelect(id, event)
+  function bindRefs(rootEl, onSelect) {
+    var pick = function (e) { var r = e.target && e.target.closest && e.target.closest("[data-me-ref]"); return r && rootEl.contains(r) ? r : null; };
+    var click = function (e) { var r = pick(e); if (r && !hasTextSelection(r)) onSelect(r.getAttribute("data-me-ref"), e); };
+    var key = function (e) { var r = pick(e); if (r && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); onSelect(r.getAttribute("data-me-ref"), e); } };
+    rootEl.addEventListener("click", click); rootEl.addEventListener("keydown", key);
+    return function () { rootEl.removeEventListener("click", click); rootEl.removeEventListener("keydown", key); };
+  }
+  // mark the references of the selected instance(s) under root (for pages that are not React)
+  function markSelected(rootEl, selected) {
+    var list = rootEl.querySelectorAll("[data-me-ref]"), o = { selected: selected };
+    for (var i = 0; i < list.length; i++) { var on = isSel(o, list[i].getAttribute("data-me-ref")); list[i].classList.toggle("mes-ref-on", on); list[i].setAttribute("aria-pressed", String(on)); }
+  }
+  function highlightAll(rootEl, selector, opts) {
     var r = rootEl || (typeof document !== "undefined" ? document : null); if (!r) return 0;
     var list = r.querySelectorAll(selector || "code.language-me, [data-me-code], pre.me-code > code, code.me-code");
-    for (var i = 0; i < list.length; i++) highlight(list[i]);
+    for (var i = 0; i < list.length; i++) highlight(list[i], opts);
     return list.length;
   }
   // ── colours: one mapping layer from the active theme to --me-syn-* ──
@@ -223,7 +308,8 @@
     mo.observe(document.head, { childList: true, subtree: true, characterData: true });
     run(); return function () { mo.disconnect(); };
   }
-  var api = { version: "1.0.0", tokenize: tokenize, toHTML: toHTML, render: render, highlight: highlight, highlightAll: highlightAll, valueClass: valueClass, escape: esc,
+  var api = { version: "1.1.0", tokenize: tokenize, toHTML: toHTML, render: render, highlight: highlight, highlightAll: highlightAll, valueClass: valueClass, escape: esc,
+    paths: function (code) { return annotatePaths(tokenize(code)); }, refs: refItems, bindRefs: bindRefs, markSelected: markSelected,
     themeColors: themeColors, syncTheme: syncTheme, watchTheme: watchTheme, contrast: contrast };
   root.MeSyntax = api;
   if (typeof module === "object" && module.exports) module.exports = api;

@@ -26,8 +26,24 @@ const MONO = '"IBM Plex Mono", "SF Mono", ui-monospace, Menlo, Consolas, monospa
 // .me code on screen goes through the shared highlighter (assets/me-syntax): colours from the .GUI theme, text unchanged.
 const SYN = window.MeSyntax || null;
 if (SYN && SYN.watchTheme) SYN.watchTheme(); // re-measures the colours whenever .GUI writes a new theme / mode
-function MeCode({ code, sx, id, className }) {
-  return h(Box, { component: "code", id, className: `me-code${className ? " " + className : ""}`, sx: { fontFamily: MONO, minWidth: 0, ...(sx || {}) } }, ...(SYN ? SYN.render(h, code) : [code]));
+// Code → object: a path in the code that names an instance (a robot, a rock, the ice, the comet) is a button that
+// selects it, as tapping it in the sky does; the selected one is marked in every line of code. ctx = the kernel the
+// line runs in (objects.rock is "the other rock" of that kernel's robot).
+function resolveInstance(path, ctx) {
+  let m;
+  if ((m = /^robots\.(\d+)$/.exec(path))) return M.NAME[m[1]] ? `robot:${m[1]}` : null;
+  if ((m = /^robots\.\d+\.heard\.(\d+)$/.exec(path))) return M.NAME[m[1]] ? `robot:${m[1]}` : null;   // what it heard from robot m
+  if ((m = /^robots\.(\d+)\.home$/.exec(path))) { const r = M.ROBOTS.find((x) => x.id === Number(m[1])); return r ? `rock:${r.rock}` : null; }   // the pointer → its rock
+  if ((m = /^rocks\.(\w+)$/.exec(path))) { const rk = M.ROCKS.find((x) => x.key === m[1]); return rk ? `rock:${rk.id}` : null; }
+  if (path === "objects.ice" || path === "objects.comet") return `object:${path.slice(8)}`;
+  if (path === "objects.rock" && ctx) { const r = M.ROBOTS.find((x) => x.id === ctx); return r ? `rock:${r.rock === 1 ? 2 : 1}` : null; }
+  return null;
+}
+const refTitle = (id) => { const [k, v] = id.split(":"); return k === "robot" ? `select ${M.NAME[v]}` : k === "rock" ? `select the rock ${M.ROCK_NAME[v]}` : `select the ${v}`; };
+function MeCode({ code, sx, id, className, ctx }) {
+  const { focus } = useStore(ui);
+  const opts = { resolve: resolveInstance, ctx, selected: focus, onSelect: (ref) => act.focus(ref), title: refTitle };
+  return h(Box, { component: "code", id, className: `me-code${className ? " " + className : ""}`, sx: { fontFamily: MONO, minWidth: 0, ...(sx || {}) } }, ...(SYN ? SYN.render(h, code, opts) : [code]));
 }
 const SERIF = '"Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Times New Roman", serif';
 const alpha = (c, a) => `color-mix(in srgb, ${c} ${Math.round(a * 100)}%, transparent)`;
@@ -60,7 +76,7 @@ async function loadKernel() {
 // ── tiny external stores (page state, not kernel) ──
 function createStore(state) { const ls = new Set(); let v = 0; return { state, subscribe: (cb) => (ls.add(cb), () => ls.delete(cb)), version: () => v, set(p) { if (p) Object.assign(state, p); v++; ls.forEach((cb) => cb()); } }; }
 const useStore = (s) => { React.useSyncExternalStore(s.subscribe, s.version); return s.state; };
-const ui = createStore({ step: 1, sel: 1, obj: "ice", hood: false, running: false, speed: 10, explain: "goCharge", kernel: { state: "loading" }, gui: { state: "checking" }, verify: null });
+const ui = createStore({ step: 1, sel: 1, obj: "ice", focus: "robot:1", hood: false, running: false, speed: 10, explain: "goCharge", kernel: { state: "loading" }, gui: { state: "checking" }, verify: null });
 const frame = createStore({});   // bumped every animation frame (scene only)
 const tick = createStore({});    // bumped at 4 Hz (panels)
 
@@ -121,43 +137,34 @@ const play = (on = true) => ui.set({ running: on });
 function interact(id, xs) { for (const x of [].concat(xs || [])) { noteWrite(id, x); lastWrites.set(id, { t: W.t, batch: [x], manual: true }); } announce(); tick.set(); frame.set(); }
 const robot = (id) => W?.robots.find((r) => r.id === id);
 const act = {
-  select: (id) => ui.set({ sel: id }),
-  object: (k) => ui.set({ obj: k }),
-  drain: (id) => { ui.set({ sel: id, explain: "mustCharge" }); interact(id, M.setBattery(W, id, 6)); },
+  select: (id) => ui.set({ sel: id, focus: `robot:${id}` }),
+  object: (k) => ui.set({ obj: k, focus: k === "rock" ? "rock:2" : `object:${k}` }),
+  // one selection for the sky, the panels and the code: robot:N, rock:N, object:ice / object:comet
+  focus: (ref) => { const [k, v] = String(ref).split(":");
+    if (k === "robot") ui.set({ sel: Number(v), focus: ref });
+    else if (k === "rock") ui.set({ obj: "rock", focus: ref });
+    else if (k === "object") ui.set({ obj: v, focus: ref }); },
+  drain: (id) => { ui.set({ sel: id, focus: `robot:${id}`, explain: "mustCharge" }); interact(id, M.setBattery(W, id, 6)); },
   battery: (id, v) => interact(id, M.setBattery(W, id, v)),
-  hello: (id) => { ui.set({ sel: id }); M.sayHello(W, id); interact(); },
-  tip: (id) => { ui.set({ sel: id }); M.shareTip(W, id); interact(); },
+  hello: (id) => { ui.set({ sel: id, focus: `robot:${id}` }); M.sayHello(W, id); interact(); },
+  tip: (id) => { ui.set({ sel: id, focus: `robot:${id}` }); M.shareTip(W, id); interact(); },
   away: () => { M.holdRock(W, 2, M.FAR); interact(); },
   close: () => { M.holdRock(W, 2, M.NEAR); interact(); },
   drift: () => { M.holdRock(W, 2, null); interact(); },
   verify: () => { const t0 = performance.now(); const v = M.verifyWorld(ME, W); ui.set({ verify: { ...v, ms: performance.now() - t0, t: W.t } }); },
 };
 
-// ── the story ──
-const C = (s) => `<code class="me-code">${SYN ? SYN.toHTML(s) : s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`)}</code>`;
-const PASSAGES = [null,
-  { title: "Two small rocks",
-    body: `In the void there are two small rocks. On the bigger one, B 612, live two spider robots, Oli and Tiko. On the smaller one, B 325, lives Lua. Nobody drives them. Each one carries its own .me kernel: what it knows lives there, in ${C("me.robots[1]")} for Oli, and nowhere else. Tap a spider to see how it is doing.`,
-    code: `me.robots[1].battery(82)`, tries: [["Meet Oli", () => act.select(1)], ["Meet Tiko", () => act.select(2)], ["Meet Lua", () => act.select(3)]] },
-  { title: "Each one decides",
-    body: `Every simulated minute each spider writes what it measures into its own kernel, and its own rules answer: keep exploring, walk to the sunny side to charge, or go to the ice. When the battery is no longer enough to walk back to the light, ${C("goCharge")} turns true and the spider turns around, without asking anyone.`,
-    code: `me.robots["[i]"]["="]("mustCharge", "battery < reserve")`, tries: [["Drain Tiko's battery", () => { act.drain(2); play(); }]] },
-  { title: "One ice, three meanings",
-    body: `Oli is a miner: to him, ice is something to mine. Tiko is a light scout: to her, ice is slippery, a place to stay away from. Lua is a scientist: to her, ice is a sample to study. Each kernel holds its own view of the same ice and the same rule text; the meaning comes from each one's role and what it has seen.`,
-    code: `me.robots["[i]"]["="]("iceIsHazard", "slips && objects.ice.seen")`, tries: [["What is the ice to each?", () => act.object("ice")], ["And the comet?", () => act.object("comet")]] },
-  { title: "Talking across the void",
-    body: `They have small radios. On the same rock they always hear each other. Across the void, only when the other rock is in range and no rock is in the way. A radio sends one message every 6 simulated minutes, and some messages are lost on the way. Radio is much faster in real life: here messages are slowed down so you can watch them travel.`,
-    code: `range ${M.RANGE} · one message every 6 min · an outbox of 3 · some get lost`, tries: [["Lua says hello", () => { act.hello(3); play(); }], ["Bring the rocks close", () => { act.close(); play(); }]] },
-  { title: "Heard is not known",
-    body: `Nobody can write into another spider's kernel. A message only lands in the receiver's inbox, and the receiver's own rule decides whether to accept it. A fresh ice tip about its own rock becomes a plan; a tip about the other rock stays something it heard. Tiko accepts the tip too, but to her it means "stay away".`,
-    code: `me.robots["[i]"]["="]("acceptTip", "inboxAge <= maxAge && inboxRock == myRock && !tipFresh")`, tries: [["Oli shares an ice tip", () => { act.tip(1); act.object("ice"); play(); }]] },
-  { title: "Drifting apart",
-    body: `B 325 drifts. Push it away (or drag it): messages between the rocks stop arriving, and each spider keeps going on its own rules. Bring it back, and they hear each other again; what they heard before stays exactly as old as it is.`,
-    code: `me.robots[3].heard[1].at  →  how old is what Lua heard from Oli?`, tries: [["Push B 325 away", () => { act.away(); play(); }], ["Bring it close", () => { act.close(); play(); }], ["Let it drift", () => act.drift()]] },
-  { title: "A small cost",
-    body: `Each write recomputes only the paths that read it; that number is k. A battery write touches a few paths of one spider's kernel, and the other kernels are not involved at all. The times next to each write are measured in this browser. Verify rebuilds every kernel from its facts and compares every derived value.`,
-    code: `cost(write) = O(k)`, tries: [["Verify all three kernels", () => { act.verify(); ui.set({ hood: true }); }]] },
+// ── the story: the acts and their .me lines live in space-model.js (M.STORY); verify checks every line runs ──
+const TRIES = [null,
+  [["Meet Oli", () => act.select(1)], ["Meet Tiko", () => act.select(2)], ["Meet Lua", () => act.select(3)]],
+  [["Drain Tiko's battery", () => { act.drain(2); play(); }]],
+  [["What is the ice to each?", () => act.object("ice")], ["And the comet?", () => act.object("comet")]],
+  [["Lua says hello", () => { act.hello(3); play(); }], ["Bring the rocks close", () => { act.close(); play(); }]],
+  [["Oli shares an ice tip", () => { act.tip(1); act.object("ice"); play(); }]],
+  [["Push B 325 away", () => { act.away(); play(); }], ["Bring it close", () => { act.close(); play(); }], ["Let it drift", () => act.drift()]],
+  [["Verify all three kernels", () => { act.verify(); ui.set({ hood: true }); }]],
 ];
+const PASSAGES = M.STORY.map((s, i) => (s ? { ...s, tries: TRIES[i] } : null));
 const STEPS = PASSAGES.length - 1;
 const ROMAN = ["", "I", "II", "III", "IV", "V", "VI", "VII"];
 
@@ -277,7 +284,7 @@ function useFrame() {
 }
 const svgPoint = (svg, e) => { const pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY; const m = svg.getScreenCTM(); return m ? pt.matrixTransform(m.inverse()) : { x: 0, y: 0 }; };
 function Scene(p) {
-  useStore(frame); const { sel, obj } = useStore(ui); const [ref, FS, F] = useFrame(); const drag = React.useRef(null);
+  useStore(frame); const { sel, obj, focus } = useStore(ui); const [ref, FS, F] = useFrame(); const drag = React.useRef(null);
   if (!W) return h(Box, { sx: { height: "100%", display: "grid", placeItems: "center", fontFamily: SERIF, fontStyle: "italic", color: "text.secondary" } }, "…");
   const f = ui.state.running ? Math.min(1, acc) : 1, V = view(f), tf = W.t - 1 + f;
   const A = V.rocks[1], B = V.rocks[2];
@@ -298,6 +305,8 @@ function Scene(p) {
     return h("g", { key: `rock${rk.id}`, className: "rock", "data-rock": rk.id },
       h("circle", { cx: rk.x, cy: rk.y, r: rk.R, fill: "var(--night)" }),
       h("path", { d: `M${p1[0]},${p1[1]} A${rk.R},${rk.R} 0 0 1 ${p2[0]},${p2[1]} Z`, fill: "var(--day)" }),
+      !isB ? h("circle", { className: "pick-rock", cx: rk.x, cy: rk.y, r: rk.R, fill: "transparent", style: { cursor: "pointer" }, onClick: () => act.focus("rock:1"),
+        role: "button", tabIndex: 0, "aria-label": "B 612: tap it to select it", onKeyDown: (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); act.focus("rock:1"); } } }) : null,
       isB ? h("circle", { className: "drag-rock", cx: rk.x, cy: rk.y, r: rk.R, fill: "transparent", style: { cursor: "grab", touchAction: "none" }, onPointerDown: onDown, onPointerMove: onMove, onPointerUp: onUp, onPointerCancel: onUp,
         role: "button", tabIndex: 0, "aria-label": "B 325: drag it to move it; tap it to see what it means to each spider", onKeyDown: (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); act.object("rock"); } } }) : null,
       ...rk.spots.map((s) => { const c = ICE_POS(rk, s), known = W.robots.some((r) => r.known.has(s.id)), a = (c.a * 180) / Math.PI + 90;
@@ -306,8 +315,9 @@ function Scene(p) {
           h("ellipse", { cx: c.x, cy: c.y, rx: rk.R * 0.17, ry: rk.R * 0.09, transform: `rotate(${a} ${c.x} ${c.y})`, fill: "none", stroke: "var(--faint)", strokeWidth: 1 }),
           s.left > 0 ? h(Glyph, { kind: "ice", x: c.x, y: c.y, s: 0.5 + 0.12 * s.left, color: "var(--ice)" }) : null,
           s.left > 0 && !known ? h("circle", { cx: c.x, cy: c.y, r: 8, fill: "var(--bg)", opacity: 0.55 }) : null,
+          focus === "object:ice" ? h("circle", { className: "focus-ring", cx: c.x, cy: c.y, r: 12, fill: "none", stroke: "var(--accent)", strokeWidth: 1.6, strokeDasharray: "3 2" }) : null,
           h("circle", { cx: c.x, cy: c.y, r: 13, fill: "transparent" })); }),
-      h("circle", { cx: rk.x, cy: rk.y, r: rk.R, fill: "none", stroke: obj === "rock" && isB ? "var(--accent)" : "var(--ink)", strokeWidth: obj === "rock" && isB ? 2 : 1.2, opacity: 0.85, style: { pointerEvents: "none" } }),
+      h("circle", { cx: rk.x, cy: rk.y, r: rk.R, fill: "none", stroke: focus === `rock:${rk.id}` ? "var(--accent)" : "var(--ink)", strokeWidth: focus === `rock:${rk.id}` ? 2.4 : 1.2, opacity: 0.85, style: { pointerEvents: "none" } }),
       label(rk.x, rk.y + 4, rk.name, 10, "var(--faint)", false));
   };
   const posOf = (id) => V.xy(robot(id), 8);
@@ -346,12 +356,12 @@ function Scene(p) {
     rockG(A), rockG(B),
     cf ? h("g", { className: "comet", role: "button", tabIndex: 0, "aria-label": "A comet. What does it mean to each spider?", style: { cursor: "pointer" }, onClick: () => act.object("comet") },
       h("path", { d: `M${cf.x},${cf.y} L${tail.x},${tail.y}`, stroke: "url(#tail)", strokeWidth: 5, strokeLinecap: "round" }),
-      h("circle", { cx: cf.x, cy: cf.y, r: 4.5, fill: "var(--ice)", stroke: obj === "comet" ? "var(--accent)" : "none", strokeWidth: 2 }), h("circle", { cx: cf.x, cy: cf.y, r: 22, fill: "transparent" }),
+      h("circle", { cx: cf.x, cy: cf.y, r: 4.5, fill: "var(--ice)", stroke: focus === "object:comet" ? "var(--accent)" : "none", strokeWidth: 2 }), h("circle", { cx: cf.x, cy: cf.y, r: 22, fill: "transparent" }),
       label(cf.x + 26, cf.y - 12, "comet", 12, "var(--muted)")) : null,
     ...W.robots.map((r) => h(Intent, { key: `i${r.id}`, r, V, FS })),
     ...W.robots.map((r) => { const q = V.xy(r, 6); return h("g", { key: `g${r.id}`, className: "spider", "data-robot": r.id, role: "button", tabIndex: 0, "aria-label": `${r.name}: ${r.status}. Open its dashboard.`, style: { cursor: "pointer" },
       onClick: () => act.select(r.id), onKeyDown: (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); act.select(r.id); } } },
-      sel === r.id ? h("circle", { cx: q.x, cy: q.y, r: 17 * Math.min(FS, 1.6), fill: "none", stroke: "var(--accent)", strokeWidth: 1.2, strokeDasharray: "3 3" }) : null,
+      sel === r.id ? h("circle", { className: focus === `robot:${r.id}` ? "sel-ring focus-ring" : "sel-ring", cx: q.x, cy: q.y, r: 17 * Math.min(FS, 1.6), fill: "none", stroke: "var(--accent)", strokeWidth: focus === `robot:${r.id}` ? 2 : 1.2, strokeDasharray: "3 3" }) : null,
       h(Spider, { r, V, FS, sel: sel === r.id }), h("circle", { cx: q.x, cy: q.y, r: 24, fill: "transparent" })); }),
     ...W.robots.map((r) => h(Label, { key: `l${r.id}`, r, V, FS, F, sel: sel === r.id })),
     ...dots, ...marks,
@@ -361,7 +371,7 @@ function Scene(p) {
 
 // ── passage (main column, under the scene) ──
 function Passage(p) {   // a compact card under the scene: the story, one passage at a time
-  const { step } = useStore(ui); const ps = PASSAGES[step];
+  const { step } = useStore(ui); useStore(tick); const ps = PASSAGES[step];
   const btn = { fontFamily: MONO, fontSize: 10.5, textTransform: "none", lineHeight: 1.3, py: .4 };
   return h(Box, { "data-gui-node-id": p["data-gui-node-id"], id: "passage", sx: { px: { xs: 1.25, md: 2 }, pt: { xs: .75, md: 1 }, pb: { xs: 1.25, md: 1.5 } } },
     h(Box, { id: "passage-card", sx: { maxWidth: 900, mx: "auto", border: 1, borderColor: "divider", borderRadius: 2, bgcolor: "background.paper", px: { xs: 1.5, md: 2 }, py: { xs: 1.1, md: 1.25 } } },
@@ -374,13 +384,33 @@ function Passage(p) {   // a compact card under the scene: the story, one passag
           h(Button, { id: "btn-back", size: "small", disabled: step <= 1, onClick: () => ui.set({ step: step - 1 }), sx: { ...btn, minWidth: 0 } }, "Back"),
           h(Button, { id: "btn-next", size: "small", variant: "outlined", onClick: () => ui.set({ step: step >= STEPS ? 1 : step + 1 }), sx: { ...btn, minWidth: 0 } }, step >= STEPS ? "From the start" : "Next"))),
       h(Typography, { component: "h2", id: "passage-title", sx: { fontFamily: SERIF, fontWeight: 400, fontStyle: "italic", fontSize: { xs: 17, md: 18 }, lineHeight: 1.2, m: 0, mb: .4, color: "text.primary" } }, `${ROMAN[step]}. ${ps.title}`),
-      h(Typography, { component: "p", id: "passage-body", sx: { fontFamily: SERIF, fontSize: { xs: 13.5, md: 14 }, lineHeight: 1.45, color: "text.primary", m: 0, "& code": { fontFamily: MONO, fontSize: ".82em", color: "primary.main" } }, dangerouslySetInnerHTML: { __html: ps.body } }),
+      h(Typography, { component: "p", id: "passage-body", sx: { fontFamily: SERIF, fontSize: { xs: 13.5, md: 14 }, lineHeight: 1.45, color: "text.primary", m: 0 } }, ps.text),
+      h(StoryCode, { act: step }),
       h(Box, { sx: { display: "flex", alignItems: "center", gap: .75, mt: .75, flexWrap: "wrap" } },
-        ...ps.tries.map(([label, fn], i) => h(Button, { key: i, className: "try", variant: "contained", disableElevation: true, size: "small", disabled: !W, onClick: fn, sx: btn }, label)),
-        h(MeCode, { id: "passage-code", code: ps.code, sx: { flex: "1 1 220px", fontSize: 10.5 } })),
+        ...ps.tries.map(([label, fn], i) => h(Button, { key: i, className: "try", variant: "contained", disableElevation: true, size: "small", disabled: !W, onClick: fn, sx: btn }, label))),
       h(Box, { id: "honest-line", sx: { mt: .9, pt: .7, borderTop: 1, borderColor: "divider", fontFamily: SERIF, fontStyle: "italic", fontSize: 12, lineHeight: 1.4, color: "text.secondary" } },
         h(Box, { component: "b", sx: { fontWeight: 600, fontStyle: "normal", fontFamily: MONO, fontSize: 10.5, letterSpacing: ".04em", mr: .5 } }, "What .me does here:"),
         "each spider's kernel stores its facts and the logical relations between them, and every decision is an operation over that logic (derive, explain). The walking, the radio and the animation are the page's own code: they only act on it and draw it.")));
+}
+
+// The act's .me lines, grouped by the kernel they run in. A fixed line is the code that kernel ran when it was set
+// up; a live line is the latest write to that path in that kernel, exactly as it was made (with k, in act VII).
+const kernelLabel = (who) => (who === "all" ? "every kernel" : `${M.NAME[who]}'s kernel`);
+function StoryCode({ act: n }) {
+  const story = M.STORY[n]; if (!story) return null;
+  const line = (who, ln, i) => {
+    const L = typeof ln === "string" ? { code: ln } : ln, k = W && who !== "all" ? robot(who).k : null;
+    const x = L.live && k ? k.last[L.live] : null, code = L.code || x?.code;
+    if (!code) return L.none === "" ? null : h(Box, { key: i, className: "story-none", sx: { fontFamily: SERIF, fontStyle: "italic", fontSize: 12.5, color: "text.disabled" } }, L.none || "not written yet");
+    return h(Box, { key: i, className: "story-line", "data-live": L.live || undefined, sx: { fontSize: { xs: 10.5, md: 11 }, lineHeight: 1.5, py: "1px" } },
+      h(MeCode, { code, ctx: who === "all" ? undefined : who }),
+      L.value ? h(Box, { component: "span", className: "me-code", sx: { fontFamily: MONO, ml: .75, whiteSpace: "nowrap" } }, h("span", { className: "mes-arrow" }, "→ "), h(MeVal, { path: L.value, syn: true, d: 2 })) : null,
+      L.k && x ? h(Box, { component: "span", sx: { fontFamily: MONO, ml: .75, color: "warning.main", whiteSpace: "nowrap" } }, `k=${x.k}`) : null);
+  };
+  return h(Box, { id: "story-code", "data-act": n, sx: { mt: .75, display: "grid", gap: { xs: .75, md: 1 }, gridTemplateColumns: { xs: "minmax(0, 1fr)", sm: "repeat(auto-fit, minmax(240px, 1fr))" } } },
+    ...story.groups.map((g, gi) => h(Box, { key: gi, className: "story-group", "data-who": String(g.who), sx: { minWidth: 0, borderLeft: 2, borderColor: "divider", pl: 1 } },
+      h(Box, { sx: { fontFamily: MONO, fontSize: 9.5, letterSpacing: ".1em", textTransform: "uppercase", color: "text.secondary", mb: .25 } }, kernelLabel(g.who)),
+      ...g.lines.map((ln, i) => line(g.who, ln, i)))));
 }
 
 // ── aside: controls, the dashboard, what things mean, under the hood ──
@@ -513,21 +543,21 @@ const KV = (k, v, sub) => h(Box, { sx: ROW_SX, key: k }, h(Box, { component: "sp
 function HoodObjects() {
   const { obj } = useStore(ui); useStore(tick); if (!W) return null;
   const def = MEANINGS[obj], o = M.OBJECTS.find((x) => x.key === obj), rules = M.RULES.filter(([n]) => def.rules.includes(n));
-  const line = (code, path, key) => h(Box, { key, sx: { display: "grid", gridTemplateColumns: "minmax(0, 1fr) auto", gap: 1, py: .25, borderBottom: 1, borderColor: "divider", "&:last-of-type": { borderBottom: 0 } } },
-    h(MeCode, { code, sx: { fontSize: 9.5 } }), h(Box, { component: "span", className: "me-code", sx: { fontFamily: MONO, fontSize: 9.5, textAlign: "right", whiteSpace: "nowrap" } }, h("span", { className: "mes-arrow" }, "→ "), h(MeVal, { path, syn: true })));
+  const line = (code, path, key, ctx) => h(Box, { key, sx: { display: "grid", gridTemplateColumns: "minmax(0, 1fr) auto", gap: 1, py: .25, borderBottom: 1, borderColor: "divider", "&:last-of-type": { borderBottom: 0 } } },
+    h(MeCode, { code, ctx, sx: { fontSize: 9.5 } }), h(Box, { component: "span", className: "me-code", sx: { fontFamily: MONO, fontSize: 9.5, textAlign: "right", whiteSpace: "nowrap" } }, h("span", { className: "mes-arrow" }, "→ "), h(MeVal, { path, syn: true })));
   return h(Box, { id: "hood-objects" }, H2(`${def.title} in each kernel`, h(Box, { component: "span", sx: { fontFamily: SERIF, fontStyle: "italic" } }, "script line → value in that kernel")),
     ...W.robots.map((r) => h(Box, { key: r.id, className: "hood-kernel", sx: { mb: 1, border: 1, borderColor: "divider", borderRadius: 1, px: 1, py: .5 } },
       h(Box, { sx: { fontFamily: MONO, fontSize: 10, fontWeight: 600, mb: .25 } }, `${r.name}'s kernel · the ${r.role}`),
-      ...["mines", "slips", "studies"].map((f) => line(`me.robots[${r.id}].${f}(${r[f]})`, `robots.${r.id}.${f}`, f)),
-      ...o.facts.map((f) => line(`me.${f}(${FME(`r${r.id}.${f}`)})   // its own view`, `r${r.id}.${f}`, f)),
-      ...rules.map(([n, e]) => line(`me.robots["[i]"]["="]("${n}", "${e}")`, `robots.${r.id}.${n}`, n)))));
+      ...["mines", "slips", "studies"].map((f) => line(`me.robots[${r.id}].${f}(${r[f]})`, `robots.${r.id}.${f}`, f, r.id)),
+      ...o.facts.map((f) => line(`me.${f}(${FME(`r${r.id}.${f}`)})   // its own view`, `r${r.id}.${f}`, f, r.id)),
+      ...rules.map(([n, e]) => line(`me.robots["[i]"]["="]("${n}", "${e}")`, `robots.${r.id}.${n}`, n, r.id)))));
 }
 function HoodRobot() {
   const { sel, explain } = useStore(ui); useStore(tick); if (!W) return null;
   const r = robot(sel), base = `robots.${sel}`, lw = lastWrites.get(sel), bat = FME(`${base}.battery`);
   const facts = ["battery", "pos", "lightDist", "charging", "now", "role", "myRock", "tipFrom", "tipRock", "tipPos", "tipAt", "inboxFrom", "inboxRock", "inboxAt", "sent", "received", "ice", "found", "maxAge", "costPerRad", "margin", "full"];
   return h(Box, { id: "hood-robot", sx: { mt: 1.5 } },
-    H2(`${r.name}'s kernel`, h(MeCode, { code: `me.robots[${sel}]`, sx: { fontSize: 9.5 } })),
+    H2(`${r.name}'s kernel`, h(MeCode, { code: `me.robots[${sel}]`, ctx: sel, sx: { fontSize: 9.5 } })),
     h(Box, null, ...facts.map((f) => KV(f, h(MeVal, { path: `${base}.${f}` })))),
     ...M.IDS.filter((i) => i !== sel).map((i) => KV(`heard[${i}]`, FME(`${base}.heard.${i}.at`) === undefined ? h(Box, { component: "span", sx: { color: "text.disabled" } }, "nothing yet (undefined)") : h(Box, { component: "span" }, h(MeVal, { path: `${base}.heard.${i}.battery` }), " % at ", h(MeVal, { path: `${base}.heard.${i}.at` })), `what ${M.NAME[i]} said`)),
     KV("home →", h(Box, { component: "span" }, `${FME(`${base}.home.name`)} · radius ${FME(`${base}.home.radius`)}`), "pointer, read through"),
@@ -542,7 +572,7 @@ function HoodRobot() {
     h(Box, { sx: { mt: 1.25 } }, H2("Last writes", lw ? h("span", null, `${lw.manual ? "your write" : "control step"} · ${clock(lw.t)}`) : null),
       h(Box, { component: "ul", id: "writes", sx: { listStyle: "none", m: 0, p: 0, fontFamily: MONO, fontSize: 9.5, minHeight: 40 } },
         ...(lw ? lw.batch.slice(-7).map((x, i) => h(Box, { component: "li", key: i, sx: { py: .25, borderBottom: 1, borderColor: "divider", overflowWrap: "anywhere", "&:last-of-type": { borderBottom: 0 } } },
-          h(MeCode, { code: x.code, sx: { fontSize: 9.5 } }), h(Box, { component: "span", sx: { color: "warning.main", ml: .75 } }, `k=${x.k}`), h(Box, { component: "span", sx: { color: "text.disabled", ml: .75 } }, `${x.us.toFixed(0)} µs`)))
+          h(MeCode, { code: x.code, ctx: sel, sx: { fontSize: 9.5 } }), h(Box, { component: "span", sx: { color: "warning.main", ml: .75 } }, `k=${x.k}`), h(Box, { component: "span", sx: { color: "text.disabled", ml: .75 } }, `${x.us.toFixed(0)} µs`)))
           : [h(Box, { component: "li", key: "e", sx: { color: "text.disabled" } }, "No writes yet: play the simulation.")]))));
 }
 function HoodStats() {
@@ -560,7 +590,7 @@ function ExplainView({ path }) {
   const rows = [["value", em(fmt(ex.value, 4))], ["expression", ex.expr != null ? h(MeCode, { code: ex.expr, sx: { fontSize: 9.5 } }) : "— (fact)"],
     ["inputs", (ex.derivation?.inputs || []).length ? ex.derivation.inputs.map((i, j) => h(Box, { component: "span", key: j, sx: { display: "block" } }, `${i.label} = `, em(fmt(i.value, 4)))) : "—"],
     ["last wave", m.sourcePath ? h(React.Fragment, null, "write to ", em(m.sourcePath), ` · k = ${m.k} · recomputed: ${(m.recomputed || []).map((x) => x.split(".").pop()).join(", ")}`) : "not recomputed since the seed"]];
-  return h(Box, { id: "explain", sx: { mt: 1.25 } }, H2(`explain()`, h(MeCode, { code: `me.explain("${path}")`, sx: { fontSize: 9.5 } })),
+  return h(Box, { id: "explain", sx: { mt: 1.25 } }, H2(`explain()`, h(MeCode, { code: `me.explain("${path}")`, ctx: Number(path.split(".")[1]) || undefined, sx: { fontSize: 9.5 } })),
     h(Box, { sx: { fontFamily: MONO, fontSize: 9.5, lineHeight: 1.5, border: 1, borderColor: "divider", borderRadius: "4px", px: 1, py: .5 } },
       ...rows.map(([l, v]) => h(Box, { key: l, sx: { display: "grid", gridTemplateColumns: "70px minmax(0, 1fr)", gap: .5, py: .25, borderBottom: 1, borderColor: "divider", "&:last-of-type": { borderBottom: 0 } } },
         h(Box, { component: "span", sx: { color: "text.disabled" } }, l), h(Box, { component: "span", className: `ex-${l.replace(" ", "-")}`, sx: { wordBreak: "break-word", minWidth: 0 } }, v)))));
@@ -664,6 +694,7 @@ try {
       const bad = els.filter((e) => e.dataset.meValue !== String(FME(e.dataset.mePath))).map((e) => ({ path: e.dataset.mePath, dom: e.dataset.meValue, kernel: String(FME(e.dataset.mePath)) }));
       return { bound: els.length, mismatches: bad }; },
     subscribeFact: () => W.robots.map((r) => r.k.me("subscribe")),
+    storyLines: (a) => M.storyLines(W, a),
   };
   window.__spaceReady = true;
 } catch (e) {

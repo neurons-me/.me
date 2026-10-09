@@ -122,3 +122,10 @@ any icon-font span a .GUI component might still render.
 .me code on the page (story lines, under the hood, rules, explain) goes through the shared highlighter in
 [`assets/me-syntax`](../../../assets/me-syntax/). Its colours come from the active .GUI theme through one mapping
 layer; .GUI itself is unchanged. Only the colour changes: the text, and what copy / paste gives, is the code as written.
+
+The story's acts are told with .me lines that really run (`STORY` in `space-model.js`). A fixed line is the code the
+kernel ran while it was set up, recorded word for word in that kernel's setup script (`k.script`); a live line is the
+latest write to that path in that kernel (`k.last`), shown exactly as it was made. `verify.mjs` (section G) and the
+page's `__space.storyLines(act)` check both. In the code, `robots[1]`, `rocks.b612`, `home`, `objects.ice` and
+`objects.comet` are buttons: they select that spider, rock or object, as tapping it in the sky does, and the selected one
+is marked in every line (`resolveInstance` in `space-gui.js`, using me-syntax's `resolve` / `onSelect` option).

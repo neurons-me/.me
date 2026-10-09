@@ -74,3 +74,9 @@
 .me-code .mes-arrow, .mes-arrow { color: var(--me-syn-arrow); }
 .me-code .mes-kw      { color: var(--me-syn-keyword); }
 .me-code .mes-id      { color: var(--me-syn-path); }
+/* references: a run of tokens that names an instance (render / highlight with opts.resolve); click, Enter or Space selects it */
+.me-code .mes-ref { cursor: pointer; border-radius: 3px; text-decoration: underline dotted; text-decoration-thickness: 1px; text-underline-offset: 3px;
+  text-decoration-color: color-mix(in srgb, currentColor 55%, transparent); -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+.me-code .mes-ref:hover { text-decoration-style: solid; text-decoration-color: currentColor; background: color-mix(in srgb, var(--me-syn-root) 10%, transparent); }
+.me-code .mes-ref:focus-visible { outline: 2px solid var(--me-syn-root); outline-offset: 1px; }
+.me-code .mes-ref-on { background: color-mix(in srgb, var(--me-syn-root) 20%, transparent); box-shadow: 0 0 0 1px color-mix(in srgb, var(--me-syn-root) 55%, transparent); text-decoration-style: solid; }
