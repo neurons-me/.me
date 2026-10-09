@@ -293,7 +293,12 @@ export function readPath(self: MEKernelLike, rawPath: SemanticPath): any {
   const selected = evaluateSelectionPath(self, rawPath);
   if (selected !== undefined) return selected;
 
-  const path = normalizeSelectorPath(rawPath);
+  return readNormalizedPath(self, normalizeSelectorPath(rawPath));
+}
+
+// Read storage segments as they are: no selector evaluation and no second normalization. Used for paths the
+// path-expression parser already turned into segments (a literal segment such as `["[]"]` must not be decoded twice).
+export function readNormalizedPath(self: MEKernelLike, path: SemanticPath): any {
   if (self.recomputeMode === "lazy") {
     const key = path.join(".");
     if (self.derivations[key]) self.ensureTargetFresh(key);

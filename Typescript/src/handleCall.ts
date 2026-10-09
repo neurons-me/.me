@@ -1,4 +1,5 @@
 import type { KernelMemory, SemanticPath } from "./types.ts";
+import { classifyPathExpression, type PathExprClass } from "./path-expr.ts";
 // Forward declarations to avoid circular type imports.
 // MEProxy is defined in me.ts; we only need it as `any` at runtime.
 export type MEProxy = any;
@@ -9,6 +10,11 @@ export interface HandleCallDeps {
   normalizeArgs(args: any[]): any;
   /** Read a semantic path (used by root GET bias). */
   readPath(path: SemanticPath): any;
+  /**
+   * Read a root string the path-expression parser recognised: it contains the aggregate operator `[]`, a quoted
+   * selector, or a rejected form. Such strings always read (contract v3 I1, I7) and never write.
+   */
+  readPathExpression?(parsed: PathExprClass, raw: string): any;
   /** Perform a semantic write/claim at a path. May return a memory, a value, or undefined. */
   postulate(path: SemanticPath, expression: any): any;
   /** Resolve operator kinds (used only to decide chaining path when a memory was produced). */
@@ -83,6 +89,10 @@ export function handleCall(deps: HandleCallDeps, path: SemanticPath, args: any[]
   if (path.length === 0) {
     if (args.length === 1 && typeof args[0] === "string") {
       const s = (args[0] as string).trim();
+      const parsed = classifyPathExpression(s);
+      if (parsed.kind !== "plain" && deps.readPathExpression) {
+        return deps.readPathExpression(parsed, s);
+      }
       const isOperatorPrefixed = s.startsWith("_") || s.startsWith("~") || s.startsWith("@");
       const isDottedPath = s.includes(".");
       const isSingleLabelPath = /^[a-zA-Z][a-zA-Z0-9_-]*$/.test(s);

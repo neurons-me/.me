@@ -11,31 +11,96 @@ import type {
 } from "./types.ts";
 import { tryEvaluateAssignExpression } from "./evaluator.ts";
 import { normalizeSelectorPath } from "./utils.ts";
+import {
+  AGGREGATE_TOKEN_SOURCE,
+  classifyPathExpression,
+  renderAggregate,
+  renderKey,
+  renderSegments,
+  type AggregateRef,
+} from "./path-expr.ts";
+import { readNormalizedPath } from "./core.ts";
+
+// Explain entry for one aggregate reference. Stage S2 parses `[]` but does not evaluate it yet, so the entry says
+// `unsupported`; S3 replaces this with the contract's statuses. Context and coverage come only from the evaluation
+// context (public-view in this implementation), never from the data.
+function aggregateInput(ref: AggregateRef): NonNullable<MEExplainResult["derivation"]>["inputs"][number] {
+  return {
+    label: ref.text,
+    path: renderAggregate(ref),
+    kind: "aggregate",
+    value: undefined,
+    origin: "public",
+    masked: false,
+    aggregate: {
+      collection: renderSegments(ref.collection),
+      field: ref.field ? ref.field.join(".") : null,
+      op: ref.op,
+      context: "public-view",
+      coverage: "public-view",
+      status: "unsupported",
+      reason: "not-implemented",
+      members: null,
+      terms: null,
+      domain: null,
+    },
+  };
+}
+
+function renderWave(wave: any) {
+  return {
+    k: wave.recomputed.size,
+    recomputed: [...wave.recomputed].map((p: string) => renderKey(p)),
+    changed: [...wave.changed].map((p: string) => renderKey(p)),
+    sourcePath: renderKey(wave.sourcePath),
+    recomputedAt: wave.at,
+  };
+}
 
 export function explain(self: MEKernelLike, path: string): MEExplainResult {
-  const target = normalizeSelectorPath(String(path ?? "").split(".").filter(Boolean));
+  const raw = String(path ?? "").trim();
+  const parsed = classifyPathExpression(raw);
+  if (parsed.kind === "aggregate") {
+    const entry = aggregateInput(parsed.ref);
+    return {
+      path: entry.path,
+      value: undefined,
+      expr: parsed.ref.text,
+      derivation: { expression: parsed.ref.text, inputs: [entry] },
+      meta: {
+        dependsOn: [entry.path],
+        unresolved: { reason: "evaluation-failed", inputs: [entry.path] },
+      },
+    };
+  }
+  if (parsed.kind === "rejected") {
+    return {
+      path: raw,
+      value: undefined,
+      expr: null,
+      derivation: null,
+      meta: { dependsOn: [], unresolved: { reason: "evaluation-failed" } },
+    };
+  }
+
+  const exact = parsed.kind === "literal" && parsed.exact;
+  const target = parsed.kind === "literal"
+    ? parsed.segments
+    : normalizeSelectorPath(String(path ?? "").split(".").filter(Boolean));
   const key = target.join(".");
   if (self.recomputeMode === "lazy") ensureTargetFresh(self, key);
-  const value = self.readPath(target);
+  const value = exact ? readNormalizedPath(self, target) : self.readPath(target);
   const d = self.derivations[key];
   const wave = self.lastRecomputeWaveByTarget[key];
   if (!d) {
     return {
-      path: key,
+      path: renderSegments(target),
       value,
       expr: null,
       derivation: null,
       meta: {
         dependsOn: [],
-        ...(wave
-          ? {
-              k: wave.recomputed.size,
-              recomputed: [...wave.recomputed],
-              changed: [...wave.changed],
-              sourcePath: wave.sourcePath,
-              recomputedAt: wave.at,
-            }
-          : {}),
+        ...(wave ? renderWave(wave) : {}),
       },
     };
   }
@@ -44,22 +109,32 @@ export function explain(self: MEKernelLike, path: string): MEExplainResult {
     label: r.label,
     path: resolveRefPath(self, r.label, d.evalScope) ?? r.candidates[0],
   }));
-  const inputs = effectiveRefs.map((r) => {
+  const inputs: NonNullable<MEExplainResult["derivation"]>["inputs"] = effectiveRefs.map((r) => {
     const refParts = normalizeSelectorPath(r.path.split(".").filter(Boolean));
     const refScope = resolveBranchScope(self, refParts);
     const isStealth = !!(refScope && refScope.length > 0 && pathStartsWith(refParts, refScope));
     const raw = self.readPath(refParts);
     return {
       label: r.label,
-      path: r.path,
+      path: renderKey(r.path),
       value: isStealth ? "●●●●" : raw,
       origin: (isStealth ? "stealth" : "public") as "public" | "stealth",
       masked: isStealth,
     };
   });
+  const aggregateInputs = (d.aggregates ?? []).map((ref) => aggregateInput(ref));
+  inputs.push(...aggregateInputs);
+
+  const unresolved = d.unresolved
+    ? d.unresolved.reason === "missing-input"
+      ? { ...d.unresolved, inputs: d.unresolved.inputs.map((p) => renderKey(p)) }
+      : d.unresolved.reason === "cycle"
+        ? { ...d.unresolved, cycle: d.unresolved.cycle.map((p) => renderKey(p)) }
+        : d.unresolved
+    : undefined;
 
   return {
-    path: key,
+    path: renderSegments(target),
     value,
     expr: d.expression,
     derivation: {
@@ -67,18 +142,10 @@ export function explain(self: MEKernelLike, path: string): MEExplainResult {
       inputs,
     },
     meta: {
-      dependsOn: [...new Set(effectiveRefs.map((r) => r.path))],
+      dependsOn: [...new Set([...effectiveRefs.map((r) => renderKey(r.path)), ...aggregateInputs.map((a) => a.path)])],
       lastComputedAt: d.lastComputedAt,
-      ...(d.unresolved ? { unresolved: d.unresolved } : {}),
-      ...(wave
-        ? {
-            k: wave.recomputed.size,
-            recomputed: [...wave.recomputed],
-            changed: [...wave.changed],
-            sourcePath: wave.sourcePath,
-            recomputedAt: wave.at,
-          }
-        : {}),
+      ...(unresolved ? { unresolved } : {}),
+      ...(wave ? renderWave(wave) : {}),
     },
   };
 }
@@ -122,16 +189,68 @@ function finalizeRecomputeWave(self: MEKernelLike): void {
 export function extractExpressionRefs(expr: string): string[] {
   const raw = String(expr ?? "").trim();
   if (!raw) return [];
-  const seg = String.raw`[A-Za-z_][A-Za-z0-9_]*(?:\[(?:"[^"]*"|'[^']*'|[^\]]+)\])*`;
-  const tokenRegex = new RegExp(String.raw`__ptr(?:\.${seg})*|${seg}(?:\.${seg})*`, "g");
-  const reserved = new Set(["true", "false", "null", "undefined", "NaN", "Infinity"]);
   const refs = new Set<string>();
-  const m = raw.match(tokenRegex) || [];
-  for (const t of m) {
-    if (reserved.has(t)) continue;
-    refs.add(t);
+  for (const t of scanExpressionTokens(raw)) {
+    if (t.aggregate) continue;      // aggregate references are not scalar refs (see extractAggregateRefs)
+    if (RESERVED_WORDS.has(t.text)) continue;
+    refs.add(t.text);
   }
   return Array.from(refs);
+}
+
+const EXPR_SEG = String.raw`[A-Za-z_][A-Za-z0-9_]*(?:\[(?:"[^"]*"|'[^']*'|[^\]]+)\])*`;
+const RESERVED_WORDS = new Set(["true", "false", "null", "undefined", "NaN", "Infinity"]);
+
+// Same token boundaries as the evaluator's tokenizer: an aggregate reference is tried before a plain identifier.
+function scanExpressionTokens(raw: string): Array<{ text: string; aggregate: boolean }> {
+  const re = new RegExp(
+    String.raw`(${AGGREGATE_TOKEN_SOURCE(EXPR_SEG)})|__ptr(?:\.${EXPR_SEG})*|${EXPR_SEG}(?:\.${EXPR_SEG})*`,
+    "g",
+  );
+  const out: Array<{ text: string; aggregate: boolean }> = [];
+  for (const m of raw.matchAll(re)) out.push({ text: m[0], aggregate: m[1] !== undefined });
+  return out;
+}
+
+/**
+ * True when formula text holds a path form the contract rejects (v3 §3): a `[]` that is not part of an accepted
+ * aggregate reference (`z.[].w`, `x[].y[]`, `x[][2]`), an aggregate token that classifies as rejected
+ * (`x[a > 1][]`, `x[].f[2]`), or a whitespace-only selector (`z[ ].w`). Such a formula is `evaluation-failed`,
+ * never `missing-input` for the words around the bracket.
+ */
+export function hasRejectedPathForm(expr: string): boolean {
+  const raw = String(expr ?? "");
+  if (!raw.includes("[")) return false;
+  if (/\[\s+\]/.test(raw.replace(/"[^"]*"|'[^']*'/g, '""'))) return true;
+  const covered: Array<[number, number]> = [];
+  const re = new RegExp(String.raw`${AGGREGATE_TOKEN_SOURCE(EXPR_SEG)}`, "g");
+  for (const m of raw.matchAll(re)) {
+    if (classifyPathExpression(m[0]).kind !== "aggregate") return true;
+    covered.push([m.index!, m.index! + m[0].length]);
+  }
+  let quote: string | null = null;
+  for (let i = 0; i < raw.length - 1; i++) {
+    const c = raw[i];
+    if (quote) { if (c === quote) quote = null; continue; }
+    if (c === '"' || c === "'") { quote = c; continue; }
+    if (c === "[" && raw[i + 1] === "]" && !covered.some(([a, b]) => i >= a && i < b)) return true;
+  }
+  return false;
+}
+
+/** The aggregate references (`x[]`, `x[].f`) in a formula, parsed. Rejected forms are not returned. */
+export function extractAggregateRefs(expr: string): AggregateRef[] {
+  const raw = String(expr ?? "").trim();
+  if (!raw || !raw.includes("[]")) return [];
+  const out: AggregateRef[] = [];
+  const seen = new Set<string>();
+  for (const t of scanExpressionTokens(raw)) {
+    if (!t.aggregate || seen.has(t.text)) continue;
+    seen.add(t.text);
+    const parsed = classifyPathExpression(t.text);
+    if (parsed.kind === "aggregate") out.push(parsed.ref);
+  }
+  return out;
 }
 
 // Every path the evaluator may read for `label`: relative to evalScope first,
@@ -354,11 +473,14 @@ export function registerDerivation(
     refs.push(ref);
   }
 
+  const aggregates = extractAggregateRefs(expr);
   const d: MEDerivationRecord = (self.derivations[targetKey] = {
     expression: expr,
     evalScope: [...evalScope],
     refs,
     lastComputedAt: Date.now(),
+    ...(aggregates.length > 0 ? { aggregates } : {}),
+    ...(hasRejectedPathForm(expr) ? { rejectedPathForm: true } : {}),
   });
   for (const path of derivationRefPaths(d)) subscribe(self, path, targetKey);
   snapshotDerivationRefVersions(self, targetKey);
@@ -373,6 +495,11 @@ export function computeDerivation(
   self: MEKernelLike,
   d: MEDerivationRecord,
 ): { value: any; unresolved?: MEDerivationUnresolved } {
+  if (d.rejectedPathForm) return { value: undefined, unresolved: { reason: "evaluation-failed" } };
+  if (d.aggregates && d.aggregates.length > 0) {
+    // Stage S2: `[]` is parsed, not evaluated. The formula has no value yet; explain names the aggregates.
+    return { value: undefined, unresolved: { reason: "evaluation-failed", inputs: d.aggregates.map((a) => renderAggregate(a)) } };
+  }
   const evaluated = tryEvaluateAssignExpression(self, d.evalScope, d.expression);
   if (evaluated.ok) return { value: evaluated.value };
   const missing: string[] = [];

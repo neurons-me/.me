@@ -614,7 +614,7 @@ export type MERecomputeMode = "eager" | "lazy";
 export type MEDerivationUnresolved =
   | { reason: "missing-input"; inputs: string[] }
   | { reason: "cycle"; cycle: string[] }
-  | { reason: "evaluation-failed" };
+  | { reason: "evaluation-failed"; inputs?: string[] };
 
 export interface MEDerivationRecord {
   expression: string;
@@ -625,6 +625,10 @@ export interface MEDerivationRecord {
    * followed and each path it leads to. The derivation is subscribed to these too.
    */
   refs: Array<{ label: string; candidates: string[]; via?: string[][] }>;
+  /** Collection aggregate references (`x[]`, `x[].f`) in the expression, parsed (path-expr.ts). Absent when none. */
+  /** The expression holds a path form the contract rejects (`z.[].w`, `z[ ].w`, `x[].y[]`): evaluation-failed. */
+  rejectedPathForm?: boolean;
+  aggregates?: Array<{ text: string; collection: SemanticPath; field: SemanticPath | null; op: "count" | "sum" }>;
   lastComputedAt: number;
   unresolved?: MEDerivationUnresolved;
   /** Every candidate path of every ref, deduplicated (cached). */
@@ -696,6 +700,21 @@ export interface MEExplainResult {
       value: any;
       origin: "public" | "stealth";
       masked: boolean;
+      /** Present on aggregate inputs only (scalar inputs keep the 4.1 shape). */
+      kind?: "aggregate";
+      aggregate?: {
+        collection: string;
+        field: string | null;
+        op: "count" | "sum";
+        context: "public-view" | "authorized";
+        coverage: "public-view" | "authorized";
+        /** Stage S2: always "unsupported" (parsed, not evaluated). */
+        status: string;
+        reason?: string;
+        members: number | null;
+        terms: number | null;
+        domain: "number" | "boolean" | null;
+      };
     }>;
   };
   meta: {
