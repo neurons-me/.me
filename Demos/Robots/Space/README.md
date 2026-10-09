@@ -1,5 +1,14 @@
 # Autonomous Robotics in Space (build notes)
 
+> **Branch `feat/space-4.2` (local, not published).** This branch runs on a **local candidate build of this.me 4.2**
+> (`kernel/this.me-4.2-candidate.es.js`, built from `integ/4.2-rootfix` @ `2b4b1fe`, sha256
+> `50c643e1e6306855833227993de03ea5d23e279504319f2874c62c7793fc1563`, checked before import). The battery level is the 4.2
+> collection aggregate `robots[i].batteries[].charge / robots[i].batteries[].capacity * 100`, so a robot can carry 2 or 3
+> batteries (plug one in, swap the spare, take one out: buttons under the hood), and `robots[i].inbox[]` / `outbox[]` count
+> the messages each box keeps. `verify.mjs` checks the aggregates against the contract oracle (exact BigInt sum) in eager
+> and lazy, and compares the behaviour with the 4.1 model (explicit sum on this.me@4.1.0). The rest of this README
+> describes the 4.1.0 demo it comes from.
+
 Page: <https://neurons-me.github.io/.me/Demos/Robots/Space/> (`Demos/Robots/Space/index.html`). Linked from the
 Robots landing (<https://neurons-me.github.io/robots/>) and from `.me/Demos`. `Demos/Robots/` redirects to the landing,
 the same way `Demos/SmartCities/` redirects to the Smart Cities hub.

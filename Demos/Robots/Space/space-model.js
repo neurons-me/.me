@@ -1,5 +1,6 @@
 // Autonomous Robotics in Space: the model (shared by the page and verify.mjs).
-// KERNEL (this.me@4.1.0, unmodified): one kernel per robot. Every robot fact, every derived value, k, explain().
+// KERNEL (this.me 4.2 candidate: a LOCAL build of integ/4.2-rootfix, not published): one kernel per robot. Every
+// robot fact, every derived value, k, explain(). The battery level is a 4.2 collection aggregate (robots[i].batteries[]).
 // ADAPTER (plain JS, here): the physical truth (where a spider really stands, its real battery, where the rocks are),
 // walking, the radios (range, line of sight, delay, bandwidth, loss) and which action a spider takes from its flags.
 // A robot's own readings (its batteries, its sensors) and its communications (outbox / inbox) are kept apart.
@@ -18,10 +19,13 @@ export const RANGE = 410;                         // radio range across the void
 export const MSG_SPEED = 30, MSG_BASE = 1;        // message travel: 1 min + distance / 30 px per min (slowed down to be seen)
 export const SEND_GAP = 6, QUEUE = 3, HELLO_EVERY = 40;    // bandwidth: one message per 6 min, a send queue of 3
 export const KEEP = 2;                            // inbox and outbox keep the last 2 messages per peer (+ the tip it accepted, in the inbox)
-// Each spider carries two batteries (Wh). Its battery level is a rule over them: total charge as a % of total capacity.
-// The adapter fills batteries[1] first and drains batteries[2] first.
+// Each spider starts with two batteries (Wh); one can be added, swapped or removed while it runs. Its battery level is
+// a rule over however many it has: total charge as a % of total capacity. The adapter fills the first battery first
+// and drains the last one first.
 export const BATTERIES = [{ i: 1, name: "main", capacity: 60 }, { i: 2, name: "spare", capacity: 40 }];
-export const CAPACITY = BATTERIES.reduce((a, b) => a + b.capacity, 0);
+export const EXTRA_BATTERY = { i: 3, name: "extra", capacity: 30 };
+export const capacityOf = (bats) => bats.reduce((a, b) => a + b.capacity, 0);
+export const CAPACITY = capacityOf(BATTERIES);
 export const DRILL_MIN = 12;                      // minutes per unit of ice
 export const LOSS_NEAR = 0.03, LOSS_FAR = 0.08, LOSS_FAR_EXTRA = 0.4;   // chance a message is lost on the way
 
@@ -48,7 +52,13 @@ export const ROCK_NAME = Object.fromEntries(ROCKS.map((r) => [r.id, r.name]));
 
 // The rules: ONE text per rule, installed as a class template me.robots["[i]"]["="](name, expr) in every kernel.
 // No rule reads through a pointer (this.me 4.1.0 known issue #4: such a formula is not recomputed when its target changes).
-export const BATTERY_RULE = "(batteries[1].charge + batteries[2].charge) / (batteries[1].capacity + batteries[2].capacity) * 100";
+// 4.2: x[].f is the exact sum of f over the members of x (x[] counts them). An aggregate is bound from the root, so the
+// per-robot form names robots[i] (the template substitutes i), as in contract v4.1.
+export const BATTERY_RULE = "robots[i].batteries[].charge / robots[i].batteries[].capacity * 100";
+// the 4.1 form, for comparison: an explicit sum over the batteries it has (redeclared whenever the set changes)
+export const explicitBatteryRule = (bats) => `(${bats.map((b) => `batteries[${b.i}].charge`).join(" + ")}) / (${bats.map((b) => `batteries[${b.i}].capacity`).join(" + ")}) * 100`;
+// how many messages each box keeps right now (undefined while the box is empty: an absent collection)
+export const KEPT_RULES = [["inboxKept", "robots[i].inbox[]"], ["outboxKept", "robots[i].outbox[]"]];
 export const RULES = [
   ["battery", BATTERY_RULE],
   ["reserve", "lightDist * costPerRad + margin"],
@@ -80,9 +90,29 @@ export const inboxRule = (id) => `rock == robots[${id}].myRock && got - at <= ro
 export const inboxRuleCode = (id) => `me.robots[${id}].inbox["[i]"]["="]("acceptTip", ${JSON.stringify(inboxRule(id))})`;
 export const RULE_NAMES = RULES.map(([n]) => n);
 export const ruleCode = ([n, e]) => `me.robots["[i]"]["="](${JSON.stringify(n)}, ${JSON.stringify(e)})`;
-// The same rules in plain JS (verify compares the kernel against these).
-export function rulesJS(f) {
-  const battery = (f["batteries.1.charge"] + f["batteries.2.charge"]) / (f["batteries.1.capacity"] + f["batteries.2.capacity"]) * 100;
+// The contract oracle for x[].f: the exact sum of the terms, rounded once (BigInt, scaled by 2^-1074; independent of the
+// kernel's code, the same reference as the kernel's tests: tests/aggregate/exact-sum-ref.mjs).
+function toScaled(x) {
+  const dv = new DataView(new ArrayBuffer(8)); dv.setFloat64(0, x);
+  const hi = dv.getUint32(0), lo = dv.getUint32(4), sign = hi >>> 31, exp = (hi >>> 20) & 0x7ff;
+  let mant = (BigInt(hi & 0xfffff) << 32n) | BigInt(lo), shift = 0n;
+  if (exp !== 0) { mant |= 1n << 52n; shift = BigInt(exp - 1); }
+  const n = mant << shift; return sign ? -n : n;
+}
+function roundScaled(N) {
+  if (N === 0n) return 0;
+  const neg = N < 0n, A = neg ? -N : N, L = A.toString(2).length; let q = A, shift = 0;
+  if (L > 53) { shift = L - 53; const s = BigInt(shift); q = A >> s; const r = A - (q << s), half = 1n << (s - 1n);
+    if (r > half || (r === half && (q & 1n) === 1n)) q += 1n; if (q === 1n << 53n) { q >>= 1n; shift += 1; } }
+  const v = Number(q) * 2 ** (shift - 1074); return neg ? -v : v;
+}
+export const exactSum = (terms) => roundScaled(terms.reduce((a, t) => a + toScaled(t), 0n));
+export const floatSum = (terms) => terms.reduce((a, t) => a + t);   // 4.1 explicit a + b + c: left to right, rounded each step
+// battery from its batteries: the aggregate (oracle) or the 4.1 explicit sum
+export const batteryJS = (bs, explicit = false) => { const S = explicit ? floatSum : exactSum; return S(bs.map((b) => b.charge)) / S(bs.map((b) => b.capacity)) * 100; };
+// The same rules in plain JS (verify compares the kernel against these). f.bats = [{ charge, capacity }].
+export function rulesJS(f, explicit = false) {
+  const battery = batteryJS(f.bats, explicit);
   const reserve = f.lightDist * f.costPerRad + f.margin, mustCharge = battery < reserve, charged = battery >= f.full;
   const goCharge = mustCharge || (f.charging && !charged), asleep = battery <= 0;
   const iceSeen = f["objects.ice.seen"], cometNear = f["objects.comet.near"];
@@ -96,7 +126,8 @@ export function rulesJS(f) {
 // the inbox rule in plain JS, for one message m (its own facts) in robot f's kernel
 export const acceptTipJS = (f, m) => (m.rock === undefined ? undefined : m.rock === f.myRock && m.got - m.at <= f.maxAge && !rulesJS(f).tipFresh);
 export const MSG_FACTS = ["from", "to", "kind", "battery", "rock", "pos", "at", "got", "accepted"];
-export const FACTS = ["batteries.1.charge", "batteries.1.capacity", "batteries.2.charge", "batteries.2.capacity", "lightDist", "charging", "now", "tipRock", "tipAt", "myRock", "maxAge", "costPerRad", "margin", "full",
+export const batteryFacts = (bats) => bats.flatMap((b) => [`batteries.${b.i}.charge`, `batteries.${b.i}.capacity`]);
+export const FACTS = ["lightDist", "charging", "now", "tipRock", "tipAt", "myRock", "maxAge", "costPerRad", "margin", "full",
   "mines", "slips", "studies", "objects.ice.seen", "objects.ice.near", "objects.comet.near", "objects.rock.inRange"];
 // a fact name → its path in robot i's kernel ("objects.*" facts live at the kernel's top level: that robot's view of the object)
 export const factPath = (i, f) => (f.startsWith("objects.") ? f : `robots.${i}.${f}`);
@@ -107,14 +138,16 @@ export const omega = (rock) => SPEED / rock.R;   // rad per simulated minute
 export const lightDistOf = (pos) => Math.max(0, Math.abs(wrap(pos)) - (HALF_PI - LIT_IN));
 export const litAt = (pos) => Math.abs(wrap(pos)) < HALF_PI;
 
-export function installRules(me, script, id) {
-  for (const [n, e] of RULES) { me.robots["[i]"]["="](n, e); script?.push(ruleCode([n, e])); }
+// opts.explicit: the 4.1 form of the battery rule over these batteries (opts.bats), for comparison runs
+export function installRules(me, script, id, opts = {}) {
+  for (const [n, e0] of RULES) { const e = n === "battery" && opts.explicit ? explicitBatteryRule(opts.bats || BATTERIES) : e0; me.robots["[i]"]["="](n, e); script?.push(ruleCode([n, e])); }
+  if (!opts.explicit) for (const [n, e] of KEPT_RULES) { me.robots["[i]"]["="](n, e); script?.push(ruleCode([n, e])); }
   if (id != null) { me.robots[id].inbox["[i]"]["="]("acceptTip", inboxRule(id)); script?.push(inboxRuleCode(id)); }
 }
-// a battery level (%) → the charge in each battery (Wh): fill batteries[1] first, drain batteries[2] first
-export function charges(pct) {
-  const wh = (pct * CAPACITY) / 100; let before = 0;
-  return BATTERIES.map((b) => { const c = r4(Math.max(0, Math.min(b.capacity, wh - before))); before += b.capacity; return c; });
+// a battery level (%) → the charge in each battery (Wh): fill the first battery first, drain the last one first
+export function charges(pct, bats = BATTERIES) {
+  const wh = (pct * capacityOf(bats)) / 100; let before = 0;
+  return bats.map((b) => { const c = r4(Math.max(0, Math.min(b.capacity, wh - before))); before += b.capacity; return c; });
 }
 // the code of one write, exactly as the call is made: "robots.1.battery" + 82 → me.robots[1].battery(82)
 export const codeOf = (path, value) => "me" + path.split(".").map((s) => (/^\d+$/.test(s) ? `[${s}]` : `.${s}`)).join("") + `(${JSON.stringify(value)})`;
@@ -136,7 +169,7 @@ const MSG_SHOW = ["from", "to", "kind", "battery", "rock", "at"];
 export const STORY = [null,
   { title: "Two small rocks", text: "Two small rocks, three spider robots, and nobody drives them. Each spider keeps its own .me kernel and first writes down who it is and where it lives. Tap a spider in the sky or in the code.", link: { text: ".me kernel", href: "https://neurons-me.github.io/.me/" },
     groups: [{ who: 1, lines: homeLines(1) }, { who: 2, lines: homeLines(2) }, { who: 3, lines: homeLines(3) }] },
-  { title: "Each one decides", text: "Every simulated minute each spider measures its two batteries; its own rules add them up and decide when to walk to the sun.",
+  { title: "Each one decides", text: "Every simulated minute each spider measures its batteries; one rule adds up however many it carries, and its rules decide when to walk to the sun.",
     groups: [{ who: 2, lines: [{ live: "robots.2.batteries.1.charge" }, { live: "robots.2.batteries.2.charge" }, { code: rule("battery"), value: "robots.2.battery" }, { code: rule("mustCharge"), value: "robots.2.mustCharge" }, { code: rule("goCharge"), value: "robots.2.goCharge" }] }] },
   { title: "One ice, three meanings", text: "The same ice and the same rule text in every kernel: what the ice means comes from each spider's role.",
     groups: [{ who: 1, lines: meaning(1, "mines", "iceIsFuel") }, { who: 2, lines: meaning(2, "slips", "iceIsHazard") }, { who: 3, lines: meaning(3, "studies", "iceIsSample") }] },
@@ -186,25 +219,27 @@ export const storyLines = (w, act) => checkGroups(w, STORY[act].groups);
 
 // The robot panel. "It knows": its own readings (its batteries, its sensors). "Inbox" / "Outbox": its communications,
 // every message the box keeps, by id. Every line is live: the latest write to that path in that robot's own kernel.
-export const PANEL = (id) => [
+export const PANEL = (id, w) => [
   { key: "knows", title: "It knows", sub: "its own readings", who: id,
-    lines: [...BATTERIES.map((b) => ({ live: `robots.${id}.batteries.${b.i}.charge`, hint: "charge", bat: b })), { live: `robots.${id}.lightDist`, hint: "light" }, { live: "objects.ice.seen", hint: "ice" }, { live: "objects.comet.near", hint: "comet" }, { live: "objects.rock.inRange", hint: "reach" }] },
+    lines: [...(w ? robotOf(w, id).bats : BATTERIES).map((b) => ({ live: `robots.${id}.batteries.${b.i}.charge`, hint: "charge", bat: b })), { live: `robots.${id}.lightDist`, hint: "light" }, { live: "objects.ice.seen", hint: "ice" }, { live: "objects.comet.near", hint: "comet" }, { live: "objects.rock.inRange", hint: "reach" }] },
   { key: "inbox", title: "Inbox", sub: `what arrived: the last ${KEEP} from each`, who: id, lines: [{ msgs: { box: "inbox", fields: ["from", "battery", "rock"] }, none: "nothing has arrived yet" }] },
   { key: "outbox", title: "Outbox", sub: `what it sent: the last ${KEEP} to each`, who: id, lines: [{ msgs: { box: "outbox", fields: ["to", "battery", "rock"] }, none: "nothing sent yet" }] },
 ];
-export const panelLines = (w, id) => checkGroups(w, PANEL(id));
+export const panelLines = (w, id) => checkGroups(w, PANEL(id, w));
 
 // One robot kernel. write() = one real kernel write; returns the kernel's wave for it (k, recomputed, changed).
-export function createKernel(ME, id) {
+export function createKernel(ME, id, opts = {}) {
   const me = new ME();
+  if (opts.mode) me.setRecomputeMode(opts.mode);
   const writes = [];
   const script = [];   // every call made while the kernel was set up (seed writes, the pointer, the rules), as code
   const last = {};     // path → its latest write (code, k), the setup included
   const reader = {};   // fact path → one derived path that reads it (from the kernel's own dependsOn)
+  const aggReader = [];   // [collection prefix, derived path]: an aggregate (dependsOn "C[].f" / "C[]") reads every fact under C
   function waveOf(path) {
     // a fact of a received message is read by that message's own acceptTip
     const mm = /^(robots\.\d+\.inbox\.\d+)\.\w+$/.exec(path);
-    const d = reader[path] || (mm && `${mm[1]}.acceptTip`); if (!d) return { k: 0, recomputed: [], changed: [] };
+    const d = reader[path] || (mm && `${mm[1]}.acceptTip`) || aggReader.find(([c]) => (path + ".").startsWith(c))?.[1]; if (!d) return { k: 0, recomputed: [], changed: [] };
     const m = me.explain(d)?.meta || {};
     if (m.sourcePath !== path) return { k: 0, recomputed: [], changed: [] };
     return { k: m.k ?? 0, recomputed: m.recomputed || [], changed: m.changed || [] };
@@ -219,7 +254,8 @@ export function createKernel(ME, id) {
     last[path] = w;
     return w;
   }
-  function index() { for (const n of RULE_NAMES) { const p = `robots.${id}.${n}`; me(p); for (const s of me.explain(p)?.meta?.dependsOn || []) reader[s] ??= p; } }
+  function index() { for (const n of [...RULE_NAMES, ...KEPT_RULES.map(([x]) => x)]) { const p = `robots.${id}.${n}`; if (!me.explain(p)?.expr) continue; me(p);
+    for (const s of me.explain(p)?.meta?.dependsOn || []) { const a = /^(.*)\[\](\..*)?$/.exec(s); if (a) { if (!aggReader.some(([c]) => c === a[1] + ".")) aggReader.push([a[1] + ".", p]); } else reader[s] ??= p; } } }
   const node = (path) => path.split(".").map((s) => (/^\d+$/.test(s) ? Number(s) : s)).reduce((n, s) => n[s], me);
   // a pointer, made with the .me operator ["->"] (log = a live write, kept in last[path] like any other write)
   function point(path, target, log = false) {
@@ -228,14 +264,17 @@ export function createKernel(ME, id) {
     if (log) { writes.push(w); if (writes.length > 400) writes.splice(0, 200); } else script.push(w.code);
     last[path] = w; return w;
   }
-  // remove a branch, with the .me operator ["-"] (an old message, a pointer no longer needed)
+  // remove a branch, with the .me operator ["-"] (an old message, a battery taken out, a pointer no longer needed)
   function remove(path) {
     const t0 = performance.now(); node(path)["-"]();
+    const us = (performance.now() - t0) * 1000;
     for (const p of Object.keys(last)) if (p === path || p.startsWith(path + ".")) delete last[p];
-    const w = { path, removed: true, us: (performance.now() - t0) * 1000, code: `${codeOf(path, 0).replace(/\((.*)\)$/, '["-"]()')}`, k: 0, recomputed: [], changed: [] };
+    const w = { path, removed: true, us, code: `${codeOf(path, 0).replace(/\((.*)\)$/, '["-"]()')}`, ...waveOf(path) };
     writes.push(w); if (writes.length > 400) writes.splice(0, 200); return w;
   }
-  return { me, write, point, remove, index, writes, script, last, read: (p) => me(p) };
+  // redeclare one rule (the 4.1 comparison: the explicit battery sum names each battery, so it changes with the set)
+  function rule(n, e) { me.robots["[i]"]["="](n, e); script.push(ruleCode([n, e])); index(); }
+  return { me, write, point, remove, index, rule, writes, script, last, read: (p) => me(p) };
 }
 
 // deterministic random numbers (the same simulation every time: verify can replay it)
@@ -243,11 +282,12 @@ function rng(seed) { let a = seed >>> 0; return () => { a = (a + 0x6d2b79f5) >>>
 
 // ── the world ──
 export function createWorld(ME, opts = {}) {
-  const w = { t: 0, rand: rng(opts.seed ?? 7), rocks: [], robots: [], packets: [], events: [], lost: 0, delivered: 0, unheard: 0, nextMsg: 1, log: [], comet: { on: false, x: 0, y: 0, n: 0 } };
+  // opts.mode: "eager" (default) or "lazy" recompute; opts.explicit: the 4.1 explicit battery sum instead of the aggregate
+  const w = { t: 0, rand: rng(opts.seed ?? 7), rocks: [], robots: [], packets: [], events: [], lost: 0, delivered: 0, unheard: 0, nextMsg: 1, log: [], comet: { on: false, x: 0, y: 0, n: 0 }, mode: opts.mode || "eager", explicit: !!opts.explicit };
   for (const rk of ROCKS) w.rocks.push({ ...rk, x: rk.home.x, y: rk.home.y, pinned: null, phase: 0, spots: rk.ice.map((a, i) => ({ id: `${rk.id}.${i}`, rock: rk.id, pos: a, left: 3 })) });
   for (const def of ROBOTS) {
     const rock = w.rocks.find((x) => x.id === def.rock);
-    const k = createKernel(ME, def.id), base = `robots.${def.id}`;
+    const k = createKernel(ME, def.id, { mode: opts.mode }), base = `robots.${def.id}`, bats = BATTERIES.map((b) => ({ ...b }));
     k.write(`${base}.id`, def.id, false); k.write(`${base}.name`, def.name, false);
     // the robot's home rock, and a pointer to it (read through; no formula reads through it)
     k.write(`rocks.${rock.key}.name`, rock.name, false); k.write(`rocks.${rock.key}.radius`, rock.R, false);
@@ -260,8 +300,8 @@ export function createWorld(ME, opts = {}) {
       "objects.ice.seen": false, "objects.ice.near": false, "objects.comet.near": false, "objects.rock.inRange": false };
     for (const [f, v] of Object.entries(facts)) k.write(factPath(def.id, f), v, false);
     k.write("objects.ice.name", "ice", false); k.write("objects.comet.name", "comet", false); k.write("objects.rock.name", ROCKS.find((x) => x.id !== rock.id).name, false);
-    installRules(k.me, k.script, def.id); k.index();
-    w.robots.push({ ...def, def, rockObj: rock, k, truth: { pos: def.pos, battery: def.battery }, written: { ...facts }, moving: 0, walked: 0,
+    installRules(k.me, k.script, def.id, { explicit: w.explicit, bats }); k.index();
+    w.robots.push({ ...def, def, rockObj: rock, bats, k, truth: { pos: def.pos, battery: def.battery }, written: { ...facts }, moving: 0, walked: 0,
       dead: false, drillT: 0, queue: [], ring: { inbox: {}, outbox: {} }, tipMsg: null, known: new Set(), lastSend: -SEND_GAP, nextHello: 3 + def.id * 7, seen: new Set(), action: "explore", status: "exploring", dest: "around the rock", lastBatch: [] });
   }
   return w;
@@ -433,7 +473,7 @@ function stepRobot(w, r, dt) {
     } else { put("tipAt", NEVER); dropTipMsg(r, batch); }                                 // nothing there (any more): forget the tip
   } else r.drillT = 0;
   put("pos", r4(r.truth.pos)); put("lightDist", r4(lightDistOf(r.truth.pos)));
-  charges(r4(r.truth.battery)).forEach((c, j) => put(`batteries.${BATTERIES[j].i}.charge`, c));   // it measures each of its batteries
+  charges(r4(r.truth.battery), r.bats).forEach((c, j) => put(`batteries.${r.bats[j].i}.charge`, c));   // it measures each of its batteries
   // charging = "I have decided to charge": it stays true until the battery is full (goCharge reads it back)
   put("charging", action === "charge" && !r.dead);
   const charging = action === "charge" && lightDistOf(r.truth.pos) <= 1e-9 && !r.dead;
@@ -461,7 +501,38 @@ export function step(w, dt = 1) {
 export function setBattery(w, id, value) {   // the slider / "drain": the real battery changes, and the robot measures its batteries at once
   const r = robotOf(w, id); if (r.dead && value > 0) r.dead = false;
   r.truth.battery = value; r.lastBatch = [];
-  return charges(value).map((c, j) => { const f = `batteries.${BATTERIES[j].i}.charge`; r.written[f] = c; return r.k.write(factPath(id, f), c); });
+  return charges(value, r.bats).map((c, j) => { const f = `batteries.${r.bats[j].i}.charge`; r.written[f] = c; return r.k.write(factPath(id, f), c); });
+}
+// Batteries change while it runs: a battery plugged in, one swapped for another, one taken out. The charge it holds
+// stays with the robot (Wh); the adapter then spreads it as always (first battery filled first). With the aggregate
+// nothing else changes; the 4.1 explicit sum has to be redeclared over the new set (w.explicit).
+const whOf = (r) => (r.truth.battery * capacityOf(r.bats)) / 100;
+function afterBatteries(w, r, wh, b) {
+  if (w.explicit) r.k.rule("battery", explicitBatteryRule(r.bats));
+  r.truth.battery = Math.min(100, (wh / capacityOf(r.bats)) * 100); r.dead = r.truth.battery <= 0;
+  charges(r4(r.truth.battery), r.bats).forEach((c, j) => { const f = `batteries.${r.bats[j].i}.charge`; if (r.written[f] !== c) { r.written[f] = c; b.push(r.k.write(factPath(r.id, f), c)); } });
+  r.lastBatch.push(...b); return b;
+}
+export function addBattery(w, id, bat = EXTRA_BATTERY, charge = bat.capacity) {   // plugged in, with its own charge
+  const r = robotOf(w, id), wh = whOf(r) + charge, b = [], base = `batteries.${bat.i}`;
+  r.bats.push({ ...bat }); r.bats.sort((x, y) => x.i - y.i);
+  r.written[`${base}.capacity`] = bat.capacity; b.push(r.k.write(factPath(id, `${base}.capacity`), bat.capacity));
+  r.written[`${base}.charge`] = charge; b.push(r.k.write(factPath(id, `${base}.charge`), charge));
+  return afterBatteries(w, r, wh, b);
+}
+export function swapBattery(w, id, i, capacity, charge = capacity) {   // battery i out, another one (capacity, charge) in its place
+  const r = robotOf(w, id), j = r.bats.findIndex((x) => x.i === i), old = charges(r4(r.truth.battery), r.bats)[j], b = [], base = `batteries.${i}`;
+  const wh = whOf(r) - old + charge; r.bats[j] = { ...r.bats[j], capacity };
+  r.written[`${base}.capacity`] = capacity; b.push(r.k.write(factPath(id, `${base}.capacity`), capacity));
+  r.written[`${base}.charge`] = charge; b.push(r.k.write(factPath(id, `${base}.charge`), charge));
+  return afterBatteries(w, r, wh, b);
+}
+export function removeBattery(w, id, i) {   // battery i taken out, with the charge it held
+  const r = robotOf(w, id), j = r.bats.findIndex((x) => x.i === i); if (j < 0 || r.bats.length < 2) return [];
+  const wh = whOf(r) - charges(r4(r.truth.battery), r.bats)[j], b = [];
+  r.bats.splice(j, 1); delete r.written[`batteries.${i}.charge`]; delete r.written[`batteries.${i}.capacity`];
+  b.push(r.k.remove(`robots.${id}.batteries.${i}`));
+  return afterBatteries(w, r, wh, b);
 }
 export function sayHello(w, id) { const r = robotOf(w, id); return enqueue(w, r, { kind: "hello", battery: Math.round(r.truth.battery), at: w.t }); }
 export function shareTip(w, id) {   // the robot's radio sends a tip about the nearest crater with ice left on its own rock
@@ -479,18 +550,28 @@ export function verifyWorld(ME, w) {
   const eq = (x, y) => x === y || (typeof x === "number" && typeof y === "number" && Math.abs(x - y) < 1e-9);
   for (const r of w.robots) {
     const i = r.id, fresh = new ME();
-    const facts = Object.fromEntries(FACTS.map((f) => [f, r.k.read(factPath(i, f))]));
+    if (w.mode !== "eager") fresh.setRecomputeMode(w.mode);
+    const all = [...batteryFacts(r.bats), ...FACTS];
+    const facts = Object.fromEntries(all.map((f) => [f, r.k.read(factPath(i, f))]));
+    facts.bats = r.bats.map((b) => ({ charge: facts[`batteries.${b.i}.charge`], capacity: facts[`batteries.${b.i}.capacity`] }));
     const put = (path, v) => path.split(".").map((x) => (/^\d+$/.test(x) ? Number(x) : x)).reduce((n, seg, j, arr) => (j === arr.length - 1 ? n[seg](v) : n[seg]), fresh);
-    for (const f of FACTS) put(factPath(i, f), facts[f]);
+    for (const f of all) put(factPath(i, f), facts[f]);
     // every message its inbox keeps, with its own facts (acceptTip is computed on each of them)
     const inbox = msgIds(r, "inbox").map((id) => { const m = { id }; for (const f of MSG_FACTS) { const v = r.k.read(`robots.${i}.inbox.${id}.${f}`); if (v != null) { m[f] = v; put(`robots.${i}.inbox.${id}.${f}`, v); } } return m; });
-    installRules(fresh, null, i);
-    const js = rulesJS(facts);
+    // every message its outbox keeps (the kept counts read them)
+    for (const id of msgIds(r, "outbox")) for (const f of MSG_FACTS) { const v = r.k.read(`robots.${i}.outbox.${id}.${f}`); if (v != null) put(`robots.${i}.outbox.${id}.${f}`, v); }
+    installRules(fresh, null, i, { explicit: w.explicit, bats: r.bats });
+    const js = rulesJS(facts, w.explicit);
     for (const n of RULE_NAMES) {
       const p = `robots.${i}.${n}`, a = r.k.read(p), b = fresh(p), c = js[n];
       checked++; if (!eq(a, b)) mismatches.push({ who: r.name, path: p, live: a, fresh: b });
       checked++; if (!eq(a, c)) mismatches.push({ who: r.name, path: p + " (JS)", live: a, js: c });
       checked++; if (a === undefined) mismatches.push({ who: r.name, path: p + " (undefined)" });
+    }
+    if (!w.explicit) for (const box of ["inbox", "outbox"]) {   // the kept counts: x[] over each box (undefined while empty)
+      const p = `robots.${i}.${box}Kept`, a = r.k.read(p), b = fresh(p), n = msgIds(r, box).length, c = n || undefined;
+      checked++; if (!eq(a, b)) mismatches.push({ who: r.name, path: p, live: a, fresh: b });
+      checked++; if (!eq(a, c)) mismatches.push({ who: r.name, path: p + " (JS)", live: a, js: c });
     }
     for (const m of inbox) {   // a hello has no rock: its acceptTip is undefined in the kernel, the rebuild and JS alike
       const p = `robots.${i}.inbox.${m.id}.acceptTip`, a = r.k.read(p) ?? undefined, b = fresh(p) ?? undefined, c = acceptTipJS(facts, m);

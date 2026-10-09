@@ -1,5 +1,5 @@
 // Autonomous Robotics in Space: .GUI page (this.gui@4.1.0, SRI-pinned in index.html, sha256-checked below)
-// over the real, unmodified this.me@4.1.0 kernel (sha256-checked below before import).
+// over a LOCAL candidate build of this.me 4.2 (integ/4.2-rootfix @ 2b4b1fe, not published; sha256-checked below before import).
 //
 // Who owns what:
 //   KERNEL (this.me): one kernel per spider robot (3). Every robot fact, its own view of the shared objects (objects.*),
@@ -11,8 +11,8 @@
 
 import * as M from "./space-model.js";
 
-const KERNEL = { version: "4.1.0", sha256: "47cc8f9a9b5ee2921a59023d400e694d6c9b9f80a0782db850b06156cbb46afa",
-  urls: ["https://cdn.jsdelivr.net/npm/this.me@4.1.0/dist/me.es.js", "https://unpkg.com/this.me@4.1.0/dist/me.es.js"] };
+const KERNEL = { version: "4.2 candidate", label: "this.me 4.2 candidate", build: "local build of integ/4.2-rootfix @ 2b4b1fe, not published", sha256: "50c643e1e6306855833227993de03ea5d23e279504319f2874c62c7793fc1563",
+  urls: ["./kernel/this.me-4.2-candidate.es.js"] };
 const GUI_PIN = { label: "this.gui@4.1.0", repo: "https://github.com/neurons-me/GUI", npm: "https://www.npmjs.com/package/this.gui/v/4.1.0",
   url: "https://cdn.jsdelivr.net/npm/this.gui@4.1.0/dist/this.gui.umd.js", sha256: "d50e32f6a4f7603804228c074fc59df1cfdea73a4f3d5ad93ba9475227b2a577" };
 const SRC = "https://github.com/neurons-me/.me/blob/main/Demos/Robots/Space/";
@@ -72,7 +72,7 @@ async function loadKernel() {
       return { ME: mod.default || mod.ME, hash, url: res.url || url };
     } catch (e) { errors.push(`${url}: ${e?.message || e}`); }
   }
-  throw new Error("Could not load this.me@" + KERNEL.version + ": " + errors.join(" | "));
+  throw new Error("Could not load " + KERNEL.label + ": " + errors.join(" | "));
 }
 
 
@@ -149,6 +149,9 @@ const act = {
     else if (k === "object") ui.set({ obj: v, focus: ref }); },
   drain: (id) => { ui.set({ sel: id, focus: `robot:${id}`, explain: "mustCharge" }); interact(id, M.setBattery(W, id, 6)); },
   battery: (id, v) => interact(id, M.setBattery(W, id, v)),
+  addBattery: (id) => interact(id, M.addBattery(W, id)),
+  swapBattery: (id) => interact(id, M.swapBattery(W, id, 2, 50, 10)),
+  removeBattery: (id) => { const r = robot(id); interact(id, M.removeBattery(W, id, r.bats[r.bats.length - 1].i)); },
   hello: (id) => { ui.set({ sel: id, focus: `robot:${id}` }); M.sayHello(W, id); interact(); },
   tip: (id) => { ui.set({ sel: id, focus: `robot:${id}` }); M.shareTip(W, id); interact(); },
   away: () => { M.holdRock(W, 2, M.FAR); interact(); },
@@ -530,8 +533,10 @@ function KnowsHeard({ r }) {
       h(Box, { component: "span", className: "panel-hint", sx: { fontFamily: SERIF, fontStyle: "italic", fontSize: 11.5, color: "text.disabled" } }, hint(L, x.value)));
   };
   return h(Box, { id: "knows-heard", sx: { display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 1.25, mt: 1.5 } },
-    ...M.PANEL(id).map((g) => { const ls = M.expandLines(W, g);
-      return h(Box, { key: g.key, id: g.key, sx: { minWidth: 0 } }, H2(g.title, h(Box, { component: "span", sx: { fontStyle: "italic", fontFamily: SERIF, color: "text.disabled", fontSize: 11 } }, g.sub)),
+    ...M.PANEL(id, W).map((g) => { const ls = M.expandLines(W, g);
+      const kept = g.key === "knows" ? null : rd(`${base}.${g.key}Kept`);   // robots[i].inbox[] / outbox[]: the kernel counts what the box keeps
+      const sub = g.key === "knows" ? g.sub : h(React.Fragment, null, g.sub, " · ", h(Box, { component: "span", className: "kept-count", "data-me-path": `${base}.${g.key}Kept`, "data-me-value": String(kept) }, `${kept ?? 0} kept`));
+      return h(Box, { key: g.key, id: g.key, sx: { minWidth: 0 } }, H2(g.title, h(Box, { component: "span", sx: { fontStyle: "italic", fontFamily: SERIF, color: "text.disabled", fontSize: 11 } }, sub)),
         h(Box, { sx: { borderLeft: 2, borderColor: "divider", pl: 1 } }, ...ls.map(lineOf))); }));
 }
 // What does a shared object mean to each spider? One column per kernel, each read from that robot's own kernel.
@@ -586,7 +591,7 @@ function HoodObjects() {
 function HoodRobot() {
   const { sel, explain } = useStore(ui); useStore(tick); if (!W) return null;
   const r = robot(sel), base = `robots.${sel}`, lw = lastWrites.get(sel), bat = FME(`${base}.battery`);
-  const facts = [...M.BATTERIES.flatMap((b) => [`batteries.${b.i}.charge`, `batteries.${b.i}.capacity`]), "pos", "lightDist", "charging", "now", "role", "myRock", "tipRock", "tipPos", "tipAt", "sent", "received", "ice", "found", "maxAge", "costPerRad", "margin", "full"];
+  const facts = [...M.batteryFacts(r.bats), "pos", "lightDist", "charging", "now", "role", "myRock", "tipRock", "tipPos", "tipAt", "sent", "received", "ice", "found", "maxAge", "costPerRad", "margin", "full"];
   const key = (f) => f.replace(/\.(\d+)\./g, "[$1].");
   // a pointer, read through: lastFrom[i] / lastTo[i] → the message, tipMsg → the tip it accepted
   const ptr = (p, label, sub) => { const t = FME(p)?.__ptr, m = t && /\.(inbox|outbox)\.(\d+)$/.exec(t), there = t && FME(`${t}.at`) != null;
@@ -606,7 +611,11 @@ function HoodRobot() {
       H2("Its inbox rule (computed on each message it receives)"),
       h(Box, { className: "rule", id: "inbox-rule", sx: { ...ROW_SX, gridTemplateColumns: "minmax(0, 1fr)", cursor: "pointer", "&:hover": { bgcolor: "action.hover" } }, onClick: () => ui.set({ explain: "inbox" }), title: "explain acceptTip on its newest ice tip" },
         h(MeCode, { code: M.inboxRuleCode(sel), ctx: sel, sx: { fontSize: 9.5, color: explain === "inbox" ? "primary.main" : undefined } }))),
-    h(Box, { sx: { mt: 1 } }, H2("Battery (measures its two batteries)"),
+    h(Box, { sx: { mt: 1 } }, H2(`Battery (measures its ${r.bats.length} batteries: ${r.bats.map((b) => `${b.capacity} Wh`).join(" + ")})`),
+      h(Box, { sx: { display: "flex", gap: .5, mb: .5 } },
+        h(Button, { id: "btn-add-battery", size: "small", variant: "outlined", disabled: r.bats.some((b) => b.i === M.EXTRA_BATTERY.i), onClick: () => act.addBattery(sel), sx: { fontFamily: MONO, fontSize: 10, textTransform: "none", flex: 1 } }, `Plug in a ${M.EXTRA_BATTERY.capacity} Wh battery`),
+        h(Button, { id: "btn-swap-battery", size: "small", variant: "outlined", disabled: !r.bats.some((b) => b.i === 2), onClick: () => act.swapBattery(sel), sx: { fontFamily: MONO, fontSize: 10, textTransform: "none", flex: 1 } }, "Swap the spare (50 Wh)"),
+        h(Button, { id: "btn-remove-battery", size: "small", variant: "outlined", disabled: r.bats.length < 2, onClick: () => act.removeBattery(sel), sx: { fontFamily: MONO, fontSize: 10, textTransform: "none", flex: 1 } }, "Take the last one out")),
       Slider ? h(Slider, { id: "battery-slider", size: "small", min: 0, max: 100, step: 1, value: Math.max(0, Math.min(100, Math.round(typeof bat === "number" ? bat : 0))), onChange: (e, v) => act.battery(sel, v), "aria-label": `${r.name} battery`, sx: { mx: 1, width: "calc(100% - 16px)" } })
         : h("input", { id: "battery-slider", type: "range", min: 0, max: 100, value: Math.round(bat || 0), onChange: (e) => act.battery(sel, Number(e.target.value)), style: { width: "100%" } })),
     h(ExplainView, { path: explainPath(r, explain) }),
@@ -648,7 +657,7 @@ function KernelInfo() {
   const row = (k, v) => h(Box, { key: k, sx: { display: "grid", gridTemplateColumns: "58px minmax(0, 1fr)", gap: .75, py: .5, borderBottom: 1, borderColor: "divider", "&:last-of-type": { borderBottom: 0 } } }, h(Box, { component: "span", sx: { color: "text.disabled" } }, k), h(Box, { component: "span", sx: { minWidth: 0, overflowWrap: "anywhere" } }, v));
   return h(Box, { id: "kernel-info", sx: { mt: 1.5, fontFamily: MONO, fontSize: 9.5, lineHeight: 1.45, color: "text.secondary" } },
     H2("Source"),
-    row("kernel", kernel.state === "ok" ? h(React.Fragment, null, a(`https://www.npmjs.com/package/this.me/v/${KERNEL.version}`, `this.me@${KERNEL.version}`), ` · dist/me.es.js unmodified · sha256 ${kernel.hash.slice(0, 12)}… `, h("b", null, "verified in this browser"))
+    row("kernel", kernel.state === "ok" ? h(React.Fragment, null, h("b", null, KERNEL.label), ` · ${KERNEL.build} · sha256 ${kernel.hash.slice(0, 12)}… `, h("b", null, "verified in this browser"))
       : kernel.state === "error" ? h(Box, { component: "span", sx: { color: "error.main" } }, kernel.text) : "verifying…"),
     row(".GUI", h(React.Fragment, null, a(GUI_PIN.npm, GUI_PIN.label), " · ", a(GUI_PIN.repo, "neurons-me/GUI"), ` · jsDelivr, SRI + sha256 ${GUI_PIN.sha256.slice(0, 12)}… `, gui.state === "ok" ? h("b", null, "verified") : gui.state === "error" ? h(Box, { component: "span", sx: { color: "error.main" } }, "check failed") : "checking…")),
     row("page", h(React.Fragment, null, a(SRC + "space-model.js", "space-model.js"), " (rules, model) · ", a(SRC + "space-gui.js", "space-gui.js"), " (.GUI page) · ", a(SRC + "verify.mjs", "verify.mjs"), " (Node) · ", a(BUILD_NOTES, "build notes"))),
@@ -657,7 +666,7 @@ function KernelInfo() {
       verify ? h(Box, { component: "span", id: "verify-out", sx: { color: verify.ok ? "success.main" : "error.main" } }, verify.ok ? `✓ ${verify.checked} checks, 0 mismatches (${clock(verify.t)}, ${verify.ms.toFixed(0)} ms): every derived value in the 3 kernels = a fresh rebuild = the rule in JS` : `✗ ${verify.mismatches.length} mismatches: ${JSON.stringify(verify.mismatches.slice(0, 3))}`) : null)));
 }
 // before the kernels load (and if they fail)
-function KernelStatus(p) { const { kernel } = useStore(ui); return h(Box, { "data-gui-node-id": p["data-gui-node-id"], sx: { ...SECTION_SX, fontFamily: MONO, fontSize: 10, color: kernel.state === "error" ? "error.main" : "text.secondary" } }, kernel.state === "error" ? kernel.text : "verifying this.me@4.1.0 and .GUI…"); }
+function KernelStatus(p) { const { kernel } = useStore(ui); return h(Box, { "data-gui-node-id": p["data-gui-node-id"], sx: { ...SECTION_SX, fontFamily: MONO, fontSize: 10, color: kernel.state === "error" ? "error.main" : "text.secondary" } }, kernel.state === "error" ? kernel.text : `verifying ${KERNEL.label} and .GUI…`); }
 
 // ── chrome (as on the Veracruz .GUI page) ──
 const LOGO = "https://res.cloudinary.com/dkwnxf6gm/image/upload/v1760629064/neurons.me_b50f6a.png";

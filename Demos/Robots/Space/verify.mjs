@@ -1,13 +1,16 @@
 #!/usr/bin/env node
-// Autonomous Robotics in Space: Node verification against the real, unmodified this.me@4.1.0.
+// Autonomous Robotics in Space: Node verification against a LOCAL this.me 4.2 candidate build (kernel/, sha256-pinned;
+// integ/4.2-rootfix @ 2b4b1fe, not published), with this.me@4.1.0 (jsDelivr, sha256-pinned) for the 4.1 comparison.
 // Runs the page's own model (space-model.js): two rocks, three spider robots, three separate kernels, a limited radio.
 // Checks, step by step: every derived path in every kernel = a fresh kernel rebuilt from the same facts + same rules =
 // the rule in plain JS; that messages only cross the void when the radio allows it; that each kernel is written only
 // by its own robot; that a message sent is in the sender's outbox and, only if it arrived, in the receiver's inbox
 // with the same id; that a received tip is accepted only when the receiver's own rule says so; that the battery level is
 // the rule over the robot's batteries; that one object means different things in different kernels; k; and the pointer
-// limitation of 4.1.0 (known issue #4).
-// Usage: node verify.mjs [--kernel path/to/me.es.js]   (default: download from jsDelivr, sha256-checked)
+// limitation of 4.1.0 (known issue #4); the 4.2 aggregates (battery over robots[i].batteries[], kept counts over inbox[] /
+// outbox[]) against the contract oracle (exact BigInt sum, rounded once) while batteries are added, swapped and removed,
+// in eager and lazy; and the behaviour of the 4.2 model against the 4.1 model (explicit sum on this.me@4.1.0).
+// Usage: node verify.mjs [--kernel path/to/me.es.js]   (default: kernel/this.me-4.2-candidate.es.js, sha256-checked)
 import { createHash } from "node:crypto";
 import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -15,23 +18,25 @@ import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import * as M from "./space-model.js";
 
-const SHA = "47cc8f9a9b5ee2921a59023d400e694d6c9b9f80a0782db850b06156cbb46afa";
-const URL_ = "https://cdn.jsdelivr.net/npm/this.me@4.1.0/dist/me.es.js";
-async function kernelFile() {
-  const i = process.argv.indexOf("--kernel");
-  if (i > 0) return process.argv[i + 1];
+const SHA = "50c643e1e6306855833227993de03ea5d23e279504319f2874c62c7793fc1563";   // kernel/this.me-4.2-candidate.es.js
+const SHA41 = "47cc8f9a9b5ee2921a59023d400e694d6c9b9f80a0782db850b06156cbb46afa", URL41 = "https://cdn.jsdelivr.net/npm/this.me@4.1.0/dist/me.es.js";
+async function kernel41File() {
   const dir = join(tmpdir(), "space-robots-verify"); await mkdir(dir, { recursive: true });
   const f = join(dir, "this.me-4.1.0-me.es.js");
-  try { const b = await readFile(f); if (createHash("sha256").update(b).digest("hex") === SHA) return f; } catch {}
-  const res = await fetch(URL_); if (!res.ok) throw new Error(`HTTP ${res.status} for ${URL_}`);
+  try { const b = await readFile(f); if (createHash("sha256").update(b).digest("hex") === SHA41) return f; } catch {}
+  const res = await fetch(URL41); if (!res.ok) throw new Error(`HTTP ${res.status} for ${URL41}`);
   await writeFile(f, Buffer.from(await res.arrayBuffer())); return f;
 }
-const file = await kernelFile();
+const ki = process.argv.indexOf("--kernel");
+const file = ki > 0 ? process.argv[ki + 1] : new URL("./kernel/this.me-4.2-candidate.es.js", import.meta.url).pathname;
 const hash = createHash("sha256").update(await readFile(file)).digest("hex");
 if (hash !== SHA) { console.error(`sha256 mismatch: ${hash}`); process.exit(2); }
 const ME = (await import(pathToFileURL(file).href)).default;
+const file41 = await kernel41File(), hash41 = createHash("sha256").update(await readFile(file41)).digest("hex");
+if (hash41 !== SHA41) { console.error(`4.1.0 sha256 mismatch: ${hash41}`); process.exit(2); }
+const ME41 = (await import(pathToFileURL(file41).href)).default;
 
-let checks = 0; const fails = []; const by = { rebuild: 0, radio: 0, own: 0, scenario: 0 };
+let checks = 0; const fails = []; const by = { rebuild: 0, radio: 0, own: 0, scenario: 0, aggregate: 0, compare: 0 };
 const check = (label, ok, detail, cat = "scenario") => { checks++; by[cat]++; if (!ok) fails.push({ label, detail }); };
 const section = (s) => console.log(`\n· ${s}`);
 const writeStats = { n: 0, us: 0, usMax: 0, k: 0, kMax: 0 };
@@ -83,16 +88,16 @@ function runSteps(w, n, label, { every = 5, onStep } = {}) {
 }
 
 section("kernel");
-console.log(`  this.me@4.1.0 dist/me.es.js sha256 ${hash.slice(0, 16)}… verified`);
+  console.log(`  this.me 4.2 candidate (local build, kernel/this.me-4.2-candidate.es.js) sha256 ${hash.slice(0, 16)}… verified · this.me@4.1.0 sha256 ${hash41.slice(0, 16)}… verified (comparison)`);
 check("kernel sha256", hash === SHA);
 {
   const w = M.createWorld(ME);
-  for (const r of w.robots) for (const [n, e] of M.RULES) check(`${r.name} ${n}: the same rule text in its kernel`, r.k.me.explain(`robots.${r.id}.${n}`).expr === e);
+  for (const r of w.robots) for (const [n, e] of M.RULES) check(`${r.name} ${n}: the same rule text in its kernel`, r.k.me.explain(`robots.${r.id}.${n}`).expr === e.replace(/\[i\]/g, `[${r.id}]`));
   for (const r of w.robots) check(`${r.name}: the inbox rule is in its setup script`, r.k.script.includes(M.inboxRuleCode(r.id)));
   for (const r of w.robots) {   // the battery level is the rule over its batteries (total charge, % of total capacity)
-    const c = (i, f) => r.k.read(`robots.${r.id}.batteries.${i}.${f}`), pct = (c(1, "charge") + c(2, "charge")) / (c(1, "capacity") + c(2, "capacity")) * 100;
-    check(`${r.name}: battery ${r.k.read(`robots.${r.id}.battery`)} = its batteries ${c(1, "charge")} + ${c(2, "charge")} of ${c(1, "capacity")} + ${c(2, "capacity")} Wh`, r.k.read(`robots.${r.id}.battery`) === pct && Math.abs(pct - r.def.battery) < 1e-9);
-    check(`${r.name}: battery is derived (explain shows the rule), not written`, r.k.me.explain(`robots.${r.id}.battery`).expr === M.BATTERY_RULE && !r.k.script.some((x) => x.startsWith(`me.robots[${r.id}].battery(`)));
+    const c = (i, f) => r.k.read(`robots.${r.id}.batteries.${i}.${f}`), pct = M.batteryJS([1, 2].map((i) => ({ charge: c(i, "charge"), capacity: c(i, "capacity") })));
+    check(`${r.name}: battery ${r.k.read(`robots.${r.id}.battery`)} = its batteries ${c(1, "charge")} + ${c(2, "charge")} of ${c(1, "capacity")} + ${c(2, "capacity")} Wh (oracle)`, Object.is(r.k.read(`robots.${r.id}.battery`), pct) && Math.abs(pct - r.def.battery) < 1e-9);
+    check(`${r.name}: battery is derived (explain shows the rule), not written`, r.k.me.explain(`robots.${r.id}.battery`).expr === M.BATTERY_RULE.replace(/\[i\]/g, `[${r.id}]`) && !r.k.script.some((x) => x.startsWith(`me.robots[${r.id}].battery(`)));
   }
   check("no rule reads through the home pointer", M.RULES.every(([, e]) => !/\bhome\b/.test(e)));
   for (const r of w.robots) {
@@ -106,13 +111,14 @@ check("kernel sha256", hash === SHA);
 }
 
 section("this.me 4.1.0 known issue #4: a formula through a pointer is not recomputed (why no rule here reads through one)");
-{
-  const me = new ME(); me.asteroids.b612.radiusM(400); me.robots[612].home["->"]("asteroids.b612");
+for (const [K, name] of [[ME41, "this.me@4.1.0"], [ME, "4.2 candidate"]]) {
+  const me = new K(); me.asteroids.b612.radiusM(400); me.robots[612].home["->"]("asteroids.b612");
   me.robots["[i]"]["="]("homeDiameter", "home.radiusM * 2");
   const before = me("robots.612.homeDiameter"); me.asteroids.b612.radiusM(500);
   const after = me("robots.612.homeDiameter"), direct = me("robots.612.home.radiusM");
-  console.log(`  formula via pointer: ${before} → after target change: ${after} (target now ${direct}; a fresh read through the pointer sees it)`);
-  check("issue #4 reproduced: formula through pointer stays stale in 4.1.0", before === 800 && after === 800 && direct === 500);
+  console.log(`  ${name}: formula via pointer: ${before} → after target change: ${after} (target now ${direct})`);
+  if (K === ME41) check("issue #4 reproduced: formula through pointer stays stale in 4.1.0", before === 800 && after === 800 && direct === 500);
+  else check("issue #4 fixed in the 4.2 candidate (17462dd): the formula follows its pointer target", before === 800 && after === 1000 && direct === 500);
   me.robots["[i]"]["="]("homeDiameter", "home.radiusM * 2");
   check("re-applying the formula recomputes it", me("robots.612.homeDiameter") === 1000);
 }
@@ -267,6 +273,94 @@ section("H · outbox and inbox: one message, one id, each side in its own kernel
   console.log(`  cost: k of a now write avg ${(kNow / nNow).toFixed(2)} · k max of any write ${kMax} · at most ${M.KEEP} messages per peer per box (+ the accepted tip)`);
 }
 
+// ── 4.2: aggregates ──
+const readBats = (r) => r.bats.map((b) => ({ i: b.i, charge: r.k.read(`robots.${r.id}.batteries.${b.i}.charge`), capacity: r.k.read(`robots.${r.id}.batteries.${b.i}.capacity`) }));
+const aggOf = (r) => (r.k.me.explain(`robots.${r.id}.battery`).derivation?.inputs || []).filter((x) => x.kind === "aggregate").map((x) => x.aggregate);
+// the battery changes, mid-run (minute, change, robot): a third battery plugged in, the spare swapped, one taken out
+const PLAN = [[300, "add", 1], [450, "swap", 2], [600, "add", 3], [750, "remove", 1], [900, "remove", 3], [1050, "add", 2], [1200, "swap", 1], [1350, "remove", 2]];
+const doChange = (w, kind, id) => kind === "add" ? M.addBattery(w, id) : kind === "swap" ? M.swapBattery(w, id, 2, 50, 10) : M.removeBattery(w, id, M.robotOf(w, id).bats[M.robotOf(w, id).bats.length - 1].i);
+const traceOf = (w) => w.robots.map((r) => [r.k.read(`robots.${r.id}.battery`), r.action, r.status, r.truth.battery, r.truth.pos].map(String).join("|")).join(" ");
+const traces = {};
+section("I · aggregates: battery = " + M.BATTERY_RULE + ", checked against the contract oracle (exact BigInt sum, rounded once)");
+for (const mode of ["eager", "lazy"]) {
+  const w = M.createWorld(ME, { mode }); const rows = []; let steps = 0, floatDiff = 0, keptChecks = 0; traces[mode] = [];
+  const oracleCheck = (label, r) => {
+    const bs = readBats(r), v = r.k.read(`robots.${r.id}.battery`), ref = M.batteryJS(bs), f41 = M.batteryJS(bs, true), ag = aggOf(r);
+    check(`${label}: ${r.name} battery ${v} = oracle ${ref} (${bs.length} batteries)`, Object.is(v, ref), { v, ref, bs }, "aggregate");
+    check(`${label}: ${r.name} explain: ${bs.length} members, ${bs.length} terms, resolved, public-view`, ag.length === 2 && ag.every((a) => a.members === bs.length && a.terms === bs.length && a.status === "resolved" && a.context === "public-view"), ag, "aggregate");
+    if (!Object.is(f41, ref)) floatDiff++;
+    return { bs, v, ref, f41 };
+  };
+  runSteps(w, 1500, `I ${mode}`, { onStep: (w) => {
+    steps++;
+    for (const [t, kind, id] of PLAN) if (w.t === t) {
+      const r = M.robotOf(w, id), before = r.k.read(`robots.${id}.battery`), xs = doChange(w, kind, id), o = oracleCheck(`I ${mode} t=${t} ${kind}`, r);
+      rows.push({ t, robot: r.name, kind, bats: o.bs.map((b) => `${b.capacity}`).join("+"), charges: o.bs.map((b) => b.charge).join(" + "), before, after: o.v, oracle: o.ref, f41: o.f41, k: xs.map((x) => x.k).join(",") });
+    }
+    for (const r of w.robots) {
+      oracleCheck(`I ${mode} t=${w.t}`, r);
+      for (const box of ["inbox", "outbox"]) { const n = M.msgIds(r, box).length; keptChecks++;
+        check(`I ${mode} t=${w.t}: ${r.name} ${box}Kept = ${n} messages its ${box} keeps`, r.k.read(`robots.${r.id}.${box}Kept`) === (n || undefined), { n, kernel: r.k.read(`robots.${r.id}.${box}Kept`) }, "aggregate"); }
+    }
+    traces[mode].push(traceOf(w));
+  } });
+  console.log(`  ${mode}: ${steps} min, every minute every robot's battery Object.is the oracle; ${keptChecks} kept-count checks; the 4.1 explicit float sum would differ from the oracle in ${floatDiff} of ${steps * 3} readings`);
+  if (mode === "eager") { console.log("  t     robot change  batteries (Wh)  charges (Wh)                battery before → after   = oracle   4.1 float sum      k of the writes");
+    for (const x of rows) console.log(`  ${String(x.t).padEnd(5)} ${x.robot.padEnd(5)} ${x.kind.padEnd(7)} ${x.bats.padEnd(15)} ${x.charges.padEnd(27)} ${String(+x.before.toFixed(6)).padEnd(10)} → ${String(x.after).padEnd(19)} ${Object.is(x.after, x.oracle) ? "yes" : "NO "}   ${Object.is(x.f41, x.oracle) ? "same" : String(x.f41).padEnd(18)} ${x.k}`); }
+}
+check("I: eager and lazy give the same world, minute by minute (battery, action, status, position)", traces.eager.join("\n") === traces.lazy.join("\n"), traces.eager.findIndex((x, i) => x !== traces.lazy[i]), "aggregate");
+console.log(`  eager vs lazy: ${traces.eager.filter((x, i) => x === traces.lazy[i]).length} of ${traces.eager.length} minutes identical`);
+{ // a member without the field, a delete of the whole collection: the battery says so, it never sums part of it
+  const w = M.createWorld(ME), r = M.robotOf(w, 1);
+  r.k.write("robots.1.batteries.4.capacity", 10);
+  const e = r.k.me.explain("robots.1.battery");
+  check("I: a battery with no charge reading yet: battery undefined (incomplete), never a partial sum", r.k.read("robots.1.battery") === undefined && e.meta.unresolved?.reason === "incomplete", e.meta.unresolved, "aggregate");
+  r.k.write("robots.1.batteries.4.charge", 5);
+  check("I: once it reads its charge, it counts", Object.is(r.k.read("robots.1.battery"), M.batteryJS(readBats({ ...r, bats: [...r.bats, { i: 4 }] }))), null, "aggregate");
+  r.k.remove("robots.1.batteries");
+  check("I: no batteries at all: battery undefined (absent), and the rules that read it say so", r.k.read("robots.1.battery") === undefined && r.k.me.explain("robots.1.battery").meta.unresolved?.reason === "missing-input" && r.k.read("robots.1.mustCharge") === undefined, null, "aggregate");
+  console.log("  a battery with no charge reading → battery undefined (incomplete) · then counted · all batteries removed → undefined (absent)");
+}
+{ // why the oracle and not the explicit 4.1 sum: here the demo's charges add exactly (at most one battery is partly charged),
+  // so both agree; with terms that do not, the aggregate is the exact sum rounded once, the explicit sum rounds at each +
+  const me = new ME(); [0.1, 0.2, 0.3].forEach((c, j) => { me.robots[9].batteries[j + 1].charge(c); me.robots[9].batteries[j + 1].capacity(1); });
+  me.robots["[i]"]["="]("battery", M.BATTERY_RULE); me.robots["[i]"]["="]("sumC", "robots[i].batteries[].charge");
+  const bs = [0.1, 0.2, 0.3].map((charge) => ({ charge, capacity: 1 })), ref = M.exactSum([0.1, 0.2, 0.3]), f41 = 0.1 + 0.2 + 0.3;
+  check("I: 0.1 + 0.2 + 0.3 Wh: the aggregate is the oracle (0.6), not the left-to-right float sum (0.6000000000000001)", Object.is(me("robots.9.sumC"), ref) && ref === 0.6 && f41 !== ref && Object.is(me("robots.9.battery"), M.batteryJS(bs)), { kernel: me("robots.9.sumC"), ref, f41 }, "aggregate");
+  console.log(`  charges 0.1 + 0.2 + 0.3: robots[9].batteries[].charge = ${me("robots.9.sumC")} (oracle ${ref}; the 4.1 explicit sum gives ${f41})`);
+}
+
+// ── 4.2 vs 4.1: the same world on this.me@4.1.0 with the explicit sum ──
+section("J · behaviour: the 4.2 model (aggregate, candidate) vs the 4.1 model (explicit sum, this.me@4.1.0), long runs");
+const FLAGS = ["goCharge", "mustCharge", "followTip", "shelter", "explore"];
+const diffRuns = (a, b, n, plan) => {
+  const d = { battery: 0, decision: 0, status: 0, truth: 0, events: 0, first: null, firstDecision: null };
+  for (let i = 0; i < n; i++) {
+    for (const w of [a, b]) { M.step(w, 1); if (plan) for (const [t, kind, id] of plan) if (w.t === t) doChange(w, kind, id); }
+    for (const [x, y] of a.robots.map((r, j) => [r, b.robots[j]])) {
+      const bx = x.k.read(`robots.${x.id}.battery`), by_ = y.k.read(`robots.${y.id}.battery`);
+      if (!Object.is(bx, by_)) { d.battery++; d.first ??= { t: a.t, robot: x.name, a: bx, b: by_ }; }
+      const fx = FLAGS.map((n) => x.k.read(`robots.${x.id}.${n}`)).join(), fy = FLAGS.map((n) => y.k.read(`robots.${y.id}.${n}`)).join();
+      if (fx !== fy || x.action !== y.action) { d.decision++; d.firstDecision ??= { t: a.t, robot: x.name, a: fx + " " + x.action, b: fy + " " + y.action }; }
+      if (x.status !== y.status) d.status++;
+      if (!Object.is(x.truth.battery, y.truth.battery) || !Object.is(x.truth.pos, y.truth.pos)) d.truth++;
+    }
+    const ev = (w) => w.events.filter((e) => e.t === w.t && ["tip", "found", "delivered", "lost", "send"].includes(e.kind)).map((e) => `${e.kind}:${e.from ?? e.by}>${e.to ?? ""}:${e.accepted ?? ""}`).join(";");
+    if (ev(a) !== ev(b)) d.events++;
+  }
+  return d;
+};
+for (const seed of [7, 1, 2, 3, 4]) {
+  const d = diffRuns(M.createWorld(ME, { seed }), M.createWorld(ME41, { seed, explicit: true }), 3000);
+  check(`J seed ${seed}: 3,000 min, 2 batteries: no difference in battery, decisions, status, tips or messages`, !d.battery && !d.decision && !d.status && !d.truth && !d.events, d, "compare");
+  console.log(`  seed ${seed}, 2 batteries, 3,000 min: battery ${d.battery} · decisions ${d.decision} · status ${d.status} · physical state ${d.truth} · tip/message events ${d.events} differences`);
+}
+for (const seed of [7, 1, 2]) {
+  const d = diffRuns(M.createWorld(ME, { seed }), M.createWorld(ME41, { seed, explicit: true }), 3000, PLAN);
+  check(`J seed ${seed}: batteries added, swapped, removed (4.1: rule redeclared each time): decisions and tips identical`, !d.decision && !d.status && !d.events, d, "compare");
+  console.log(`  seed ${seed}, battery changes, 3,000 min: battery ${d.battery} readings differ in the last bits (exact sum vs left-to-right float sum) · decisions ${d.decision} · status ${d.status} · physical ${d.truth} · events ${d.events}${d.first ? ` · e.g. t=${d.first.t} ${d.first.robot} ${d.first.a} vs ${d.first.b}` : ""}`);
+}
+
 section("summary");
 console.log(`  kernel writes measured: ${writeStats.n.toLocaleString("en-US")} · k avg ${(writeStats.k / writeStats.n).toFixed(2)} · k max ${writeStats.kMax} · µs/write avg ${(writeStats.us / writeStats.n).toFixed(1)} · max ${writeStats.usMax.toFixed(0)} (Node ${process.version})`);
 console.log(`  ${checks.toLocaleString("en-US")} checks · ${fails.length} mismatches`);
@@ -274,4 +368,6 @@ console.log(`    ${by.rebuild.toLocaleString("en-US")} derived values = fresh re
 console.log(`    ${by.own.toLocaleString("en-US")} writes, each into the writer's own kernel (no robot writes into another's)`);
 console.log(`    ${by.radio.toLocaleString("en-US")} radio checks (delivered only with a working link; same id in the sender's outbox and the receiver's inbox; no link, no inbox; boxes bounded; tips accepted only by the receiver's rule; out of range)`);
 console.log(`    ${by.scenario.toLocaleString("en-US")} scenario, meaning, isolation and pointer checks`);
+console.log(`    ${by.aggregate.toLocaleString("en-US")} aggregate checks (battery = oracle every minute while batteries change, explain members/terms, kept counts, incomplete/absent; eager and lazy)`);
+console.log(`    ${by.compare.toLocaleString("en-US")} 4.2 vs 4.1 behaviour comparisons (long runs, 5 seeds + 3 with battery changes)`);
 if (fails.length) { console.log(JSON.stringify(fails.slice(0, 20), null, 1)); process.exit(1); }
