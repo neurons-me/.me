@@ -5,7 +5,7 @@ Robots landing (<https://neurons-me.github.io/robots/>) and from `.me/Demos`. `D
 the same way `Demos/SmartCities/` redirects to the Smart Cities hub.
 
 A short story in seven passages, in the spirit of *The Little Prince*: two small asteroids drift in the void. On the
-bigger one, B 612, live two spider robots, Pip (a miner) and Tiko (a light scout). On the smaller one, B 325, lives Lua
+bigger one, B 612, live two spider robots, Oli (a miner) and Tiko (a light scout). On the smaller one, B 325, lives Lua
 (a scientist). Nobody drives them: each one carries its own this.me@4.1.0 kernel and decides from it. They can talk, but
 only a little: on the same rock easily, across the void only when the radio reaches and no rock is in the way; messages
 take time, the radio sends one at a time, and some get lost. A patch of ice, a passing comet and the other rock are seen
@@ -17,7 +17,6 @@ by all three, and mean something different in each kernel.
 |---|---|---|
 | `this.me@4.1.0/dist/me.es.js` | `47cc8f9a9b5ee2921a59023d400e694d6c9b9f80a0782db850b06156cbb46afa` | fetched, hashed in the browser, imported only if it matches (unpkg fallback) |
 | `this.gui@4.1.0/dist/this.gui.umd.js` | `d50e32f6a4f7603804228c074fc59df1cfdea73a4f3d5ad93ba9475227b2a577` | `<script>` SRI `sha384-umBxi9YB2FkfPkyuR4Ej4TvKyweGkUbZnvIQh/ZzaF0YGstAGl5I6xJ9fnLC+76O` + sha256 re-check |
-| `this.gui@4.1.0/dist/material-symbols.css` | | SRI `sha384-dvUfVVY6nb2ef6F+dRTsSozZpefoOvMox4Ay4fQP86bSU+6yHovoYYKaRtwS+mca` |
 | `react@18.3.1` / `react-dom@18.3.1` UMD | | SRI (same pins as the Veracruz .GUI page) |
 
 ## Files
@@ -64,7 +63,7 @@ me.robots["[i]"]["="]("acceptTip", "inboxAge <= maxAge && inboxRock == myRock &&
 ```
 
 The rule text is the same; the facts differ (`mines`, `slips`, `studies`, `myRock`, what each one has seen), so the
-same ice is fuel to Pip, a hazard to Tiko and a sample to Lua, and a tip from Pip is accepted by Tiko (same rock) but
+same ice is fuel to Oli, a hazard to Tiko and a sample to Lua, and a tip from Oli is accepted by Tiko (same rock) but
 only kept as "heard" by Lua (another rock).
 
 **Pointers.** `robots[i].home -> rocks.<rock>` is read through (`me("robots.1.home.radius")`). No formula reads
@@ -111,7 +110,10 @@ per run).
 ## .GUI notes
 
 Used as published: `GUI.mount`, `GUI.createMeRuntime`, `GUI.useMeValue`, `GUI.Theme`, `GUI.ThemesCatalog`,
-`GUI.ThemeModeToggle`, `GUI.useThemeContext`, Atoms (`Box`, `Button`, `Typography`, `Link`, `TextField`, `Slider`) and
-`Molecules.Menu` / `MenuItem`, and `GUI.Icon` (Material Symbols). Built page-side because 4.1.0 has no such component: the scene (an SVG with
+`GUI.useThemeContext`, Atoms (`Box`, `Button`, `Typography`, `Link`, `TextField`, `Slider`) and
+`Molecules.Menu` / `MenuItem`. Built page-side because 4.1.0 has no such component: the scene (an SVG with
 the theme's colours: two rocks, spiders with animated legs, messages in flight), the battery gauge, the passage stepper,
-and the explain() card (as on the Veracruz page).
+the explain() card (as on the Veracruz page), and every icon: inline SVG glyphs, including the light / dark
+button. The page does not load the Material Symbols font (`dist/material-symbols.css` pulls a 5.1 MB woff2 with
+`font-display: block`; on a slow connection its ligature names, e.g. `battery_full`, showed as text). A CSS guard hides
+any icon-font span a .GUI component might still render.

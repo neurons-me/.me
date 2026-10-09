@@ -131,23 +131,23 @@ const act = {
 const C = (s) => `<code>${s}</code>`;
 const PASSAGES = [null,
   { title: "Two small rocks",
-    body: `In the void there are two small rocks. On the bigger one, B 612, live two spider robots, Pip and Tiko. On the smaller one, B 325, lives Lua. Nobody drives them. Each one carries its own .me kernel: what it knows lives there, in ${C("me.robots[1]")} for Pip, and nowhere else. Tap a spider to see how it is doing.`,
-    code: `me.robots[1].battery(82)`, tries: [["Meet Pip", () => act.select(1)], ["Meet Lua", () => act.select(3)]] },
+    body: `In the void there are two small rocks. On the bigger one, B 612, live two spider robots, Oli and Tiko. On the smaller one, B 325, lives Lua. Nobody drives them. Each one carries its own .me kernel: what it knows lives there, in ${C("me.robots[1]")} for Oli, and nowhere else. Tap a spider to see how it is doing.`,
+    code: `me.robots[1].battery(82)`, tries: [["Meet Oli", () => act.select(1)], ["Meet Tiko", () => act.select(2)], ["Meet Lua", () => act.select(3)]] },
   { title: "Each one decides",
     body: `Every simulated minute each spider writes what it measures into its own kernel, and its own rules answer: keep exploring, walk to the sunny side to charge, or go to the ice. When the battery is no longer enough to walk back to the light, ${C("goCharge")} turns true and the spider turns around, without asking anyone.`,
     code: `me.robots["[i]"]["="]("mustCharge", "battery < reserve")`, tries: [["Drain Tiko's battery", () => { act.drain(2); play(); }]] },
   { title: "One ice, three meanings",
-    body: `Pip is a miner: to him, ice is something to mine. Tiko is a light scout: to her, ice is slippery, a place to stay away from. Lua is a scientist: to her, ice is a sample to study. Each kernel holds its own view of the same ice and the same rule text; the meaning comes from each one's role and what it has seen.`,
+    body: `Oli is a miner: to him, ice is something to mine. Tiko is a light scout: to her, ice is slippery, a place to stay away from. Lua is a scientist: to her, ice is a sample to study. Each kernel holds its own view of the same ice and the same rule text; the meaning comes from each one's role and what it has seen.`,
     code: `me.robots["[i]"]["="]("iceIsHazard", "slips && objects.ice.seen")`, tries: [["What is the ice to each?", () => act.object("ice")], ["And the comet?", () => act.object("comet")]] },
   { title: "Talking across the void",
     body: `They have small radios. On the same rock they always hear each other. Across the void, only when the other rock is in range and no rock is in the way. A radio sends one message every 6 simulated minutes, and some messages are lost on the way. Radio is much faster in real life: here messages are slowed down so you can watch them travel.`,
     code: `range ${M.RANGE} · one message every 6 min · an outbox of 3 · some get lost`, tries: [["Lua says hello", () => { act.hello(3); play(); }], ["Bring the rocks close", () => { act.close(); play(); }]] },
   { title: "Heard is not known",
     body: `Nobody can write into another spider's kernel. A message only lands in the receiver's inbox, and the receiver's own rule decides whether to accept it. A fresh ice tip about its own rock becomes a plan; a tip about the other rock stays something it heard. Tiko accepts the tip too, but to her it means "stay away".`,
-    code: `me.robots["[i]"]["="]("acceptTip", "inboxAge <= maxAge && inboxRock == myRock && !tipFresh")`, tries: [["Pip shares an ice tip", () => { act.tip(1); act.object("ice"); play(); }]] },
+    code: `me.robots["[i]"]["="]("acceptTip", "inboxAge <= maxAge && inboxRock == myRock && !tipFresh")`, tries: [["Oli shares an ice tip", () => { act.tip(1); act.object("ice"); play(); }]] },
   { title: "Drifting apart",
     body: `B 325 drifts. Push it away (or drag it): messages between the rocks stop arriving, and each spider keeps going on its own rules. Bring it back, and they hear each other again; what they heard before stays exactly as old as it is.`,
-    code: `me.robots[3].heard[1].at  →  how old is what Lua heard from Pip?`, tries: [["Push B 325 away", () => { act.away(); play(); }], ["Bring it close", () => { act.close(); play(); }], ["Let it drift", () => act.drift()]] },
+    code: `me.robots[3].heard[1].at  →  how old is what Lua heard from Oli?`, tries: [["Push B 325 away", () => { act.away(); play(); }], ["Bring it close", () => { act.close(); play(); }], ["Let it drift", () => act.drift()]] },
   { title: "A small cost",
     body: `Each write recomputes only the paths that read it; that number is k. A battery write touches a few paths of one spider's kernel, and the other kernels are not involved at all. The times next to each write are measured in this browser. Verify rebuilds every kernel from its facts and compares every derived value.`,
     code: `cost(write) = O(k)`, tries: [["Verify all three kernels", () => { act.verify(); ui.set({ hood: true }); }]] },
@@ -222,8 +222,26 @@ function Glyph({ kind, x, y, s = 1, color }) {
     case "shield": return g(h("path", { d: "M0,-7 L6,-4 L5,3 Q3,6 0,7 Q-3,6 -5,3 L-6,-4 Z" }));
     case "turn": return g(h("path", { d: "M4,6 L4,-2 Q4,-6 0,-6 Q-4,-6 -4,-2 L-4,3 M-7,0 L-4,3.5 L-1,0" }));
     case "zz": return g(h("path", { d: "M-5,-5 L0,-5 L-5,0 L0,0 M1,-1 L5,-1 L1,4 L5,4" }));
+    // the dashboard's icons (drawn here as SVG: no icon font, so no icon names can ever show as text)
+    case "go": return g(h("path", { d: "M-6,0 L5,0 M1,-4 L5,0 L1,4" }));
+    case "radio": return g(h("path", { d: "M0,-1 L-3.5,7 M0,-1 L3.5,7 M-2.2,4 L2.2,4" }), h("circle", { cy: -2.5, r: 1.3, fill: color || "var(--ink)" }), h("path", { d: "M-3.6,-5.6 Q-5.4,-2.5 -3.6,0.6 M3.6,-5.6 Q5.4,-2.5 3.6,0.6" }));
+    case "warn": return g(h("path", { d: "M0,-6.5 L7,6 L-7,6 Z" }), h("path", { d: "M0,-2 L0,2" }), h("circle", { cy: 4, r: 0.4, fill: color || "var(--ink)" }));
+    case "flask": return g(h("path", { d: "M-2.5,-7 L2.5,-7 M-1.5,-7 L-1.5,-2 L-6,6 L6,6 L1.5,-2 L1.5,-7 M-4,2.5 L4,2.5" }));
+    case "noeye": return g(h("path", { d: "M-7,0 Q0,-6 7,0 Q0,6 -7,0 Z M-6,6 L6,-6" }));
+    case "dash": return g(h("circle", { r: 6 }), h("path", { d: "M-3,0 L3,0" }));
+    case "nosignal": return g(h("path", { d: "M-3.6,-5.6 Q-5.4,-2.5 -3.6,0.6 M3.6,-5.6 Q5.4,-2.5 3.6,0.6 M-6,6 L6,-6" }), h("circle", { cy: -2.5, r: 1.3, fill: color || "var(--ink)" }));
+    case "moon": return g(h("path", { d: "M2.5,-6.2 A6.5,6.5 0 1 0 6.2,2.5 A5,5 0 0 1 2.5,-6.2 Z" }));
+    case "sunline": return g(h("circle", { r: 3 }), ...[0, 1, 2, 3, 4, 5, 6, 7].map((i) => { const a = (i * Math.PI) / 4; return h("line", { key: i, x1: 5 * Math.cos(a), y1: 5 * Math.sin(a), x2: 6.8 * Math.cos(a), y2: 6.8 * Math.sin(a) }); }));
+    case "down": return g(h("path", { d: "M-4,-2 L0,2 L4,-2" }));
+    case "up": return g(h("path", { d: "M-4,2 L0,-2 L4,2" }));
+    case "palette": return g(h("path", { d: "M0,-6.5 C-4,-6.5 -6.5,-3.5 -6.5,0 C-6.5,4 -3.5,6.5 0,6.5 C1.5,6.5 1.5,4.5 0.5,4 C-0.5,3.2 0.3,1.8 1.8,1.8 L3.5,1.8 C5.3,1.8 6.5,0.5 6.5,-1 C6.5,-4 3.5,-6.5 0,-6.5 Z" }), ...[[-3, -1], [-1, -4], [2.5, -3.5]].map(([cx, cy], i) => h("circle", { key: i, cx, cy, r: 0.6, fill: color || "var(--ink)" })));
     default: return g(h("circle", { cx: -1, cy: -1, r: 4 }), h("line", { x1: 2, y1: 2, x2: 6, y2: 6 }));
   }
+}
+// An icon for the panels: the same SVG glyphs as the scene, in the current text colour.
+function Ico({ kind, size = 18, sx }) {
+  return h(Box, { component: "svg", viewBox: "-8 -8 16 16", width: size, height: size, "aria-hidden": "true", focusable: "false", className: "ico",
+    sx: (t) => ({ ...sceneVars(t), flex: "none", display: "inline-block", verticalAlign: "middle", overflow: "visible", ...(sx || {}) }) }, h(Glyph, { kind, x: 0, y: 0, s: 1, color: "currentColor" }));
 }
 function Label({ r, V, FS, sel, F }) {   // name, battery and the action in words, just outside the rock (kept inside the frame)
   const rk = V.rocks[r.rock], a = V.xy(r, 0).a, out = rk.R + 40 * Math.min(FS, 1.5);
@@ -242,7 +260,7 @@ function Label({ r, V, FS, sel, F }) {   // name, battery and the action in word
     h("text", { x, y: y + 13 * FS, textAnchor: anchor, className: "status", style: { font: `italic ${(14 * FS).toFixed(1)}px ${SERIF}`, fill: r.dead ? "var(--err)" : "var(--muted)" } }, r.status));
 }
 // The scene keeps a readable on-screen text size (FS), and on narrow screens frames the two rocks more closely.
-const FRAME_WIDE = { x: 0, y: 30, w: 1000, h: 540 }, FRAME_NARROW = { x: 190, y: 40, w: 810, h: 520 };
+const FRAME_WIDE = { x: 10, y: 35, w: 990, h: 525 }, FRAME_NARROW = { x: 200, y: 45, w: 795, h: 505 };
 function useFrame() {
   const ref = React.useRef(null); const [st, setSt] = React.useState({ FS: 1, F: FRAME_WIDE });
   React.useLayoutEffect(() => { const el = ref.current; if (!el) return;
@@ -313,7 +331,7 @@ function Scene(p) {
     ...STARS.map(([x, y, r, o], i) => h("circle", { key: `s${i}`, cx: x, cy: y, r, fill: "var(--ink)", opacity: o })),
     h("circle", { cx: M.SUN.x, cy: M.SUN.y, r: 170, fill: "url(#sunglow)" }),
     h("circle", { cx: M.SUN.x, cy: M.SUN.y, r: 70, fill: "var(--sun)", opacity: 0.85 }),
-    F.x > 0 ? label(F.x + 30 * FS, M.SUN.y + 4, "← SUN", 10.5, "var(--sun)", false) : label(68, M.SUN.y + 100, "SUN", 10.5, "var(--muted)", false),
+    F === FRAME_NARROW ? label(F.x + 30 * FS, M.SUN.y + 4, "← SUN", 10.5, "var(--sun)", false) : label(68, M.SUN.y + 100, "SUN", 10.5, "var(--muted)", false),
     sp ? h("circle", { className: "range-ring", cx: sp.x, cy: sp.y, r: M.RANGE, fill: "none", stroke: "var(--accent)", strokeWidth: 0.8, strokeDasharray: "1 7", opacity: 0.35, style: { pointerEvents: "none" } }) : null,
     ...pairs.filter((x) => x.l.ok).map(({ a, b, l }) => { const p1 = V.xy(a, 8), p2 = V.xy(b, 8); return h("line", { key: `r${a.id}${b.id}`, className: l.same ? "radio-same" : "radio-cross", x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y, stroke: "var(--link)", strokeWidth: 1, strokeDasharray: "2 6", opacity: l.same ? 0.3 : 0.6, style: { pointerEvents: "none" } }); }),
     best ? h("g", { id: "radio-status", "data-why": best.l.ok ? "in range" : best.l.why, style: { pointerEvents: "none" } },
@@ -332,28 +350,31 @@ function Scene(p) {
     ...W.robots.map((r) => h(Label, { key: `l${r.id}`, r, V, FS, F, sel: sel === r.id })),
     ...dots, ...marks,
     h("text", { x: F.x + F.w / 2, y: F.y + 8 + 12 * FS, textAnchor: "middle", style: { font: `500 ${(11 * FS).toFixed(1)}px ${MONO}`, letterSpacing: ".12em", fill: "var(--muted)" } }, clock(W.t).toUpperCase()),
-    F.x > 0 ? null : h("text", { x: F.x + F.w / 2, y: F.y + 8 + 29 * FS, textAnchor: "middle", style: { font: `italic ${(12.5 * FS).toFixed(1)}px ${SERIF}`, fill: "var(--faint)" } }, "a simulation: nobody drives them"));
+    F === FRAME_NARROW ? null : h("text", { x: F.x + F.w / 2, y: F.y + 8 + 29 * FS, textAnchor: "middle", style: { font: `italic ${(12.5 * FS).toFixed(1)}px ${SERIF}`, fill: "var(--faint)" } }, "a simulation: nobody drives them"));
 }
 
 // ── passage (main column, under the scene) ──
-function Passage(p) {
+function Passage(p) {   // a compact card under the scene: the story, one passage at a time
   const { step } = useStore(ui); const ps = PASSAGES[step];
-  const btn = { fontFamily: MONO, fontSize: 11, textTransform: "none" };
-  return h(Box, { "data-gui-node-id": p["data-gui-node-id"], id: "passage", sx: { px: { xs: 2.5, md: 5 }, pt: 2.25, pb: 2.5, borderTop: 1, borderColor: "divider", bgcolor: "background.default" } },
-    h(Box, { sx: { maxWidth: 720, mx: "auto" } },
-      h(Typography, { component: "h1", id: "page-title", sx: { fontFamily: SERIF, fontWeight: 400, fontSize: { xs: 15, md: 16 }, letterSpacing: ".04em", lineHeight: 1.3, m: 0, mb: 1, color: "text.secondary" } }, "Autonomous Robotics in Space"),
-      h(Box, { sx: { display: "flex", alignItems: "center", gap: 1, mb: 1.25, flexWrap: "wrap" } },
-        h(Box, { id: "passage-steps", role: "tablist", "aria-label": "Passages", sx: { display: "flex", gap: .5 } },
+  const btn = { fontFamily: MONO, fontSize: 10.5, textTransform: "none", lineHeight: 1.3, py: .4 };
+  return h(Box, { "data-gui-node-id": p["data-gui-node-id"], id: "passage", sx: { px: { xs: 1.25, md: 2 }, pt: { xs: .75, md: 1 }, pb: { xs: 1.25, md: 1.5 } } },
+    h(Box, { id: "passage-card", sx: { maxWidth: 900, mx: "auto", border: 1, borderColor: "divider", borderRadius: 2, bgcolor: "background.paper", px: { xs: 1.5, md: 2 }, py: { xs: 1.1, md: 1.25 } } },
+      h(Box, { sx: { display: "flex", alignItems: "center", gap: .75, flexWrap: "wrap", mb: .5 } },
+        h(Typography, { component: "h1", id: "page-title", sx: { fontFamily: SERIF, fontWeight: 400, fontSize: 13, letterSpacing: ".03em", lineHeight: 1.2, m: 0, color: "text.secondary", mr: .5 } }, "Autonomous Robotics in Space"),
+        h(Box, { id: "passage-steps", role: "tablist", "aria-label": "Passages", sx: { display: "flex", gap: .25 } },
           ...Array.from({ length: STEPS }, (_, i) => i + 1).map((i) => h(Button, { key: i, role: "tab", "aria-selected": i === step, title: PASSAGES[i].title, onClick: () => ui.set({ step: i }), size: "small",
-            sx: { minWidth: 30, width: 30, height: 26, p: 0, fontFamily: SERIF, fontSize: 13, color: i === step ? "primary.main" : "text.secondary", borderBottom: 1, borderColor: i === step ? "primary.main" : "transparent", borderRadius: 0 } }, ROMAN[i]))),
-        h(Box, { sx: { ml: "auto", display: "flex", gap: .75 } },
-          h(Button, { id: "btn-back", size: "small", disabled: step <= 1, onClick: () => ui.set({ step: step - 1 }), sx: btn }, "Back"),
-          h(Button, { id: "btn-next", size: "small", variant: "outlined", onClick: () => ui.set({ step: step >= STEPS ? 1 : step + 1 }), sx: btn }, step >= STEPS ? "From the start" : "Next"))),
-      h(Typography, { component: "h2", id: "passage-title", sx: { fontFamily: SERIF, fontWeight: 400, fontStyle: "italic", fontSize: { xs: 22, md: 26 }, lineHeight: 1.2, m: 0, mb: 1, color: "text.primary" } }, `${ROMAN[step]}. ${ps.title}`),
-      h(Typography, { component: "p", id: "passage-body", sx: { fontFamily: SERIF, fontSize: { xs: 15.5, md: 16.5 }, lineHeight: 1.6, color: "text.primary", m: 0, "& code": { fontFamily: MONO, fontSize: ".82em", color: "primary.main" } }, dangerouslySetInnerHTML: { __html: ps.body } }),
-      h(Box, { component: "code", sx: { display: "block", mt: 1.25, fontFamily: MONO, fontSize: 12, color: "primary.main", whiteSpace: "pre-wrap", wordBreak: "break-word" } }, ps.code),
-      h(Box, { sx: { display: "flex", gap: 1, mt: 1.5, flexWrap: "wrap" } },
-        ...ps.tries.map(([label, fn], i) => h(Button, { key: i, className: "try", variant: "contained", disableElevation: true, size: "small", disabled: !W, onClick: fn, sx: btn }, label)))));
+            sx: { minWidth: 24, width: 24, height: 22, p: 0, fontFamily: SERIF, fontSize: 11.5, color: i === step ? "primary.main" : "text.secondary", borderBottom: 1, borderColor: i === step ? "primary.main" : "transparent", borderRadius: 0 } }, ROMAN[i]))),
+        h(Box, { sx: { ml: "auto", display: "flex", gap: .5 } },
+          h(Button, { id: "btn-back", size: "small", disabled: step <= 1, onClick: () => ui.set({ step: step - 1 }), sx: { ...btn, minWidth: 0 } }, "Back"),
+          h(Button, { id: "btn-next", size: "small", variant: "outlined", onClick: () => ui.set({ step: step >= STEPS ? 1 : step + 1 }), sx: { ...btn, minWidth: 0 } }, step >= STEPS ? "From the start" : "Next"))),
+      h(Typography, { component: "h2", id: "passage-title", sx: { fontFamily: SERIF, fontWeight: 400, fontStyle: "italic", fontSize: { xs: 17, md: 18 }, lineHeight: 1.2, m: 0, mb: .4, color: "text.primary" } }, `${ROMAN[step]}. ${ps.title}`),
+      h(Typography, { component: "p", id: "passage-body", sx: { fontFamily: SERIF, fontSize: { xs: 13.5, md: 14 }, lineHeight: 1.45, color: "text.primary", m: 0, "& code": { fontFamily: MONO, fontSize: ".82em", color: "primary.main" } }, dangerouslySetInnerHTML: { __html: ps.body } }),
+      h(Box, { sx: { display: "flex", alignItems: "center", gap: .75, mt: .75, flexWrap: "wrap" } },
+        ...ps.tries.map(([label, fn], i) => h(Button, { key: i, className: "try", variant: "contained", disableElevation: true, size: "small", disabled: !W, onClick: fn, sx: btn }, label)),
+        h(Box, { component: "code", sx: { flex: "1 1 220px", minWidth: 0, fontFamily: MONO, fontSize: 10.5, color: "primary.main", whiteSpace: "pre-wrap", wordBreak: "break-word" } }, ps.code)),
+      h(Box, { id: "honest-line", sx: { mt: .9, pt: .7, borderTop: 1, borderColor: "divider", fontFamily: SERIF, fontStyle: "italic", fontSize: 12, lineHeight: 1.4, color: "text.secondary" } },
+        h(Box, { component: "b", sx: { fontWeight: 600, fontStyle: "normal", fontFamily: MONO, fontSize: 10.5, letterSpacing: ".04em", mr: .5 } }, "What .me does here:"),
+        "each spider's kernel stores its facts and the logical relations between them, and every decision is an operation over that logic (derive, explain). The walking, the radio and the animation are the page's own code: they only act on it and draw it.")));
 }
 
 // ── aside: controls, the dashboard, what things mean, under the hood ──
@@ -390,11 +411,14 @@ function BatteryGauge({ id }) {
       h(Bound, { path, value: v, id: "battery-pct", sx: { display: "block", fontSize: 46, lineHeight: 1, fontWeight: 600, fontFamily: SERIF, color: `${lv}.main` } }, `${Math.round(pct)}%`),
       h(Typography, { component: "div", sx: { fontFamily: SERIF, fontStyle: "italic", fontSize: 14, color: "text.secondary", mt: .25 } }, charging && ld === 0 ? "charging in the sun" : pct >= 50 ? "plenty of battery" : pct >= 20 ? "getting low" : pct > 0 ? "very low" : "empty")));
 }
-const STATUS_ICON = { exploring: "travel_explore", "going to the sun": "wb_sunny", charging: "battery_charging_full", "going to the ice": "ac_unit", "mining ice": "construction", "studying the ice": "science", "studying the comet": "science",
-  "hiding from the comet dust": "shield", "turning away from the ice": "u_turn_left", asleep: "bedtime" };
+const STATUS_ICON = { exploring: "look", "going to the sun": "sun", charging: "bolt", "going to the ice": "ice", "mining ice": "pick", "studying the ice": "flask", "studying the comet": "flask",
+  "hiding from the comet dust": "shield", "turning away from the ice": "turn", asleep: "zz" };
 const Card = ({ icon, label, children, id, color }) => h(Box, { id, sx: { border: 1, borderColor: "divider", borderRadius: 2, p: 1.25, minWidth: 0, bgcolor: "background.default" } },
-  h(Box, { sx: { display: "flex", alignItems: "center", gap: .75, color: "text.secondary", fontSize: 9.5, letterSpacing: ".12em", textTransform: "uppercase", fontWeight: 600, mb: .5 } }, h(G.Icon, { name: icon, fontSize: 18, "aria-hidden": "true" }), label),
+  h(Box, { sx: { display: "flex", alignItems: "center", gap: .75, color: "text.secondary", fontSize: 9.5, letterSpacing: ".12em", textTransform: "uppercase", fontWeight: 600, mb: .5 } }, h(Ico, { kind: icon, size: 18 }), label),
   h(Box, { sx: { fontFamily: SERIF, fontSize: 18, lineHeight: 1.25, color: color || "text.primary", overflowWrap: "anywhere" } }, children));
+// the action in a few plain words, for the "Doing" card
+const DOING_WORDS = { exploring: "exploring its rock", "going to the sun": "walking to the sun", charging: "charging in the sun", "going to the ice": "walking to the ice", "mining ice": "mining ice",
+  "studying the ice": "studying the ice", "studying the comet": "watching the comet", "hiding from the comet dust": "hiding from the comet dust", "turning away from the ice": "turning away from slippery ice", asleep: "asleep: its battery is empty" };
 // the kernel flag behind each action word (bound, so every word on the dashboard traces back to the robot's kernel)
 const FLAG_OF = { "going to the sun": "goCharge", charging: "goCharge", "hiding from the comet dust": "shelter", "studying the comet": "watchComet", "going to the ice": "followTip", "mining ice": "followTip", "studying the ice": "followTip", exploring: "explore", "turning away from the ice": "explore", asleep: "asleep" };
 function RobotPanel(p) {
@@ -411,12 +435,11 @@ function RobotPanel(p) {
       h(Typography, { component: "span", sx: { fontFamily: SERIF, fontStyle: "italic", fontSize: 14, color: "text.secondary" } }, `the ${r.role}, on ${M.ROCK_NAME[r.rock]}`)),
     h(BatteryGauge, { id }),
     h(Box, { sx: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1, mt: 1.5 } },
-      h(Card, { id: "card-doing", icon: STATUS_ICON[r.status] || "travel_explore", label: "Doing", color: r.dead ? "error.main" : undefined }, h(Bound, { path: `${base}.${flag}`, value: flagV }, r.status)),
-      h(Card, { id: "card-going", icon: "near_me", label: "Going to" }, r.dest),
-      h(Card, { id: "card-msgs", icon: "cell_tower", label: "Messages" }, h(Box, { component: "span", sx: { display: "flex", gap: 1.5, alignItems: "baseline" } },
-        h(Bound, { path: `${base}.sent`, value: sent }, `↑ ${fmt(sent)}`), h(Bound, { path: `${base}.received`, value: recv }, `↓ ${fmt(recv)}`)),
-        h(Box, { sx: { fontSize: 12, fontStyle: "italic", color: "text.secondary" } }, "sent · heard")),
-      h(Card, { id: "card-ice", icon: r.studies ? "science" : r.slips ? "ac_unit" : "construction", label: r.studies ? "Ice samples" : r.slips ? "Ice spots seen" : "Ice mined" },
+      h(Card, { id: "card-doing", icon: STATUS_ICON[r.status] || "look", label: "Doing", color: r.dead ? "error.main" : undefined }, h(Bound, { path: `${base}.${flag}`, value: flagV }, DOING_WORDS[r.status] || r.status)),
+      h(Card, { id: "card-going", icon: "go", label: "Going to" }, r.dest),
+      h(Card, { id: "card-msgs", icon: "radio", label: "Messages" }, h(Box, { component: "span" },
+        h(Bound, { path: `${base}.sent`, value: sent }, `${fmt(sent)} sent`), ", ", h(Bound, { path: `${base}.received`, value: recv }, `${fmt(recv)} heard`))),
+      h(Card, { id: "card-ice", icon: r.studies ? "flask" : r.slips ? "ice" : "pick", label: r.studies ? "Ice samples" : r.slips ? "Ice spots found" : "Ice mined" },
         r.slips ? h(Bound, { path: `${base}.found`, value: found }, fmt(found)) : h(Bound, { path: `${base}.ice`, value: ice }, fmt(ice)))),
     h(KnowsHeard, { r }),
     h(Box, { sx: { display: "flex", gap: .75, mt: 1.25, flexWrap: "wrap" } },
@@ -446,9 +469,9 @@ function KnowsHeard({ r }) {
 }
 // What does a shared object mean to each spider? One column per kernel, each read from that robot's own kernel.
 const MEANINGS = {
-  ice: { title: "The ice", flags: [["iceIsFuel", "something to mine", "construction"], ["iceIsHazard", "slippery: stay away", "warning"], ["iceIsSample", "a sample to study", "science"]], none: ["objects.ice.seen", "hasn't seen any yet", "visibility_off"], rules: ["iceIsFuel", "iceIsHazard", "iceIsSample", "avoidIce"] },
-  comet: { title: "The comet", flags: [["cometIsHazard", "dust! hide and wait", "shield"], ["cometIsSample", "something to study", "science"]], none: ["objects.comet.near", "not close: nothing to do", "do_not_disturb_on"], rules: ["cometIsHazard", "cometIsSample", "shelter", "watchComet"] },
-  rock: { title: "The other rock", flags: [["rockInReach", "friends it can talk to", "cell_tower"]], none: ["objects.rock.inRange", "too far to hear", "signal_disconnected"], rules: ["rockInReach"] },
+  ice: { title: "The ice", flags: [["iceIsFuel", "something to mine", "pick"], ["iceIsHazard", "slippery: stay away", "warn"], ["iceIsSample", "a sample to study", "flask"]], none: ["objects.ice.seen", "hasn't seen any yet", "noeye"], rules: ["iceIsFuel", "iceIsHazard", "iceIsSample", "avoidIce"] },
+  comet: { title: "The comet", flags: [["cometIsHazard", "dust! hide and wait", "shield"], ["cometIsSample", "something to study", "flask"]], none: ["objects.comet.near", "not close: nothing to do", "dash"], rules: ["cometIsHazard", "cometIsSample", "shelter", "watchComet"] },
+  rock: { title: "The other rock", flags: [["rockInReach", "friends it can talk to", "radio"]], none: ["objects.rock.inRange", "too far to hear", "nosignal"], rules: ["rockInReach"] },
 };
 function MeaningCol({ r, objKey }) {
   const def = MEANINGS[objKey], vals = def.flags.map(([f]) => G.useMeValue(`robots.${r.id}.${f}`)), seen = G.useMeValue(`r${r.id}.${def.none[0]}`);
@@ -457,7 +480,7 @@ function MeaningCol({ r, objKey }) {
   return h(Box, { className: "meaning", "data-robot": r.id, sx: { textAlign: "center", border: 1, borderColor: m ? "primary.main" : "divider", borderRadius: 2, p: 1, minWidth: 0 } },
     h(Box, { sx: { fontFamily: MONO, fontSize: 11.5, fontWeight: 600, letterSpacing: ".06em" } }, r.name),
     h(Box, { sx: { fontFamily: SERIF, fontStyle: "italic", fontSize: 11.5, color: "text.secondary" } }, r.role),
-    h(Box, { sx: { my: .5, color: m ? "primary.main" : "text.disabled", lineHeight: 0 } }, h(G.Icon, { name: m ? m[2] : def.none[2], fontSize: 30, "aria-hidden": "true" })),
+    h(Box, { sx: { my: .5, color: m ? "primary.main" : "text.disabled", lineHeight: 0 } }, h(Ico, { kind: m ? m[2] : def.none[2], size: 30 })),
     h(Bound, { path, value, sx: { display: "block", fontFamily: SERIF, fontSize: 14, lineHeight: 1.25, color: m ? "text.primary" : "text.secondary" } }, m ? m[1] : def.none[1]));
 }
 function ObjectsPanel(p) {
@@ -474,7 +497,7 @@ function Hood(p) {
   const { hood } = useStore(ui);
   return h(Box, { "data-gui-node-id": p["data-gui-node-id"], id: "hood", sx: { ...SECTION_SX, borderBottom: 0 } },
     h(Button, { id: "btn-hood", fullWidth: true, variant: "outlined", onClick: () => ui.set({ hood: !hood }), "aria-expanded": hood ? "true" : "false",
-      sx: { fontFamily: MONO, fontSize: 11, textTransform: "none", justifyContent: "space-between", color: "text.secondary", borderColor: "divider" }, endIcon: h(G.Icon, { name: hood ? "expand_less" : "expand_more", fontSize: 18 }) },
+      sx: { fontFamily: MONO, fontSize: 11, textTransform: "none", justifyContent: "space-between", color: "text.secondary", borderColor: "divider" }, endIcon: h(Ico, { kind: hood ? "up" : "down", size: 16 }) },
       hood ? "Hide the kernels" : "Under the hood: show the kernels"),
     hood ? h(Box, { id: "hood-body", sx: { mt: 1.25 } }, h(HoodObjects), h(HoodRobot), h(HoodStats), h(KernelInfo)) : null);
 }
@@ -580,11 +603,16 @@ function ThemeControls() {
   return h(Box, { sx: { display: "inline-flex", alignItems: "center", gap: .25, flexShrink: 0 } },
     h(Button, { id: "theme-picker", size: "small", variant: "outlined", "aria-label": `Theme: ${themeId}`, "aria-haspopup": "true", "aria-expanded": anchor ? "true" : "false", onClick: (e) => setAnchor(e.currentTarget),
       sx: { minWidth: 0, py: .25, px: .75, gap: .5, fontFamily: MONO, fontSize: 11, textTransform: "none", color: "text.secondary", borderColor: "divider", whiteSpace: "nowrap", "& .lbl": { display: { xs: "none", sm: "inline" } } } },
-      h(G.Icon, { name: "palette", fontSize: 15, "aria-hidden": "true" }), h(Box, { component: "span", className: "lbl" }, themeId), h(G.Icon, { name: "expand_more", fontSize: 15, "aria-hidden": "true" })),
+      h(Ico, { kind: "palette", size: 15 }), h(Box, { component: "span", className: "lbl" }, themeId), h(Ico, { kind: "down", size: 13 })),
     h(G.Molecules.Menu, { id: "theme-menu", anchorEl: anchor, open: !!anchor, onClose: close, anchorOrigin: { vertical: "bottom", horizontal: "right" }, transformOrigin: { vertical: "top", horizontal: "right" },
       slotProps: { list: { "aria-label": "Themes", dense: true }, paper: { sx: { width: 220, p: .5, mt: .5 } } } },
       h(G.ThemesCatalog, { sidebarView: "expanded", onThemeSelect: close })),
-    h(G.ThemeModeToggle, { id: "theme-mode-toggle", variant: "minimal", iconSize: "small", sx: { p: "2px", color: "text.secondary" } }));
+    h(ModeToggle));
+}
+function ModeToggle() {   // light / dark, with SVG icons (the .GUI toggle draws its icons with the icon font)
+  const { mode, toggleMode } = G.useThemeContext(), dark = mode === "dark";
+  return h(Button, { id: "theme-mode-toggle", size: "small", onClick: () => toggleMode(), "aria-label": dark ? "Switch to light mode" : "Switch to dark mode", title: dark ? "Light mode" : "Dark mode",
+    sx: { minWidth: 0, p: "4px", color: "text.secondary", borderRadius: 2 } }, h(Ico, { kind: dark ? "moon" : "sunline", size: 17 }));
 }
 
 // ── page spec (GUI.mount) ──
@@ -595,9 +623,9 @@ const N = (type, id, props = {}, children) => ({ type, props: { ...props, "data-
 function pageSpec(live) {
   return N("Box", "page", { sx: { display: "flex", flexDirection: "column", minHeight: "100vh", bgcolor: "background.default", color: "text.primary", "@media (min-width:1001px)": { height: "100vh" } } }, [
     N("SpaceBrand", "brand"),
-    N("Box", "layout", { sx: { flex: 1, minHeight: 0, display: "grid", gridTemplateColumns: "minmax(0, 1fr) 400px", "@media (max-width:1000px)": { gridTemplateColumns: "minmax(0, 1fr)" } } }, [
+    N("Box", "layout", { sx: { flex: 1, minHeight: 0, display: "grid", gridTemplateColumns: "minmax(0, 1fr) 380px", "@media (max-width:1000px)": { gridTemplateColumns: "minmax(0, 1fr)" } } }, [
       N("Box", "main", { component: "main", sx: { display: "flex", flexDirection: "column", minWidth: 0, minHeight: 0, "@media (min-width:1001px)": { overflowY: "auto" } } }, [
-        N("Box", "scene-wrap", { sx: { flex: 1, minHeight: 300, height: { xs: "72vw", md: "auto" }, maxHeight: { xs: 460, md: "none" }, px: { xs: 0, md: 2 }, pt: 1 } }, [N("SpaceScene", "scene")]),
+        N("Box", "scene-wrap", { sx: { flex: 1, minHeight: { xs: 0, md: 360 }, height: { xs: "66vw", md: "auto" }, maxHeight: { xs: 520, md: "none" }, px: { xs: 0, md: 1 }, pt: { xs: .5, md: 0 } } }, [N("SpaceScene", "scene")]),
         N("SpacePassage", "passage"),
       ]),
       N("Box", "aside", { component: "aside", sx: { bgcolor: "background.paper", borderLeft: 1, borderColor: "divider", minHeight: 0, overflowY: "auto", "@media (max-width:1000px)": { borderLeft: 0, borderTop: 1 } } },
