@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Autonomous Robots in Space: Node verification against the real, unmodified this.me@4.1.0.
+// Autonomous Robotics in Space: Node verification against the real, unmodified this.me@4.1.0.
 // Runs the page's own model (space-model.js) through the story's scenarios and checks, step by step:
 //   every derived path in every kernel = a fresh kernel rebuilt from the same facts + same rules = the rule in plain JS;
 //   the scenario outcomes the page describes; the invariants; k; the pointer limitation of 4.1.0 (known issue #4).

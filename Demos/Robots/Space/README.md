@@ -1,4 +1,4 @@
-# Autonomous Robots in Space (build notes)
+# Autonomous Robotics in Space (build notes)
 
 Page: <https://neurons-me.github.io/.me/Demos/Robots/Space/> (`Demos/Robots/Space/index.html`). Linked from the
 Robots landing (<https://neurons-me.github.io/robots/>) and from `.me/Demos`. `Demos/Robots/` redirects to the landing,

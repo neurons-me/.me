@@ -1,4 +1,4 @@
-// Autonomous Robots in Space: the model (shared by the page and verify.mjs).
+// Autonomous Robotics in Space: the model (shared by the page and verify.mjs).
 // KERNEL (this.me@4.1.0, unmodified): every robot fact, every derived value, k, explain().
 // ADAPTER (plain JS, here): the physical truth (where a robot really stands, its real battery), motion,
 // the light-delay queue between Earth and the asteroids, and which action a robot takes from its flags.

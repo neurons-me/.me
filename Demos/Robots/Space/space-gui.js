@@ -1,4 +1,4 @@
-// Autonomous Robots in Space: .GUI page (this.gui@4.1.0, SRI-pinned in index.html, sha256-checked below)
+// Autonomous Robotics in Space: .GUI page (this.gui@4.1.0, SRI-pinned in index.html, sha256-checked below)
 // over the real, unmodified this.me@4.1.0 kernel (sha256-checked below before import).
 //
 // Who owns what:
@@ -235,6 +235,7 @@ function Passage(p) {
   const btn = { fontFamily: MONO, fontSize: 11, textTransform: "none" };
   return h(Box, { "data-gui-node-id": p["data-gui-node-id"], id: "passage", sx: { px: { xs: 2.5, md: 5 }, pt: 2.25, pb: 2.5, borderTop: 1, borderColor: "divider", bgcolor: "background.default" } },
     h(Box, { sx: { maxWidth: 720, mx: "auto" } },
+      h(Typography, { component: "h1", id: "page-title", sx: { fontFamily: SERIF, fontWeight: 400, fontSize: { xs: 15, md: 16 }, letterSpacing: ".04em", lineHeight: 1.3, m: 0, mb: 1, color: "text.secondary" } }, "Autonomous Robotics in Space"),
       h(Box, { sx: { display: "flex", alignItems: "center", gap: 1, mb: 1.25, flexWrap: "wrap" } },
         h(Box, { id: "passage-steps", role: "tablist", "aria-label": "Passages", sx: { display: "flex", gap: .5 } },
           ...Array.from({ length: STEPS }, (_, i) => i + 1).map((i) => h(Button, { key: i, role: "tab", "aria-selected": i === step, title: PASSAGES[i].title, onClick: () => ui.set({ step: i }), size: "small",
