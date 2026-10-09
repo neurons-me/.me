@@ -129,3 +129,7 @@ latest write to that path in that kernel (`k.last`), shown exactly as it was mad
 page's `__space.storyLines(act)` check both. In the code, `robots[1]`, `rocks.b612`, `home`, `objects.ice` and
 `objects.comet` are buttons: they select that spider, rock or object, as tapping it in the sky does, and the selected one
 is marked in every line (`resolveInstance` in `space-gui.js`, using me-syntax's `resolve` / `onSelect` option).
+
+The robot panel's "It knows" and "It heard" are the same kind of lines (`PANEL` in `space-model.js`): each is the latest
+write to that path in that robot's own kernel (its sensors under `objects.*`, `heard[N].battery` / `.at`, the inbox and
+the tip it keeps), with a small dimmed hint read from the same kernel (e.g. "23 min ago" = `now − heard[N].at`).

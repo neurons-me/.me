@@ -125,10 +125,10 @@ export const STORY = [null,
   { title: "A small cost", text: "Each write recomputes only the paths that read it: that number is k. Verify rebuilds all three kernels and compares.",
     groups: [{ who: 1, lines: [{ live: "robots.1.battery", k: true }, { live: "robots.1.lightDist", k: true }, { live: "robots.1.now", k: true }] }] },
 ];
-// check one act against the world's kernels: fixed lines in the setup script, live lines = the latest real write
-export function storyLines(w, act) {
+// check lines against the world's kernels: fixed lines in the setup script, live lines = the latest real write
+export function checkGroups(w, groups) {
   const out = [];
-  for (const g of STORY[act].groups) for (const ln of g.lines) {
+  for (const g of groups) for (const ln of g.lines) {
     const ks = (g.who === "all" ? w.robots : [w.robots.find((r) => r.id === g.who)]).map((r) => r.k);
     const L = typeof ln === "string" ? { code: ln } : ln;
     if (L.code) out.push({ who: g.who, code: L.code, ok: ks.every((k) => k.script.includes(L.code)) });
@@ -136,6 +136,18 @@ export function storyLines(w, act) {
   }
   return out;
 }
+export const storyLines = (w, act) => checkGroups(w, STORY[act].groups);
+
+// The robot panel: what a robot knows (its own sensors) and what it heard, as the real facts in its own kernel.
+// Every line is live: the latest write to that path in that robot's kernel (k.last), exactly as it was made.
+export const PANEL = (id) => [
+  { key: "knows", title: "It knows", sub: "own sensors", who: id,
+    lines: [{ live: `robots.${id}.lightDist`, hint: "light" }, { live: "objects.ice.seen", hint: "ice" }, { live: "objects.comet.near", hint: "comet" }, { live: "objects.rock.inRange", hint: "reach" }] },
+  { key: "heard", title: "It heard", sub: "may be old", who: id,
+    lines: [...IDS.filter((o) => o !== id).flatMap((o) => [{ live: `robots.${id}.heard.${o}.battery`, hint: "said", from: o }, { live: `robots.${id}.heard.${o}.at`, hint: "ago", from: o }]),
+      { live: `robots.${id}.inboxFrom`, hint: "tip" }, { live: `robots.${id}.inboxRock`, hint: "tipRock" }, { live: `robots.${id}.tipFrom`, hint: "accepted" }] },
+];
+export const panelLines = (w, id) => checkGroups(w, PANEL(id));
 
 // One robot kernel. write() = one real kernel write; returns the kernel's wave for it (k, recomputed, changed).
 export function createKernel(ME, id) {

@@ -184,16 +184,21 @@ section("F · one object, three meanings (the same rule text, three kernels)");
   const v = M.verifyWorld(ME, w); checks += v.checked; by.rebuild += v.checked; for (const m of v.mismatches) fails.push({ label: "F rebuild", detail: m });
 }
 
-section("G · the story: every .me line shown in the acts really runs in that kernel");
+section("G · the story and the robot panel: every .me line shown really runs in that kernel");
 {
   const w = M.createWorld(ME); let fixed = 0, live = 0;
-  const all = () => { for (let a = 1; a < M.STORY.length; a++) for (const x of M.storyLines(w, a)) check(`G act ${a}: ${x.code || x.live} (${x.who === "all" ? "every kernel" : M.NAME[x.who] + "'s kernel"})`, x.ok, x); };
+  const all = () => { for (let a = 1; a < M.STORY.length; a++) for (const x of M.storyLines(w, a)) check(`G act ${a}: ${x.code || x.live} (${x.who === "all" ? "every kernel" : M.NAME[x.who] + "'s kernel"})`, x.ok, x);
+    for (const id of M.IDS) for (const x of M.panelLines(w, id)) check(`G panel ${M.NAME[id]}: ${x.code || x.live}`, x.ok, x); };
   all();   // at the start: fixed lines are in each kernel's setup script, word for word
   M.moveRockNow(w, 2, M.NEAR); M.sayHello(w, 3); M.shareTip(w, 1);
   for (let i = 0; i < 1200; i++) { M.step(w, 1); afterStep(w, "G"); }
   M.setBattery(w, 2, 6); M.step(w, 1); afterStep(w, "G");
   all();   // after play: every live line is the latest real write, and the kernel still holds that value
   for (let a = 1; a < M.STORY.length; a++) for (const x of M.storyLines(w, a)) { if (x.live) { live++; check(`G act ${a}: ${x.live} was written by the simulation`, !!x.code, x); } else fixed++; }
+  let panel = 0; for (const id of M.IDS) for (const x of M.panelLines(w, id)) { panel++; check(`G panel ${M.NAME[id]}: ${x.live} was written by the simulation`, !!x.code, x);
+    check(`G panel ${M.NAME[id]}: ${x.live} is in its own kernel`, x.live.startsWith("objects.") || x.live.startsWith(`robots.${id}.`), x); }
+  console.log(`  panel: ${panel} lines (3 robots), each the latest write to that path in that robot's own kernel, at the start and after the run`);
+  console.log(`  e.g. Lua: ${M.panelLines(w, 3).map((x) => x.code).filter(Boolean).slice(3, 7).join(" · ")}`);
   check("G: no act shows an operator other than the real .me ones", M.STORY.slice(1).every((s) => s.groups.every((g) => g.lines.every((l) => !/\["(?!\[i\]"|="|->")[^"]*"\]/.test(typeof l === "string" ? l : l.code || "")))));
   console.log(`  ${fixed} fixed lines found word for word in the setup script of their kernel(s) · ${live} live lines = the latest write in that kernel`);
   console.log(`  e.g. ${M.storyLines(w, 1)[2].code} · ${M.storyLines(w, 4)[1].code} · ${M.storyLines(w, 5)[3].code}`);

@@ -40,9 +40,9 @@ function resolveInstance(path, ctx) {
   return null;
 }
 const refTitle = (id) => { const [k, v] = id.split(":"); return k === "robot" ? `select ${M.NAME[v]}` : k === "rock" ? `select the rock ${M.ROCK_NAME[v]}` : `select the ${v}`; };
-function MeCode({ code, sx, id, className, ctx }) {
+function MeCode({ code, sx, id, className, ctx, unmarked }) {   // unmarked: a ref not marked even when selected (e.g. the panel's own robot)
   const { focus } = useStore(ui);
-  const opts = { resolve: resolveInstance, ctx, selected: focus, onSelect: (ref) => act.focus(ref), title: refTitle };
+  const opts = { resolve: resolveInstance, ctx, selected: (ref) => ref === focus && ref !== unmarked, onSelect: (ref) => act.focus(ref), title: refTitle };
   return h(Box, { component: "code", id, className: `me-code${className ? " " + className : ""}`, sx: { fontFamily: MONO, minWidth: 0, ...(sx || {}) } }, ...(SYN ? SYN.render(h, code, opts) : [code]));
 }
 const SERIF = '"Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Times New Roman", serif';
@@ -489,25 +489,36 @@ function RobotPanel(p) {
       h(Button, { id: "btn-tip", size: "small", variant: "outlined", onClick: () => act.tip(id), sx: { ...btn, flex: 1 } }, "Share an ice tip"),
       h(Button, { id: "btn-drain", size: "small", variant: "outlined", color: "warning", onClick: () => act.drain(id), sx: { ...btn, flex: 1 } }, "Drain battery")));
 }
+// "It knows" / "It heard": the real facts in this robot's own kernel (M.PANEL), each the latest write to that path
+// (k.last) exactly as it was made, with a small dimmed hint in plain words read from the same kernel.
 function KnowsHeard({ r }) {
-  const id = r.id, base = `robots.${id}`, now = useK(`${base}.now`);
-  const ld = useK(`${base}.lightDist`), iceSeen = useK(`r${id}.objects.ice.seen`), comet = useK(`r${id}.objects.comet.near`), reach = useK(`r${id}.objects.rock.inRange`);
-  const tipFrom = useK(`${base}.inboxFrom`), tipRock = useK(`${base}.inboxRock`), inboxAge = useK(`${base}.inboxAge`);
-  const others = W.robots.filter((o) => o.id !== id).map((o) => ({ o, b: FME(`${base}.heard.${o.id}.battery`), at: FME(`${base}.heard.${o.id}.at`) }));
-  const li = (key, ...c) => h(Box, { component: "li", key, sx: { py: .4, borderBottom: 1, borderColor: "divider", "&:last-of-type": { borderBottom: 0 } } }, ...c);
-  const sub = (t) => h(Box, { component: "span", sx: { fontStyle: "italic", fontFamily: SERIF, color: "text.disabled", fontSize: 11 } }, t);
-  const tipWord = !tipFrom ? "no ice tips yet" : `an ice tip from ${M.NAME[tipFrom]} about ${M.ROCK_NAME[tipRock]}: ${r.lastTip?.accepted ? "accepted" : tipRock !== r.rock ? "not its rock, kept as heard" : inboxAge > 120 ? "too old, ignored" : "it already had one"}`;
-  return h(Box, { id: "knows-heard", sx: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1.5, mt: 1.5, fontFamily: SERIF, fontSize: 14, lineHeight: 1.35, "@media (max-width:360px)": { gridTemplateColumns: "1fr" } } },
-    h(Box, { id: "knows", sx: { minWidth: 0 } }, H2("It knows", sub("own sensors")),
-      h(Box, { component: "ul", sx: { listStyle: "none", m: 0, p: 0 } },
-        li("lit", h(Bound, { path: `${base}.lightDist`, value: ld }, ld === 0 ? "it stands in the sun" : "it is in the shade")),
-        li("ice", h(Bound, { path: `r${id}.objects.ice.seen`, value: iceSeen }, iceSeen ? "there is ice on its rock" : "no ice seen yet")),
-        li("comet", h(Bound, { path: `r${id}.objects.comet.near`, value: comet }, comet ? "a comet is close" : "no comet close")),
-        li("reach", h(Bound, { path: `r${id}.objects.rock.inRange`, value: reach }, reach ? "its radio reaches the other rock" : "its radio cannot reach the other rock")))),
-    h(Box, { id: "heard", sx: { minWidth: 0 } }, H2("It heard", sub("may be old")),
-      h(Box, { component: "ul", sx: { listStyle: "none", m: 0, p: 0 } },
-        ...others.map(({ o, b, at }) => li(`h${o.id}`, h(Bound, { path: `${base}.heard.${o.id}.battery`, value: b }, b === undefined ? `${o.name}: nothing yet` : `${o.name} said ${b}%, ${Math.max(0, Math.round(now - at))} min ago`))),
-        li("tip", h(Bound, { path: `${base}.inboxFrom`, value: tipFrom }, tipWord)))));
+  const id = r.id, k = r.k, rd = (p) => k.read(p), base = `robots.${id}`, now = rd(`${base}.now`);
+  const hint = (L, v) => {
+    switch (L.hint) {
+      case "light": return v === 0 ? "in the sun" : "in the shade";
+      case "ice": return v ? "there is ice on its rock" : "no ice seen yet";
+      case "comet": return v ? "a comet is close" : "no comet close";
+      case "reach": return v ? "its radio reaches the other rock" : "its radio can't reach the other rock";
+      case "said": return `what ${M.NAME[L.from]} said, in %`;
+      case "ago": return `${Math.max(0, Math.round(now - v))} min ago`;
+      case "tip": return v ? `an ice tip from ${M.NAME[v]}` : "no ice tips yet";
+      case "tipRock": return `about ${M.ROCK_NAME[v]}: ${v === rd(`${base}.myRock`) ? "its rock" : "not its rock, kept as heard"}`;
+      case "accepted": { const inF = rd(`${base}.inboxFrom`), ok = inF && v === inF && rd(`${base}.tipAt`) === rd(`${base}.inboxAt`);
+        return ok ? "accepted: it keeps this tip" : !v ? "it keeps no tip" : v === id ? "it keeps the ice it found" : `it keeps ${M.NAME[v]}'s tip`; }
+      default: return "";
+    }
+  };
+  const lineOf = (L, i) => {
+    const x = k.last[L.live];
+    if (!x) return L.hint === "said" ? h(Box, { key: i, className: "panel-none", sx: { fontFamily: SERIF, fontStyle: "italic", fontSize: 12, color: "text.disabled", py: "1px" } }, `nothing from ${M.NAME[L.from]} yet`) : null;
+    if ((L.hint === "tipRock" || L.hint === "accepted") && !rd(`${base}.inboxFrom`)) return null;   // no tip heard yet: one line says so
+    return h(Box, { key: i, className: "panel-line", "data-live": L.live, "data-me-path": pagePath(id, L.live), "data-me-value": String(x.value), sx: { py: "1px", lineHeight: 1.45 } },
+      h(MeCode, { code: x.code, ctx: id, unmarked: `robot:${id}`, sx: { fontSize: 10, mr: .75 } }), " ",
+      h(Box, { component: "span", className: "panel-hint", sx: { fontFamily: SERIF, fontStyle: "italic", fontSize: 11.5, color: "text.disabled" } }, hint(L, x.value)));
+  };
+  return h(Box, { id: "knows-heard", sx: { display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 1.25, mt: 1.5 } },
+    ...M.PANEL(id).map((g) => h(Box, { key: g.key, id: g.key, sx: { minWidth: 0 } }, H2(g.title, h(Box, { component: "span", sx: { fontStyle: "italic", fontFamily: SERIF, color: "text.disabled", fontSize: 11 } }, g.sub)),
+      h(Box, { sx: { borderLeft: 2, borderColor: "divider", pl: 1 } }, ...g.lines.map(lineOf)))));
 }
 // What does a shared object mean to each spider? One column per kernel, each read from that robot's own kernel.
 const MEANINGS = {
@@ -700,7 +711,7 @@ try {
       const bad = els.filter((e) => e.dataset.meValue !== String(FME(e.dataset.mePath))).map((e) => ({ path: e.dataset.mePath, dom: e.dataset.meValue, kernel: String(FME(e.dataset.mePath)) }));
       return { bound: els.length, mismatches: bad }; },
     subscribeFact: () => W.robots.map((r) => r.k.me("subscribe")),
-    storyLines: (a) => M.storyLines(W, a),
+    storyLines: (a) => M.storyLines(W, a), panelLines: (id) => M.panelLines(W, id),
   };
   window.__spaceReady = true;
 } catch (e) {
