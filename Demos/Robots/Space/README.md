@@ -4,9 +4,12 @@ Page: <https://neurons-me.github.io/.me/Demos/Robots/Space/> (`Demos/Robots/Spac
 Robots landing (<https://neurons-me.github.io/robots/>) and from `.me/Demos`. `Demos/Robots/` redirects to the landing,
 the same way `Demos/SmartCities/` redirects to the Smart Cities hub.
 
-A short story in seven passages: three small robots on three small asteroids (B 612, B 325, B 329), Earth far away.
-Under one point of control (Earth decides, n = 1) cutting the link leaves each robot on its last order; with .me each
-robot evaluates the same rules in its own kernel and keeps deciding.
+A short story in seven passages, in the spirit of *The Little Prince*: two small asteroids drift in the void. On the
+bigger one, B 612, live two spider robots, Pip (a miner) and Tiko (a light scout). On the smaller one, B 325, lives Lua
+(a scientist). Nobody drives them: each one carries its own this.me@4.1.0 kernel and decides from it. They can talk, but
+only a little: on the same rock easily, across the void only when the radio reaches and no rock is in the way; messages
+take time, the radio sends one at a time, and some get lost. A patch of ice, a passing comet and the other rock are seen
+by all three, and mean something different in each kernel.
 
 ## Pinned dependencies (unmodified, from npm via jsDelivr)
 
@@ -22,49 +25,61 @@ robot evaluates the same rules in its own kernel and keeps deciding.
 | File | What |
 |---|---|
 | `index.html` | head, pinned scripts, meta / og |
-| `space-model.js` | the model, shared by the page and Node: rules, kernels, physics truth, light-delay queue, verifyWorld |
-| `space-gui.js` | the .GUI page: one spec resolved by `GUI.mount`, the scene, the passages, panels |
+| `space-model.js` | the model, shared by the page and Node: rules, kernels, rocks, robots, the radio, verifyWorld |
+| `space-gui.js` | the .GUI page: one spec resolved by `GUI.mount`, the scene, the passages, the dashboard, under the hood |
 | `verify.mjs` | Node verification against this.me@4.1.0 |
 | `assets/space-robots-og.png` | og:image, 1200×630 |
 
 ## Kernels
 
-Four kernels on the page, each `new ME()`: one per robot and one on Earth. Robot i's kernel holds only `robots[i]`
-(plus its home rock and a pointer to it). Earth's kernel holds a mirror of all three robots, written from telemetry
-when it arrives (light time at c for the stylized distances: 20, 24 and 27 minutes one way).
+Three kernels on the page, each `new ME()`, one per robot. Robot i's kernel holds only `robots[i]`, its own view of the
+shared objects (`objects.ice`, `objects.comet`, `objects.rock`), its home rock and a pointer to it. Nothing writes into
+another robot's kernel: a message is data that the receiver writes into its own kernel as "heard" (`heard.<from>.*`,
+`inbox*`), and its own rule decides whether to take it on (`acceptTip`).
 
-The rules are installed once per kernel as a class template, the same text in all four:
+The rules are installed once per kernel as a class template, the same text in all three:
 
 ```js
-me.robots["[i]"]["="]("reserveNeeded", "shade * costPerRad + margin + lagReserve")
-me.robots["[i]"]["="]("mustReturn", "battery < reserveNeeded")
+me.robots["[i]"]["="]("reserve", "lightDist * costPerRad + margin")
+me.robots["[i]"]["="]("mustCharge", "battery < reserve")
 me.robots["[i]"]["="]("charged", "battery >= full")
-me.robots["[i]"]["="]("batteryOk", "battery >= 0 && battery <= 100")
-me.robots["[i]"]["="]("drift", "pos - prevPos - vel * dt")
-me.robots["[i]"]["="]("positionOk", "drift * drift <= tol * tol")
-me.robots["[i]"]["="]("consistent", "batteryOk && positionOk")
-me.robots["[i]"]["="]("safeMode", "!consistent")
-me.robots["[i]"]["="]("goCharge", "consistent && (mustReturn || charging && !charged)")
-me.robots["[i]"]["="]("explore", "consistent && !goCharge")
+me.robots["[i]"]["="]("goCharge", "mustCharge || charging && !charged")
+me.robots["[i]"]["="]("asleep", "battery <= 0")
+me.robots["[i]"]["="]("iceIsFuel", "mines && objects.ice.seen")
+me.robots["[i]"]["="]("iceIsHazard", "slips && objects.ice.seen")
+me.robots["[i]"]["="]("iceIsSample", "studies && objects.ice.seen")
+me.robots["[i]"]["="]("cometIsHazard", "!studies && objects.comet.near")
+me.robots["[i]"]["="]("cometIsSample", "studies && objects.comet.near")
+me.robots["[i]"]["="]("rockInReach", "objects.rock.inRange")
+me.robots["[i]"]["="]("shelter", "!goCharge && cometIsHazard")
+me.robots["[i]"]["="]("watchComet", "!goCharge && cometIsSample")
+me.robots["[i]"]["="]("avoidIce", "iceIsHazard && objects.ice.near")
+me.robots["[i]"]["="]("tipAge", "now - tipAt")
+me.robots["[i]"]["="]("tipFresh", "tipAge <= maxAge")
+me.robots["[i]"]["="]("tipMine", "tipRock == myRock")
+me.robots["[i]"]["="]("followTip", "!goCharge && !objects.comet.near && tipFresh && tipMine && !slips")
+me.robots["[i]"]["="]("explore", "!goCharge && !shelter && !watchComet && !followTip")
+me.robots["[i]"]["="]("inboxAge", "now - inboxAt")
+me.robots["[i]"]["="]("acceptTip", "inboxAge <= maxAge && inboxRock == myRock && !tipFresh")
 ```
 
-`lagReserve` is 0 on board and (2 × one-way delay + telemetry period) × drain on Earth, because Earth decides on old
-data and its order arrives late.
+The rule text is the same; the facts differ (`mines`, `slips`, `studies`, `myRock`, what each one has seen), so the
+same ice is fuel to Pip, a hazard to Tiko and a sample to Lua, and a tip from Pip is accepted by Tiko (same rock) but
+only kept as "heard" by Lua (another rock).
 
-**Pointers.** `robots[i].home -> asteroids.<rock>` is read through (`me("robots.612.home.distanceAU")`). No formula
-reads through it: in this.me 4.1.0 a derived formula that reads through a pointer is not recomputed when the target
-changes (CHANGELOG known issue #4). `verify.mjs` reproduces that and checks that the page's rules contain no pointer read.
+**Pointers.** `robots[i].home -> rocks.<rock>` is read through (`me("robots.1.home.radius")`). No formula reads
+through it: in this.me 4.1.0 a derived formula that reads through a pointer is not recomputed when the target changes
+(CHANGELOG known issue #4). `verify.mjs` reproduces that and checks that the page's rules contain no pointer read.
 
-**Who owns what.** Kernel: facts, derived values, k, explain(). Page/model (adapter): where a robot really is and its
-real battery, motion, the light-delay queue, the action taken from the flags, drawing, the simulation clock.
-`tol` (0.03 rad) absorbs one step of motion change, so the normal write order (vel, prevPos, pos) never flips
-`positionOk`; a 0.6 rad glitch does. After a safe-mode flag the robot stops writing position and battery until its star
-fix (20 simulated minutes), then writes a consistent measurement.
+**Who owns what.** Kernel: facts, derived values, k, explain(). Page/model (adapter): where a robot and a rock really
+are, the real battery, walking, the radio (range 410, line of sight, one message every 6 simulated minutes, an outbox
+of 3, travel time 1 min + distance / 30, a seeded chance of loss), the action taken from the flags, drawing and the
+simulation clock. Each robot writes into its own kernel what its own sensors measure and what it hears.
 
 **Bridge.** this.me@4.1.0 has no change events, and `me.subscribe(...)` on a kernel proxy would write a fact named
 `subscribe`, so the page passes its own `subscribe` bridge to `GUI.createMeRuntime`. Readouts re-read their path when a
 write reports it (the written fact + `explain().meta.recomputed`), batched to a 4 Hz UI tick. The runtime gets a read
-facade over the four kernels: `robots.<id>.*` goes to that robot's kernel, `earth.*` to Earth's.
+facade over the three kernels: `robots.<id>.*` goes to that robot's kernel, `r<id>.objects.*` to that robot's view.
 
 ## Verify
 
@@ -73,27 +88,30 @@ node Demos/Robots/Space/verify.mjs            # downloads this.me@4.1.0 from jsD
 node Demos/Robots/Space/verify.mjs --kernel path/to/me.es.js
 ```
 
-Scenarios: A Earth decides, link up; B Earth decides, link cut; C each robot decides, link cut; D position and
-battery glitches; E low battery in the dark. Every 5 simulated minutes every derived value of every kernel is compared
-with a fresh kernel rebuilt from the same facts and with the same rule written in plain JS. Result (Node 22):
-**192,764 checks, 0 mismatches** (163,800 rebuild/JS comparisons, 28,853 writes that did not flip `positionOk`,
-111 scenario / invariant / k / isolation / pointer checks).
+Scenarios: A the simulation by itself for 3,000 simulated minutes; B messages across the void; C B 325 held out of
+range; D a drained battery; E a shared tip (Tiko accepts, Lua does not, an old tip is refused); F one object, three
+meanings. Every 5 simulated minutes every derived value of every kernel is compared with a fresh kernel rebuilt from
+the same facts and with the same rule written in plain JS; every write is checked to land in the writer's own kernel;
+every delivered message is checked against an independently recomputed link. Result (Node 22, seed 7):
+**207,992 checks, 0 mismatches** (137,403 rebuild/JS comparisons, 67,687 own-kernel writes, 2,794 radio checks, 108
+scenario / meaning / isolation / pointer checks).
 
-The page has a "Verify now" button that runs the same rebuild comparison in the browser (180 checks per run).
+The page has a "Verify now" button (under the hood) that runs the same rebuild comparison in the browser (189 checks
+per run).
 
 ## What this shows, and what it does not
 
-- It shows one instance of the spec's statement n = 1 ⟹ f ≤ 0: with the single point of control unreachable, the
-  robots in this model keep their last order and fall asleep in the dark. It is not a proof.
-- Invariants are re-derived and checked on every write; an inconsistent value is flagged on the write that introduces
-  it, and explain() shows the inputs. It does not make a robot's sensors correct.
+- Each robot's decisions are its own kernel's derived values, recomputed on every write, and explain() shows the
+  inputs. It does not make a robot's sensors correct, and a robot can act on old news (it shows how old).
+- Communication is deliberately limited and lossy; a robot that hears nothing keeps deciding from what it knows.
+  It is a simulation with stylized distances, speeds and battery rates, not a model of a real radio or mission.
 - k and the per-write times are measured in the browser (and in Node by verify.mjs). O(k) here means a write
   recomputes only its dependents; it is not a hard real-time guarantee on any hardware.
-- Distances, speeds and battery rates are stylized. Light delay is computed at c for the stylized distances.
 
 ## .GUI notes
 
 Used as published: `GUI.mount`, `GUI.createMeRuntime`, `GUI.useMeValue`, `GUI.Theme`, `GUI.ThemesCatalog`,
 `GUI.ThemeModeToggle`, `GUI.useThemeContext`, Atoms (`Box`, `Button`, `Typography`, `Link`, `TextField`, `Slider`) and
-`Molecules.Menu` / `MenuItem`. Built page-side because 4.1.0 has no such component: the scene (a small SVG
-"orbital diagram" with the theme's colours), the passage stepper, and the explain() card (as on the Veracruz page).
+`Molecules.Menu` / `MenuItem`, and `GUI.Icon` (Material Symbols). Built page-side because 4.1.0 has no such component: the scene (an SVG with
+the theme's colours: two rocks, spiders with animated legs, messages in flight), the battery gauge, the passage stepper,
+and the explain() card (as on the Veracruz page).
