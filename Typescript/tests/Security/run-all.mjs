@@ -22,6 +22,7 @@ const sections = [
   "scopes-and-noise.test.ts",
   "root-scope-lock.test.ts",
   "root-secret-stealth.test.ts",
+  "withscope-current.test.ts",
   "root-secret-aggregate-paths.test.ts",
   "lww-index-consistency.test.ts",
   "leakage.test.ts",
