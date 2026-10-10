@@ -189,6 +189,39 @@ Expected output:
 { "1": 50, "2": 100, "3": 200 }
 ```
 
+## Collection aggregates: count `x[]` and sum `x[].f` (4.2)
+
+An empty `[]` (no selector) reads an aggregate over the members of a collection:
+`x[]` is the count, `x[].f` the exact sum of field `f`. Both work in `me()`,
+`explain()` and formula text.
+
+```ts
+me("fleet.trucks[]");        // 3
+me("fleet.trucks[].fuel");   // 700
+me.fleet["="]("fuelX2", "fleet.trucks[].fuel * 2"); // collection path from the root
+me("fleet.fuelX2");
+```
+
+Expected output:
+
+```txt
+3
+700
+1400
+```
+
+- Computed over the **public view** (what `me.as(null)` sees), for every caller including the
+  owner; protected members never count. Scalar path reads are unchanged.
+- A member without the field (or with a non-numeric value) makes the sum `undefined`
+  (status `incomplete`, never a partial sum). An empty collection is `undefined`, not `0`.
+- `|x[]|`, `x[] <= 128`, `x[][]`, `a[]b` are not valid: the read is `undefined`
+  (`evaluation-failed`) and nothing is written.
+- The collection is bound **from the root**, even inside a scoped formula: write
+  `fleet.trucks[].fuel`, not `trucks[].fuel` (no relative fallback, unlike scalar refs). Per member, use
+  `[i]`: `me.robots["[i]"]["="]("battery", "robots[i].batteries[].charge")`.
+- The literal key `[]` is written with a quoted selector: `z["[]"].w`.
+- Changes from 4.1.0 (I1–I10) and known limits: see the CHANGELOG.
+
 ## 5. Operator Syntax Examples ​
 
 ## @ identity ​

@@ -1,4 +1,5 @@
 import type { KernelMemory, SemanticPath } from "./types.ts";
+import { classifyPathExpression, type PathExprClass } from "./path-expr.ts";
 // Forward declarations to avoid circular type imports.
 // MEProxy is defined in me.ts; we only need it as `any` at runtime.
 export type MEProxy = any;
@@ -9,6 +10,11 @@ export interface HandleCallDeps {
   normalizeArgs(args: any[]): any;
   /** Read a semantic path (used by root GET bias). */
   readPath(path: SemanticPath): any;
+  /**
+   * Read a root string the path-expression parser classified as an aggregate reference (I1) or as a rejected
+   * aggregate-like form (I2). Always a read; never writes.
+   */
+  readPathExpression?(parsed: PathExprClass, raw: string): any;
   /** Perform a semantic write/claim at a path. May return a memory, a value, or undefined. */
   postulate(path: SemanticPath, expression: any): any;
   /** Resolve operator kinds (used only to decide chaining path when a memory was produced). */
@@ -83,6 +89,15 @@ export function handleCall(deps: HandleCallDeps, path: SemanticPath, args: any[]
   if (path.length === 0) {
     if (args.length === 1 && typeof args[0] === "string") {
       const s = (args[0] as string).trim();
+      // Grammar-driven routing (contract v3 §3 "Root-call routing"): only a string the parser classifies as an
+      // aggregate reference changes route, and it always reads (I1). Every other string keeps the 4.1 routing.
+      // An aggregate-like string (bare `[]` or a blank selector outside quotes) never writes: a valid aggregate
+      // reference reads (I1), an invalid one fails as a read (undefined, nothing written, I2). Every other string
+      // keeps the 4.1 routing.
+      const parsed = classifyPathExpression(s);
+      if ((parsed.kind === "aggregate" || parsed.kind === "rejected") && deps.readPathExpression) {
+        return deps.readPathExpression(parsed, s);
+      }
       const isOperatorPrefixed = s.startsWith("_") || s.startsWith("~") || s.startsWith("@");
       const isDottedPath = s.includes(".");
       const isSingleLabelPath = /^[a-zA-Z][a-zA-Z0-9_-]*$/.test(s);

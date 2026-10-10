@@ -12,6 +12,7 @@
  * ---------------------------------------------------------
  */
 import sha3 from "js-sha3";
+import { evaluateAggregate } from "./aggregate.ts";
 import {
   deriveBranchProofSeed,
   detectBlobVersion,
@@ -29,6 +30,7 @@ import {
   wrapSecretV1,
 } from "./crypto.ts";
 import * as Core from "./core.ts";
+import type { PathExprClass } from "./path-expr.ts";
 import * as Derivation from "./derivation.ts";
 import * as Evaluator from "./evaluator.ts";
 import { createInitialKernelFields } from "./kernel-state.ts";
@@ -237,6 +239,18 @@ function resolveSeed(seed: unknown): string {
  *   [Operators](/Operators), and
  *   [Syntax](/Syntax)
  */
+
+/** One-time process warning for deprecated {@link ME.withScope}. */
+let withScopeDeprecationWarned = false;
+function warnWithScopeDeprecatedOnce(): void {
+  if (withScopeDeprecationWarned) return;
+  withScopeDeprecationWarned = true;
+  console.warn(
+    "[this.me] ME#withScope is deprecated and does not restrict reads on existing handles. " +
+      "Migrate to me.as(key|null) and read through the returned handle. See CHANGELOG / TypeDoc.",
+  );
+}
+
 export class ME {
   [key: string]: any;
   private static readonly RUNTIME_ESCAPE_TOKEN = ProxyRuntime.RUNTIME_ESCAPE_TOKEN;
@@ -1505,7 +1519,10 @@ export class ME {
   private isStealthBlocked(path: SemanticPath, callerScope: string | null | undefined): boolean {
     if (callerScope === undefined) return false;
     const normalized = Utils.normalizeSelectorPath(path);
-    for (let i = normalized.length; i > 0; i--) {
+    // i >= 0 so the root scope key "" (bare me["_"](...)) is checked too.
+    // The previous bound i > 0 skipped it, so guests could read root-scoped
+    // leaves in the clear (see tests/Security/root-secret-stealth.test.ts).
+    for (let i = normalized.length; i >= 0; i--) {
       const ancestorKey = normalized.slice(0, i).join(".");
       const secretScope = this.localSecrets[ancestorKey];
       if (secretScope !== undefined && secretScope !== callerScope) {
@@ -1513,6 +1530,18 @@ export class ME {
       }
     }
     return false;
+  }
+
+  /**
+   * Root string read for a string the path-expression parser classified (path-expr.ts, handleCall.ts):
+   * - aggregate (`x[]`, `x[].f`): evaluated in the public-view context for EVERY caller (contract v4.1 §2.3), so
+   *   the owner, `me.as(null)` and `me.as(key)` get the same value; nothing is written;
+   * - rejected form (any route): `undefined`; nothing is written.
+   * Plain and quoted-literal strings never come here: they keep the 4.1 route (readPath).
+   */
+  private readPathExpression(parsed: PathExprClass, _raw: string): any {
+    if (parsed.kind !== "aggregate") return undefined;
+    return evaluateAggregate(this as unknown as MEKernelLike, parsed.ref, "public-view").value;
   }
 
   private readPath(path: SemanticPath): any {
@@ -1524,6 +1553,30 @@ export class ME {
     return Core.readPath(this as unknown as MEKernelLike, path);
   }
 
+  /**
+   * Return a handle bound to a caller scope for stealth reads.
+   *
+   * - `me.as(null)` — guest: paths under a `_()` secret are indistinguishable from
+   *   paths that do not exist (`undefined`). **Public** paths remain readable.
+   * - `me.as("scope-key")` — key holder: paths under that `_()` secret are readable.
+   * - Omit / use the owner `me` — full session privileges (`_currentCallerScope` unset).
+   *
+   * Always read through the **returned** handle. This is the supported audience API
+   * (see axiom A3b). Prefer this over {@link ME.withScope}, which is deprecated.
+   *
+   * @example
+   * ```ts
+   * me.shop.label("Cafe");
+   * me.ops["_"]("downtown-ops-key");
+   * me.ops.beansKg(3);
+   *
+   * const guest = me.as(null);
+   * guest("shop.label");   // "Cafe" — public, still readable
+   * guest("ops.beansKg");  // undefined — protected (same as a missing path)
+   * guest("ops.missing");  // undefined — does not exist (indistinguishable)
+   * me("ops.beansKg");     // 3 — owner
+   * ```
+   */
   as(scope: string | null): ME {
     const prev = this._currentCallerScope;
     this._currentCallerScope = scope;
@@ -1534,7 +1587,35 @@ export class ME {
     }
   }
 
+  /**
+   * @deprecated Does **not** restrict reads the way its name suggests. Prefer {@link ME.as}.
+   *
+   * `withScope(scope, fn)` only assigns `_currentCallerScope` for the duration of `fn`.
+   * Reads through an existing handle (including the owner `me` proxy) re-apply the
+   * scope captured when that handle was created, so
+   * `withScope(null, () => me("secret.leaf"))` still returns the secret on the owner
+   * handle. Guests are not escalated, but the owner is not demoted either.
+   *
+   * **Do not use this as an authorization boundary.** Migrate to `me.as(key | null)`
+   * and perform restricted reads through the returned handle. A guest handle still
+   * reads **public** paths; `undefined` means the path is protected *or* absent
+   * (those two cases are not distinguishable):
+   *
+   * ```ts
+   * // before (ineffective demotion — do not rely on this)
+   * me.withScope(null, () => me("ops.beansKg"));
+   *
+   * // after
+   * const guest = me.as(null);
+   * guest("shop.label");  // public value — still readable
+   * guest("ops.beansKg"); // undefined — protected or missing (indistinguishable)
+   * ```
+   *
+   * Kept exported for compatibility only; runtime behavior is unchanged (aside from a
+   * one-time `console.warn` per process).
+   */
   withScope<T>(scope: string | null, fn: () => T): T {
+    warnWithScopeDeprecatedOnce();
     const prev = this._currentCallerScope;
     this._currentCallerScope = scope;
     try {

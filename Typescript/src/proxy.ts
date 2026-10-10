@@ -265,6 +265,7 @@ export function createProxy(
           createProxy: (p) => createProxy(self, p, callerScope),
           normalizeArgs: (a) => self.normalizeArgs(a),
           readPath: (p) => self.readPath(p),
+          readPathExpression: (parsed, raw) => (self as any).readPathExpression(parsed, raw),
           postulate: (p, e) => self.postulate(p, e),
           opKind: (op) => self.opKind(op),
           splitPath,

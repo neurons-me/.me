@@ -1,4 +1,10 @@
 import { isPointer } from "./operators.ts";
+import {
+  AGGREGATE_TOKEN_SOURCE,
+  classifyPathExpression,
+  hasWhitespaceSelector,
+  type AggregateRef,
+} from "./path-expr.ts";
 import type {
   MEKernelLike,
   SemanticPath,
@@ -35,6 +41,7 @@ export function tokenizeEvalExpression(
   | Array<
       | { kind: "literal"; value: any }
       | { kind: "identifier"; value: string }
+      | { kind: "aggregate"; value: string; ref: AggregateRef }
       | { kind: "op"; value: string }
       | { kind: "lparen" }
       | { kind: "rparen" }
@@ -43,6 +50,7 @@ export function tokenizeEvalExpression(
   const tokens: Array<
     | { kind: "literal"; value: any }
     | { kind: "identifier"; value: string }
+    | { kind: "aggregate"; value: string; ref: AggregateRef }
     | { kind: "op"; value: string }
     | { kind: "lparen" }
     | { kind: "rparen" }
@@ -50,6 +58,8 @@ export function tokenizeEvalExpression(
 
   const seg = String.raw`[A-Za-z_][A-Za-z0-9_]*(?:\[(?:"[^"]*"|'[^']*'|[^\]]+)\])*`;
   const tokenRe = new RegExp(String.raw`^(?:__ptr(?:\.${seg})*|${seg}(?:\.${seg})*)`);
+  // Collection aggregate reference (contract v3 §3): `<path>[]` or `<path>[].<field>`. Tried before identifiers.
+  const aggregateRe = new RegExp(String.raw`^(?:${AGGREGATE_TOKEN_SOURCE(seg)})`);
   const reservedValues: Record<string, any> = {
     true: true,
     false: false,
@@ -118,8 +128,18 @@ export function tokenizeEvalExpression(
       continue;
     }
 
+    const am = raw.slice(i).match(aggregateRe);
+    if (am && am[0]) {
+      const parsed = classifyPathExpression(am[0]);
+      if (parsed.kind !== "aggregate") return null;   // rejected form, e.g. x[a > 1][]
+      tokens.push({ kind: "aggregate", value: am[0], ref: parsed.ref });
+      i += am[0].length;
+      continue;
+    }
+
     const m = raw.slice(i).match(tokenRe);
     if (m && m[0]) {
+      if (hasWhitespaceSelector(m[0])) return null;   // z[ ].w is rejected, not read as z.w
       const token = m[0];
       if (Object.prototype.hasOwnProperty.call(reservedValues, token)) {
         tokens.push({ kind: "literal", value: reservedValues[token] });
@@ -136,10 +156,46 @@ export function tokenizeEvalExpression(
   return tokens;
 }
 
+/**
+ * Whether formula text is well-formed without reading any value: it tokenizes, operators sit where the evaluator
+ * accepts them, no value follows a value (`x[] .2`, known issue #5), and parentheses balance. Used so a malformed
+ * formula with aggregates fails as text (evaluation-failed) rather than by its inputs.
+ */
+export function isTokenizableExpression(expr: string): boolean {
+  const raw = String(expr ?? "").trim();
+  if (!raw || !/^[A-Za-z0-9_\s+\-*/%().<>=!&|\[\]"']+$/.test(raw)) return false;
+  const tokens = tokenizeEvalExpression(raw);
+  if (!tokens || tokens.length === 0) return false;
+  let prev: "start" | "value" | "op" | "lparen" | "rparen" = "start";
+  let depth = 0;
+  for (const token of tokens) {
+    const after = prev === "value" || prev === "rparen";
+    if (token.kind === "literal" || token.kind === "identifier" || token.kind === "aggregate") {
+      if (after) return false;
+      prev = "value";
+    } else if (token.kind === "lparen") {
+      if (after) return false;
+      depth++;
+      prev = "lparen";
+    } else if (token.kind === "rparen") {
+      if (!after || depth === 0) return false;
+      depth--;
+      prev = "rparen";
+    } else {
+      const op = token.value;
+      if (op === "!" ? after : !after && op !== "-") return false;
+      prev = "op";
+    }
+  }
+  return depth === 0 && (prev === "value" || prev === "rparen");
+}
+
 export function tryEvaluateAssignExpression(
   self: MEKernelLike,
   evalScopePath: SemanticPath,
   expr: string,
+  /** Values of the aggregate references, by reference text, already resolved by the caller (derivation.ts). */
+  aggregateValues?: Map<string, number>,
 ): { ok: true; value: number | boolean } | { ok: false } {
   const raw = String(expr ?? "").trim();
   if (!raw) return { ok: false };
@@ -171,6 +227,7 @@ export function tryEvaluateAssignExpression(
   const out: Array<
     { kind: "literal"; value: any } |
     { kind: "identifier"; value: string } |
+    { kind: "aggregate"; value: string; ref: AggregateRef } |
     { kind: "op"; value: string }
   > = [];
   const ops: Array<{ kind: "op"; value: string } | { kind: "lparen" }> = [];
@@ -179,7 +236,7 @@ export function tryEvaluateAssignExpression(
   let prev: Prev = "start";
 
   for (const token of tokens) {
-    if (token.kind === "literal" || token.kind === "identifier") {
+    if (token.kind === "literal" || token.kind === "identifier" || token.kind === "aggregate") {
       out.push(token);
       prev = "value";
       continue;
@@ -250,6 +307,14 @@ export function tryEvaluateAssignExpression(
   for (const token of out) {
     if (token.kind === "literal") {
       stack.push(token.value);
+      continue;
+    }
+
+    if (token.kind === "aggregate") {
+      // Resolved by the caller before evaluation; an aggregate without a value means the formula has none.
+      const v = aggregateValues?.get(token.ref.text);
+      if (v === undefined) return { ok: false };
+      stack.push(v);
       continue;
     }
 

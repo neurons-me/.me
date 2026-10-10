@@ -30,6 +30,11 @@ export function findTopLevelIndex(input: string, needle: string): number {
   return -1;
 }
 
+// Turn path segments into storage segments: `x[2]` → x, 2; `x["k"]` / `x['k']` → x, k (quote-aware: the quoted
+// text may contain `[` or `]`, so `z["[]"]` → z, "[]"). A segment with an empty or blank selector (`[]`, `x[]`,
+// `z[ ]`) is kept whole as a literal segment; 4.1 dropped the selector, which moved `["="]` declarations under a
+// literal `[]` to the parent (contract v3 I6) and made literal `[]` segments unreadable. Bare `[]` in a path
+// *string* is the aggregate operator and is recognised before this (path-expr.ts); here segments are literal.
 export function normalizeSelectorPath(path: SemanticPath): SemanticPath {
   const out: SemanticPath = [];
   for (const segment of path) {
@@ -43,15 +48,81 @@ export function normalizeSelectorPath(path: SemanticPath): SemanticPath {
 
     const base = s.slice(0, firstBracket).trim();
     const tail = s.slice(firstBracket);
-    if (base) out.push(base);
 
+    const selectors: Array<{ text: string; quoted: boolean }> = [];
+    let ok = true;
+    let i = 0;
+    while (i < tail.length) {
+      if (tail[i] !== "[") { ok = false; break; }
+      const q = tail[i + 1];
+      if (q === '"' || q === "'") {
+        const close = tail.indexOf(q, i + 2);
+        if (close !== -1 && tail[close + 1] === "]") {
+          selectors.push({ text: tail.slice(i + 2, close), quoted: true });
+          i = close + 2;
+          continue;
+        }
+      }
+      const close = tail.indexOf("]", i + 1);
+      if (close === -1) { ok = false; break; }
+      const inner = tail.slice(i + 1, close);
+      let text = inner.trim();
+      let quoted = false;
+      if (text.length >= 2 && ((text.startsWith('"') && text.endsWith('"')) || (text.startsWith("'") && text.endsWith("'")))) {
+        text = text.slice(1, -1);
+        quoted = true;
+      }
+      selectors.push({ text, quoted });
+      i = close + 1;
+    }
+
+    if (!ok) {
+      if (base) out.push(base);
+      out.push(tail);
+      continue;
+    }
+    if (selectors.some((sel) => !sel.quoted && sel.text === "")) {
+      out.push(s);
+      continue;
+    }
+
+    if (base) out.push(base);
+    for (const sel of selectors) {
+      if (!sel.text) continue;
+      out.push(sel.text);
+    }
+  }
+  return out;
+}
+
+/**
+ * The 4.1.0 normalizer, kept verbatim for ONE purpose: the scope path of a secret declaration `["_"](key)`.
+ *
+ * Historical protection (contract v3 §3 "Secret scopes through literal bracket segments"): in 4.1.0,
+ * `me.z["[]"]["_"]("k")` declares the secret scope on `z` (the empty selector is dropped), so the whole branch `z`
+ * is stealth. 4.2 keeps literal `[]` segments everywhere else (I6), but a secret declaration keeps the 4.1 scope,
+ * because narrowing it to `z.[]` would silently make the rest of `z` public. Not quote-aware, drops empty and
+ * blank selectors, exactly as 4.1.0 (utils.ts:33–68 at adf38cd). Do not use it anywhere else.
+ */
+export function normalizeSecretScopePath41(path: SemanticPath): SemanticPath {
+  const out: SemanticPath = [];
+  for (const segment of path) {
+    const s = String(segment).trim();
+    if (!s) continue;
+    const firstBracket = s.indexOf("[");
+    if (firstBracket === -1) {
+      out.push(s);
+      continue;
+    }
+    const base = s.slice(0, firstBracket).trim();
+    const tail = s.slice(firstBracket);
+    if (base) out.push(base);
     const matches = Array.from(tail.matchAll(/\[([^\]]*)\]/g));
     const reconstructed = matches.map((m) => m[0]).join("");
     if (reconstructed !== tail) {
       out.push(tail);
       continue;
     }
-
     for (const m of matches) {
       let selector = (m[1] ?? "").trim();
       if (

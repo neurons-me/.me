@@ -21,6 +21,9 @@ const sections = [
   "isolation.test.ts",
   "scopes-and-noise.test.ts",
   "root-scope-lock.test.ts",
+  "root-secret-stealth.test.ts",
+  "withscope-current.test.ts",
+  "root-secret-aggregate-paths.test.ts",
   "lww-index-consistency.test.ts",
   "leakage.test.ts",
   "crypto-tamper.test.ts",
@@ -37,7 +40,12 @@ let anyFailed = false;
 for (const section of sections) {
   const file = path.join(__dirname, section);
   console.log(`\n=== Security battery: ${section} ===`);
-  const result = spawnSync(process.execPath, [file], { stdio: "inherit" });
+  const env = { ...process.env };
+  const prior = env.NODE_OPTIONS ? String(env.NODE_OPTIONS) + " " : "";
+  if (!/\b--import\b/.test(prior) && !/\btsx\b/.test(prior)) {
+    env.NODE_OPTIONS = prior + "--import tsx";
+  }
+  const result = spawnSync(process.execPath, [file], { stdio: "inherit", env });
   if (result.status !== 0) {
     anyFailed = true;
     console.error(`\n=== ${section} FAILED (exit code ${result.status}) ===`);

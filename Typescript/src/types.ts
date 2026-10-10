@@ -611,22 +611,42 @@ export interface OperatorSystemSpec {
 export type MERecomputeMode = "eager" | "lazy";
 
 /** Why a derivation currently has no value (it reads back as `undefined`). */
+/**
+ * Why a derivation (or an ad hoc aggregate) has no value. With aggregates, `reason` is the PRIMARY reason, chosen
+ * by a fixed precedence that does not depend on evaluation or input order (contract v3 §11 I5):
+ *   cycle > missing-input > incomplete > evaluation-failed.
+ * `inputs` lists the inputs behind the primary reason; `causes` lists EVERY input that did not resolve, with its
+ * own status, sorted by path. Formulas without aggregates keep the 4.1 shape (no `causes`).
+ */
+export type MEUnresolvedCause = { path: string; status: string };
 export type MEDerivationUnresolved =
-  | { reason: "missing-input"; inputs: string[] }
+  | { reason: "missing-input"; inputs: string[]; causes?: MEUnresolvedCause[] }
   | { reason: "cycle"; cycle: string[] }
-  | { reason: "evaluation-failed" };
+  | { reason: "incomplete"; inputs: string[]; causes: MEUnresolvedCause[] }
+  /** `detail` names the parse error when the path itself is a rejected `[]` form (path-expr.ts RejectReason). */
+  | { reason: "evaluation-failed"; inputs?: string[]; detail?: string; causes?: MEUnresolvedCause[] };
 
 export interface MEDerivationRecord {
   expression: string;
   evalScope: SemanticPath;
-  /** Each identifier in the expression and every path the evaluator may read for it (relative first, then root). */
-  refs: Array<{ label: string; candidates: string[] }>;
+  /**
+   * Each identifier in the expression and every path the evaluator may read for it (relative first, then root).
+   * `via[i]`, when present, lists what reading `candidates[i]` currently goes through: each pointer location
+   * followed and each path it leads to. The derivation is subscribed to these too.
+   */
+  refs: Array<{ label: string; candidates: string[]; via?: string[][] }>;
+  /** Collection aggregate references (`x[]`, `x[].f`) in the expression, parsed (path-expr.ts). Absent when none. */
+  /** The expression holds a path form the contract rejects (`z.[].w`, `z[ ].w`, `x[].y[]`): evaluation-failed. */
+  rejectedPathForm?: boolean;
+  aggregates?: Array<{ text: string; collection: SemanticPath; field: SemanticPath | null; op: "count" | "sum" }>;
   lastComputedAt: number;
   unresolved?: MEDerivationUnresolved;
   /** Every candidate path of every ref, deduplicated (cached). */
   refPaths?: string[];
   /** Value this derivation last wrote itself; absent when unknown (then the stored value is read). */
   lastValue?: any;
+  /** A pointer was written on or above one of its paths: re-resolve `via` on the next commit. */
+  viaStale?: boolean;
 }
 
 /** A `[i]` derivation kept as a template so children added later get it too. */
@@ -690,6 +710,25 @@ export interface MEExplainResult {
       value: any;
       origin: "public" | "stealth";
       masked: boolean;
+      /**
+       * Per-input status (additive). Scalar: "resolved" | "missing" | "masked". Aggregate: the aggregate's status
+       * ("resolved" | "absent" | "incomplete" | "deferred" | "non-finite" | "cycle" | "unsupported").
+       */
+      status?: string;
+      /** Present on aggregate inputs only. */
+      kind?: "aggregate";
+      aggregate?: {
+        collection: string;
+        field: string | null;
+        op: "count" | "sum";
+        context: "public-view" | "authorized";
+        coverage: "public-view" | "authorized";
+        status: string;
+        reason?: string;
+        members: number | null;
+        terms: number | null;
+        domain: "number" | "boolean" | null;
+      };
     }>;
   };
   meta: {

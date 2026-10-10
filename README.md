@@ -340,6 +340,21 @@ me.city.area = 200
 me.city.density = () => me.city.population / me.city.area
 ```
 
+### Collections: `[]` (4.2)
+
+```ts
+me.fleet.trucks[1].fuel(100);
+me.fleet.trucks[2].fuel(200);
+me.fleet.trucks[3].fuel(400);
+
+me("fleet.trucks[]");        // 3    count of members
+me("fleet.trucks[].fuel");   // 700  exact sum of fuel over the members
+me["="]("total", "fleet.trucks[].fuel * 2");
+me("total");                 // 1400 same forms inside formulas
+```
+
+`x[]` counts members, `x[].f` sums a field — over the **public view**, for every caller. Changes from 4.1.0 and known limits: [CHANGELOG](https://github.com/neurons-me/.me/blob/main/Typescript/CHANGELOG.md).
+
 ### Language-agnostic
 
 `.me` isn't English underneath — it's structure. Swap the vocabulary and the algebra doesn't change:

@@ -1,4 +1,5 @@
-import { pathStartsWith } from "./operators.ts";
+import { isPointer, pathStartsWith } from "./operators.ts";
+import { hasPointerOnPath, pointerReadTrajectory } from "./core-index.ts";
 import { resolveBranchScope } from "./secret.ts";
 import type {
   MEDerivationRecord,
@@ -8,33 +9,190 @@ import type {
   MEKernelLike,
   SemanticPath,
 } from "./types.ts";
-import { tryEvaluateAssignExpression } from "./evaluator.ts";
+import { isTokenizableExpression, tryEvaluateAssignExpression } from "./evaluator.ts";
 import { normalizeSelectorPath } from "./utils.ts";
+import {
+  AGGREGATE_TOKEN_SOURCE,
+  classifyPathExpression,
+  renderAggregate,
+  renderKey,
+  renderSegments,
+  type AggregateRef,
+} from "./path-expr.ts";
+import { evaluateAggregate, refreshPublicMemberFormulas } from "./aggregate.ts";
+import {
+  aggregateKey,
+  flushAggregateChanges,
+  isAggregateKey,
+  noteAggregateSubscription,
+  takeFlushedAggregateKeys,
+} from "./aggregate-index.ts";
+
+// ─── aggregates: result, explain entry, primary reason ─────────────────────────
+
+/** Evaluation context of an aggregate (contract v4.1 §2.3). Fixed by the request, never by the data. */
+export type AggregateContext = "public-view" | "authorized";
+
+export interface AggregateResult {
+  value: number | undefined;
+  /** "resolved" | "absent" | "incomplete" | "deferred" | "non-finite" | "cycle" | "unsupported" */
+  status: string;
+  reason?: string;
+  members: number | null;
+  terms: number | null;
+  domain: "number" | "boolean" | null;
+  problems?: { count: number; sample: Array<{ path: string; kind: string }> };
+}
+
+/** The value of one aggregate reference in a context: the S3 reference evaluator (aggregate.ts). */
+export function aggregateResult(
+  self: MEKernelLike,
+  ref: AggregateRef,
+  context: AggregateContext,
+  targetKey?: string,
+): AggregateResult {
+  return evaluateAggregate(self, ref, context, targetKey);
+}
+
+// Explain entry for one aggregate reference. Context and coverage come only from the evaluation context, never
+// from the data.
+function aggregateInput(
+  ref: AggregateRef,
+  context: AggregateContext,
+  r: AggregateResult,
+): NonNullable<MEExplainResult["derivation"]>["inputs"][number] {
+  return {
+    label: ref.text,
+    path: renderAggregate(ref),
+    kind: "aggregate",
+    value: r.value,
+    origin: "public",
+    masked: false,
+    status: r.status,
+    aggregate: {
+      collection: renderSegments(ref.collection),
+      field: ref.field ? ref.field.join(".") : null,
+      op: ref.op,
+      context,
+      coverage: context,
+      status: r.status,
+      ...(r.reason ? { reason: r.reason } : {}),
+      members: r.members,
+      terms: r.terms,
+      domain: r.domain,
+      ...(r.problems ? { problems: r.problems } : {}),
+    },
+  };
+}
+
+const byPath = (a: { path: string }, b: { path: string }) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
+
+/**
+ * Primary reason of a formula (or ad hoc aggregate) that has aggregate inputs, by a FIXED precedence that does not
+ * depend on evaluation or input order (contract v3 §11 I5):
+ *   cycle > missing-input > incomplete > evaluation-failed
+ * - missing-input: a scalar input has no value, or an aggregate is `absent` (empty collection);
+ * - incomplete: an aggregate has members whose term is missing or not admissible;
+ * - evaluation-failed: an aggregate is `unsupported`, `deferred` or `non-finite`.
+ * `inputs` (sorted) are the inputs behind the primary reason; `causes` (sorted) every unresolved input with its own
+ * status, so a missing input and an incomplete aggregate are both visible. An unsupported aggregate always stays
+ * `unsupported` in `causes`, whatever the primary reason.
+ */
+export function primaryUnresolved(
+  targetKey: string | undefined,
+  missingScalars: string[],
+  aggs: Array<{ path: string; status: string }>,
+): MEDerivationUnresolved {
+  const causes = [
+    ...missingScalars.map((path) => ({ path, status: "missing" })),
+    ...aggs.filter((a) => a.status !== "resolved").map((a) => ({ path: a.path, status: a.status })),
+  ].sort(byPath);
+  const sorted = (xs: string[]) => [...new Set(xs)].sort();
+  if (aggs.some((a) => a.status === "cycle")) return { reason: "cycle", cycle: [targetKey ?? ""] };
+  const absent = aggs.filter((a) => a.status === "absent").map((a) => a.path);
+  if (missingScalars.length > 0 || absent.length > 0) {
+    return { reason: "missing-input", inputs: sorted([...missingScalars, ...absent]), causes };
+  }
+  const incomplete = aggs.filter((a) => a.status === "incomplete").map((a) => a.path);
+  if (incomplete.length > 0) return { reason: "incomplete", inputs: sorted(incomplete), causes };
+  const failed = aggs.filter((a) => a.status !== "resolved").map((a) => a.path);
+  return { reason: "evaluation-failed", inputs: sorted(failed), causes };
+}
+
+/** The current caller (me.as(...)) is stopped by the kernel's stealth barrier at `target`. The owner never is. */
+function callerCannotRead(self: MEKernelLike, target: SemanticPath): boolean {
+  const raw = (self as any)._currentCallerScope;
+  if (raw === undefined) return false;
+  const scope = typeof raw === "string" && raw.length > 0 ? raw : null;
+  return !!(self as any).isStealthBlocked?.(target, scope);
+}
+
+function renderWave(wave: any) {
+  return {
+    k: wave.recomputed.size,
+    recomputed: [...wave.recomputed].map((p: string) => renderKey(p)),
+    changed: [...wave.changed].map((p: string) => renderKey(p)),
+    sourcePath: renderKey(wave.sourcePath),
+    recomputedAt: wave.at,
+  };
+}
 
 export function explain(self: MEKernelLike, path: string): MEExplainResult {
-  const target = normalizeSelectorPath(String(path ?? "").split(".").filter(Boolean));
+  const raw = String(path ?? "").trim();
+  const parsed = classifyPathExpression(raw);
+  if (parsed.kind === "aggregate") {
+    // Ad hoc: always the public-view context, for every caller (contract v4.1 §2.3).
+    const r = aggregateResult(self, parsed.ref, "public-view");
+    const entry = aggregateInput(parsed.ref, "public-view", r);
+    const unresolved = r.status === "resolved" ? undefined : primaryUnresolved(undefined, [], [{ path: entry.path, status: r.status }]);
+    return {
+      path: entry.path,
+      value: r.value,
+      expr: parsed.ref.text,
+      derivation: { expression: parsed.ref.text, inputs: [entry] },
+      meta: {
+        dependsOn: [entry.path],
+        ...(unresolved ? { unresolved } : {}),
+      },
+    };
+  }
+  if (parsed.kind === "rejected") {
+    return {
+      path: raw,
+      value: undefined,
+      expr: null,
+      derivation: null,
+      meta: { dependsOn: [], unresolved: { reason: "evaluation-failed", detail: parsed.reason } },
+    };
+  }
+
+  // Same split as 4.1 (on "."), then the (quote-aware) normalizer. A quoted-literal path is read from the raw
+  // parts, normalised once, through the kernel's stealth check (like me("...")); a plain path keeps the 4.1 read.
+  const rawParts = String(path ?? "").split(".").filter(Boolean);
+  const target = normalizeSelectorPath(rawParts);
   const key = target.join(".");
+  // A formula with aggregates that the caller cannot read is answered exactly like a path that does not exist (no
+  // expression, no inputs, no context or coverage, no wave), and is not refreshed on the caller's behalf.
+  // (Formulas without aggregates keep the 4.1 explain, including its known exposure of formula text to guests.)
+  if (self.derivations[key]?.aggregates?.length && callerCannotRead(self, target)) {
+    return { path: parsed.kind === "literal" ? renderSegments(target) : key, value: undefined, expr: null, derivation: null, meta: { dependsOn: [] } };
+  }
   if (self.recomputeMode === "lazy") ensureTargetFresh(self, key);
-  const value = self.readPath(target);
+  const value = parsed.kind === "literal" ? self.readPath(rawParts) : self.readPath(target);
+  // Top-level path: a quoted-literal request is echoed in rendered form (I8). A plain request keeps the 4.1 key,
+  // even when its 4.1 parse yields non-plain segments (explain("x[1..3]") → "x.[1.3]", unchanged).
+  const topPath = parsed.kind === "literal" ? renderSegments(target) : key;
   const d = self.derivations[key];
   const wave = self.lastRecomputeWaveByTarget[key];
   if (!d) {
     return {
-      path: key,
+      path: topPath,
       value,
       expr: null,
       derivation: null,
       meta: {
         dependsOn: [],
-        ...(wave
-          ? {
-              k: wave.recomputed.size,
-              recomputed: [...wave.recomputed],
-              changed: [...wave.changed],
-              sourcePath: wave.sourcePath,
-              recomputedAt: wave.at,
-            }
-          : {}),
+        ...(wave ? renderWave(wave) : {}),
       },
     };
   }
@@ -43,22 +201,40 @@ export function explain(self: MEKernelLike, path: string): MEExplainResult {
     label: r.label,
     path: resolveRefPath(self, r.label, d.evalScope) ?? r.candidates[0],
   }));
-  const inputs = effectiveRefs.map((r) => {
+  const inputs: NonNullable<MEExplainResult["derivation"]>["inputs"] = effectiveRefs.map((r) => {
     const refParts = normalizeSelectorPath(r.path.split(".").filter(Boolean));
     const refScope = resolveBranchScope(self, refParts);
     const isStealth = !!(refScope && refScope.length > 0 && pathStartsWith(refParts, refScope));
     const raw = self.readPath(refParts);
     return {
       label: r.label,
-      path: r.path,
+      path: renderKey(r.path),
       value: isStealth ? "●●●●" : raw,
       origin: (isStealth ? "stealth" : "public") as "public" | "stealth",
       masked: isStealth,
+      status: isStealth ? "masked" : raw === undefined || raw === null ? "missing" : "resolved",
     };
   });
+  const context = derivationContext(self, key);
+  const aggregateInputs = (d.aggregates ?? []).map((ref) => aggregateInput(ref, context, aggregateResult(self, ref, context, key)));
+  inputs.push(...aggregateInputs);
+
+  // Stored paths are storage keys (rendered here, I8); aggregate paths are stored already rendered.
+  const aggPaths = new Set(aggregateInputs.map((a) => a.path));
+  const rk = (p: string) => (aggPaths.has(p) ? p : renderKey(p));
+  const u = d.unresolved;
+  const unresolved = u
+    ? u.reason === "cycle"
+      ? { ...u, cycle: u.cycle.map(rk) }
+      : {
+          ...u,
+          ...("inputs" in u && u.inputs ? { inputs: u.inputs.map(rk) } : {}),
+          ...("causes" in u && u.causes ? { causes: u.causes.map((c) => ({ ...c, path: rk(c.path) })) } : {}),
+        }
+    : undefined;
 
   return {
-    path: key,
+    path: topPath,
     value,
     expr: d.expression,
     derivation: {
@@ -66,18 +242,10 @@ export function explain(self: MEKernelLike, path: string): MEExplainResult {
       inputs,
     },
     meta: {
-      dependsOn: [...new Set(effectiveRefs.map((r) => r.path))],
+      dependsOn: [...new Set([...effectiveRefs.map((r) => renderKey(r.path)), ...aggregateInputs.map((a) => a.path)])],
       lastComputedAt: d.lastComputedAt,
-      ...(d.unresolved ? { unresolved: d.unresolved } : {}),
-      ...(wave
-        ? {
-            k: wave.recomputed.size,
-            recomputed: [...wave.recomputed],
-            changed: [...wave.changed],
-            sourcePath: wave.sourcePath,
-            recomputedAt: wave.at,
-          }
-        : {}),
+      ...(unresolved ? { unresolved } : {}),
+      ...(wave ? renderWave(wave) : {}),
     },
   };
 }
@@ -121,16 +289,69 @@ function finalizeRecomputeWave(self: MEKernelLike): void {
 export function extractExpressionRefs(expr: string): string[] {
   const raw = String(expr ?? "").trim();
   if (!raw) return [];
-  const seg = String.raw`[A-Za-z_][A-Za-z0-9_]*(?:\[(?:"[^"]*"|'[^']*'|[^\]]+)\])*`;
-  const tokenRegex = new RegExp(String.raw`__ptr(?:\.${seg})*|${seg}(?:\.${seg})*`, "g");
-  const reserved = new Set(["true", "false", "null", "undefined", "NaN", "Infinity"]);
   const refs = new Set<string>();
-  const m = raw.match(tokenRegex) || [];
-  for (const t of m) {
-    if (reserved.has(t)) continue;
-    refs.add(t);
+  for (const t of scanExpressionTokens(raw)) {
+    if (t.aggregate) continue;      // aggregate references are not scalar refs (see extractAggregateRefs)
+    if (RESERVED_WORDS.has(t.text)) continue;
+    refs.add(t.text);
   }
   return Array.from(refs);
+}
+
+const EXPR_SEG = String.raw`[A-Za-z_][A-Za-z0-9_]*(?:\[(?:"[^"]*"|'[^']*'|[^\]]+)\])*`;
+const RESERVED_WORDS = new Set(["true", "false", "null", "undefined", "NaN", "Infinity"]);
+
+// Same token boundaries as the evaluator's tokenizer: an aggregate reference is tried before a plain identifier.
+function scanExpressionTokens(raw: string): Array<{ text: string; aggregate: boolean }> {
+  const re = new RegExp(
+    String.raw`(${AGGREGATE_TOKEN_SOURCE(EXPR_SEG)})|__ptr(?:\.${EXPR_SEG})*|${EXPR_SEG}(?:\.${EXPR_SEG})*`,
+    "g",
+  );
+  const out: Array<{ text: string; aggregate: boolean }> = [];
+  for (const m of raw.matchAll(re)) out.push({ text: m[0], aggregate: m[1] !== undefined });
+  return out;
+}
+
+/**
+ * True when formula text holds a path form the contract rejects (v3 §3): a `[]` that is not part of an accepted
+ * aggregate reference (`z.[].w`, `x[].y[]`, `x[][2]`), an aggregate token that classifies as rejected
+ * (`x[a > 1][]`, `x[].f[2]`), a whitespace-only selector (`z[ ].w`), or a dotted literal selector (`z.["[]"].w`). Such a formula is `evaluation-failed`,
+ * never `missing-input` for the words around the bracket.
+ */
+export function hasRejectedPathForm(expr: string): boolean {
+  const raw = String(expr ?? "");
+  if (!raw.includes("[")) return false;
+  if (/\.\[\s*(["'])[^"']*[\[\]][^"']*\1\s*\]/.test(raw)) return true;   // dotted literal selector z.["[]"]
+  if (/\[\s+\]/.test(raw.replace(/"[^"]*"|'[^']*'/g, '""'))) return true;
+  const covered: Array<[number, number]> = [];
+  const re = new RegExp(String.raw`${AGGREGATE_TOKEN_SOURCE(EXPR_SEG)}`, "g");
+  for (const m of raw.matchAll(re)) {
+    if (classifyPathExpression(m[0]).kind !== "aggregate") return true;
+    covered.push([m.index!, m.index! + m[0].length]);
+  }
+  let quote: string | null = null;
+  for (let i = 0; i < raw.length - 1; i++) {
+    const c = raw[i];
+    if (quote) { if (c === quote) quote = null; continue; }
+    if (c === '"' || c === "'") { quote = c; continue; }
+    if (c === "[" && raw[i + 1] === "]" && !covered.some(([a, b]) => i >= a && i < b)) return true;
+  }
+  return false;
+}
+
+/** The aggregate references (`x[]`, `x[].f`) in a formula, parsed. Rejected forms are not returned. */
+export function extractAggregateRefs(expr: string): AggregateRef[] {
+  const raw = String(expr ?? "").trim();
+  if (!raw || !raw.includes("[]")) return [];
+  const out: AggregateRef[] = [];
+  const seen = new Set<string>();
+  for (const t of scanExpressionTokens(raw)) {
+    if (!t.aggregate || seen.has(t.text)) continue;
+    seen.add(t.text);
+    const parsed = classifyPathExpression(t.text);
+    if (parsed.kind === "aggregate") out.push(parsed.ref);
+  }
+  return out;
 }
 
 // Every path the evaluator may read for `label`: relative to evalScope first,
@@ -164,39 +385,173 @@ function hasValue(self: MEKernelLike, path: string): boolean {
 // Whether a change at `changedPath` can alter what the evaluator reads for this
 // ref. A change to the relative candidate always can (it either now shadows the
 // root, or just emptied and the root shows through). A change to the root
-// candidate only can while the relative one holds no value.
+// candidate only can while the relative one holds no value. A change on a
+// candidate's pointer trajectory (`via`) counts as a change on that candidate.
 function refChangeMatters(
   self: MEKernelLike,
   ref: MEDerivationRecord["refs"][number],
   changedPath: string,
 ): boolean {
   const [rel, abs] = ref.candidates;
-  if (changedPath === rel) return true;
-  if (abs !== undefined && changedPath === abs) return !hasValue(self, rel);
+  if (changedPath === rel || (ref.via && ref.via[0]?.includes(changedPath))) return true;
+  if (abs !== undefined && (changedPath === abs || (ref.via && ref.via[1]?.includes(changedPath)))) {
+    return !hasValue(self, rel);
+  }
   return false;
 }
 
 function derivationReadsChange(self: MEKernelLike, d: MEDerivationRecord, changedPath: string): boolean {
+  if (isAggregateKey(changedPath)) {
+    return !!d.aggregates?.some((a) => aggregateKey(a.collection.join(".")) === changedPath);
+  }
   return d.refs.some((ref) => refChangeMatters(self, ref, changedPath));
 }
 
+// Scalar candidates and pointer trajectories, plus one pseudo path per aggregated collection (aggregate-index.ts).
 function derivationRefPaths(d: MEDerivationRecord): string[] {
   if (d.refPaths) return d.refPaths;
   const out = new Set<string>();
-  for (const ref of d.refs) for (const p of ref.candidates) out.add(p);
+  for (const ref of d.refs) {
+    for (const p of ref.candidates) out.add(p);
+    if (ref.via) for (const list of ref.via) if (list) for (const p of list) out.add(p);
+  }
+  for (const a of d.aggregates ?? []) out.add(aggregateKey(a.collection.join(".")));
   return (d.refPaths = [...out]);
+}
+
+/** Formulas aggregating a collection that contains `key` (a proper ancestor of key). O(depth). */
+function aggregateDependentsOf(self: MEKernelLike, key: string): string[] {
+  const out: string[] = [];
+  let i = key.indexOf(".");
+  while (i !== -1) {
+    const subs = self.refSubscribers[aggregateKey(key.slice(0, i))];
+    if (subs) for (const t of subs) out.push(t);
+    i = key.indexOf(".", i + 1);
+  }
+  return out;
+}
+
+// ─── subscriptions ───────────────────────────────────────────────────────────
+// refSubscribers plus a prefix index over its keys (prefix → child prefixes
+// with a subscribed path at or below them), so a pointer written at P finds the
+// subscribed paths under P without scanning every key. Cached per
+// refSubscribers object (replaced wholesale on reset/import), built lazily.
+
+const subscribedPrefixIndexCache = new WeakMap<Record<string, Set<string>>, Map<string, Set<string>>>();
+
+function parentKey(key: string): string | null {
+  const i = key.lastIndexOf(".");
+  return i < 0 ? null : key.slice(0, i);
+}
+
+function indexSubscribedKey(index: Map<string, Set<string>>, key: string): void {
+  let child = key;
+  let parent = parentKey(child);
+  while (parent !== null) {
+    let children = index.get(parent);
+    if (!children) index.set(parent, (children = new Set()));
+    else if (children.has(child)) return; // ancestors already indexed
+    children.add(child);
+    child = parent;
+    parent = parentKey(child);
+  }
+}
+
+function unindexSubscribedKey(self: MEKernelLike, index: Map<string, Set<string>>, key: string): void {
+  let child = key;
+  let parent = parentKey(child);
+  while (parent !== null) {
+    if (self.refSubscribers[child] || index.get(child)?.size) return; // still needed
+    const children = index.get(parent);
+    if (!children) return;
+    children.delete(child);
+    if (children.size > 0) return;
+    index.delete(parent);
+    child = parent;
+    parent = parentKey(child);
+  }
+}
+
+function getSubscribedPrefixIndex(self: MEKernelLike): Map<string, Set<string>> {
+  let index = subscribedPrefixIndexCache.get(self.refSubscribers);
+  if (index) return index;
+  index = new Map();
+  for (const key of Object.keys(self.refSubscribers)) indexSubscribedKey(index, key);
+  subscribedPrefixIndexCache.set(self.refSubscribers, index);
+  return index;
+}
+
+function subscribe(self: MEKernelLike, path: string, targetKey: string): void {
+  let s = self.refSubscribers[path];
+  if (!s) {
+    if (isAggregateKey(path)) noteAggregateSubscription(self, 1);
+    s = self.refSubscribers[path] = new Set();
+    const index = subscribedPrefixIndexCache.get(self.refSubscribers);
+    if (index) indexSubscribedKey(index, path);
+  }
+  s.add(targetKey);
+}
+
+function unsubscribe(self: MEKernelLike, path: string, targetKey: string): void {
+  const s = self.refSubscribers[path];
+  if (!s) return;
+  s.delete(targetKey);
+  if (s.size > 0) return;
+  if (isAggregateKey(path)) noteAggregateSubscription(self, -1);
+  delete self.refSubscribers[path];
+  const index = subscribedPrefixIndexCache.get(self.refSubscribers);
+  if (index) unindexSubscribedKey(self, index, path);
+}
+
+/** Subscribed paths strictly below `prefix`. */
+function subscribedPathsUnder(self: MEKernelLike, prefix: string): string[] {
+  const index = getSubscribedPrefixIndex(self);
+  const out: string[] = [];
+  const stack = [...(index.get(prefix) || [])];
+  while (stack.length > 0) {
+    const key = stack.pop()!;
+    if (self.refSubscribers[key]) out.push(key);
+    const children = index.get(key);
+    if (children) for (const c of children) stack.push(c);
+  }
+  return out;
+}
+
+// ─── pointer trajectories ────────────────────────────────────────────────────
+// A ref read through pointers also depends on the pointer locations followed
+// and the paths they lead to (`via`, per candidate). They are resolved at
+// registration and again whenever the derivation commits a value, if it had a
+// trajectory or a pointer write flagged it; the subscription set is diffed so
+// a redirected pointer stops depending on its old target.
+
+function resolveRefVia(self: MEKernelLike, ref: MEDerivationRecord["refs"][number]): void {
+  let via: string[][] | undefined;
+  for (let i = 0; i < ref.candidates.length; i++) {
+    const candidate = ref.candidates[i];
+    if (!hasPointerOnPath(self, candidate)) continue; // common case: no pointer involved
+    const trace = pointerReadTrajectory(self, candidate.split(".").filter(Boolean));
+    const list = [...new Set(trace)].filter((p) => p !== candidate);
+    if (list.length > 0) (via ||= [])[i] = list;
+  }
+  if (via) ref.via = via;
+  else if (ref.via) delete ref.via;
+}
+
+function refreshPointerTrajectories(self: MEKernelLike, targetKey: string, d: MEDerivationRecord): void {
+  d.viaStale = false;
+  const before = derivationRefPaths(d);
+  for (const ref of d.refs) resolveRefVia(self, ref);
+  d.refPaths = undefined;
+  const after = derivationRefPaths(d);
+  const afterSet = new Set(after);
+  for (const p of before) if (!afterSet.has(p)) unsubscribe(self, p, targetKey);
+  for (const p of after) subscribe(self, p, targetKey);
 }
 
 export function unregisterDerivation(self: MEKernelLike, targetKey: string): void {
   const old = self.derivations[targetKey];
   if (!old) return;
-  for (const path of derivationRefPaths(old)) {
-    const s = self.refSubscribers[path];
-    if (s) {
-      s.delete(targetKey);
-      if (s.size === 0) delete self.refSubscribers[path];
-    }
-  }
+  for (const path of derivationRefPaths(old)) unsubscribe(self, path, targetKey);
   delete self.derivations[targetKey];
   delete self.derivationRefVersions[targetKey];
   delete self.lastRecomputeWaveByTarget[targetKey];
@@ -233,19 +588,21 @@ export function registerDerivation(
   for (const label of labels) {
     const candidates = refCandidatePaths(label, evalScope);
     if (candidates.length === 0) continue;
-    refs.push({ label, candidates });
-    for (const path of candidates) {
-      const s = self.refSubscribers[path] || (self.refSubscribers[path] = new Set());
-      s.add(targetKey);
-    }
+    const ref: MEDerivationRecord["refs"][number] = { label, candidates };
+    resolveRefVia(self, ref);
+    refs.push(ref);
   }
 
-  self.derivations[targetKey] = {
+  const aggregates = extractAggregateRefs(expr);
+  const d: MEDerivationRecord = (self.derivations[targetKey] = {
     expression: expr,
     evalScope: [...evalScope],
     refs,
     lastComputedAt: Date.now(),
-  };
+    ...(aggregates.length > 0 ? { aggregates } : {}),
+    ...(hasRejectedPathForm(expr) ? { rejectedPathForm: true } : {}),
+  });
+  for (const path of derivationRefPaths(d)) subscribe(self, path, targetKey);
   snapshotDerivationRefVersions(self, targetKey);
   self.staleDerivations.delete(targetKey);
 }
@@ -257,16 +614,57 @@ export function registerDerivation(
 export function computeDerivation(
   self: MEKernelLike,
   d: MEDerivationRecord,
+  targetKey?: string,
 ): { value: any; unresolved?: MEDerivationUnresolved } {
-  const evaluated = tryEvaluateAssignExpression(self, d.evalScope, d.expression);
+  if (d.rejectedPathForm) return { value: undefined, unresolved: { reason: "evaluation-failed", detail: "rejected-path-form" } };
+  const missingScalars = () => {
+    const missing: string[] = [];
+    for (const ref of d.refs) {
+      if (ref.candidates.some((p) => hasValue(self, p))) continue;
+      missing.push(ref.candidates[0]);
+    }
+    return missing;
+  };
+  let aggregateValues: Map<string, number> | undefined;
+  // Formula text that does not even tokenize (e.g. `x[].2`, known issue #5) fails as text, whatever its aggregates hold.
+  if (d.aggregates && d.aggregates.length > 0 && !isTokenizableExpression(d.expression)) {
+    return { value: undefined, unresolved: { reason: "evaluation-failed" } };
+  }
+  if (d.aggregates && d.aggregates.length > 0) {
+    // Every aggregate is evaluated (all of them, whatever the expression order), then the primary reason is picked
+    // by precedence. The formula only evaluates when every aggregate resolved.
+    const context = derivationContext(self, targetKey);
+    const results = d.aggregates.map((a) => ({ ref: a, path: renderAggregate(a), r: aggregateResult(self, a, context, targetKey) }));
+    if (results.some((x) => x.r.status !== "resolved")) {
+      return {
+        value: undefined,
+        unresolved: primaryUnresolved(targetKey, missingScalars(), results.map((x) => ({ path: x.path, status: x.r.status }))),
+      };
+    }
+    aggregateValues = new Map(results.map((x) => [x.ref.text, x.r.value as number]));
+  }
+  const evaluated = tryEvaluateAssignExpression(self, d.evalScope, d.expression, aggregateValues);
   if (evaluated.ok) return { value: evaluated.value };
-  const missing: string[] = [];
-  for (const ref of d.refs) {
-    if (ref.candidates.some((p) => hasValue(self, p))) continue;
-    missing.push(ref.candidates[0]);
+  const missing = missingScalars();
+  if (aggregateValues) {
+    if (missing.length > 0) return { value: undefined, unresolved: primaryUnresolved(targetKey, missing, []) };
+    return { value: undefined, unresolved: { reason: "evaluation-failed" } };
   }
   if (missing.length > 0) return { value: undefined, unresolved: { reason: "missing-input", inputs: missing } };
   return { value: undefined, unresolved: { reason: "evaluation-failed" } };
+}
+
+/**
+ * Context of a formula's aggregates (contract v4.1 §2.3): `authorized` when the target is inside a secret scope
+ * (root or branch), `public-view` otherwise. Decided by where the target is, never by the collection's data.
+ */
+export function derivationContext(self: MEKernelLike, targetKey: string | undefined): AggregateContext {
+  if (targetKey === undefined) return "public-view";
+  const parts = targetKey.split(".").filter(Boolean);
+  for (let i = parts.length; i >= 0; i--) {
+    if (Object.prototype.hasOwnProperty.call(self.localSecrets, parts.slice(0, i).join("."))) return "authorized";
+  }
+  return "public-view";
 }
 
 // Primitive values that are Object.is-equal need no write. Objects and arrays
@@ -293,8 +691,11 @@ function commitDerivedValue(
   if (changed) {
     self.commitValueMapping(targetPath, value, "=");
     bumpRefVersion(self, targetKey);
+    // A derived value that changed the PUBLIC index under an aggregated collection marks that aggregate changed.
+    flushAggregateChanges(self);
   }
   d.lastValue = value;
+  if (d.viaStale || d.refs.some((ref) => ref.via)) refreshPointerTrajectories(self, targetKey, d);
   snapshotDerivationRefVersions(self, targetKey);
   self.staleDerivations.delete(targetKey);
   return changed;
@@ -304,7 +705,7 @@ function commitDerivedValue(
 export function recomputeTarget(self: MEKernelLike, targetKey: string): boolean {
   const d = self.derivations[targetKey];
   if (!d) return false;
-  const { value, unresolved } = computeDerivation(self, d);
+  const { value, unresolved } = computeDerivation(self, d, targetKey);
   return commitDerivedValue(self, targetKey, value, unresolved);
 }
 
@@ -387,13 +788,18 @@ export function ensureTargetFresh(
     for (const path of derivationRefPaths(d)) {
       if (self.derivations[path]) ensureTargetFresh(self, path, ctx);
     }
+    // Members (or terms) of an aggregated collection that are themselves formulas: refresh them first, so their
+    // commits reach the public index (and bump the aggregate key) before this target's staleness is decided.
+    for (const a of d.aggregates ?? []) {
+      refreshPublicMemberFormulas(self, a.collection.join("."), targetKey, (key) => ensureTargetFresh(self, key, ctx));
+    }
     ctx.stack.pop();
 
     const needsRefresh =
       !ctx.resolvedAsCycle.has(targetKey) &&
       (self.staleDerivations.has(targetKey) || isDerivationVersionStale(self, targetKey));
     if (needsRefresh) {
-      const { value, unresolved } = computeDerivation(self, d);
+      const { value, unresolved } = computeDerivation(self, d, targetKey);
       changed = entry.reentered
         ? failCycle(self, [targetKey]).size > 0
         : commitDerivedValue(self, targetKey, value, unresolved);
@@ -415,16 +821,43 @@ export function invalidateFromPath(self: MEKernelLike, path: SemanticPath): void
 // sees a stale input and an unchanged value stops propagation. Nodes Kahn
 // cannot order are cycles (and whatever sits behind them): cycle members fail
 // closed, and ordering resumes for the rest.
-export function invalidateFromPaths(self: MEKernelLike, roots: string[]): void {
+export function invalidateFromPaths(self: MEKernelLike, roots: string[], writtenPath?: string): void {
   const sources = roots.filter(Boolean);
-  if (sources.length === 0) return;
-  const startedWave = beginRecomputeWave(self, sources[0]);
+  // A write with no subscribed root (e.g. deleting a member nothing reads by path) can still change the public
+  // index under an aggregated collection; the wave is then named after the written path.
+  const aggregateSources = flushAggregateChanges(self);
+  takeFlushedAggregateKeys(self);
+  if (sources.length === 0 && aggregateSources.length === 0) return;
+  const startedWave = beginRecomputeWave(self, sources[0] ?? writtenPath ?? aggregateSources[0]);
   for (const root of sources) {
     bumpRefVersion(self, root);
     // A write that did not come from the derivation itself (declaration, or a
     // direct write to a derived path): its cached value is no longer known.
     const own = self.derivations[root];
     if (own) delete own.lastValue;
+  }
+  // Public index changes under aggregated collections (versions already bumped by the flush).
+  for (const key of aggregateSources) if (!sources.includes(key)) sources.push(key);
+  // A pointer written at a root redirects every subscribed path below it (and
+  // the root itself): those readers recompute and re-resolve their trajectory.
+  // Paths already on a trajectory are reached by their own subscription; this
+  // covers a pointer created where a formula read a plain path.
+  let sourceSet: Set<string> | null = null;
+  const written = sources.length;
+  for (let i = 0; i < written; i++) {
+    const root = sources[i];
+    if (!isPointer(self.index[root])) continue;
+    sourceSet ||= new Set(sources);
+    for (const path of [root, ...subscribedPathsUnder(self, root)]) {
+      for (const target of self.refSubscribers[path] || []) {
+        const d = self.derivations[target];
+        if (d) d.viaStale = true;
+      }
+      if (sourceSet.has(path)) continue;
+      sourceSet.add(path);
+      sources.push(path);
+      bumpRefVersion(self, path);
+    }
   }
 
   if (self.recomputeMode === "lazy") {
@@ -436,17 +869,25 @@ export function invalidateFromPaths(self: MEKernelLike, roots: string[]): void {
   const affected = new Set<string>();
   const dependentsOf = new Map<string, string[]>();
   const pending = [...sources];
+  const addEdge = (from: string, target: string) => {
+    const list = dependentsOf.get(from);
+    if (list) list.push(target);
+    else dependentsOf.set(from, [target]);
+    if (affected.has(target)) return;
+    affected.add(target);
+    pending.push(target);
+  };
   while (pending.length > 0) {
     const changedPath = pending.pop()!;
     for (const target of self.refSubscribers[changedPath] || []) {
       const d = self.derivations[target];
       if (!d || !derivationReadsChange(self, d, changedPath)) continue;
-      const list = dependentsOf.get(changedPath);
-      if (list) list.push(target);
-      else dependentsOf.set(changedPath, [target]);
-      if (affected.has(target)) continue;
-      affected.add(target);
-      pending.push(target);
+      addEdge(changedPath, target);
+    }
+    // A derived target inside an aggregated collection may change that aggregate (conservative edge; in phase 2
+    // the aggregate only recomputes if the target's commit really changed the public index).
+    if (self.derivations[changedPath]) {
+      for (const target of aggregateDependentsOf(self, changedPath)) if (self.derivations[target]) addEdge(changedPath, target);
     }
   }
   if (affected.size === 0) {
@@ -501,6 +942,7 @@ export function invalidateFromPaths(self: MEKernelLike, roots: string[]): void {
       const d = self.derivations[target];
       const inputChanged = !!d && derivationRefPaths(d).some((p) => changedPaths.has(p));
       if (inputChanged && recomputeTarget(self, target)) changedPaths.add(target);
+      for (const key of takeFlushedAggregateKeys(self)) changedPaths.add(key);
       release(target);
     }
     if (done.size >= affected.size) break;

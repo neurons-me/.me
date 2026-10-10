@@ -32,7 +32,10 @@ function hasStealthBarrier(
   callerScope: string | null | undefined = getCallerScope(self),
 ): boolean {
   if (callerScope === undefined) return false;
-  for (let i = path.length; i > 0; i--) {
+  // i >= 0 includes the root scope key "" (bare me["_"](...)).
+  // Matching me.ts#isStealthBlocked — without this, selector/iterator reads
+  // under a root secret skipped the stealth barrier.
+  for (let i = path.length; i >= 0; i--) {
     const ancestorKey = path.slice(0, i).join(".");
     const localSecret = self.localSecrets[ancestorKey];
     if (typeof localSecret === "string" && localSecret !== callerScope) {

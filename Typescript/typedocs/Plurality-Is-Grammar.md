@@ -13,6 +13,18 @@ The moment a plural's meaning becomes `kind: "rolling-buffer"` or `kind: "grid"`
 describing a shape and started describing a product category. That's a framework decision, and it
 belongs one layer up, in whatever interprets the plural — not in the kernel.
 
+> **Notation, not executable syntax.** On this page `Whatever[]`, `|Whatever[]|`, `Whatever[n]` and
+> `Whatever[a] before Whatever[b]` are *mathematical notation* for a plural and its properties (that it has
+> members, its cardinality, where a member is placed, how two members are ordered). They are not path strings
+> for `me()` and not formula text. Executable `[]` syntax depends on the kernel version:
+> - **.me 4.1.0:** an empty `[]` in a path string has no meaning of its own; the path normalizer drops it
+>   (`me("x[].f")` reads `x.f`).
+> - **.me 4.2.0:** `me("x[]")` reads the **count** of `x`'s members
+>   and `me("x[].f")` the **sum** of field `f` over them (over the public view); the same forms work in formulas. A form such as
+>   `|x[]|` or `x[] <= 128` is not valid there: it is rejected and writes nothing.
+>
+> Code blocks below that are notation say so.
+
 ---
 
 ## 1. `[]` already means "has members"
@@ -29,21 +41,22 @@ me("Whatever[some_field >= 10]");  // filter
 ```
 
 What's missing today is a way to say *what kind of plural this is* — without inventing a named
-category to say it. `Whatever[]` on its own is already the right grammar for "this has members."
+category to say it. As notation, `Whatever[]` on its own is already the right grammar for "this has members."
 The gap is describing the plural's own shape, not its members' shape.
 
 ## 2. Constraints, not categories
 
 The wrong shape for a description is a named product category:
 
-```ts
-Whatever[].kind = "rolling-buffer"   // ✗ — names an implementation, not a form
+```txt
+Whatever[].kind = "rolling-buffer"   // ✗ — names an implementation, not a form   (notation, not executable)
 ```
 
 That reads as an API choice — a word from some framework's vocabulary, not a property `Whatever[]`
 actually has. The right shape is an algebraic constraint over the plural itself:
 
-```ts
+```txt
+// notation, not executable syntax
 |Whatever[]| <= 128                       // cardinality — bounded, not "a buffer"
 Whatever[n].slot = n mod 128              // member placement, as a function of index
 Whatever[a] before Whatever[b] = t(a) < t(b)   // ordering, as a relation
@@ -84,11 +97,16 @@ is append-only — see [Memory](./Memory.md) — so an *unconstrained* plural gr
 would grow forever, which is a real cost, not a style objection).
 
 ```ts
-me.netget.port[80].Whatever[]                    // this path has members
-me.netget.port[80]["|Whatever[]|<="](128);        // bounded — at most 128 live members
+// notation: me.netget.port[80].Whatever[] — "this path has members" (a description, not a statement)
+me.netget.port[80]["|Whatever[]|<="](128);        // bounded — at most 128 live members (a convention, see below)
 me.netget.port[80].Whatever["="]("slot", "n % 128");        // placement
 me.netget.port[80].Whatever["="]("order", "timestamp");      // ordering
 ```
+
+What these calls really do in the kernel: the second line stores `128` under a key literally named
+`|Whatever[]|<=` (in 4.1.0 and in 4.2.0 alike); the kernel does not interpret that key, the
+runtime that reads it does. The last two lines declare ordinary formulas. In 4.2.0, the current
+number of members could be read with `me("netget.port[80].Whatever[]")`.
 
 netget is the first interpreter of this shape, not its owner. Its daemon reads the cardinality and
 slot constraints and does the actual work — writing new requests into the computed slot, evicting
@@ -127,6 +145,7 @@ me.netget.port[80].request.seq(seq);
 to this:
 
 ```ts
+// DESIGN SKETCH — not valid syntax in .me 4.1.0 or in 4.2.0 (write-side `[]` has no contract yet)
 // the plural's shape is declared once, on the space itself
 me.netget.port[80].request[]
 me.netget.port[80].request["|[]|<="](128);
@@ -160,7 +179,8 @@ netget's sake.
 
 ## Summary
 
-- `[]` is `.me`'s plural grammar — it means "has members," nothing more specific.
+- As notation, `[]` is `.me`'s plural grammar — it means "has members," nothing more specific. As
+  executable path syntax, see the note at the top (in 4.2.0, `x[]` reads a count and `x[].f` a sum).
 - A plural's shape is described with algebraic constraints (cardinality, placement, order), not
   named categories (`kind: "..."`).
 - Today, `.me` holds and exposes these constraints but does not enforce them — that's the job of

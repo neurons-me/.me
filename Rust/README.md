@@ -27,7 +27,8 @@ The Rust kernel currently includes:
 - hash-chained semantic memory,
 - public and owner projections,
 - canonical path parsing with selectors such as `items[]`, `items[0]`, and
-  `items[field >= 10]`,
+  `items[field >= 10]` (4.1 grammar: an empty `[]` is dropped; the TypeScript 4.2 aggregate contract is not
+  implemented here yet, see the version note in `docs/API.md`),
 - the main `.me` operators:
   - `@` identity,
   - `_` secret scope,

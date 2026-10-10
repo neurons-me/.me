@@ -124,8 +124,13 @@ This same law appears across the system:
 `[]` extends this same refinement law to members of a space, not just nested subspaces:
 
 ```txt
-Whatever[1] ⊆ Whatever[] ⊆ Whatever
+Whatever[1] ⊆ Whatever[] ⊆ Whatever        (notation, not executable syntax)
 ```
+
+> **Notation, not executable syntax.** Here `Whatever[]` and `|Whatever[]|` denote the plural and its
+> cardinality. They are not `me()` path strings. In .me 4.2.0
+> the executable form `me("x[]")` reads the count of members and `me("x[].f")` a sum; `|x[]|` is not valid
+> there. See [Plurality Is Grammar](./Plurality-Is-Grammar.md).
 
 `Whatever[]` says a space has members — grammar, not a data type. What kind of plural it is
 (bounded, ordered, evicting) is described as algebraic constraints over that plural

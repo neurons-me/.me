@@ -63,6 +63,7 @@ import {
   getPrevMemoryHash,
   hashFn,
   normalizeSelectorPath,
+  normalizeSecretScopePath41,
   pathContainsIterator,
   substituteIteratorInExpression,
   substituteIteratorInPath,
@@ -307,7 +308,8 @@ function seedWriteBranchCache(
 }
 
 function registerStealthScope(self: MEKernelLike, scopePath: SemanticPath, scopeValue: string): void {
-  const normalizedScopePath = normalizeSelectorPath(scopePath);
+  // 4.1 scope path on purpose: see normalizeSecretScopePath41 (historical protection over z for z["[]"]["_"]).
+  const normalizedScopePath = normalizeSecretScopePath41(scopePath);
   const scopeKey = normalizedScopePath.join(".");
   self.localSecrets[scopeKey] = scopeValue;
   self.protectedScopeKeys.add(scopeKey);
@@ -967,7 +969,8 @@ export function commitMapping(
       return commitValueMapping(self, instruction.path, instruction.value, "@");
     case "secret": {
       if (typeof instruction.value !== "string") return undefined;
-      const normalizedScopePath = normalizeSelectorPath(instruction.path);
+      // 4.1 scope path on purpose: see normalizeSecretScopePath41.
+      const normalizedScopePath = normalizeSecretScopePath41(instruction.path);
       registerStealthScope(self, normalizedScopePath, instruction.value);
       bumpSecretEpoch(self);
       return commitMemoryOnly(self, normalizedScopePath, "_", "***", "***");
@@ -1126,7 +1129,7 @@ function instantiateIteratorRule(self: MEKernelLike, rule: MEIteratorRule, idx: 
 function declareDerivation(self: MEKernelLike, assignTarget: SemanticPath, evalScope: SemanticPath, expr: string): any {
   registerDerivation(self, assignTarget, evalScope, expr);
   const d = self.derivations[assignTarget.join(".")];
-  const { value, unresolved } = computeDerivation(self, d);
+  const { value, unresolved } = computeDerivation(self, d, assignTarget.join("."));
   d.unresolved = unresolved;
   const out = postulate(self, assignTarget, value, "=");
   d.lastValue = value;
@@ -1265,5 +1268,5 @@ export function removeSubtree(self: MEKernelLike, targetPath: SemanticPath) {
   const removedRoots = Object.keys(self.refSubscribers).filter(
     (key) => pathStr === "" || key === pathStr || key.startsWith(pathStr + "."),
   );
-  invalidateFromPaths(self, removedRoots);
+  invalidateFromPaths(self, removedRoots, pathStr);
 }

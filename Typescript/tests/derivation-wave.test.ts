@@ -349,6 +349,31 @@ const cases: Case[] = [
       assert.equal(me.explain("c.a").meta.unresolved, undefined);
     },
   },
+  // Formerly known issue #4 (see tests/pointer-target-invalidation.test.ts for the full set).
+  {
+    name: "pointers: retargeting a pointer recomputes formulas that read through it",
+    run(mode) {
+      const me = fresh(mode);
+      me.users.ana.age(20);
+      me.users.luis.age(15);
+      me.pick["->"]("users.ana");
+      me.view["="]("adult", "pick.age >= 18");
+      assert.equal(me("view.adult"), true);
+      me.pick["->"]("users.luis");
+      assert.equal(me("view.adult"), false);
+    },
+  },
+  {
+    name: "pointers: writing the pointed-to value recomputes formulas that read through it",
+    run(mode) {
+      const me = fresh(mode);
+      me.users.ana.age(20);
+      me.pick["->"]("users.ana");
+      me.view["="]("adult", "pick.age >= 18");
+      me.users.ana.age(10);
+      assert.equal(me("view.adult"), false);
+    },
+  },
 ];
 
 // ─── known failing: open bugs, kept red and visible ────────────────────────
@@ -364,32 +389,6 @@ function isKnownBug(err: unknown): boolean {
 // These run on every test pass and print as KNOWN FAIL without failing the
 // suite. If one starts passing, the suite fails so it gets moved above.
 const knownFailing: Array<Case & { bug: string }> = [
-  {
-    bug: "#4 pointers",
-    name: "retargeting a pointer recomputes formulas that read through it",
-    run(mode) {
-      const me = fresh(mode);
-      me.users.ana.age(20);
-      me.users.luis.age(15);
-      me.pick["->"]("users.ana");
-      me.view["="]("adult", "pick.age >= 18");
-      assert.equal(me("view.adult"), true);
-      me.pick["->"]("users.luis");
-      knownBug(me("view.adult") === false, "formula through a pointer kept its old value");
-    },
-  },
-  {
-    bug: "#4 pointers",
-    name: "writing the pointed-to value recomputes formulas that read through it",
-    run(mode) {
-      const me = fresh(mode);
-      me.users.ana.age(20);
-      me.pick["->"]("users.ana");
-      me.view["="]("adult", "pick.age >= 18");
-      me.users.ana.age(10);
-      knownBug(me("view.adult") === false, "formula through a pointer kept its old value");
-    },
-  },
   {
     bug: "#5 formula grammar",
     name: "a numeric segment after a dot (dep.2.out) reads the path",

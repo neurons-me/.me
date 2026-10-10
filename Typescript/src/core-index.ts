@@ -88,6 +88,8 @@ function clearIndexWinnerPrefix(self: MEKernelLike, prefix: string): void {
   }
 }
 
+import { noteIndexChange, noteIndexReplaced } from "./aggregate-index.ts";
+
 export function applyMemoryToIndex(self: MEKernelLike, t: KernelMemory): void {
   const p = t.path;
   const pathParts = p.split(".").filter(Boolean);
@@ -101,11 +103,12 @@ export function applyMemoryToIndex(self: MEKernelLike, t: KernelMemory): void {
     if (p === "") {
       for (const k of Object.keys(self.index)) delete self.index[k];
       clearIndexWinnerPrefix(self, "");
+      noteIndexReplaced(self);
       return;
     }
     const prefix = p + ".";
     for (const k of Object.keys(self.index)) {
-      if (k === p || k.startsWith(prefix)) delete self.index[k];
+      if (k === p || k.startsWith(prefix)) { delete self.index[k]; noteIndexChange(self, k); }
     }
     clearIndexWinnerPrefix(self, p);
     return;
@@ -144,6 +147,7 @@ export function applyMemoryToIndex(self: MEKernelLike, t: KernelMemory): void {
   if (current && compareLWW(incoming, current) < 0) return;
   self.index[p] = t.value;
   self.indexWinner[p] = incoming;
+  noteIndexChange(self, p);
 }
 
 export function removeIndexPrefix(self: MEKernelLike, prefixPath: SemanticPath): void {
@@ -151,7 +155,7 @@ export function removeIndexPrefix(self: MEKernelLike, prefixPath: SemanticPath):
   if (!prefix) return;
   const dot = prefix + ".";
   for (const k of Object.keys(self.index)) {
-    if (k === prefix || k.startsWith(dot)) delete self.index[k];
+    if (k === prefix || k.startsWith(dot)) { delete self.index[k]; noteIndexChange(self, k); }
   }
   clearIndexWinnerPrefix(self, prefix);
 }
@@ -169,6 +173,7 @@ export function rebuildIndex(self: MEKernelLike) {
 
   self.index = next;
   self.indexWinner = {};
+  noteIndexReplaced(self);
   // Restore the local logical clock to continue past whatever was just
   // reconstructed, so writes made AFTER this rebuild (e.g. right after a
   // restart) get a `seq` that's causally after all of it — the same rule a
@@ -189,12 +194,14 @@ export function getIndex(self: MEKernelLike, path: SemanticPath): any {
 
 export function setIndex(self: MEKernelLike, path: SemanticPath, value: any): void {
   self.index[path.join(".")] = value;
+  noteIndexChange(self, path.join("."));
 }
 
 export function resolveIndexPointerPath(
   self: MEKernelLike,
   path: SemanticPath,
   maxHops = 8,
+  trace?: string[],
 ): { path: SemanticPath; raw: any } {
   let curPath = path;
   // Tracks the path of every pointer edge already followed in this call, not
@@ -211,6 +218,7 @@ export function resolveIndexPointerPath(
       if (visited.has(pointerKey)) return { path: curPath, raw: undefined };
       visited.add(pointerKey);
       curPath = exactRaw.__ptr.split(".").filter(Boolean);
+      if (trace) trace.push(pointerKey, curPath.join("."));
       continue;
     }
 
@@ -225,6 +233,7 @@ export function resolveIndexPointerPath(
       const target = prefixRaw.__ptr.split(".").filter(Boolean);
       const suffix = curPath.slice(prefixLen);
       curPath = [...target, ...suffix];
+      if (trace) trace.push(prefixKey, curPath.join("."));
       redirected = true;
       break;
     }
@@ -232,4 +241,42 @@ export function resolveIndexPointerPath(
     return { path: curPath, raw: exactRaw };
   }
   return { path: curPath, raw: undefined };
+}
+
+// Paths a plain readPath(path) consults through pointers, besides `path`
+// itself: each pointer location followed and each path it led to, in order.
+// Mirrors readPath: a path inside a secret branch is read from the branch (no
+// index pointers; pointers stored in a branch are not followed here), an exact
+// pointer is returned as-is, and a round that ends without a value restarts
+// from the resolved path. Empty when no pointer is involved.
+const MAX_TRAJECTORY_ROUNDS = 32;
+
+/** Whether the index holds a pointer at `key` or at any of its prefixes (root included). */
+export function hasPointerOnPath(self: MEKernelLike, key: string): boolean {
+  for (;;) {
+    if (isPointer(self.index[key])) return true;
+    if (key === "") return false;
+    const dot = key.lastIndexOf(".");
+    key = dot < 0 ? "" : key.slice(0, dot);
+  }
+}
+
+export function pointerReadTrajectory(self: MEKernelLike, path: SemanticPath): string[] {
+  // No pointer on the path or any of its prefixes: nothing to follow (and
+  // nothing to trace inside a secret branch either).
+  if (!hasPointerOnPath(self, path.join("."))) return [];
+  const trace: string[] = [];
+  let curPath = path;
+  for (let round = 0; round < MAX_TRAJECTORY_ROUNDS; round++) {
+    const scope = resolveBranchScope(self, curPath);
+    if (scope && scope.length > 0 && pathStartsWith(curPath, scope)) break;
+    if (isPointer(getIndex(self, curPath))) break;
+    const resolved = resolveIndexPointerPath(self, curPath, 8, trace);
+    if (resolved.raw !== undefined) break;
+    const samePath =
+      resolved.path.length === curPath.length && resolved.path.every((part, i) => part === curPath[i]);
+    if (samePath) break;
+    curPath = resolved.path;
+  }
+  return trace;
 }
