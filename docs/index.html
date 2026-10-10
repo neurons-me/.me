@@ -17,11 +17,27 @@
   <meta name="twitter:description" content="Documentation for .me: a semantic identity runtime for owning your knowledge graph." />
   <meta name="twitter:image" content="https://neurons-me.github.io/docs/assets/img/me.png" />
   <meta name="twitter:image:alt" content=".me social graph" />
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/this.gui@1.4.6/dist/styles.css" />
+  <!-- .GUI (this.gui@4.1.0) renders this page from the static markup below (/.me/assets/landing-gui/landing-gui.js); the static page stays as the no-JS / CDN-failure fallback.
+       Page-scoped theme keys, neurons.me, dark by default. -->
+  <script>
+    window.__thisGuiThemeScope = { scopeId: "me-docs", themeModeKey: "me-docs.themeMode", themeIdKey: "me-docs.themeId", defaultMode: "dark" };
+    try {
+      if (!localStorage.getItem("me-docs.themeMode")) localStorage.setItem("me-docs.themeMode", "dark");
+      if (!localStorage.getItem("me-docs.themeId")) localStorage.setItem("me-docs.themeId", "neurons.me");
+    } catch (e) {}
+    document.documentElement.classList.add("gui-boot");
+  </script>
+  <!-- No icon font: every icon is inline SVG; hide any icon-font span so its name never shows as text. -->
+  <style>.material-symbols-rounded,.material-symbols-outlined,.material-icons{display:none!important} body{margin:0} .gui-boot #static-landing{display:none}</style>
+  <!-- Pinned dependencies (jsDelivr, exact versions, Subresource Integrity), same as /.me/Demos/, the Robots / Smart Cities landings and ContextLab. -->
+  <script src="https://cdn.jsdelivr.net/npm/react@18.3.1/umd/react.production.min.js" integrity="sha384-DGyLxAyjq0f9SPpVevD6IgztCFlnMF6oW/XQGmfe+IsZ8TqEiDrcHkMLKI6fiB/Z" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/react-dom@18.3.1/umd/react-dom.production.min.js" integrity="sha384-gTGxhz21lVGYNMcdJOyq01Edg0jhn/c22nsx0kyqP0TxaV5WVdsSH1fSDUf5YJj1" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/this.gui@4.1.0/dist/this.gui.umd.js" integrity="sha384-umBxi9YB2FkfPkyuR4Ej4TvKyweGkUbZnvIQh/ZzaF0YGstAGl5I6xJ9fnLC+76O" crossorigin="anonymous"></script>
+  <!-- Static page styles, off once .GUI has rendered (html.gui-on). -->
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html:not(.gui-on) *, html:not(.gui-on) *::before, html:not(.gui-on) *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-    body {
+    html:not(.gui-on) body {
       font-family: "Inter", "Helvetica Neue", Helvetica, Arial, sans-serif;
       background: #f4f7f8;
       color: #0f1720;
@@ -29,13 +45,13 @@
       -webkit-font-smoothing: antialiased;
     }
 
-    .page {
+    html:not(.gui-on) .page {
       max-width: 960px;
       margin: 0 auto;
       padding: 88px 32px 80px;
     }
 
-    .kicker {
+    html:not(.gui-on) .kicker {
       font-size: 0.75rem;
       font-weight: 600;
       letter-spacing: 0.18em;
@@ -44,7 +60,7 @@
       margin-bottom: 12px;
     }
 
-    .page-title {
+    html:not(.gui-on) .page-title {
       font-size: 2.75rem;
       font-weight: 800;
       letter-spacing: -0.02em;
@@ -52,23 +68,23 @@
       margin-bottom: 12px;
     }
 
-    .page-subtitle {
+    html:not(.gui-on) .page-subtitle {
       font-size: 1.05rem;
       color: #51606d;
       margin-bottom: 48px;
       max-width: 560px;
     }
 
-    .grid {
+    html:not(.gui-on) .grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
       gap: 20px;
     }
 
-    @media (max-width: 720px) { .grid { grid-template-columns: repeat(2, 1fr); } }
-    @media (max-width: 480px) { .grid { grid-template-columns: 1fr; } }
+    @media (max-width: 720px) { html:not(.gui-on) .grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 480px) { html:not(.gui-on) .grid { grid-template-columns: 1fr; } }
 
-    .card {
+    html:not(.gui-on) .card {
       display: flex;
       flex-direction: column;
       gap: 10px;
@@ -81,14 +97,14 @@
       transition: box-shadow 140ms ease, border-color 140ms ease, transform 140ms ease;
     }
 
-    .card:hover {
+    html:not(.gui-on) .card:hover {
       box-shadow: 0 4px 20px rgba(15, 23, 32, 0.10);
       border-color: #0f6a78;
       transform: translateY(-1px);
     }
 
-    .card picture { display: block; }
-    .card-media {
+    html:not(.gui-on) .card picture { display: block; }
+    html:not(.gui-on) .card-media {
       display: block;
       width: calc(100% + 40px);
       height: 140px;
@@ -97,13 +113,13 @@
       border-radius: 12px 12px 0 0;
     }
 
-    .card-title {
+    html:not(.gui-on) .card-title {
       font-size: 1rem;
       font-weight: 700;
       line-height: 1.3;
     }
 
-    .card-desc {
+    html:not(.gui-on) .card-desc {
       font-size: 0.875rem;
       color: #51606d;
       line-height: 1.55;
@@ -111,34 +127,39 @@
 
     /* dark mode */
     @media (prefers-color-scheme: dark) {
-      body { background: #0b1114; color: #e8eded; }
-      .kicker { color: #98a7b3; }
-      .page-subtitle { color: #98a7b3; }
-      .card { background: #111a1f; border-color: rgba(232, 237, 237, 0.10); }
-      .card:hover { border-color: #4fd1c5; box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
-      .card-desc { color: #98a7b3; }
+      html:not(.gui-on) body { background: #0b1114; color: #e8eded; }
+      html:not(.gui-on) .kicker { color: #98a7b3; }
+      html:not(.gui-on) .page-subtitle { color: #98a7b3; }
+      html:not(.gui-on) .card { background: #111a1f; border-color: rgba(232, 237, 237, 0.10); }
+      html:not(.gui-on) .card:hover { border-color: #4fd1c5; box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
+      html:not(.gui-on) .card-desc { color: #98a7b3; }
     }
 
-    .lang-nav { display: flex; gap: 8px; margin-bottom: 40px; }
-    .lang-nav a { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 20px; border: 1px solid rgba(15,23,32,0.15); font-size: 0.8rem; font-weight: 600; text-decoration: none; color: inherit; transition: background 120ms, border-color 120ms; }
-    .lang-nav a:hover { background: rgba(15,106,120,0.08); border-color: #0f6a78; }
+    html:not(.gui-on) .lang-nav { display: flex; gap: 8px; margin-bottom: 40px; }
+    html:not(.gui-on) .lang-nav a { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 20px; border: 1px solid rgba(15,23,32,0.15); font-size: 0.8rem; font-weight: 600; text-decoration: none; color: inherit; transition: background 120ms, border-color 120ms; }
+    html:not(.gui-on) .lang-nav a:hover { background: rgba(15,106,120,0.08); border-color: #0f6a78; }
     @media (prefers-color-scheme: dark) {
-      .lang-nav a { border-color: rgba(232,237,237,0.15); }
-      .lang-nav a:hover { background: rgba(79,209,197,0.10); border-color: #4fd1c5; }
+      html:not(.gui-on) .lang-nav a { border-color: rgba(232,237,237,0.15); }
+      html:not(.gui-on) .lang-nav a:hover { background: rgba(79,209,197,0.10); border-color: #4fd1c5; }
     }
-    .topnav { position:fixed; top:0; left:0; right:0; z-index:100; display:flex; align-items:center; gap:4px; padding:8px 20px; background:rgba(244,247,248,0.92); backdrop-filter:blur(8px); border-bottom:1px solid rgba(15,23,32,0.08); font-size:0.82rem; font-weight:600; }
-    @media (prefers-color-scheme: dark) { .topnav { background:rgba(11,17,20,0.92); border-bottom-color:rgba(232,237,237,0.08); } }
-    .topnav button { background:none; border:none; cursor:pointer; font:inherit; padding:4px 8px; border-radius:6px; color:inherit; transition:background 120ms; }
-    .topnav button:hover, .topnav a:hover { background:rgba(15,106,120,0.1); }
-    .topnav a { text-decoration:none; color:inherit; padding:4px 10px; border-radius:6px; transition:background 120ms; }
-    @media (prefers-color-scheme: dark) { .topnav button:hover, .topnav a:hover { background:rgba(79,209,197,0.1); } }
-    .topnav .spacer { flex:1; }
+    html:not(.gui-on) .topnav { position:fixed; top:0; left:0; right:0; z-index:100; display:flex; align-items:center; gap:4px; padding:8px 20px; background:rgba(244,247,248,0.92); backdrop-filter:blur(8px); border-bottom:1px solid rgba(15,23,32,0.08); font-size:0.82rem; font-weight:600; }
+    @media (prefers-color-scheme: dark) { html:not(.gui-on) .topnav { background:rgba(11,17,20,0.92); border-bottom-color:rgba(232,237,237,0.08); } }
+    html:not(.gui-on) .topnav button { background:none; border:none; cursor:pointer; font:inherit; padding:4px 8px; border-radius:6px; color:inherit; transition:background 120ms; }
+    html:not(.gui-on) .topnav button:hover, html:not(.gui-on) .topnav a:hover { background:rgba(15,106,120,0.1); }
+    html:not(.gui-on) .topnav a { text-decoration:none; color:inherit; padding:4px 10px; border-radius:6px; transition:background 120ms; }
+    @media (prefers-color-scheme: dark) { html:not(.gui-on) .topnav button:hover, html:not(.gui-on) .topnav a:hover { background:rgba(79,209,197,0.1); } }
+    html:not(.gui-on) .topnav .spacer { flex:1; }
+    html:not(.gui-on) .topnav .mepath { display:inline-flex; align-items:center; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-weight:600; }
+    html:not(.gui-on) .topnav .mepath a { padding:4px 0 4px 10px; color:#0f6a78; }
+    @media (prefers-color-scheme: dark) { html:not(.gui-on) .topnav .mepath a { color:#4fd1c5; } }
   </style>
 <link rel="icon" type="image/png" href="https://res.cloudinary.com/dkwnxf6gm/image/upload/v1769890772/this.me.png"></head>
 <body>
+<div id="static-landing" data-layout="docs-index">
   <nav class="topnav">
     <button onclick="history.back()" title="Back">←</button>
     <a href="https://neurons-me.github.io">⌂ Home</a>
+    <span class="mepath"><a href="https://neurons-me.github.io/.me/" title=".me">me://</a><span class="here">Docs</span></span>
     <span class="spacer"></span>
     <div
       data-gui-searchbar
@@ -146,7 +167,7 @@
       data-placeholder="Search in All.This"
       style="width:220px; max-width:38vw; margin-right:8px;"
     ></div>
-    <a href="https://github.com/neurons-me/.me" target="_blank" rel="noopener"><svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" style="vertical-align:middle;margin-right:4px"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg> GitHub</a>
+    <a href="https://github.com/neurons-me/.me" target="_blank" rel="noopener" title="GitHub · neurons-me/.me" aria-label="GitHub"><svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true" style="vertical-align:middle"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg></a>
   </nav>
   <div class="page">
     <p class="kicker">Own your intelligence.</p>
@@ -366,6 +387,14 @@
       <img src="https://res.cloudinary.com/dkwnxf6gm/image/upload/v1760629056/neurons-grey_hxjcom.png" alt="neurons.me" style="width:36px;height:36px;object-fit:contain;opacity:0.5;transition:opacity 140ms ease;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.5" />
     </a>
   </footer>
-  <script src="https://neurons-me.github.io/vendor/gui-searchbar.iife.js" defer></script>
+</div>
+<div id="root"></div>
+<script src="/.me/assets/landing-gui/landing-gui.js?v=3" onerror="document.documentElement.classList.remove('gui-boot')"></script>
+<!-- Static fallback only: the standalone SearchBar bundle, loaded when .GUI did not render the page. -->
+<script>
+  if (!document.documentElement.classList.contains("gui-on")) {
+    var s = document.createElement("script"); s.src = "https://neurons-me.github.io/vendor/gui-searchbar.iife.js"; s.defer = true; document.body.appendChild(s);
+  }
+</script>
 </body>
 </html>

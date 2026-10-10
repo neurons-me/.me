@@ -1,6 +1,7 @@
 // .GUI (this.gui@4.1.0) for hand-written .me landings. Copy of neurons-me.github.io docs/assets/landing-gui.js
 // (the /robots/ and /smart-cities/ landings), kept here so .me pages don't depend on the site repo's paths, plus
-// the /.me/Demos/ index layout (kicker, h1, one line, image-left demo cards).
+// the /.me/Demos/ index layout (kicker, h1, one line, image-left demo cards) and the /.me/docs/ index layout
+// (#static-landing[data-layout=docs-index]: kicker, h1 with the .me mark, language chips, cover-top cards, footer).
 // The page's own static markup (#static-landing) is the single source of text, links and images: this script
 // reads it, renders the same content through GUI.mount (registry Card/Box/Typography/Link/Chip + a page-local
 // topbar: me:// path, Docs, GitHub, theme picker, light/dark, gear with Inspector + Grid Layout), then removes
@@ -22,10 +23,30 @@
   // ── read the static page ──
   const path = [...SRC.querySelectorAll(".mepath > a, .mepath > .here")].map((e) => ({ text: txt(e), href: e.getAttribute("href"), title: e.getAttribute("title") || txt(e) }));
   const DOCS = "https://neurons-me.github.io/.me/docs/";
-  const inline = (el) => [...el.childNodes].map((n) => n.nodeType === 1 && n.tagName === "A" ? N("Link", { href: n.getAttribute("href"), title: n.getAttribute("title") || undefined, underline: "hover", sx: { color: "primary.main" } }, [n.textContent]) : n.textContent);
-  const demosIndex = !!SRC.querySelector(".page .grid .card");
+  const inline = (el) => [...el.childNodes].map((n) => n.nodeType === 1 && n.tagName === "A" ? N("Link", { href: n.getAttribute("href"), title: n.getAttribute("title") || undefined, underline: "hover", sx: { color: "primary.main" } }, [n.textContent])
+    : n.nodeType === 1 && n.tagName === "CODE" ? N("Box", { component: "code", sx: { fontFamily: MONO, fontSize: ".85em", px: .5, py: .125, borderRadius: "4px", bgcolor: "action.hover", color: "text.primary" } }, [n.textContent])
+    : n.textContent);
+  const attrs = (img, names) => Object.fromEntries(names.map((k) => [k, img.getAttribute(k)]).filter(([, v]) => v != null));
+  const docsIndex = SRC.dataset.layout === "docs-index";
+  const demosIndex = !docsIndex && !!SRC.querySelector(".page .grid .card");
   const header = SRC.querySelector("header");
-  const page = demosIndex ? {
+  const page = docsIndex ? (() => {
+    const t = SRC.querySelector(".page-title"), mark = t.querySelector("img"), foot = SRC.querySelector("footer a");
+    return {
+      path, docs: null, github: SRC.querySelector(".topnav a[href*='github.com']")?.getAttribute("href"),
+      kicker: inline(SRC.querySelector(".kicker")), subtitle: inline(SRC.querySelector(".page-subtitle")),
+      h1: [...t.childNodes].filter((n) => n.nodeType === 3).map((n) => n.textContent).join(" ").replace(/\s+/g, " ").trim(),
+      mark: mark && attrs(mark, ["src", "alt"]),
+      langs: [...SRC.querySelectorAll(".lang-nav a")].map((a) => ({ text: txt(a), href: a.getAttribute("href") })),
+      cards: [...SRC.querySelectorAll(".grid > a.card")].map((a) => {
+        const img = a.querySelector("img.card-media");
+        return { href: a.getAttribute("href"), title: txt(a.querySelector(".card-title")), desc: inline(a.querySelector(".card-desc")),
+          sources: [...a.querySelectorAll("picture > source")].map((s) => attrs(s, ["srcset", "type"])),
+          img: img && attrs(img, ["src", "width", "height", "alt"]) };
+      }),
+      footer: foot && { href: foot.getAttribute("href"), img: attrs(foot.querySelector("img"), ["src", "alt"]) },
+    };
+  })() : demosIndex ? {
     path: [...[...SRC.querySelectorAll(".kicker a")].map((a) => ({ text: txt(a), href: a.getAttribute("href"), title: a.getAttribute("title") || txt(a) })),
       { text: [...SRC.querySelector(".kicker").childNodes].filter((n) => n.nodeType === 3).map((n) => n.textContent).join("").trim(), href: null }],
     docs: DOCS, github: SRC.querySelector(".topnav a[href*='github.com']")?.getAttribute("href"),
@@ -155,6 +176,14 @@
         h(Box, { "data-gui-inspector-control": "true", sx: { display: "inline-flex", alignItems: "center", gap: .25 } }, h(ThemePicker), h(ModeToggle), h(SettingsMenu))));
   }
 
+  // /.me/docs/ card cover: <picture> with the page's own <source>s (AVIF first) and the <img> with its width/height,
+  // exactly as the static card (registry Box drops srcSet/width/height).
+  function DocsCover(p) {
+    const c = page.cards[p.card], im = c.img;
+    return h(Box, { component: "picture", "data-gui-node-id": p["data-gui-node-id"], sx: { display: "block", flexShrink: 0, lineHeight: 0 } },
+      ...c.sources.map((s, k) => h("source", { key: k, srcSet: s.srcset, type: s.type })),
+      h("img", { key: "img", src: im.src, width: im.width, height: im.height, alt: im.alt, style: { display: "block", width: "100%", height: 140, objectFit: "cover" } }));
+  }
   // ── content spec (registry types), same layout as the static page ──
   const cardSx = { display: "block", textDecoration: "none", color: "inherit", borderRadius: "14px", bgcolor: "background.paper", transition: "border-color .15s, box-shadow .15s",
     "&:hover": { borderColor: "primary.main", textDecoration: "none" } };
@@ -208,7 +237,32 @@
       N("Box", { sx: { display: "grid", gridTemplateColumns: "1fr", gap: 2, "@media (min-width:720px)": { gridTemplateColumns: "1fr 1fr" } } }, page.cards.map(indexCard)),
     ]),
   ]);
-  const spec = demosIndex ? indexSpec() : N("Box", { sx: { minHeight: "100vh", bgcolor: "background.default", color: "text.primary", lineHeight: 1.6 } }, [
+  // /.me/docs/ index: cover image on top of every card (140px, cropped), title, text; 3 / 2 / 1 columns as the static page
+  const docsCard = (c, i) => N("Card", { component: "a", href: c.href, variant: "outlined", sx: { ...cardSx, display: "flex", flexDirection: "column", overflow: "hidden", borderRadius: "12px",
+      transition: "border-color .14s, box-shadow .14s, transform .14s", "&:hover": { borderColor: "primary.main", boxShadow: 3, transform: "translateY(-1px)", textDecoration: "none" } } }, [
+    c.img && N("DocsCover", { card: i }),
+    N("Box", { sx: { display: "flex", flexDirection: "column", gap: 1.25, p: 2.5 } }, [
+      T(c.title, { fontSize: "1rem", fontWeight: 700, lineHeight: 1.3, color: "text.primary" }),
+      T(c.desc, { fontSize: ".875rem", color: "text.secondary", lineHeight: 1.55 }),
+    ]),
+  ].filter(Boolean));
+  const docsSpec = () => N("Box", { sx: { minHeight: "100vh", bgcolor: "background.default", color: "text.primary" } }, [
+    N("LandingTopBar", {}),
+    N("Box", { component: "main", sx: { maxWidth: 960, mx: "auto", px: 4, pt: 6, pb: 4, "@media (max-width:480px)": { px: 2.5, pt: 4 } } }, [
+      T(page.kicker, { fontSize: ".75rem", fontWeight: 600, letterSpacing: ".18em", textTransform: "uppercase", color: "text.secondary", mb: 1.5 }, { component: "p" }),
+      T([page.mark && N("Box", { component: "img", src: page.mark.src, alt: page.mark.alt, sx: { height: "5em", width: "auto", display: "inline-block", verticalAlign: "middle", mr: "-1.5em" } }), " " + page.h1].filter(Boolean),
+        { fontSize: "2.75rem", fontWeight: 800, letterSpacing: "-.02em", lineHeight: 1.1, mb: 1.5, "@media (max-width:480px)": { fontSize: "2.2rem" } }, { component: "h1" }),
+      T(page.subtitle, { fontSize: "1.05rem", color: "text.secondary", mb: 6, maxWidth: 560 }, { component: "p" }),
+      page.langs.length && N("Box", { component: "nav", "aria-label": "Languages", sx: { display: "flex", flexWrap: "wrap", gap: 1, mb: 5 } }, page.langs.map((l) => N("Chip", { label: l.text, component: "a", href: l.href, clickable: true, variant: "outlined",
+        sx: { fontSize: ".8rem", fontWeight: 600, borderColor: "divider", "&:hover": { borderColor: "primary.main" } } }))),
+      N("Box", { sx: { display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: "20px", "@media (max-width:720px)": { gridTemplateColumns: "repeat(2, minmax(0, 1fr))" }, "@media (max-width:480px)": { gridTemplateColumns: "minmax(0, 1fr)" } } }, page.cards.map(docsCard)),
+    ].filter(Boolean)),
+    page.footer && N("Box", { component: "footer", sx: { mt: 8, py: 5, textAlign: "center", borderTop: 1, borderColor: "divider" } }, [
+      N("Link", { href: page.footer.href, title: page.footer.img.alt, underline: "none", sx: { display: "inline-flex", lineHeight: 0 } }, [
+        N("Box", { component: "img", src: page.footer.img.src, alt: page.footer.img.alt, width: 36, height: 36, sx: { width: 36, height: 36, objectFit: "contain", opacity: .5, transition: "opacity .14s", "&:hover": { opacity: 1 } } })]),
+    ]),
+  ].filter(Boolean));
+  const spec = docsIndex ? docsSpec() : demosIndex ? indexSpec() : N("Box", { sx: { minHeight: "100vh", bgcolor: "background.default", color: "text.primary", lineHeight: 1.6 } }, [
     N("LandingTopBar", {}),
     N("Box", { component: "main", sx: { width: "min(760px, calc(100% - 40px))", mx: "auto", pt: 1.5 } }, [
       N("Box", { component: "header", sx: { pt: 3.5, pb: 5 } }, [
@@ -227,7 +281,7 @@
   const INSPECTOR_ON = params.get("inspector") === "1";
   if (G.getInspectorEnabled() !== INSPECTOR_ON) G.setInspectorEnabled(INSPECTOR_ON);
   G.mount(spec, ROOT, {
-    gui: { ...G, Theme: PageTheme, registry: { ...(G.Registry || G.registry), LandingTopBar } },
+    gui: { ...G, Theme: PageTheme, registry: { ...(G.Registry || G.registry), LandingTopBar, DocsCover } },
     devtools: { enabled: true, inspector: INSPECTOR_ON, adminView: false, inspectorToggleVisible: false },
   });
   html.classList.add("gui-on");
