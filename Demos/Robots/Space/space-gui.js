@@ -79,7 +79,10 @@ async function loadKernel() {
 // ── tiny external stores (page state, not kernel) ──
 function createStore(state) { const ls = new Set(); let v = 0; return { state, subscribe: (cb) => (ls.add(cb), () => ls.delete(cb)), version: () => v, set(p) { if (p) Object.assign(state, p); v++; ls.forEach((cb) => cb()); } }; }
 const useStore = (s) => { React.useSyncExternalStore(s.subscribe, s.version); return s.state; };
-const ui = createStore({ step: 1, sel: 1, obj: "ice", focus: "robot:1", hood: false, running: false, speed: 10, explain: "goCharge", kernel: { state: "loading" }, gui: { state: "checking" }, verify: null });
+// The story card can be collapsed to its title row; remembered per browser (default open).
+const PASSAGE_KEY = "space-robots.passageOpen";
+const readPassageOpen = () => { try { return localStorage.getItem(PASSAGE_KEY) !== "0"; } catch (e) { return true; } };
+const ui = createStore({ passageOpen: readPassageOpen(), step: 1, sel: 1, obj: "ice", focus: "robot:1", hood: false, running: false, speed: 10, explain: "goCharge", kernel: { state: "loading" }, gui: { state: "checking" }, verify: null });
 const frame = createStore({});   // bumped every animation frame (scene only)
 const tick = createStore({});    // bumped at 4 Hz (panels)
 
@@ -403,24 +406,30 @@ function Scene(p) {
 }
 
 // ── passage (main column, under the scene) ──
-function Passage(p) {   // a compact card under the scene: the story, one passage at a time
-  const { step } = useStore(ui); useStore(tick); const ps = PASSAGES[step];
+const togglePassage = () => { const open = !ui.state.passageOpen; ui.set({ passageOpen: open }); try { localStorage.setItem(PASSAGE_KEY, open ? "1" : "0"); } catch (e) {} };
+function Passage(p) {   // a compact card under the scene: the story, one passage at a time (collapsible to its title row)
+  const { step, passageOpen: open } = useStore(ui); useStore(tick); const ps = PASSAGES[step];
   const btn = { fontFamily: MONO, fontSize: 10.5, textTransform: "none", lineHeight: 1.3, py: .4 };
   return h(Box, { "data-gui-node-id": p["data-gui-node-id"], id: "passage", sx: { px: { xs: 1.25, md: 2 }, pt: { xs: .75, md: 1 }, pb: { xs: 1.25, md: 1.5 } } },
     h(Box, { id: "passage-card", sx: { maxWidth: 900, mx: "auto", border: 1, borderColor: "divider", borderRadius: 2, bgcolor: "background.paper", px: { xs: 1.5, md: 2 }, py: { xs: 1.1, md: 1.25 } } },
-      h(Box, { sx: { display: "flex", alignItems: "center", gap: .75, flexWrap: "wrap", mb: .5 } },
+      h(Box, { sx: { display: "flex", alignItems: "center", gap: .75, flexWrap: "wrap", mb: open ? .5 : 0 } },
         h(Typography, { component: "h1", id: "page-title", sx: { fontFamily: SERIF, fontWeight: 400, fontSize: 13, letterSpacing: ".03em", lineHeight: 1.2, m: 0, color: "text.secondary", mr: .5 } }, "Autonomous Robotics in Space"),
         h(Box, { id: "passage-steps", role: "tablist", "aria-label": "Passages", sx: { display: "flex", gap: .25 } },
           ...Array.from({ length: STEPS }, (_, i) => i + 1).map((i) => h(Button, { key: i, role: "tab", "aria-selected": i === step, title: PASSAGES[i].title, onClick: () => ui.set({ step: i }), size: "small",
             sx: { minWidth: 24, width: 24, height: 22, p: 0, fontFamily: SERIF, fontSize: 11.5, color: i === step ? "primary.main" : "text.secondary", borderBottom: 1, borderColor: i === step ? "primary.main" : "transparent", borderRadius: 0 } }, ROMAN[i]))),
-        h(Box, { sx: { ml: "auto", display: "flex", gap: .5 } },
+        open ? null : h(Typography, { component: "span", id: "passage-title-compact", sx: { fontFamily: SERIF, fontStyle: "italic", fontSize: 13.5, lineHeight: 1.2, color: "text.primary", minWidth: 0, flex: "1 1 120px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, `${ROMAN[step]}. ${ps.title}`),
+        h(Box, { sx: { ml: "auto", display: "flex", alignItems: "center", gap: .5 } },
           h(Button, { id: "btn-back", size: "small", disabled: step <= 1, onClick: () => ui.set({ step: step - 1 }), sx: { ...btn, minWidth: 0 } }, "Back"),
-          h(Button, { id: "btn-next", size: "small", variant: "outlined", onClick: () => ui.set({ step: step >= STEPS ? 1 : step + 1 }), sx: { ...btn, minWidth: 0 } }, step >= STEPS ? "From the start" : "Next"))),
+          h(Button, { id: "btn-next", size: "small", variant: "outlined", onClick: () => ui.set({ step: step >= STEPS ? 1 : step + 1 }), sx: { ...btn, minWidth: 0 } }, step >= STEPS ? "From the start" : "Next"),
+          h(G.Atoms.IconButton, { id: "btn-passage-toggle", size: "small", onClick: togglePassage, "aria-expanded": open, "aria-controls": "passage-content",
+            "aria-label": open ? "Collapse the story" : "Expand the story", title: open ? "Collapse the story" : "Expand the story", sx: { p: "4px", color: "text.secondary" } },
+            h(Ico, { kind: "down", size: 14, sx: { transform: open ? "rotate(180deg)" : "none", transition: "transform .2s" } })))),
+      h(G.Molecules.Collapse, { in: open, id: "passage-content" },
       h(Typography, { component: "h2", id: "passage-title", sx: { fontFamily: SERIF, fontWeight: 400, fontStyle: "italic", fontSize: { xs: 17, md: 18 }, lineHeight: 1.2, m: 0, mb: .4, color: "text.primary" } }, `${ROMAN[step]}. ${ps.title}`),
       h(Typography, { component: "p", id: "passage-body", sx: { fontFamily: SERIF, fontSize: { xs: 13.5, md: 14 }, lineHeight: 1.45, color: "text.primary", m: 0 } }, ...storyText(ps)),
       h(StoryCode, { act: step }),
       h(Box, { sx: { display: "flex", alignItems: "center", gap: .75, mt: .75, flexWrap: "wrap" } },
-        ...ps.tries.map(([label, fn], i) => h(Button, { key: i, className: "try", variant: "contained", disableElevation: true, size: "small", disabled: !W, onClick: fn, sx: btn }, label)))));
+        ...ps.tries.map(([label, fn], i) => h(Button, { key: i, className: "try", variant: "contained", disableElevation: true, size: "small", disabled: !W, onClick: fn, sx: btn }, label))))));
 }
 
 // The act's prose; an optional link on its first occurrence of link.text (e.g. ".me kernel" → the .me docs)
