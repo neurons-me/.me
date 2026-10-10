@@ -128,7 +128,7 @@ Whatever[1] ⊆ Whatever[] ⊆ Whatever        (notation, not executable syntax)
 ```
 
 > **Notation, not executable syntax.** Here `Whatever[]` and `|Whatever[]|` denote the plural and its
-> cardinality. They are not `me()` path strings. In the proposed .me 4.2 (aggregate contract, not released)
+> cardinality. They are not `me()` path strings. In .me 4.2.0
 > the executable form `me("x[]")` reads the count of members and `me("x[].f")` a sum; `|x[]|` is not valid
 > there. See [Plurality Is Grammar](./Plurality-Is-Grammar.md).
 

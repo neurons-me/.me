@@ -191,6 +191,31 @@ to. Links are for structural reads and single-source-of-truth relationships.
 
 → [The Semantic Graph Engine](https://suign.github.io/SemanticGraphEngine.html) — schema as a node, not a table · [me.whatever(what)](https://suign.github.io/MeWhateverWhat.html) — the syntax, formalized · [Robots That Understand Context](https://neurons-me.github.io/.me/docs/Robots-That-Understand-Context.html) — this exact `[i]` broadcast, applied to a fleet
 
+## Collections: `[]` aggregates (4.2)
+
+```ts
+import Me from "this.me";
+
+const me = Me();
+
+me.fleet.trucks[1].fuel(100);
+me.fleet.trucks[2].fuel(200);
+me.fleet.trucks[3].fuel(400);
+
+me("fleet.trucks[]");        // 3    count of members
+me("fleet.trucks[].fuel");   // 700  exact sum of fuel over the members
+me["="]("total", "fleet.trucks[].fuel * 2");
+me("total");                 // 1400 same forms inside formulas
+```
+
+An aggregate is computed over the **public view** (what `me.as(null)` sees) for
+every caller, the owner included: protected members never count. If a member
+lacks the field, the sum is `undefined` (status `incomplete`, never a partial
+sum); an empty collection is `undefined`, not `0`. Upgrading from 4.1.0 changes
+how strings like `me("x[]")` and `me("x[].f")` behave: see the
+[CHANGELOG](https://github.com/neurons-me/.me/blob/main/Typescript/CHANGELOG.md)
+(incompatibilities I1–I10 and known limits).
+
 ## Privacy Model
 
 ```ts

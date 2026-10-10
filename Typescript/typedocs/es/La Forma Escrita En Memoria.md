@@ -14,8 +14,7 @@ order = timestamp
 > para un plural (que tiene miembros, su cardinalidad, dónde va cada miembro). No son paths para `me()` ni texto
 > de fórmula. Lo que se escribe de verdad son claves y fórmulas normales (por ejemplo
 > `me.netget.port[80]["|Whatever[]|<="](128)`, que guarda `128` en una clave con ese nombre literal; ver
-> [Plurality Is Grammar](../Plurality-Is-Grammar.md) §4). En la 4.2 propuesta (contrato de agregados, sin
-> publicar), `me("x[]")` lee el número de miembros y `me("x[].f")` una suma; `|x[]|` no es válido ahí.
+> [Plurality Is Grammar](../Plurality-Is-Grammar.md) §4). En .me 4.2.0, `me("x[]")` lee el número de miembros y `me("x[].f")` una suma; `|x[]|` no es válido ahí.
 
 y luego te vas, eso no desaparece como "config temporal". Queda como memoria semántica del kernel: en `memories`, en el `index`, exportable por snapshot, rehidratable después. Igual que hoy quedan dominios, secretos, derivaciones, identidad, etc.
 

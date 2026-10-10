@@ -19,8 +19,8 @@ belongs one layer up, in whatever interprets the plural — not in the kernel.
 > for `me()` and not formula text. Executable `[]` syntax depends on the kernel version:
 > - **.me 4.1.0:** an empty `[]` in a path string has no meaning of its own; the path normalizer drops it
 >   (`me("x[].f")` reads `x.f`).
-> - **Proposed .me 4.2** (aggregate contract, not released): `me("x[]")` reads the **count** of `x`'s members
->   and `me("x[].f")` the **sum** of field `f` over them; the same forms work in formulas. A form such as
+> - **.me 4.2.0:** `me("x[]")` reads the **count** of `x`'s members
+>   and `me("x[].f")` the **sum** of field `f` over them (over the public view); the same forms work in formulas. A form such as
 >   `|x[]|` or `x[] <= 128` is not valid there: it is rejected and writes nothing.
 >
 > Code blocks below that are notation say so.
@@ -104,8 +104,8 @@ me.netget.port[80].Whatever["="]("order", "timestamp");      // ordering
 ```
 
 What these calls really do in the kernel: the second line stores `128` under a key literally named
-`|Whatever[]|<=` (in 4.1.0 and in the proposed 4.2 alike); the kernel does not interpret that key, the
-runtime that reads it does. The last two lines declare ordinary formulas. In the proposed 4.2, the current
+`|Whatever[]|<=` (in 4.1.0 and in 4.2.0 alike); the kernel does not interpret that key, the
+runtime that reads it does. The last two lines declare ordinary formulas. In 4.2.0, the current
 number of members could be read with `me("netget.port[80].Whatever[]")`.
 
 netget is the first interpreter of this shape, not its owner. Its daemon reads the cardinality and
@@ -145,7 +145,7 @@ me.netget.port[80].request.seq(seq);
 to this:
 
 ```ts
-// DESIGN SKETCH — not valid syntax in .me 4.1.0 or in the proposed 4.2 (write-side `[]` has no contract yet)
+// DESIGN SKETCH — not valid syntax in .me 4.1.0 or in 4.2.0 (write-side `[]` has no contract yet)
 // the plural's shape is declared once, on the space itself
 me.netget.port[80].request[]
 me.netget.port[80].request["|[]|<="](128);
@@ -180,7 +180,7 @@ netget's sake.
 ## Summary
 
 - As notation, `[]` is `.me`'s plural grammar — it means "has members," nothing more specific. As
-  executable path syntax, see the note at the top (in the proposed 4.2, `x[]` reads a count and `x[].f` a sum).
+  executable path syntax, see the note at the top (in 4.2.0, `x[]` reads a count and `x[].f` a sum).
 - A plural's shape is described with algebraic constraints (cardinality, placement, order), not
   named categories (`kind: "..."`).
 - Today, `.me` holds and exposes these constraints but does not enforce them — that's the job of
