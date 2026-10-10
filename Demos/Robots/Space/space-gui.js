@@ -1,5 +1,5 @@
 // Autonomous Robotics in Space: .GUI page (this.gui@4.1.0, SRI-pinned in index.html, sha256-checked below)
-// over the real, unmodified this.me@4.1.0 kernel (sha256-checked below before import).
+// over the real, unmodified this.me@4.2.0 kernel from npm (jsDelivr, unpkg fallback; sha256-checked below before import).
 //
 // Who owns what:
 //   KERNEL (this.me): one kernel per spider robot (3). Every robot fact, its own view of the shared objects (objects.*),
@@ -11,8 +11,8 @@
 
 import * as M from "./space-model.js";
 
-const KERNEL = { version: "4.1.0", sha256: "47cc8f9a9b5ee2921a59023d400e694d6c9b9f80a0782db850b06156cbb46afa",
-  urls: ["https://cdn.jsdelivr.net/npm/this.me@4.1.0/dist/me.es.js", "https://unpkg.com/this.me@4.1.0/dist/me.es.js"] };
+const KERNEL = { version: "4.2.0", label: "this.me@4.2.0", build: "from npm (unmodified)", sha256: "8cc94d5273b05728713e7c06bcba6ab0d88c85d2a748dc885e7bca745605a61a",
+  urls: ["https://cdn.jsdelivr.net/npm/this.me@4.2.0/dist/me.es.js", "https://unpkg.com/this.me@4.2.0/dist/me.es.js"] };
 const GUI_PIN = { label: "this.gui@4.1.0", repo: "https://github.com/neurons-me/GUI", npm: "https://www.npmjs.com/package/this.gui/v/4.1.0",
   url: "https://cdn.jsdelivr.net/npm/this.gui@4.1.0/dist/this.gui.umd.js", sha256: "d50e32f6a4f7603804228c074fc59df1cfdea73a4f3d5ad93ba9475227b2a577" };
 const SRC = "https://github.com/neurons-me/.me/blob/main/Demos/Robots/Space/";
@@ -32,17 +32,20 @@ if (SYN && SYN.watchTheme) SYN.watchTheme(); // re-measures the colours whenever
 function resolveInstance(path, ctx) {
   let m;
   if ((m = /^robots\.(\d+)$/.exec(path))) return M.NAME[m[1]] ? `robot:${m[1]}` : null;
-  if ((m = /^robots\.\d+\.heard\.(\d+)$/.exec(path))) return M.NAME[m[1]] ? `robot:${m[1]}` : null;   // what it heard from robot m
+  // a message names its peer: inbox[id] / its .from → the sender, outbox[id] / its .to → the receiver (read in that kernel)
+  if ((m = /^robots\.(\d+)\.(inbox|outbox)\.(\d+)(?:\.(?:from|to))?$/.exec(path))) { const peer = FME(`robots.${m[1]}.${m[2]}.${m[3]}.${m[2] === "inbox" ? "from" : "to"}`); return M.NAME[peer] ? `robot:${peer}` : null; }
+  if ((m = /^robots\.\d+\.(?:lastFrom|lastTo)\.(\d+)$/.exec(path))) return M.NAME[m[1]] ? `robot:${m[1]}` : null;   // the pointer to the latest from / to robot m
+  if ((m = /^robots\.(\d+)\.tipMsg$/.exec(path))) { const f = FME(`robots.${m[1]}.tipMsg.from`); return M.NAME[f] ? `robot:${f}` : null; }   // whose tip it keeps
   if ((m = /^robots\.(\d+)\.home$/.exec(path))) { const r = M.ROBOTS.find((x) => x.id === Number(m[1])); return r ? `rock:${r.rock}` : null; }   // the pointer → its rock
   if ((m = /^rocks\.(\w+)$/.exec(path))) { const rk = M.ROCKS.find((x) => x.key === m[1]); return rk ? `rock:${rk.id}` : null; }
-  if (path === "objects.ice" || path === "objects.comet") return `object:${path.slice(8)}`;
+  if (path === "objects.ice" || path === "objects.comet" || path === "objects.flower") return `object:${path.slice(8)}`;
   if (path === "objects.rock" && ctx) { const r = M.ROBOTS.find((x) => x.id === ctx); return r ? `rock:${r.rock === 1 ? 2 : 1}` : null; }
   return null;
 }
 const refTitle = (id) => { const [k, v] = id.split(":"); return k === "robot" ? `select ${M.NAME[v]}` : k === "rock" ? `select the rock ${M.ROCK_NAME[v]}` : `select the ${v}`; };
-function MeCode({ code, sx, id, className, ctx }) {
+function MeCode({ code, sx, id, className, ctx, unmarked }) {   // unmarked: a ref not marked even when selected (e.g. the panel's own robot)
   const { focus } = useStore(ui);
-  const opts = { resolve: resolveInstance, ctx, selected: focus, onSelect: (ref) => act.focus(ref), title: refTitle };
+  const opts = { resolve: resolveInstance, ctx, selected: (ref) => ref === focus && ref !== unmarked, onSelect: (ref) => act.focus(ref), title: refTitle };
   return h(Box, { component: "code", id, className: `me-code${className ? " " + className : ""}`, sx: { fontFamily: MONO, minWidth: 0, ...(sx || {}) } }, ...(SYN ? SYN.render(h, code, opts) : [code]));
 }
 const SERIF = '"Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Times New Roman", serif';
@@ -69,7 +72,7 @@ async function loadKernel() {
       return { ME: mod.default || mod.ME, hash, url: res.url || url };
     } catch (e) { errors.push(`${url}: ${e?.message || e}`); }
   }
-  throw new Error("Could not load this.me@" + KERNEL.version + ": " + errors.join(" | "));
+  throw new Error("Could not load " + KERNEL.label + ": " + errors.join(" | "));
 }
 
 
@@ -90,7 +93,7 @@ function kernelFor(path) {
   m = /^robots\.(\d+)\./.exec(p); return [m && W?.robots.find((x) => x.id === Number(m[1]))?.k, p];
 }
 const FME = Object.assign((p) => { const [k, q] = kernelFor(p); return k ? k.me(q) : undefined; }, { explain: (p) => { const [k, q] = kernelFor(p); return k?.me.explain(q); } });
-// Explicit subscribe bridge: this.me@4.1.0 has no change events, and me.subscribe(...) on a kernel proxy would write a
+// Explicit subscribe bridge: this.me has no change events, and me.subscribe(...) on a kernel proxy would write a
 // fact named "subscribe". The page announces exactly the paths the kernel reported for each write (the written fact +
 // explain().meta.recomputed), batched to the 4 Hz UI tick.
 const kListeners = new Map();
@@ -132,7 +135,8 @@ function loop(now) {
   if (now - lastUi > 250) { lastUi = now; announce(); tick.set(); }
   requestAnimationFrame(loop);
 }
-function reset() { W = M.createWorld(ME); acc = 0; lastWrites.clear(); ui.set({ verify: null }); announceAll(); tick.set(); frame.set(); }
+const FLOWER_ON = new URLSearchParams(location.search).get("flower") !== "0";   // ?flower=0 hides it
+function reset() { W = M.createWorld(ME, { flower: FLOWER_ON }); acc = 0; lastWrites.clear(); ui.set({ verify: null }); announceAll(); tick.set(); frame.set(); }
 const play = (on = true) => ui.set({ running: on });
 function interact(id, xs) { for (const x of [].concat(xs || [])) { noteWrite(id, x); lastWrites.set(id, { t: W.t, batch: [x], manual: true }); } announce(); tick.set(); frame.set(); }
 const robot = (id) => W?.robots.find((r) => r.id === id);
@@ -146,11 +150,15 @@ const act = {
     else if (k === "object") ui.set({ obj: v, focus: ref }); },
   drain: (id) => { ui.set({ sel: id, focus: `robot:${id}`, explain: "mustCharge" }); interact(id, M.setBattery(W, id, 6)); },
   battery: (id, v) => interact(id, M.setBattery(W, id, v)),
+  addBattery: (id) => interact(id, M.addBattery(W, id)),
+  swapBattery: (id) => interact(id, M.swapBattery(W, id, 2, 50, 10)),
+  removeBattery: (id) => { const r = robot(id); interact(id, M.removeBattery(W, id, r.bats[r.bats.length - 1].i)); },
   hello: (id) => { ui.set({ sel: id, focus: `robot:${id}` }); M.sayHello(W, id); interact(); },
   tip: (id) => { ui.set({ sel: id, focus: `robot:${id}` }); M.shareTip(W, id); interact(); },
   away: () => { M.holdRock(W, 2, M.FAR); interact(); },
   close: () => { M.holdRock(W, 2, M.NEAR); interact(); },
   drift: () => { M.holdRock(W, 2, null); interact(); },
+  thirsty: () => { M.dryFlower(W, 20); ui.set({ obj: "flower", focus: "object:flower" }); interact(); },
   verify: () => { const t0 = performance.now(); const v = M.verifyWorld(ME, W); ui.set({ verify: { ...v, ms: performance.now() - t0, t: W.t } }); },
 };
 
@@ -162,11 +170,12 @@ const TRIES = [null,
   [["Lua says hello", () => { act.hello(3); play(); }], ["Bring the rocks close", () => { act.close(); play(); }]],
   [["Oli shares an ice tip", () => { act.tip(1); act.object("ice"); play(); }]],
   [["Push B 325 away", () => { act.away(); play(); }], ["Bring it close", () => { act.close(); play(); }], ["Let it drift", () => act.drift()]],
+  [["Let the flower get thirsty", () => { act.thirsty(); play(); }], ["What is the flower to each?", () => act.object("flower")]],
   [["Verify all three kernels", () => { act.verify(); ui.set({ hood: true }); }]],
 ];
 const PASSAGES = M.STORY.map((s, i) => (s ? { ...s, tries: TRIES[i] } : null));
 const STEPS = PASSAGES.length - 1;
-const ROMAN = ["", "I", "II", "III", "IV", "V", "VI", "VII"];
+const ROMAN = ["", "I", "II", "III", "IV", "V", "VI", "VII", "VIII"];
 
 // ── scene (page-side SVG; colours from the .GUI theme) ──
 const VB = M.VB;
@@ -202,6 +211,26 @@ function Spider({ r, V, FS, sel }) {   // a small spider: body, head, antenna, e
     h("circle", { cx: r.moving < 0 ? -5.5 : 5.5, cy: -10, r: 2.4, fill: "var(--bg)" }),
     h("line", { x1: 0, y1: -12, x2: 0, y2: -17 }), h("circle", { cx: 0, cy: -18, r: 1.1, fill: sel ? "var(--accent)" : col, stroke: "none" }));
 }
+// The flower (page state: the world's real water level; each robot only knows what it last saw). Tap it: what is it to each?
+function FlowerG({ rk, FS, focus }) {
+  const fl = W.flower, a = M.sunAngle(rk) + fl.pos, s = Math.min(FS, 1.5), deg = (a * 180) / Math.PI + 90;
+  const base = { x: rk.x + rk.R * Math.cos(a), y: rk.y + rk.R * Math.sin(a) }, lvl = Math.max(0, Math.min(1, fl.water / 100));
+  const dry = fl.water < 40, col = dry ? "var(--sun)" : "var(--accent)";
+  return h("g", { className: "flower", "data-water": Math.round(fl.water), role: "button", tabIndex: 0, "aria-label": `A flower, ${Math.round(fl.water)}% water. What is it to each spider?`, style: { cursor: "pointer" },
+      onClick: (e) => { e.stopPropagation(); act.object("flower"); }, onPointerDown: (e) => e.stopPropagation(), onKeyDown: (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); act.object("flower"); } } },
+    h("g", { transform: `translate(${base.x.toFixed(1)} ${base.y.toFixed(1)}) rotate(${deg.toFixed(1)}) scale(${s.toFixed(2)})` },
+      h("path", { d: `M0,0 Q${dry ? 3 : 0},-7 ${dry ? 5 : 0},-13`, fill: "none", stroke: "var(--ink)", strokeWidth: 1.3, strokeLinecap: "round" }),
+      h("path", { d: "M0,-5 Q-5,-6 -6,-9 Q-2,-9 0,-5", fill: "var(--accent)", opacity: 0.7 }),
+      h("g", { transform: `translate(${dry ? 5 : 0} -15) rotate(${dry ? 35 : 0})` },
+        ...[0, 1, 2, 3, 4].map((i) => { const b = (i * 2 * Math.PI) / 5; return h("circle", { key: i, cx: 3.2 * Math.cos(b), cy: 3.2 * Math.sin(b), r: 2.4, fill: col, opacity: dry ? 0.6 : 0.9 }); }),
+        h("circle", { r: 1.6, fill: "var(--sun)" })),
+      // the water drop beside it: filled up to its water level
+      h("g", { transform: "translate(11 -9)" }, h("clipPath", { id: "drop-clip" }, h("path", { d: "M0,-6 Q4,-1 4,2 A4,4 0 0 1 -4,2 Q-4,-1 0,-6 Z" })),
+        h("rect", { x: -5, y: 6 - 12 * lvl, width: 10, height: 12 * lvl, fill: "var(--ice)", clipPath: "url(#drop-clip)" }),
+        h("path", { d: "M0,-6 Q4,-1 4,2 A4,4 0 0 1 -4,2 Q-4,-1 0,-6 Z", fill: "none", stroke: "var(--ice)", strokeWidth: 1 })),
+      focus === "object:flower" ? h("circle", { className: "focus-ring", cx: 2, cy: -11, r: 12, fill: "none", stroke: "var(--accent)", strokeWidth: 1.4, strokeDasharray: "3 2" }) : null,
+      h("circle", { cx: 3, cy: -10, r: 14, fill: "transparent" })));
+}
 function arcPath(rk, a0, a1, rad) {
   const n = Math.max(2, Math.ceil(Math.abs(a1 - a0) / 0.08)); let d = "";
   for (let i = 0; i <= n; i++) { const a = a0 + (a1 - a0) * (i / n); d += `${i ? "L" : "M"}${(rk.x + rad * Math.cos(a)).toFixed(1)},${(rk.y + rad * Math.sin(a)).toFixed(1)}`; }
@@ -213,17 +242,18 @@ function Intent({ r, V, FS }) {   // where it is heading: a dashed arc along the
   let goal = null, mark = null;
   if (r.action === "charge" && M.lightDistOf(r.truth.pos) > 1e-9) { goal = Math.sign(M.wrap(r.truth.pos) || 1) * (M.HALF_PI - M.LIT_IN); mark = "sun"; }
   else if (r.action === "tip") { const tp = r.k.read(`robots.${r.id}.tipPos`); if (Math.abs(M.wrap(tp - r.truth.pos)) > 0.02) { goal = tp; mark = "ice"; } }
+  else if (r.action === "water") { const fp = r.k.read("objects.flower.pos"); if (Math.abs(M.wrap(fp - r.truth.pos)) > 0.02) { goal = fp; mark = "flower"; } }
   else if (r.action === "explore") { goal = p + r.dir * 0.9; mark = "look"; }
   if (goal == null) return null;
   const a0 = sa + p, a1 = a0 + M.wrap(goal - p);
   const end = { x: rk.x + rad * Math.cos(a1), y: rk.y + rad * Math.sin(a1) }, tdir = Math.sign(a1 - a0) || 1;
   const ta = a1 + (tdir * Math.PI) / 2, ax = Math.cos(ta), ay = Math.sin(ta), nx = Math.cos(a1), ny = Math.sin(a1), u = 6 * Math.min(FS, 1.6);
-  const colr = mark === "sun" ? "var(--sun)" : mark === "ice" ? "var(--ice)" : "var(--accent)";
+  const colr = mark === "sun" ? "var(--sun)" : mark === "ice" || mark === "flower" ? "var(--ice)" : "var(--accent)";
   return h("g", { className: "intent", "data-robot": r.id, "data-mark": mark, opacity: 0.9, style: { pointerEvents: "none" } },
     h("path", { d: arcPath(rk, a0, a1, rad), fill: "none", stroke: colr, strokeWidth: 1.6, strokeDasharray: "3 5", strokeLinecap: "round" }),
     h("path", { d: `M${(end.x - ax * u + nx * u * 0.6).toFixed(1)},${(end.y - ay * u + ny * u * 0.6).toFixed(1)} L${(end.x + ax * u * 0.4).toFixed(1)},${(end.y + ay * u * 0.4).toFixed(1)} L${(end.x - ax * u - nx * u * 0.6).toFixed(1)},${(end.y - ay * u - ny * u * 0.6).toFixed(1)}`, fill: "none", stroke: colr, strokeWidth: 1.6, strokeLinecap: "round", strokeLinejoin: "round" }));
 }
-const STATUS_SVG = { "going to the sun": "sun", charging: "bolt", "going to the ice": "ice", "mining ice": "pick", "studying the ice": "eye", "studying the comet": "eye", "hiding from the comet dust": "shield", "turning away from the ice": "turn", exploring: "look", asleep: "zz" };
+const STATUS_SVG = { "going to the sun": "sun", charging: "bolt", "going to the ice": "ice", "mining ice": "pick", "studying the ice": "eye", "studying the comet": "eye", "hiding from the comet dust": "shield", "turning away from the ice": "turn", exploring: "look", asleep: "zz", "going to the flower": "drop", "watering the flower": "drop" };
 function Glyph({ kind, x, y, s = 1, color }) {
   const g = (...c) => h("g", { transform: `translate(${x.toFixed(1)} ${y.toFixed(1)}) scale(${s.toFixed(2)})`, fill: "none", stroke: color || "var(--ink)", strokeWidth: 1.4, strokeLinecap: "round", strokeLinejoin: "round" }, ...c);
   switch (kind) {
@@ -236,6 +266,8 @@ function Glyph({ kind, x, y, s = 1, color }) {
     case "turn": return g(h("path", { d: "M4,6 L4,-2 Q4,-6 0,-6 Q-4,-6 -4,-2 L-4,3 M-7,0 L-4,3.5 L-1,0" }));
     case "zz": return g(h("path", { d: "M-5,-5 L0,-5 L-5,0 L0,0 M1,-1 L5,-1 L1,4 L5,4" }));
     // the dashboard's icons (drawn here as SVG: no icon font, so no icon names can ever show as text)
+    case "drop": return g(h("path", { d: "M0,-7 Q5,-1 5,2.5 A5,5 0 0 1 -5,2.5 Q-5,-1 0,-7 Z", stroke: color || "var(--ice)" }));
+    case "flower": return g(h("path", { d: "M0,7 L0,-1 M0,3 Q-4,2 -5,-1 M0,4 Q4,3 5,0" }), ...[0, 1, 2, 3, 4].map((i) => { const a = (i * 2 * Math.PI) / 5 - Math.PI / 2; return h("circle", { key: i, cx: 2.6 * Math.cos(a), cy: -3.5 + 2.6 * Math.sin(a), r: 1.7 }); }), h("circle", { cy: -3.5, r: 1.1, fill: color || "var(--ink)" }));
     case "go": return g(h("path", { d: "M-6,0 L5,0 M1,-4 L5,0 L1,4" }));
     case "radio": return g(h("path", { d: "M0,-1 L-3.5,7 M0,-1 L3.5,7 M-2.2,4 L2.2,4" }), h("circle", { cy: -2.5, r: 1.3, fill: color || "var(--ink)" }), h("path", { d: "M-3.6,-5.6 Q-5.4,-2.5 -3.6,0.6 M3.6,-5.6 Q5.4,-2.5 3.6,0.6" }));
     case "warn": return g(h("path", { d: "M0,-6.5 L7,6 L-7,6 Z" }), h("path", { d: "M0,-2 L0,2" }), h("circle", { cy: 4, r: 0.4, fill: color || "var(--ink)" }));
@@ -317,6 +349,7 @@ function Scene(p) {
           s.left > 0 && !known ? h("circle", { cx: c.x, cy: c.y, r: 8, fill: "var(--bg)", opacity: 0.55 }) : null,
           focus === "object:ice" ? h("circle", { className: "focus-ring", cx: c.x, cy: c.y, r: 12, fill: "none", stroke: "var(--accent)", strokeWidth: 1.6, strokeDasharray: "3 2" }) : null,
           h("circle", { cx: c.x, cy: c.y, r: 13, fill: "transparent" })); }),
+      W.flower && rk.id === W.flower.rock ? h(FlowerG, { rk, FS, focus }) : null,
       h("circle", { cx: rk.x, cy: rk.y, r: rk.R, fill: "none", stroke: focus === `rock:${rk.id}` ? "var(--accent)" : "var(--ink)", strokeWidth: focus === `rock:${rk.id}` ? 2.4 : 1.2, opacity: 0.85, style: { pointerEvents: "none" } }),
       label(rk.x, rk.y + 4, rk.name, 10, "var(--faint)", false));
   };
@@ -387,10 +420,7 @@ function Passage(p) {   // a compact card under the scene: the story, one passag
       h(Typography, { component: "p", id: "passage-body", sx: { fontFamily: SERIF, fontSize: { xs: 13.5, md: 14 }, lineHeight: 1.45, color: "text.primary", m: 0 } }, ...storyText(ps)),
       h(StoryCode, { act: step }),
       h(Box, { sx: { display: "flex", alignItems: "center", gap: .75, mt: .75, flexWrap: "wrap" } },
-        ...ps.tries.map(([label, fn], i) => h(Button, { key: i, className: "try", variant: "contained", disableElevation: true, size: "small", disabled: !W, onClick: fn, sx: btn }, label))),
-      h(Box, { id: "honest-line", sx: { mt: .9, pt: .7, borderTop: 1, borderColor: "divider", fontFamily: SERIF, fontStyle: "italic", fontSize: 12, lineHeight: 1.4, color: "text.secondary" } },
-        h(Box, { component: "b", sx: { fontWeight: 600, fontStyle: "normal", fontFamily: MONO, fontSize: 10.5, letterSpacing: ".04em", mr: .5 } }, "What .me does here:"),
-        "each spider's kernel stores its facts and the logical relations between them, and every decision is an operation over that logic (derive, explain). The walking, the radio and the animation are the page's own code: they only act on it and draw it.")));
+        ...ps.tries.map(([label, fn], i) => h(Button, { key: i, className: "try", variant: "contained", disableElevation: true, size: "small", disabled: !W, onClick: fn, sx: btn }, label)))));
 }
 
 // The act's prose; an optional link on its first occurrence of link.text (e.g. ".me kernel" → the .me docs)
@@ -401,6 +431,7 @@ function storyText(ps) {
 }
 // The act's .me lines, grouped by the kernel they run in. A fixed line is the code that kernel ran when it was set
 // up; a live line is the latest write to that path in that kernel, exactly as it was made (with k, in act VII).
+// A message line (acts IV-VI) expands into that message's real writes, by id (M.expandLines).
 const kernelLabel = (who) => (who === "all" ? "every kernel" : `${M.NAME[who]}'s kernel`);
 function StoryCode({ act: n }) {
   const story = M.STORY[n]; if (!story) return null;
@@ -416,7 +447,7 @@ function StoryCode({ act: n }) {
   return h(Box, { id: "story-code", "data-act": n, sx: { mt: .75, display: "grid", gap: { xs: .75, md: 1 }, gridTemplateColumns: { xs: "minmax(0, 1fr)", sm: "repeat(auto-fit, minmax(240px, 1fr))" } } },
     ...story.groups.map((g, gi) => h(Box, { key: gi, className: "story-group", "data-who": String(g.who), sx: { minWidth: 0, borderLeft: 2, borderColor: "divider", pl: 1 } },
       h(Box, { sx: { fontFamily: MONO, fontSize: 9.5, letterSpacing: ".1em", textTransform: "uppercase", color: "text.secondary", mb: .25 } }, kernelLabel(g.who)),
-      ...g.lines.map((ln, i) => line(g.who, ln, i)))));
+      ...(W ? M.expandLines(W, g) : g.lines).map((ln, i) => line(g.who, ln, i)))));
 }
 
 // ── aside: controls, the dashboard, what things mean, under the hood ──
@@ -453,22 +484,34 @@ function BatteryGauge({ id }) {
       h(Bound, { path, value: v, id: "battery-pct", sx: { display: "block", fontSize: 46, lineHeight: 1, fontWeight: 600, fontFamily: SERIF, color: `${lv}.main` } }, `${Math.round(pct)}%`),
       h(Typography, { component: "div", sx: { fontFamily: SERIF, fontStyle: "italic", fontSize: 14, color: "text.secondary", mt: .25 } }, charging && ld === 0 ? "charging in the sun" : pct >= 50 ? "plenty of battery" : pct >= 20 ? "getting low" : pct > 0 ? "very low" : "empty")));
 }
-const STATUS_ICON = { exploring: "look", "going to the sun": "sun", charging: "bolt", "going to the ice": "ice", "mining ice": "pick", "studying the ice": "flask", "studying the comet": "flask",
+const STATUS_ICON = { "going to the flower": "drop", "watering the flower": "drop", exploring: "look", "going to the sun": "sun", charging: "bolt", "going to the ice": "ice", "mining ice": "pick", "studying the ice": "flask", "studying the comet": "flask",
   "hiding from the comet dust": "shield", "turning away from the ice": "turn", asleep: "zz" };
-const Card = ({ icon, label, children, id, color }) => h(Box, { id, sx: { border: 1, borderColor: "divider", borderRadius: 2, p: 1.25, minWidth: 0, bgcolor: "background.default" } },
-  h(Box, { sx: { display: "flex", alignItems: "center", gap: .75, color: "text.secondary", fontSize: 9.5, letterSpacing: ".12em", textTransform: "uppercase", fontWeight: 600, mb: .5 } }, h(Ico, { kind: icon, size: 18 }), label),
-  h(Box, { sx: { fontFamily: SERIF, fontSize: 18, lineHeight: 1.25, color: color || "text.primary", overflowWrap: "anywhere" } }, children));
 // the action in a few plain words, for the "Doing" card
 const DOING_WORDS = { exploring: "exploring its rock", "going to the sun": "walking to the sun", charging: "charging in the sun", "going to the ice": "walking to the ice", "mining ice": "mining ice",
-  "studying the ice": "studying the ice", "studying the comet": "watching the comet", "hiding from the comet dust": "hiding from the comet dust", "turning away from the ice": "turning away from slippery ice", asleep: "asleep: its battery is empty" };
-// the kernel flag behind each action word (bound, so every word on the dashboard traces back to the robot's kernel)
-const FLAG_OF = { "going to the sun": "goCharge", charging: "goCharge", "hiding from the comet dust": "shelter", "studying the comet": "watchComet", "going to the ice": "followTip", "mining ice": "followTip", "studying the ice": "followTip", exploring: "explore", "turning away from the ice": "explore", asleep: "asleep" };
+  "studying the ice": "studying the ice", "studying the comet": "watching the comet", "hiding from the comet dust": "hiding from the comet dust", "turning away from the ice": "turning away from slippery ice", asleep: "asleep: its battery is empty",
+  "going to the flower": "walking to the flower to water it", "watering the flower": "watering the flower" };
+// A dashboard card: the real .me lines from that robot's kernel (M.CARDS: a rule → its value, the latest write, or
+// a setup line), highlighted and clickable, with the plain words under them in dim text.
+function CardLines({ r, g }) {
+  const k = r.k;
+  return h(React.Fragment, null, ...g.lines.map((L, i) => {
+    const x = L.live ? k.last[L.live] : null, code = L.code || x?.code; if (!code) return null;
+    const path = L.value || L.live, v = L.value ? FME(L.value) : x?.value;
+    return h(Box, { key: i, className: "card-line", "data-live": L.live || undefined, "data-me-path": path && !x?.ptr ? pagePath(r.id, path) : undefined, "data-me-value": path && !x?.ptr ? String(v) : undefined, sx: { fontSize: 10, lineHeight: 1.45, py: "1px" } },
+      h(MeCode, { code, ctx: r.id, unmarked: `robot:${r.id}`, sx: { fontSize: 10 } }),
+      L.value ? h(Box, { component: "span", className: "me-code", sx: { fontFamily: MONO, ml: .5, whiteSpace: "nowrap" } }, h("span", { className: "mes-arrow" }, "→ "), h(MeVal, { path: L.value, syn: true, d: 2 })) : null); }));
+}
+const Card = ({ icon, label, children, words, id, color, page }) => h(Box, { id, className: "card", sx: { border: 1, borderColor: "divider", borderRadius: 2, p: 1.1, minWidth: 0, bgcolor: "background.default" } },
+  h(Box, { sx: { display: "flex", alignItems: "center", gap: .75, color: "text.secondary", fontSize: 9.5, letterSpacing: ".12em", textTransform: "uppercase", fontWeight: 600, mb: .4 } }, h(Ico, { kind: icon, size: 16 }), label,
+    page ? h(Box, { component: "span", className: "page-state", title: "not a kernel fact: the simulation's own state", sx: { ml: "auto", letterSpacing: ".04em", textTransform: "none", fontWeight: 400, color: "text.disabled", fontStyle: "italic", fontFamily: SERIF, fontSize: 11 } }, "page state") : null),
+  children,
+  h(Box, { className: "card-words", sx: { fontFamily: SERIF, fontStyle: "italic", fontSize: 13.5, lineHeight: 1.3, color: color || "text.secondary", mt: .3, overflowWrap: "anywhere" } }, words));
 function RobotPanel(p) {
   const { sel } = useStore(ui); useStore(tick);
   const r = robot(sel), id = sel, base = `robots.${id}`;
-  const flag = FLAG_OF[r?.status] || "explore", flagV = useK(`${base}.${flag}`);
-  const sent = useK(`${base}.sent`), recv = useK(`${base}.received`), ice = useK(`${base}.ice`), found = useK(`${base}.found`);
   if (!r) return null;
+  const rd = (q) => r.k.read(q), cards = Object.fromEntries(M.CARDS(W, id).map((g) => [g.key, g]));
+  const kept = (b) => rd(`${base}.${b}Kept`) ?? 0;
   const btn = { fontFamily: MONO, fontSize: 10.5, textTransform: "none", lineHeight: 1.3 };
   return h(Box, { "data-gui-node-id": p["data-gui-node-id"], id: "robot-panel", sx: SECTION_SX },
     h(Box, { sx: { display: "flex", gap: .5, mb: 1.25 } }, ...W.robots.map((x) => h(Button, { key: x.id, className: "pick-robot", size: "small", variant: x.id === sel ? "contained" : "text", disableElevation: true, onClick: () => act.select(x.id), sx: { ...btn, flex: 1, fontSize: 12 } }, x.name))),
@@ -476,44 +519,72 @@ function RobotPanel(p) {
       h(Typography, { component: "h2", id: "robot-name", sx: { fontFamily: SERIF, fontSize: 28, m: 0, fontWeight: 400 } }, r.name),
       h(Typography, { component: "span", sx: { fontFamily: SERIF, fontStyle: "italic", fontSize: 14, color: "text.secondary" } }, `the ${r.role}, on ${M.ROCK_NAME[r.rock]}`)),
     h(BatteryGauge, { id }),
-    h(Box, { sx: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1, mt: 1.5 } },
-      h(Card, { id: "card-doing", icon: STATUS_ICON[r.status] || "look", label: "Doing", color: r.dead ? "error.main" : undefined }, h(Bound, { path: `${base}.${flag}`, value: flagV }, DOING_WORDS[r.status] || r.status)),
-      h(Card, { id: "card-going", icon: "go", label: "Going to" }, r.dest),
-      h(Card, { id: "card-msgs", icon: "radio", label: "Messages" }, h(Box, { component: "span" },
-        h(Bound, { path: `${base}.sent`, value: sent }, `${fmt(sent)} sent`), ", ", h(Bound, { path: `${base}.received`, value: recv }, `${fmt(recv)} heard`))),
-      h(Card, { id: "card-ice", icon: r.studies ? "flask" : r.slips ? "ice" : "pick", label: r.studies ? "Ice samples" : r.slips ? "Ice spots found" : "Ice mined" },
-        r.slips ? h(Bound, { path: `${base}.found`, value: found }, fmt(found)) : h(Bound, { path: `${base}.ice`, value: ice }, fmt(ice)))),
+    h(Box, { id: "cards", sx: { display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: .75, mt: 1.5 } },
+      h(Card, { id: "card-doing", icon: STATUS_ICON[r.status] || "look", label: "Doing", color: r.dead ? "error.main" : undefined, words: DOING_WORDS[r.status] || r.status }, h(CardLines, { r, g: cards.doing })),
+      h(Card, { id: "card-going", icon: "go", label: "Going to", page: cards.going.page, words: r.dest }, h(CardLines, { r, g: cards.going })),
+      h(Card, { id: "card-msgs", icon: "radio", label: "Messages", words: `${fmt(rd(`${base}.sent`))} sent, ${fmt(rd(`${base}.received`))} received · it keeps ${kept("outbox")} it sent and ${kept("inbox")} it received` }, h(CardLines, { r, g: cards.msgs })),
+      h(Card, { id: "card-ice", icon: r.studies ? "flask" : r.slips ? "ice" : "pick", label: cards.ice.title,
+        words: r.studies ? "pieces of ice it has studied" : r.slips ? "patches of ice it found (and stays away from)" : "pieces of ice it has mined" }, h(CardLines, { r, g: cards.ice }))),
     h(KnowsHeard, { r }),
     h(Box, { sx: { display: "flex", gap: .75, mt: 1.25, flexWrap: "wrap" } },
       h(Button, { id: "btn-hello", size: "small", variant: "outlined", onClick: () => act.hello(id), sx: { ...btn, flex: 1 } }, "Say hello"),
       h(Button, { id: "btn-tip", size: "small", variant: "outlined", onClick: () => act.tip(id), sx: { ...btn, flex: 1 } }, "Share an ice tip"),
       h(Button, { id: "btn-drain", size: "small", variant: "outlined", color: "warning", onClick: () => act.drain(id), sx: { ...btn, flex: 1 } }, "Drain battery")));
 }
+// "It knows" (its own readings) / "Inbox" / "Outbox" (its communications): the real facts in this robot's own kernel
+// (M.PANEL), each the latest write to that path (k.last) exactly as it was made, with a small dimmed hint in plain
+// words read from the same kernel. Messages are listed by id, newest first.
 function KnowsHeard({ r }) {
-  const id = r.id, base = `robots.${id}`, now = useK(`${base}.now`);
-  const ld = useK(`${base}.lightDist`), iceSeen = useK(`r${id}.objects.ice.seen`), comet = useK(`r${id}.objects.comet.near`), reach = useK(`r${id}.objects.rock.inRange`);
-  const tipFrom = useK(`${base}.inboxFrom`), tipRock = useK(`${base}.inboxRock`), inboxAge = useK(`${base}.inboxAge`);
-  const others = W.robots.filter((o) => o.id !== id).map((o) => ({ o, b: FME(`${base}.heard.${o.id}.battery`), at: FME(`${base}.heard.${o.id}.at`) }));
-  const li = (key, ...c) => h(Box, { component: "li", key, sx: { py: .4, borderBottom: 1, borderColor: "divider", "&:last-of-type": { borderBottom: 0 } } }, ...c);
-  const sub = (t) => h(Box, { component: "span", sx: { fontStyle: "italic", fontFamily: SERIF, color: "text.disabled", fontSize: 11 } }, t);
-  const tipWord = !tipFrom ? "no ice tips yet" : `an ice tip from ${M.NAME[tipFrom]} about ${M.ROCK_NAME[tipRock]}: ${r.lastTip?.accepted ? "accepted" : tipRock !== r.rock ? "not its rock, kept as heard" : inboxAge > 120 ? "too old, ignored" : "it already had one"}`;
-  return h(Box, { id: "knows-heard", sx: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1.5, mt: 1.5, fontFamily: SERIF, fontSize: 14, lineHeight: 1.35, "@media (max-width:360px)": { gridTemplateColumns: "1fr" } } },
-    h(Box, { id: "knows", sx: { minWidth: 0 } }, H2("It knows", sub("own sensors")),
-      h(Box, { component: "ul", sx: { listStyle: "none", m: 0, p: 0 } },
-        li("lit", h(Bound, { path: `${base}.lightDist`, value: ld }, ld === 0 ? "it stands in the sun" : "it is in the shade")),
-        li("ice", h(Bound, { path: `r${id}.objects.ice.seen`, value: iceSeen }, iceSeen ? "there is ice on its rock" : "no ice seen yet")),
-        li("comet", h(Bound, { path: `r${id}.objects.comet.near`, value: comet }, comet ? "a comet is close" : "no comet close")),
-        li("reach", h(Bound, { path: `r${id}.objects.rock.inRange`, value: reach }, reach ? "its radio reaches the other rock" : "its radio cannot reach the other rock")))),
-    h(Box, { id: "heard", sx: { minWidth: 0 } }, H2("It heard", sub("may be old")),
-      h(Box, { component: "ul", sx: { listStyle: "none", m: 0, p: 0 } },
-        ...others.map(({ o, b, at }) => li(`h${o.id}`, h(Bound, { path: `${base}.heard.${o.id}.battery`, value: b }, b === undefined ? `${o.name}: nothing yet` : `${o.name} said ${b}%, ${Math.max(0, Math.round(now - at))} min ago`))),
-        li("tip", h(Bound, { path: `${base}.inboxFrom`, value: tipFrom }, tipWord)))));
+  const id = r.id, k = r.k, rd = (p) => k.read(p), base = `robots.${id}`, now = rd(`${base}.now`);
+  const ago = (t) => { const m = Math.max(0, Math.round(now - t)); return m === 0 ? "just now" : `${m} min ago`; };
+  const what = (mb) => (rd(`${mb}.kind`) === "ice" ? "ice tip" : "hello");
+  const hint = (L, v) => {
+    if (L.box) {
+      const mb = `${base}.${L.box}.${L.mid}`;
+      switch (L.field) {
+        case "from": return `from ${M.NAME[v]}, ${what(mb)}, ${ago(rd(`${mb}.at`))}`;
+        case "to": return `to ${M.NAME[v]}, ${what(mb)}, ${ago(rd(`${mb}.at`))}`;
+        case "battery": return L.box === "inbox" ? `${M.NAME[rd(`${mb}.from`)]} said ${v}%` : `it said ${v}%`;
+        case "rock": {
+          if (L.box === "outbox") return `about ${M.ROCK_NAME[v]}`;
+          const why = rd(`${mb}.accepted`) ? `its rock: accepted${r.tipMsg === L.mid ? ", its plan" : ""}`
+            : v !== rd(`${base}.myRock`) ? "not its rock, kept" : rd(`${mb}.got`) - rd(`${mb}.at`) > rd(`${base}.maxAge`) ? "too old, kept" : "it had a fresh tip, kept";
+          return `about ${M.ROCK_NAME[v]}: ${why}`; }
+        default: return "";
+      }
+    }
+    switch (L.hint) {
+      case "charge": return `of ${L.bat.capacity} Wh, the ${L.bat.name} battery`;
+      case "light": return v === 0 ? "in the sun" : "in the shade";
+      case "ice": return v ? "there is ice on its rock" : "no ice seen yet";
+      case "comet": return v ? "a comet is close" : "no comet close";
+      case "reach": return v ? "its radio reaches the other rock" : "its radio can't reach the other rock";
+      case "flower": return `the water it last saw in the flower${v < rd(`${base}.thirstyBelow`) ? ": thirsty!" : ""}`;
+      default: return "";
+    }
+  };
+  const lineOf = (L, i, all) => {
+    if (!L.live) return L.none ? h(Box, { key: i, className: "panel-none", sx: { fontFamily: SERIF, fontStyle: "italic", fontSize: 12, color: "text.disabled", py: "1px" } }, L.none) : null;
+    const x = k.last[L.live]; if (!x) return null;
+    const first = L.box && i > 0 && all[i - 1].mid !== L.mid;   // a little space between two messages
+    return h(Box, { key: i, className: "panel-line", "data-live": L.live, "data-msg": L.mid ?? undefined, "data-me-path": pagePath(id, L.live), "data-me-value": String(x.value), sx: { py: "1px", lineHeight: 1.45, mt: first ? .5 : 0 } },
+      h(MeCode, { code: x.code, ctx: id, unmarked: `robot:${id}`, sx: { fontSize: 10, mr: .75 } }), " ",
+      h(Box, { component: "span", className: "panel-hint", sx: { fontFamily: SERIF, fontStyle: "italic", fontSize: 11.5, color: "text.disabled" } }, hint(L, x.value)));
+  };
+  return h(Box, { id: "knows-heard", sx: { display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 1.25, mt: 1.5 } },
+    ...M.PANEL(id, W).map((g) => { const ls = M.expandLines(W, g);
+      const kept = g.key === "knows" ? null : rd(`${base}.${g.key}Kept`);   // robots[i].inbox[] / outbox[]: the kernel counts what the box keeps
+      const sub = g.key === "knows" ? g.sub : h(React.Fragment, null, g.sub, " · ", h(Box, { component: "span", className: "kept-count", "data-me-path": `${base}.${g.key}Kept`, "data-me-value": String(kept) }, `${kept ?? 0} kept`));
+      return h(Box, { key: g.key, id: g.key, sx: { minWidth: 0 } }, H2(g.title, h(Box, { component: "span", sx: { fontStyle: "italic", fontFamily: SERIF, color: "text.disabled", fontSize: 11 } }, sub)),
+        h(Box, { sx: { borderLeft: 2, borderColor: "divider", pl: 1 } }, ...ls.map(lineOf))); }));
 }
 // What does a shared object mean to each spider? One column per kernel, each read from that robot's own kernel.
 const MEANINGS = {
   ice: { title: "The ice", flags: [["iceIsFuel", "something to mine", "pick"], ["iceIsHazard", "slippery: stay away", "warn"], ["iceIsSample", "a sample to study", "flask"]], none: ["objects.ice.seen", "hasn't seen any yet", "noeye"], rules: ["iceIsFuel", "iceIsHazard", "iceIsSample", "avoidIce"] },
   comet: { title: "The comet", flags: [["cometIsHazard", "dust! hide and wait", "shield"], ["cometIsSample", "something to study", "flask"]], none: ["objects.comet.near", "not close: nothing to do", "dash"], rules: ["cometIsHazard", "cometIsSample", "shelter", "watchComet"] },
   rock: { title: "The other rock", flags: [["rockInReach", "friends it can talk to", "radio"]], none: ["objects.rock.inRange", "too far to hear", "nosignal"], rules: ["rockInReach"] },
+  flower: { title: "The flower", flags: [["shouldWaterFlower", "thirsty: it goes to water it", "drop"], ["flowerThirsty", "thirsty, but it is busy first", "drop"]],
+    none: ["objects.flower.water", (v) => (v === undefined ? "never seen it: its rule can't decide" : "has water: nothing to do"), "flower"], rules: ["flowerThirsty", "shouldWaterFlower"] },
 };
 function MeaningCol({ r, objKey }) {
   const def = MEANINGS[objKey], vals = def.flags.map(([f]) => G.useMeValue(`robots.${r.id}.${f}`)), seen = G.useMeValue(`r${r.id}.${def.none[0]}`);
@@ -523,16 +594,16 @@ function MeaningCol({ r, objKey }) {
     h(Box, { sx: { fontFamily: MONO, fontSize: 11.5, fontWeight: 600, letterSpacing: ".06em" } }, r.name),
     h(Box, { sx: { fontFamily: SERIF, fontStyle: "italic", fontSize: 11.5, color: "text.secondary" } }, r.role),
     h(Box, { sx: { my: .5, color: m ? "primary.main" : "text.disabled", lineHeight: 0 } }, h(Ico, { kind: m ? m[2] : def.none[2], size: 30 })),
-    h(Bound, { path, value, sx: { display: "block", fontFamily: SERIF, fontSize: 14, lineHeight: 1.25, color: m ? "text.primary" : "text.secondary" } }, m ? m[1] : def.none[1]));
+    h(Bound, { path, value, sx: { display: "block", fontFamily: SERIF, fontSize: 14, lineHeight: 1.25, color: m ? "text.primary" : "text.secondary" } }, m ? m[1] : typeof def.none[1] === "function" ? def.none[1](value) : def.none[1]));
 }
 function ObjectsPanel(p) {
   const { obj } = useStore(ui); useStore(tick); if (!W) return null;
   const btn = (k, label) => h(Button, { key: k, className: "pick-object", size: "small", variant: obj === k ? "contained" : "outlined", disableElevation: true, onClick: () => act.object(k), sx: { fontFamily: MONO, fontSize: 10.5, textTransform: "none", flex: 1 } }, label);
   return h(Box, { "data-gui-node-id": p["data-gui-node-id"], id: "objects-panel", sx: SECTION_SX },
     H2("What is it to each of them?"),
-    h(Box, { sx: { display: "flex", gap: .5, mb: 1 } }, btn("ice", "the ice"), btn("comet", "the comet"), btn("rock", "the other rock")),
+    h(Box, { sx: { display: "flex", gap: .5, mb: 1, flexWrap: "wrap" } }, btn("ice", "the ice"), btn("comet", "the comet"), btn("rock", "the other rock"), btn("flower", "the flower")),
     h(Box, { id: "meanings", "data-object": obj, sx: { display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: .75 } }, ...W.robots.map((r) => h(MeaningCol, { key: `${obj}${r.id}`, r, objKey: obj }))),
-    h(Typography, { component: "div", sx: { fontFamily: SERIF, fontStyle: "italic", fontSize: 13, color: "text.secondary", mt: .75 } }, "Same object, same rule text, three kernels: each answer is read from that spider's own kernel. Tap the ice, the comet or B 325 in the sky too."));
+    h(Typography, { component: "div", sx: { fontFamily: SERIF, fontStyle: "italic", fontSize: 13, color: "text.secondary", mt: .75 } }, "Same object, same rule text, three kernels: each answer is read from that spider's own kernel. Tap the ice, the comet, the flower or B 325 in the sky too."));
 }
 // ── under the hood (collapsed by default) ──
 function Hood(p) {
@@ -555,31 +626,52 @@ function HoodObjects() {
     ...W.robots.map((r) => h(Box, { key: r.id, className: "hood-kernel", sx: { mb: 1, border: 1, borderColor: "divider", borderRadius: 1, px: 1, py: .5 } },
       h(Box, { sx: { fontFamily: MONO, fontSize: 10, fontWeight: 600, mb: .25 } }, `${r.name}'s kernel · the ${r.role}`),
       ...["mines", "slips", "studies"].map((f) => line(`me.robots[${r.id}].${f}(${r[f]})`, `robots.${r.id}.${f}`, f, r.id)),
-      ...o.facts.map((f) => line(`me.${f}(${FME(`r${r.id}.${f}`)})   // its own view`, `r${r.id}.${f}`, f, r.id)),
+      ...o.facts.map((f) => r.k.last[f] ? line(`${r.k.last[f].code}   // its own view`, `r${r.id}.${f}`, f, r.id)
+        : h(Box, { key: f, className: "no-fact", sx: { fontFamily: SERIF, fontStyle: "italic", fontSize: 11.5, color: "text.disabled", py: .25 } }, `no ${f} in its kernel: it has never seen it`)),
       ...rules.map(([n, e]) => line(`me.robots["[i]"]["="]("${n}", "${e}")`, `robots.${r.id}.${n}`, n, r.id)))));
 }
 function HoodRobot() {
   const { sel, explain } = useStore(ui); useStore(tick); if (!W) return null;
   const r = robot(sel), base = `robots.${sel}`, lw = lastWrites.get(sel), bat = FME(`${base}.battery`);
-  const facts = ["battery", "pos", "lightDist", "charging", "now", "role", "myRock", "tipFrom", "tipRock", "tipPos", "tipAt", "inboxFrom", "inboxRock", "inboxAt", "sent", "received", "ice", "found", "maxAge", "costPerRad", "margin", "full"];
+  const facts = [...M.batteryFacts(r.bats), "thirstyBelow", "pos", "lightDist", "charging", "now", "role", "myRock", "tipRock", "tipPos", "tipAt", "sent", "received", "ice", "found", "maxAge", "costPerRad", "margin", "full"];
+  const key = (f) => f.replace(/\.(\d+)\./g, "[$1].");
+  // a pointer, read through: lastFrom[i] / lastTo[i] → the message, tipMsg → the tip it accepted
+  const ptr = (p, label, sub) => { const t = FME(p)?.__ptr, m = t && /\.(inbox|outbox)\.(\d+)$/.exec(t), there = t && FME(`${t}.at`) != null;
+    return KV(label, !t ? h(Box, { component: "span", sx: { color: "text.disabled" } }, "nothing yet (undefined)") : !there ? h(Box, { component: "span", sx: { color: "text.disabled" } }, `${m[1]}[${m[2]}] (removed)`)
+      : h(Box, { component: "span" }, `${m[1]}[${m[2]}] · ${FME(`${t}.kind`)} · `, FME(`${t}.kind`) === "ice" ? `rock ${FME(`${t}.rock`)}` : `${FME(`${t}.battery`)}%`, ` · at ${FME(`${t}.at`)}`), sub); };
   return h(Box, { id: "hood-robot", sx: { mt: 1.5 } },
     H2(`${r.name}'s kernel`, h(MeCode, { code: `me.robots[${sel}]`, ctx: sel, sx: { fontSize: 9.5 } })),
-    h(Box, null, ...facts.map((f) => KV(f, h(MeVal, { path: `${base}.${f}` })))),
-    ...M.IDS.filter((i) => i !== sel).map((i) => KV(`heard[${i}]`, FME(`${base}.heard.${i}.at`) === undefined ? h(Box, { component: "span", sx: { color: "text.disabled" } }, "nothing yet (undefined)") : h(Box, { component: "span" }, h(MeVal, { path: `${base}.heard.${i}.battery` }), " % at ", h(MeVal, { path: `${base}.heard.${i}.at` })), `what ${M.NAME[i]} said`)),
+    h(Box, null, ...facts.map((f) => KV(key(f), h(MeVal, { path: `${base}.${f}` })))),
+    ...M.IDS.filter((i) => i !== sel).flatMap((i) => [ptr(`${base}.lastFrom.${i}`, `lastFrom[${i}] →`, `the latest from ${M.NAME[i]}`), ptr(`${base}.lastTo.${i}`, `lastTo[${i}] →`, `the latest to ${M.NAME[i]}`)]),
+    ptr(`${base}.tipMsg`, "tipMsg →", "the tip it accepted"),
+    KV("inbox · outbox", `${M.msgIds(r, "inbox").map((x) => `[${x}]`).join(" ") || "—"} · ${M.msgIds(r, "outbox").map((x) => `[${x}]`).join(" ") || "—"}`, `the last ${M.KEEP} per peer`),
     KV("home →", h(Box, { component: "span" }, `${FME(`${base}.home.name`)} · radius ${FME(`${base}.home.radius`)}`), "pointer, read through"),
     h(Box, { sx: { mt: 1 } }, H2("Rules (the same text in every kernel)"),
       ...M.RULES.map(([n, e]) => h(Box, { key: n, className: "rule", sx: { ...ROW_SX, cursor: "pointer", "&:hover": { bgcolor: "action.hover" } }, onClick: () => ui.set({ explain: n }), title: `explain ${n}` },
         h(Box, { component: "span", sx: { minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: explain === n ? "primary.main" : "text.secondary" } }, n, h(MeCode, { code: e, sx: { ml: .75, fontSize: 9.5, whiteSpace: "nowrap", opacity: .85 } })),
-        h(Box, { component: "span", sx: { textAlign: "right" } }, h(MeVal, { path: `${base}.${n}` }))))),
-    h(Box, { sx: { mt: 1 } }, H2("Battery (writes one value)"),
+        h(Box, { component: "span", sx: { textAlign: "right" } }, h(MeVal, { path: `${base}.${n}` })))),
+      H2("Its inbox rule (computed on each message it receives)"),
+      h(Box, { className: "rule", id: "inbox-rule", sx: { ...ROW_SX, gridTemplateColumns: "minmax(0, 1fr)", cursor: "pointer", "&:hover": { bgcolor: "action.hover" } }, onClick: () => ui.set({ explain: "inbox" }), title: "explain acceptTip on its newest ice tip" },
+        h(MeCode, { code: M.inboxRuleCode(sel), ctx: sel, sx: { fontSize: 9.5, color: explain === "inbox" ? "primary.main" : undefined } }))),
+    h(Box, { sx: { mt: 1 } }, H2(`Battery (measures its ${r.bats.length} batteries: ${r.bats.map((b) => `${b.capacity} Wh`).join(" + ")})`),
+      h(Box, { sx: { display: "flex", gap: .5, mb: .5 } },
+        h(Button, { id: "btn-add-battery", size: "small", variant: "outlined", disabled: r.bats.some((b) => b.i === M.EXTRA_BATTERY.i), onClick: () => act.addBattery(sel), sx: { fontFamily: MONO, fontSize: 10, textTransform: "none", flex: 1 } }, `Plug in a ${M.EXTRA_BATTERY.capacity} Wh battery`),
+        h(Button, { id: "btn-swap-battery", size: "small", variant: "outlined", disabled: !r.bats.some((b) => b.i === 2), onClick: () => act.swapBattery(sel), sx: { fontFamily: MONO, fontSize: 10, textTransform: "none", flex: 1 } }, "Swap the spare (50 Wh)"),
+        h(Button, { id: "btn-remove-battery", size: "small", variant: "outlined", disabled: r.bats.length < 2, onClick: () => act.removeBattery(sel), sx: { fontFamily: MONO, fontSize: 10, textTransform: "none", flex: 1 } }, "Take the last one out")),
       Slider ? h(Slider, { id: "battery-slider", size: "small", min: 0, max: 100, step: 1, value: Math.max(0, Math.min(100, Math.round(typeof bat === "number" ? bat : 0))), onChange: (e, v) => act.battery(sel, v), "aria-label": `${r.name} battery`, sx: { mx: 1, width: "calc(100% - 16px)" } })
         : h("input", { id: "battery-slider", type: "range", min: 0, max: 100, value: Math.round(bat || 0), onChange: (e) => act.battery(sel, Number(e.target.value)), style: { width: "100%" } })),
-    h(ExplainView, { path: `${base}.${explain}` }),
+    h(ExplainView, { path: explainPath(r, explain) }),
     h(Box, { sx: { mt: 1.25 } }, H2("Last writes", lw ? h("span", null, `${lw.manual ? "your write" : "control step"} · ${clock(lw.t)}`) : null),
       h(Box, { component: "ul", id: "writes", sx: { listStyle: "none", m: 0, p: 0, fontFamily: MONO, fontSize: 9.5, minHeight: 40 } },
         ...(lw ? lw.batch.slice(-7).map((x, i) => h(Box, { component: "li", key: i, sx: { py: .25, borderBottom: 1, borderColor: "divider", overflowWrap: "anywhere", "&:last-of-type": { borderBottom: 0 } } },
           h(MeCode, { code: x.code, ctx: sel, sx: { fontSize: 9.5 } }), h(Box, { component: "span", sx: { color: "warning.main", ml: .75 } }, `k=${x.k}`), h(Box, { component: "span", sx: { color: "text.disabled", ml: .75 } }, `${x.us.toFixed(0)} µs`)))
           : [h(Box, { component: "li", key: "e", sx: { color: "text.disabled" } }, "No writes yet: play the simulation.")]))));
+}
+// what explain() shows: a rule of the robot, or ("inbox") acceptTip on the newest ice tip its inbox keeps
+function explainPath(r, explain) {
+  const base = `robots.${r.id}`; if (explain !== "inbox") return `${base}.${explain}`;
+  const ids = M.msgIds(r, "inbox"), id = ids.find((x) => FME(`${base}.inbox.${x}.kind`) === "ice") ?? ids[0];
+  return id != null ? `${base}.inbox.${id}.acceptTip` : `${base}.tipFresh`;
 }
 function HoodStats() {
   useStore(tick); if (!W) return null;
@@ -607,7 +699,7 @@ function KernelInfo() {
   const row = (k, v) => h(Box, { key: k, sx: { display: "grid", gridTemplateColumns: "58px minmax(0, 1fr)", gap: .75, py: .5, borderBottom: 1, borderColor: "divider", "&:last-of-type": { borderBottom: 0 } } }, h(Box, { component: "span", sx: { color: "text.disabled" } }, k), h(Box, { component: "span", sx: { minWidth: 0, overflowWrap: "anywhere" } }, v));
   return h(Box, { id: "kernel-info", sx: { mt: 1.5, fontFamily: MONO, fontSize: 9.5, lineHeight: 1.45, color: "text.secondary" } },
     H2("Source"),
-    row("kernel", kernel.state === "ok" ? h(React.Fragment, null, a(`https://www.npmjs.com/package/this.me/v/${KERNEL.version}`, `this.me@${KERNEL.version}`), ` · dist/me.es.js unmodified · sha256 ${kernel.hash.slice(0, 12)}… `, h("b", null, "verified in this browser"))
+    row("kernel", kernel.state === "ok" ? h(React.Fragment, null, h("b", null, KERNEL.label), ` · ${KERNEL.build} · sha256 ${kernel.hash.slice(0, 12)}… `, h("b", null, "verified in this browser"))
       : kernel.state === "error" ? h(Box, { component: "span", sx: { color: "error.main" } }, kernel.text) : "verifying…"),
     row(".GUI", h(React.Fragment, null, a(GUI_PIN.npm, GUI_PIN.label), " · ", a(GUI_PIN.repo, "neurons-me/GUI"), ` · jsDelivr, SRI + sha256 ${GUI_PIN.sha256.slice(0, 12)}… `, gui.state === "ok" ? h("b", null, "verified") : gui.state === "error" ? h(Box, { component: "span", sx: { color: "error.main" } }, "check failed") : "checking…")),
     row("page", h(React.Fragment, null, a(SRC + "space-model.js", "space-model.js"), " (rules, model) · ", a(SRC + "space-gui.js", "space-gui.js"), " (.GUI page) · ", a(SRC + "verify.mjs", "verify.mjs"), " (Node) · ", a(BUILD_NOTES, "build notes"))),
@@ -616,7 +708,7 @@ function KernelInfo() {
       verify ? h(Box, { component: "span", id: "verify-out", sx: { color: verify.ok ? "success.main" : "error.main" } }, verify.ok ? `✓ ${verify.checked} checks, 0 mismatches (${clock(verify.t)}, ${verify.ms.toFixed(0)} ms): every derived value in the 3 kernels = a fresh rebuild = the rule in JS` : `✗ ${verify.mismatches.length} mismatches: ${JSON.stringify(verify.mismatches.slice(0, 3))}`) : null)));
 }
 // before the kernels load (and if they fail)
-function KernelStatus(p) { const { kernel } = useStore(ui); return h(Box, { "data-gui-node-id": p["data-gui-node-id"], sx: { ...SECTION_SX, fontFamily: MONO, fontSize: 10, color: kernel.state === "error" ? "error.main" : "text.secondary" } }, kernel.state === "error" ? kernel.text : "verifying this.me@4.1.0 and .GUI…"); }
+function KernelStatus(p) { const { kernel } = useStore(ui); return h(Box, { "data-gui-node-id": p["data-gui-node-id"], sx: { ...SECTION_SX, fontFamily: MONO, fontSize: 10, color: kernel.state === "error" ? "error.main" : "text.secondary" } }, kernel.state === "error" ? kernel.text : `verifying ${KERNEL.label} and .GUI…`); }
 
 // ── chrome (as on the Veracruz .GUI page) ──
 const LOGO = "https://res.cloudinary.com/dkwnxf6gm/image/upload/v1760629064/neurons.me_b50f6a.png";
@@ -689,7 +781,10 @@ try {
   reset();
   RT = G.createMeRuntime(FME, { subscribe: kernelSubscribe });
   mountPage(); announceAll();
-  if (params.get("step")) ui.set({ step: Math.min(STEPS, Math.max(1, parseInt(params.get("step"), 10) || 1)) });
+  // ?step=N: wait until the runtime mount has committed; setting the step earlier re-renders the pre-kernel tree, whose
+  // passage components then call useMe without a runtime ("useMe requires a MeRuntimeProvider").
+  if (params.get("step")) { await new Promise((r) => requestAnimationFrame(() => setTimeout(r, 0)));
+    ui.set({ step: Math.min(STEPS, Math.max(1, parseInt(params.get("step"), 10) || 1)) }); }
   if (params.get("autoplay") !== "0") play(true);
   window.__space = {   // hooks for headless checks
     get W() { return W; }, M, FME, act, reset, play, ui, step: (n = 1) => { for (let i = 0; i < n; i++) stepOnce(); announce(); tick.set(); frame.set(); },
@@ -700,7 +795,7 @@ try {
       const bad = els.filter((e) => e.dataset.meValue !== String(FME(e.dataset.mePath))).map((e) => ({ path: e.dataset.mePath, dom: e.dataset.meValue, kernel: String(FME(e.dataset.mePath)) }));
       return { bound: els.length, mismatches: bad }; },
     subscribeFact: () => W.robots.map((r) => r.k.me("subscribe")),
-    storyLines: (a) => M.storyLines(W, a),
+    storyLines: (a) => M.storyLines(W, a), panelLines: (id) => M.panelLines(W, id),
   };
   window.__spaceReady = true;
 } catch (e) {
