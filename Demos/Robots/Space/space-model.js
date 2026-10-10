@@ -153,7 +153,7 @@ export const litAt = (pos) => Math.abs(wrap(pos)) < HALF_PI;
 
 // opts.explicit: the 4.1 form of the battery rule over these batteries (opts.bats), for comparison runs
 export function installRules(me, script, id, opts = {}) {
-  for (const [n, e0] of RULES) { if (!opts.flower && FLOWER_RULES.includes(n)) continue; const e = n === "battery" && opts.explicit ? explicitBatteryRule(opts.bats || BATTERIES) : e0; me.robots["[i]"]["="](n, e); script?.push(ruleCode([n, e])); }
+  for (const [n, e0] of RULES) { if (opts.flower === false && FLOWER_RULES.includes(n)) continue; const e = n === "battery" && opts.explicit ? explicitBatteryRule(opts.bats || BATTERIES) : e0; me.robots["[i]"]["="](n, e); script?.push(ruleCode([n, e])); }
   if (!opts.explicit) for (const [n, e] of KEPT_RULES) { me.robots["[i]"]["="](n, e); script?.push(ruleCode([n, e])); }
   if (id != null) { me.robots[id].inbox["[i]"]["="]("acceptTip", inboxRule(id)); script?.push(inboxRuleCode(id)); }
 }
@@ -195,14 +195,13 @@ export const STORY = [null,
   { title: "Drifting apart", text: "B 325 drifts. Out of range nothing arrives, and the last message in the inbox keeps its age.",
     groups: [{ who: 1, lines: [{ live: "objects.rock.inRange" }, { live: "robots.1.now" }, { msg: { box: "inbox", peer: 3, fields: ["at"] }, none: "nothing from Lua yet" }] },
       { who: 3, lines: [{ live: "objects.rock.inRange" }, { live: "robots.3.now" }, { msg: { box: "inbox", peer: 1, fields: ["at"] }, none: "nothing from Oli yet" }] }] },
+  { title: "A flower to care for", text: "A flower grows on B 612. Oli and Tiko each write down how much water they see in it; their own rule says when to water it, but only in their free time, and never before charging. Lua has never seen it: its rule cannot decide.",
+    groups: [{ who: 1, lines: [{ live: "objects.flower.water" }, { code: rule("flowerThirsty"), value: "robots.1.flowerThirsty" }, { code: rule("shouldWaterFlower"), value: "robots.1.shouldWaterFlower" }] },
+      { who: 2, lines: [{ live: "objects.flower.water" }, { code: rule("shouldWaterFlower"), value: "robots.2.shouldWaterFlower" }] },
+      { who: 3, lines: [{ code: rule("flowerThirsty"), value: "robots.3.flowerThirsty" }] }] },
   { title: "A small cost", text: "Each write recomputes only the paths that read it: that number is k. Verify rebuilds all three kernels and compares.",
     groups: [{ who: 1, lines: [{ live: "robots.1.batteries.1.charge", k: true }, { live: "robots.1.batteries.2.charge", k: true }, { live: "robots.1.lightDist", k: true }, { live: "robots.1.now", k: true }] }] },
 ];
-// the flower act: a follow-up, off by default (createWorld(ME, { flower: true }) / ?flower=1); not in STORY yet
-export const FLOWER_ACT = { title: "A flower to care for", text: "A flower grows on B 612. Oli and Tiko each write down how much water they see in it; their own rule says when to water it, but only in their free time, and never before charging. Lua has never seen it: its rule cannot decide.",
-    groups: [{ who: 1, lines: [{ live: "objects.flower.water" }, { code: rule("flowerThirsty"), value: "robots.1.flowerThirsty" }, { code: rule("shouldWaterFlower"), value: "robots.1.shouldWaterFlower" }] },
-      { who: 2, lines: [{ live: "objects.flower.water" }, { code: rule("shouldWaterFlower"), value: "robots.2.shouldWaterFlower" }] },
-      { who: 3, lines: [{ code: rule("flowerThirsty"), value: "robots.3.flowerThirsty" }] }] };
 // the message ids a robot's box keeps, newest first (the adapter's index of what it wrote; the facts are in the kernel)
 export const msgIds = (r, box) => Object.values(r.ring[box]).flat().filter((id) => r.k.last[`robots.${r.id}.${box}.${id}.at`]).sort((a, b) => b - a);
 const ptrId = (k, path) => { const t = k.read(path)?.__ptr; const m = t && /\.(\d+)$/.exec(t); return m && k.last[`${t}.at`] ? Number(m[1]) : null; };
@@ -239,7 +238,7 @@ export const storyLines = (w, act) => checkGroups(w, STORY[act].groups);
 // every message the box keeps, by id. Every line is live: the latest write to that path in that robot's own kernel.
 export const PANEL = (id, w) => [
   { key: "knows", title: "It knows", sub: "its own readings", who: id,
-    lines: [...(w ? robotOf(w, id).bats : BATTERIES).map((b) => ({ live: `robots.${id}.batteries.${b.i}.charge`, hint: "charge", bat: b })), { live: `robots.${id}.lightDist`, hint: "light" }, { live: "objects.ice.seen", hint: "ice" }, { live: "objects.comet.near", hint: "comet" }, { live: "objects.rock.inRange", hint: "reach" }, ...(w?.flower ? [{ live: "objects.flower.water", hint: "flower" }] : [])] },
+    lines: [...(w ? robotOf(w, id).bats : BATTERIES).map((b) => ({ live: `robots.${id}.batteries.${b.i}.charge`, hint: "charge", bat: b })), { live: `robots.${id}.lightDist`, hint: "light" }, { live: "objects.ice.seen", hint: "ice" }, { live: "objects.comet.near", hint: "comet" }, { live: "objects.rock.inRange", hint: "reach" }, ...(w?.flower && robotOf(w, id).rock === w.flower.rock ? [{ live: "objects.flower.water", hint: "flower" }] : [])] },
   { key: "inbox", title: "Inbox", sub: `what arrived: the last ${KEEP} from each`, who: id, lines: [{ msgs: { box: "inbox", fields: ["from", "battery", "rock"] }, none: "nothing has arrived yet" }] },
   { key: "outbox", title: "Outbox", sub: `what it sent: the last ${KEEP} to each`, who: id, lines: [{ msgs: { box: "outbox", fields: ["to", "battery", "rock"] }, none: "nothing sent yet" }] },
 ];
@@ -321,7 +320,7 @@ function rng(seed) { let a = seed >>> 0; return () => { a = (a + 0x6d2b79f5) >>>
 export function createWorld(ME, opts = {}) {
   // opts.mode: "eager" (default) or "lazy" recompute; opts.explicit: the 4.1 explicit battery sum instead of the aggregate
   const w = { t: 0, rand: rng(opts.seed ?? 7), rocks: [], robots: [], packets: [], events: [], lost: 0, delivered: 0, unheard: 0, nextMsg: 1, log: [], comet: { on: false, x: 0, y: 0, n: 0 }, mode: opts.mode || "eager", explicit: !!opts.explicit,
-    flower: !opts.flower ? null : { ...FLOWER, waterings: 0 } };
+    flower: opts.flower === false ? null : { ...FLOWER, waterings: 0 } };
   for (const rk of ROCKS) w.rocks.push({ ...rk, x: rk.home.x, y: rk.home.y, pinned: null, phase: 0, spots: rk.ice.map((a, i) => ({ id: `${rk.id}.${i}`, rock: rk.id, pos: a, left: 3 })) });
   for (const def of ROBOTS) {
     const rock = w.rocks.find((x) => x.id === def.rock);
@@ -489,7 +488,8 @@ function stepRobot(w, r, dt) {
   }
   r.action = action;
   // the flag that decided it, as read at this moment (its own writes later this minute can flip it: a one-minute lag)
-  r.decided = { flag: (DECIDED.find(([a]) => a === action) || DECIDED[5])[1], t: w.t, v: action === "explore" ? k.read(`${base}.explore`) : true };
+  r.decided = { flag: (DECIDED.find(([a]) => a === action) || DECIDED[5])[1], t: w.t, v: action === "explore" ? k.read(`${base}.explore`) : true,
+    at: Object.fromEntries(["goCharge", "mustCharge", "battery", "reserve", "flowerThirsty", "explore", "shouldWaterFlower"].map((n) => [n, k.read(`${base}.${n}`)])) };
   if (target != null) { const d = wrap(target - pos); mv = Math.sign(d) * Math.min(Math.abs(d), om); }
   else if (action === "explore") mv = r.dir * om;
   r.truth.pos = wrap(pos + mv); r.moving = mv;
@@ -642,3 +642,5 @@ export function verifyWorld(ME, w) {
   }
   return { ok: mismatches.length === 0, checked, mismatches };
 }
+
+export const FLOWER_ACT = STORY.find((x) => x?.title === "A flower to care for");

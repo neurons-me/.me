@@ -297,11 +297,11 @@ section("K · the dashboard cards: every line is a rule → value, the latest wr
 }
 
 // ── the flower ──
-if (process.env.FLOWER === "1") {
+if (process.env.FLOWER !== "0") {
 section("L · the flower on B 612: not a kernel; Oli and Tiko keep what they see of it, and their own rule decides");
 {
   const w = M.createWorld(ME, { flower: true }), [oli, tiko, lua] = w.robots;
-  check("L: Lua's kernel holds no flower facts", lua.k.read("objects.flower.water") === undefined && lua.k.read("objects.flower.pos") === undefined && !lua.k.script.some((x) => x.includes("flower.")), null, "flower");
+  check("L: Lua's kernel holds no flower facts", lua.k.read("objects.flower.water") === undefined && lua.k.read("objects.flower.pos") === undefined && !lua.k.script.some((x) => x.startsWith("me.objects.flower")), null, "flower");
   const ex = lua.k.me.explain("robots.3.flowerThirsty");
   check("L: Lua's flowerThirsty and shouldWaterFlower are undefined (missing input objects.flower.water): it cannot decide", lua.k.read("robots.3.flowerThirsty") === undefined && lua.k.read("robots.3.shouldWaterFlower") === undefined && ex.meta.unresolved?.reason === "missing-input" && ex.meta.unresolved.inputs.some((x) => x.endsWith("objects.flower.water")), ex.meta.unresolved, "flower");
   check("L: the same rule text in the three kernels", w.robots.every((r) => M.FLOWER_RULES.every((n) => r.k.me.explain(`robots.${r.id}.${n}`).expr === M.RULES.find(([x]) => x === n)[1])), null, "flower");
@@ -310,8 +310,9 @@ section("L · the flower on B 612: not a kernel; Oli and Tiko keep what they see
   runSteps(w, 3000, "L", { onStep: (w) => {
     for (const r of w.robots) {
       const P = (n) => r.k.read(`robots.${r.id}.${n}`);
+      const D = r.decided?.at || {};   // its flags as read when it decided this minute (its own writes later can flip them)
       if (r.action === "water") { wateringMin++;
-        check(`L t=${w.t}: ${r.name} goes to / waters the flower only when its own rule says so, never before charging`, P("shouldWaterFlower") === true && P("goCharge") === false && P("mustCharge") === false && P("battery") > P("reserve") && P("flowerThirsty") === true && P("explore") === true, { b: P("battery"), res: P("reserve") }, "flower"); }
+        check(`L t=${w.t}: ${r.name} goes to / waters the flower only when its own rule says so, never before charging`, D.shouldWaterFlower === true && D.goCharge === false && D.mustCharge === false && D.battery > D.reserve && D.flowerThirsty === true && D.explore === true, D, "flower"); }
       if (r.rock === 1 && Math.round(w.flower.water) !== r.k.read("objects.flower.water")) stale++;
     }
     for (const e of w.events) if (e.t === w.t && e.kind === "watered") { waterings++; by[e.by]++; const r = M.robotOf(w, e.by);
@@ -345,7 +346,7 @@ section("L · the flower on B 612: not a kernel; Oli and Tiko keep what they see
   console.log(`  with vs without the flower (seed 7, 3,000 min): ${diffAct} robot-minutes with a different action (first: t=${firstDiff?.t} ${firstDiff?.robot} ${firstDiff?.with} instead of ${firstDiff?.without})`);
   console.log(`    ice mined Oli/Tiko/Lua ${ice(a)} vs ${ice(b)} · ice found ${foundA} vs ${foundB} · tips received ${tipsA} vs ${tipsB} · lowest battery ${Math.min(...a.robots.map((r) => r.truth.battery)).toFixed(1)}% at the end vs ${Math.min(...b.robots.map((r) => r.truth.battery)).toFixed(1)}%`);
 }
-} // FLOWER=1 (follow-up, off by default)
+} // FLOWER=0 skips
 
 // ── 4.2: aggregates ──
 const readBats = (r) => r.bats.map((b) => ({ i: b.i, charge: r.k.read(`robots.${r.id}.batteries.${b.i}.charge`), capacity: r.k.read(`robots.${r.id}.batteries.${b.i}.capacity`) }));

@@ -135,7 +135,7 @@ function loop(now) {
   if (now - lastUi > 250) { lastUi = now; announce(); tick.set(); }
   requestAnimationFrame(loop);
 }
-const FLOWER_ON = new URLSearchParams(location.search).get("flower") === "1";   // the flower is a follow-up, off by default
+const FLOWER_ON = new URLSearchParams(location.search).get("flower") !== "0";   // ?flower=0 hides it
 function reset() { W = M.createWorld(ME, { flower: FLOWER_ON }); acc = 0; lastWrites.clear(); ui.set({ verify: null }); announceAll(); tick.set(); frame.set(); }
 const play = (on = true) => ui.set({ running: on });
 function interact(id, xs) { for (const x of [].concat(xs || [])) { noteWrite(id, x); lastWrites.set(id, { t: W.t, batch: [x], manual: true }); } announce(); tick.set(); frame.set(); }
@@ -170,11 +170,12 @@ const TRIES = [null,
   [["Lua says hello", () => { act.hello(3); play(); }], ["Bring the rocks close", () => { act.close(); play(); }]],
   [["Oli shares an ice tip", () => { act.tip(1); act.object("ice"); play(); }]],
   [["Push B 325 away", () => { act.away(); play(); }], ["Bring it close", () => { act.close(); play(); }], ["Let it drift", () => act.drift()]],
+  [["Let the flower get thirsty", () => { act.thirsty(); play(); }], ["What is the flower to each?", () => act.object("flower")]],
   [["Verify all three kernels", () => { act.verify(); ui.set({ hood: true }); }]],
 ];
 const PASSAGES = M.STORY.map((s, i) => (s ? { ...s, tries: TRIES[i] } : null));
 const STEPS = PASSAGES.length - 1;
-const ROMAN = ["", "I", "II", "III", "IV", "V", "VI", "VII"];
+const ROMAN = ["", "I", "II", "III", "IV", "V", "VI", "VII", "VIII"];
 
 // ── scene (page-side SVG; colours from the .GUI theme) ──
 const VB = M.VB;
