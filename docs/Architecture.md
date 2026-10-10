@@ -1,7 +1,7 @@
 ---
 layout: readme
 title: O(k) Semantic Kernel Architecture
-image: https://neurons-me.github.io/.me/docs/assets/card-architecture.webp
+image: https://neurons-me.github.io/.me/docs/assets/architecture-og.jpg
 ---
 
 # O(k) Semantic Kernel Architecture
