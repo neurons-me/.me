@@ -781,7 +781,10 @@ try {
   reset();
   RT = G.createMeRuntime(FME, { subscribe: kernelSubscribe });
   mountPage(); announceAll();
-  if (params.get("step")) ui.set({ step: Math.min(STEPS, Math.max(1, parseInt(params.get("step"), 10) || 1)) });
+  // ?step=N: wait until the runtime mount has committed; setting the step earlier re-renders the pre-kernel tree, whose
+  // passage components then call useMe without a runtime ("useMe requires a MeRuntimeProvider").
+  if (params.get("step")) { await new Promise((r) => requestAnimationFrame(() => setTimeout(r, 0)));
+    ui.set({ step: Math.min(STEPS, Math.max(1, parseInt(params.get("step"), 10) || 1)) }); }
   if (params.get("autoplay") !== "0") play(true);
   window.__space = {   // hooks for headless checks
     get W() { return W; }, M, FME, act, reset, play, ui, step: (n = 1) => { for (let i = 0; i < n; i++) stepOnce(); announce(); tick.set(); frame.set(); },

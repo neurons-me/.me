@@ -36,7 +36,7 @@ by all three, and mean something different in each kernel.
 | `space-model.js` | the model, shared by the page and Node: rules, kernels, rocks, robots, the radio, verifyWorld |
 | `space-gui.js` | the .GUI page: one spec resolved by `GUI.mount`, the scene, the passages, the dashboard, under the hood |
 | `verify.mjs` | Node verification against this.me@4.1.0 |
-| `assets/space-robots-og.png` | og:image, 1200×630 |
+| `assets/space-robots-og-4.2.png` | og:image, 1200×630 (a real screenshot of the scene; no title text, og:title carries it) |
 | `../../../assets/me-syntax/` | shared .me syntax highlighter (JS + CSS), used for every line of .me code on the page |
 
 ## Kernels
