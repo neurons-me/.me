@@ -87,17 +87,6 @@
       transform: translateY(-1px);
     }
 
-    .card-icon {
-      width: 36px;
-      height: 36px;
-      border-radius: 8px;
-      background: rgba(15, 106, 120, 0.10);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 1.1rem;
-    }
-
     .card picture { display: block; }
     .card-media {
       display: block;
@@ -127,7 +116,6 @@
       .page-subtitle { color: #98a7b3; }
       .card { background: #111a1f; border-color: rgba(232, 237, 237, 0.10); }
       .card:hover { border-color: #4fd1c5; box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
-      .card-icon { background: rgba(79, 209, 197, 0.12); }
       .card-desc { color: #98a7b3; }
     }
 
@@ -187,140 +175,186 @@
       </a>
 
       <a class="card" href="https://neurons-me.github.io/.me/docs/me.html">
-        <div class="card-icon">⊙</div>
+        <picture>
+          <img class="card-media" src="assets/card-me.webp" width="640" height="280" alt="The .me mark: a glowing hexagon" />
+        </picture>
         <div class="card-title">What is .me?</div>
         <div class="card-desc">The core identity primitive. One object, infinite derivations.</div>
       </a>
 
       <a class="card" href="https://neurons-me.github.io/.me/docs/Primitives.html">
-        <div class="card-icon">𓂀</div>
+        <picture>
+          <img class="card-media" src="assets/card-primitives.webp" width="640" height="280" alt="Line drawing of a hexagonal cube, the .me primitive mark" />
+        </picture>
         <div class="card-title">Primitives</div>
         <div class="card-desc">The irreducible vocabulary of .me — the symbols you actually type.</div>
       </a>
 
       <a class="card" href="https://neurons-me.github.io/.me/docs/Seed.html">
-        <div class="card-icon">𓇗</div>
+        <picture>
+          <img class="card-media" src="assets/card-seed.webp" width="640" height="280" alt="A single glowing glyph on a dark field" />
+        </picture>
         <div class="card-title">SEED</div>
         <div class="card-desc">The one root every .me identity grows from — what it is, what it derives, what it never protects.</div>
       </a>
 
       <a class="card" href="https://neurons-me.github.io/.me/docs/Axioms.html">
-        <div class="card-icon">𓋹</div>
+        <picture>
+          <img class="card-media" src="assets/card-axioms.webp" width="640" height="280" alt="Pixel-art ankh between two fish" />
+        </picture>
         <div class="card-title">Axioms</div>
         <div class="card-desc">The invariants the kernel guarantees, with runtime proof.</div>
       </a>
 
       <a class="card" href="https://neurons-me.github.io/.me/docs/Architecture.html">
-        <div class="card-icon">🏗️</div>
+        <picture>
+          <img class="card-media" src="assets/card-architecture.webp" width="640" height="280" alt="Line drawing of a cube with alignment ticks" />
+        </picture>
         <div class="card-title">Architecture</div>
         <div class="card-desc">What happens underneath a call: proxy path resolution, the dependency graph, lineage with explain(), and structural privacy.</div>
       </a>
 
       <a class="card" href="https://neurons-me.github.io/.me/docs/Syntax.html">
-        <div class="card-icon">⌨️</div>
+        <picture>
+          <img class="card-media" src="assets/card-syntax.webp" width="640" height="280" alt="Two overlapping circles from the Syntax docs" />
+        </picture>
         <div class="card-title">Syntax</div>
         <div class="card-desc">The <code>me://</code> URI scheme and grammar specification for semantic paths.</div>
       </a>
 
       <a class="card" href="https://neurons-me.github.io/.me/docs/One-Line-That-Replaces-Five.html">
-        <div class="card-icon">✂️</div>
+        <picture>
+          <img class="card-media" src="assets/card-one-line.webp" width="640" height="280" alt="The line me.friends["[i]"].is_adult = age &gt; 18 from the essay" />
+        </picture>
         <div class="card-title">One Line That Replaces Five</div>
         <div class="card-desc">One assignment instead of a migration, a map, a filter, a trigger, and a validation hook — meaning lives in one place, not five.</div>
       </a>
 
       <a class="card" href="https://neurons-me.github.io/robots/">
-        <div class="card-icon">🤖</div>
+        <picture>
+          <img class="card-media" src="assets/card-robots.webp" width="640" height="280" alt="Screenshot of the Space demo: spider robots on two rocks" />
+        </picture>
         <div class="card-title">Robots That Understand Context</div>
         <div class="card-desc">The same object means different things depending on who is looking and where — the live demo, the human version, and the docs.</div>
       </a>
 
       <a class="card" href="https://neurons-me.github.io/smart-cities/">
-        <div class="card-icon">🏙️</div>
+        <picture>
+          <img class="card-media" src="assets/card-smart-cities.webp" width="640" height="280" alt="Screenshot of the Veracruz Port demo map" />
+        </picture>
         <div class="card-title">Smart Cities</div>
         <div class="card-desc">Evolving city data as live dependencies — syntax, Madrid GTFS, and human fares.</div>
       </a>
 
       <a class="card" href="https://neurons-me.github.io/.me/docs/Social-Graph.html">
-        <div class="card-icon">𓀠</div>
+        <picture>
+          <img class="card-media" src="assets/card-social-graph.webp" width="640" height="280" alt="Pixel-art social graph: You, Friends, Family, Acquaintances" />
+        </picture>
         <div class="card-title">Social Graph</div>
         <div class="card-desc">Relationships, policies, and privacy in one live graph — no query language, no joins.</div>
       </a>
 
       <a class="card" href="https://neurons-me.github.io/.me/docs/Running-your-CoffeeShops.html">
-        <div class="card-icon">☕</div>
+        <picture>
+          <img class="card-media" src="assets/card-coffeeshops.webp" width="640" height="280" alt="Pixel-art coffee cup and beans" />
+        </picture>
         <div class="card-title">Running your CoffeeShops</div>
         <div class="card-desc">Public menus, reactive pricing, and private ops — one graph, three shops, zero databases.</div>
       </a>
 
       <a class="card" href="https://neurons-me.github.io/.me/docs/Splitting-your-Bill.html">
-        <div class="card-icon">𓋹</div>
+        <picture>
+          <img class="card-media" src="assets/card-split-bill.webp" width="640" height="280" alt="Painting of two people exchanging money" />
+        </picture>
         <div class="card-title">Splitting your Bill</div>
         <div class="card-desc">Shared expenses settle themselves — every balance updates the moment a payment lands.</div>
       </a>
 
       <a class="card" href="https://neurons-me.github.io/.me/docs/Hemisphere-Scale.html">
-        <img class="card-media" src="https://suign.github.io/assets/imgs/HEMISPHERE.jpg" alt="Hemisphere Scale benchmark" />
+        <picture>
+          <img class="card-media" src="assets/card-hemisphere.webp" width="640" height="280" alt="Hemisphere Scale benchmark" />
+        </picture>
         <div class="card-title">Hemisphere Scale</div>
         <div class="card-desc">1 million nodes. One sensor flips. Six derivations cascade. Everything else stays cold.</div>
       </a>
 
       <a class="card" href="https://neurons-me.github.io/.me/docs/Extreme-Fan-Out.html">
-        <img class="card-media" src="https://suign.github.io/assets/imgs/EXTREME-FAN-OUT.jpg" alt="Extreme Fan-Out benchmark" />
+        <picture>
+          <img class="card-media" src="assets/card-fan-out.webp" width="640" height="280" alt="Extreme Fan-Out benchmark" />
+        </picture>
         <div class="card-title">Extreme Fan-Out</div>
         <div class="card-desc">One write instantly updates 100,000 dependents — O(k) is honest when k is enormous.</div>
       </a>
 
       <a class="card" href="https://neurons-me.github.io/.me/docs/Pointer-Composition.html">
-        <div class="card-icon">🔗</div>
+        <picture>
+          <img class="card-media" src="assets/card-pointer.webp" width="640" height="280" alt="Pixel-art diagram of nodes chained by arrows" />
+        </picture>
         <div class="card-title">Pointer Composition</div>
         <div class="card-desc">Chains compose, self-pointers aren't identity, and cycles of any length fail closed — documented and tested.</div>
       </a>
 
       <a class="card" href="https://www.npmjs.com/package/this.me">
-        <div class="card-icon">📦</div>
+        <picture>
+          <img class="card-media" src="assets/card-npm.webp" width="640" height="280" alt="Screenshot of the this.me package page on jsDelivr" />
+        </picture>
         <div class="card-title">npm</div>
         <div class="card-desc">Install: <code>npm install this.me</code></div>
       </a>
 
       <a class="card" href="https://crates.io/crates/this-me">
-        <div class="card-icon">🦀</div>
+        <picture>
+          <img class="card-media" src="assets/card-crates.webp" width="640" height="280" alt="Screenshot of the this-me crate on crates.io" />
+        </picture>
         <div class="card-title">crates.io</div>
-        <div class="card-desc">Rust crate v0.3.2. Install: <code>cargo add this-me</code></div>
+        <div class="card-desc">Rust crate v0.3.3. Install: <code>cargo add this-me</code></div>
       </a>
 
       <a class="card" href="https://docs.rs/this-me">
-        <div class="card-icon">📚</div>
+        <picture>
+          <img class="card-media" src="assets/card-rust-api.webp" width="640" height="280" alt="Screenshot of the this_me rustdoc Quick Start" />
+        </picture>
         <div class="card-title">Rust API</div>
-        <div class="card-desc">Generated rustdoc reference for <code>this-me</code> v0.3.2.</div>
+        <div class="card-desc">Generated rustdoc reference for <code>this-me</code> v0.3.3.</div>
       </a>
 
 
       <a class="card" href="../Tests/gtfs-madrid-universe.html">
-        <div class="card-icon">🚇</div>
+        <picture>
+          <img class="card-media" src="assets/card-gtfs.webp" width="640" height="280" alt="Screenshot of the GTFS Madrid semantic dependency graph" />
+        </picture>
         <div class="card-title">GTFS Madrid / k</div>
         <div class="card-desc">Real GTFS → reactive dependencies. Mutate and watch k; benchmark n ~100× with k flat. Live interactive subset.</div>
       </a>
 
       <a class="card" href="Tests/semantic-reactive.html">
-        <div class="card-icon">🕸️</div>
+        <picture>
+          <img class="card-media" src="assets/card-semantic.webp" width="640" height="280" alt="Screenshot of the semantic graph with its mutation panel" />
+        </picture>
         <div class="card-title">Semantic graph / reactive</div>
         <div class="card-desc">GTFS Madrid typed nodes + = edges: click a node → me.explain(path), .me syntax and full explain JSON.</div>
       </a>
 
       <a class="card" href="Tests/madrid-knowledge.html">
-        <div class="card-icon">🗺️</div>
+        <picture>
+          <img class="card-media" src="assets/card-madrid.webp" width="640" height="280" alt="Madrid knowledge graph" />
+        </picture>
         <div class="card-title">Madrid knowledge</div>
         <div class="card-desc">Same idea as GTFS / k, human story: fares, abono, Sol→Atocha. Mutate → dependents + explain().</div>
       </a>
 
       <a class="card" href="Tests/">
-        <div class="card-icon">🔥</div>
+        <picture>
+          <img class="card-media" src="assets/card-tests.webp" width="640" height="280" alt="Screenshot of the fire test results: phases passing" />
+        </picture>
         <div class="card-title">Tests</div>
         <div class="card-desc">Phases 0–8, reconstruction proof, secret contracts. 11/11 phases passed.</div>
       </a>
 
       <a class="card" href="Benchmarks/">
-        <div class="card-icon">⚡</div>
+        <picture>
+          <img class="card-media" src="assets/card-benchmarks.webp" width="640" height="280" alt="O(k) chart: latency vs n with k fixed" />
+        </picture>
         <div class="card-title">Benchmarks</div>
         <div class="card-desc">O(k) scaling, throughput, fan-out, cold/warm, explain overhead, secret-scope cost.</div>
       </a>
