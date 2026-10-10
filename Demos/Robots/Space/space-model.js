@@ -44,8 +44,13 @@ export const OBJECTS = [
   { key: "ice", name: "the ice", facts: ["objects.ice.seen", "objects.ice.near"] },
   { key: "comet", name: "the comet", facts: ["objects.comet.near"] },
   { key: "rock", name: "the other rock", facts: ["objects.rock.inRange"] },
+  { key: "flower", name: "the flower", facts: ["objects.flower.water"] },
 ];
 export const COMET = { first: 50, every: 420, lasts: 110, sees: 230 };
+// One flower on B 612. It is NOT a kernel: the page holds how much water it really has. Oli and Tiko, who live on that
+// rock, each keep in their OWN kernel what they last saw (objects.flower.water, a %) and where it grows; their own rule
+// decides when to water it. Lua, on B 325, has never seen it: its kernel holds no flower facts.
+export const FLOWER = { rock: 1, pos: 0.9, water: 70, dry: 0.08, sees: 0.6, fill: 100, wateringMin: 4 };   // dry: % per simulated minute · sees: how close (rad) it must be to see it
 export const IDS = ROBOTS.map((r) => r.id);
 export const NAME = Object.fromEntries(ROBOTS.map((r) => [r.id, r.name]));
 export const ROCK_NAME = Object.fromEntries(ROCKS.map((r) => [r.id, r.name]));
@@ -81,7 +86,13 @@ export const RULES = [
   ["tipMine", "tipRock == myRock"],
   ["followTip", "!goCharge && !objects.comet.near && tipFresh && tipMine && !slips"],
   ["explore", "!goCharge && !shelter && !watchComet && !followTip"],
+  // the flower: thirsty when the level it last saw is low; it waters it only in its free time (when it would explore,
+  // so charging, sheltering and tips come first) and only with battery above its reserve. Lua has no flower facts:
+  // these two stay undefined in its kernel (missing input), and nothing else reads them.
+  ["flowerThirsty", "objects.flower.water < thirstyBelow"],
+  ["shouldWaterFlower", "flowerThirsty && explore && battery > reserve"],
 ];
+export const FLOWER_RULES = ["flowerThirsty", "shouldWaterFlower"];
 // The inbox rule: a class template on the robot's OWN inbox, so it is computed on every message it receives. A formula
 // on a message sees that message's facts by name; the robot's facts are named by their full path (robots[N].myRock):
 // .me 4.1.0 has no nested ["[i]"] template and no "parent" name, so the text names its own robot: one text per kernel.
@@ -121,14 +132,16 @@ export function rulesJS(f, explicit = false) {
   const shelter = !goCharge && cometIsHazard, watchComet = !goCharge && cometIsSample, avoidIce = iceIsHazard && f["objects.ice.near"];
   const tipAge = f.now - f.tipAt, tipFresh = tipAge <= f.maxAge, tipMine = f.tipRock === f.myRock;
   const followTip = !goCharge && !cometNear && tipFresh && tipMine && !f.slips, explore = !goCharge && !shelter && !watchComet && !followTip;
-  return { battery, reserve, mustCharge, charged, goCharge, asleep, iceIsFuel, iceIsHazard, iceIsSample, cometIsHazard, cometIsSample, rockInReach, shelter, watchComet, avoidIce, tipAge, tipFresh, tipMine, followTip, explore };
+  const water = f["objects.flower.water"], flowerThirsty = water === undefined ? undefined : water < f.thirstyBelow;
+  const shouldWaterFlower = flowerThirsty === undefined ? undefined : flowerThirsty && explore && battery > reserve;
+  return { battery, reserve, mustCharge, charged, goCharge, asleep, iceIsFuel, iceIsHazard, iceIsSample, cometIsHazard, cometIsSample, rockInReach, shelter, watchComet, avoidIce, tipAge, tipFresh, tipMine, followTip, explore, flowerThirsty, shouldWaterFlower };
 }
 // the inbox rule in plain JS, for one message m (its own facts) in robot f's kernel
 export const acceptTipJS = (f, m) => (m.rock === undefined ? undefined : m.rock === f.myRock && m.got - m.at <= f.maxAge && !rulesJS(f).tipFresh);
 export const MSG_FACTS = ["from", "to", "kind", "battery", "rock", "pos", "at", "got", "accepted"];
 export const batteryFacts = (bats) => bats.flatMap((b) => [`batteries.${b.i}.charge`, `batteries.${b.i}.capacity`]);
 export const FACTS = ["lightDist", "charging", "now", "tipRock", "tipAt", "myRock", "maxAge", "costPerRad", "margin", "full",
-  "mines", "slips", "studies", "objects.ice.seen", "objects.ice.near", "objects.comet.near", "objects.rock.inRange"];
+  "mines", "slips", "studies", "objects.ice.seen", "objects.ice.near", "objects.comet.near", "objects.rock.inRange", "thirstyBelow", "objects.flower.water", "objects.flower.pos"];
 // a fact name → its path in robot i's kernel ("objects.*" facts live at the kernel's top level: that robot's view of the object)
 export const factPath = (i, f) => (f.startsWith("objects.") ? f : `robots.${i}.${f}`);
 const NEVER = -1000000;   // "never": an observation time so old that every age check fails
@@ -140,7 +153,7 @@ export const litAt = (pos) => Math.abs(wrap(pos)) < HALF_PI;
 
 // opts.explicit: the 4.1 form of the battery rule over these batteries (opts.bats), for comparison runs
 export function installRules(me, script, id, opts = {}) {
-  for (const [n, e0] of RULES) { const e = n === "battery" && opts.explicit ? explicitBatteryRule(opts.bats || BATTERIES) : e0; me.robots["[i]"]["="](n, e); script?.push(ruleCode([n, e])); }
+  for (const [n, e0] of RULES) { if (!opts.flower && FLOWER_RULES.includes(n)) continue; const e = n === "battery" && opts.explicit ? explicitBatteryRule(opts.bats || BATTERIES) : e0; me.robots["[i]"]["="](n, e); script?.push(ruleCode([n, e])); }
   if (!opts.explicit) for (const [n, e] of KEPT_RULES) { me.robots["[i]"]["="](n, e); script?.push(ruleCode([n, e])); }
   if (id != null) { me.robots[id].inbox["[i]"]["="]("acceptTip", inboxRule(id)); script?.push(inboxRuleCode(id)); }
 }
@@ -160,7 +173,7 @@ export const codeOf = (path, value) => "me" + path.split(".").map((s) => (/^\d+$
 // (the latest to / from that peer through the lastTo / lastFrom pointer, or the newest of that kind); it expands
 // into live lines: the pointer (when used) and the message's own writes, e.g. me.robots[1].inbox[42].battery(71).
 // { msgs: { box, fields } }: every message the box keeps, newest first.
-const rule = (n) => ruleCode(RULES.find(([x]) => x === n));
+const rule = (n) => ruleCode([...RULES, ...KEPT_RULES].find(([x]) => x === n));
 const seed = (id, f) => codeOf(`robots.${id}.${f}`, f === "name" ? ROBOTS[id - 1].name : f === "role" ? ROBOTS[id - 1].role : ROBOTS[id - 1][f]);
 const ROCK_KEY = (id) => ROCKS.find((x) => x.id === ROBOTS[id - 1].rock).key;
 const homeLines = (id) => [seed(id, "name"), codeOf(`rocks.${ROCK_KEY(id)}.name`, ROCKS.find((x) => x.key === ROCK_KEY(id)).name), `me.robots[${id}].home["->"]("rocks.${ROCK_KEY(id)}")`];
@@ -185,6 +198,11 @@ export const STORY = [null,
   { title: "A small cost", text: "Each write recomputes only the paths that read it: that number is k. Verify rebuilds all three kernels and compares.",
     groups: [{ who: 1, lines: [{ live: "robots.1.batteries.1.charge", k: true }, { live: "robots.1.batteries.2.charge", k: true }, { live: "robots.1.lightDist", k: true }, { live: "robots.1.now", k: true }] }] },
 ];
+// the flower act: a follow-up, off by default (createWorld(ME, { flower: true }) / ?flower=1); not in STORY yet
+export const FLOWER_ACT = { title: "A flower to care for", text: "A flower grows on B 612. Oli and Tiko each write down how much water they see in it; their own rule says when to water it, but only in their free time, and never before charging. Lua has never seen it: its rule cannot decide.",
+    groups: [{ who: 1, lines: [{ live: "objects.flower.water" }, { code: rule("flowerThirsty"), value: "robots.1.flowerThirsty" }, { code: rule("shouldWaterFlower"), value: "robots.1.shouldWaterFlower" }] },
+      { who: 2, lines: [{ live: "objects.flower.water" }, { code: rule("shouldWaterFlower"), value: "robots.2.shouldWaterFlower" }] },
+      { who: 3, lines: [{ code: rule("flowerThirsty"), value: "robots.3.flowerThirsty" }] }] };
 // the message ids a robot's box keeps, newest first (the adapter's index of what it wrote; the facts are in the kernel)
 export const msgIds = (r, box) => Object.values(r.ring[box]).flat().filter((id) => r.k.last[`robots.${r.id}.${box}.${id}.at`]).sort((a, b) => b - a);
 const ptrId = (k, path) => { const t = k.read(path)?.__ptr; const m = t && /\.(\d+)$/.exec(t); return m && k.last[`${t}.at`] ? Number(m[1]) : null; };
@@ -221,11 +239,30 @@ export const storyLines = (w, act) => checkGroups(w, STORY[act].groups);
 // every message the box keeps, by id. Every line is live: the latest write to that path in that robot's own kernel.
 export const PANEL = (id, w) => [
   { key: "knows", title: "It knows", sub: "its own readings", who: id,
-    lines: [...(w ? robotOf(w, id).bats : BATTERIES).map((b) => ({ live: `robots.${id}.batteries.${b.i}.charge`, hint: "charge", bat: b })), { live: `robots.${id}.lightDist`, hint: "light" }, { live: "objects.ice.seen", hint: "ice" }, { live: "objects.comet.near", hint: "comet" }, { live: "objects.rock.inRange", hint: "reach" }] },
+    lines: [...(w ? robotOf(w, id).bats : BATTERIES).map((b) => ({ live: `robots.${id}.batteries.${b.i}.charge`, hint: "charge", bat: b })), { live: `robots.${id}.lightDist`, hint: "light" }, { live: "objects.ice.seen", hint: "ice" }, { live: "objects.comet.near", hint: "comet" }, { live: "objects.rock.inRange", hint: "reach" }, ...(w?.flower ? [{ live: "objects.flower.water", hint: "flower" }] : [])] },
   { key: "inbox", title: "Inbox", sub: `what arrived: the last ${KEEP} from each`, who: id, lines: [{ msgs: { box: "inbox", fields: ["from", "battery", "rock"] }, none: "nothing has arrived yet" }] },
   { key: "outbox", title: "Outbox", sub: `what it sent: the last ${KEEP} to each`, who: id, lines: [{ msgs: { box: "outbox", fields: ["to", "battery", "rock"] }, none: "nothing sent yet" }] },
 ];
 export const panelLines = (w, id) => checkGroups(w, PANEL(id, w));
+
+// The dashboard cards. Each card shows real .me lines from that robot's kernel (a rule → its value, the latest write
+// to a fact, or a line of its setup script) and, under them, the same thing in plain words. Where a card's content
+// is not in the kernel (where an exploring robot walks is the simulation's own state), the card says "page state".
+// The flag that decided what it is doing, in the adapter's order (the kernel's flags; asleep when its battery is empty)
+export const DECIDED = [["charge", "goCharge"], ["shelter", "shelter"], ["watch", "watchComet"], ["tip", "followTip"], ["water", "shouldWaterFlower"], ["explore", "explore"], ["sleep", "asleep"]];
+export const flagOf = (r) => (DECIDED.find(([a]) => a === r.action) || DECIDED[5])[1];
+export function CARDS(w, id) {
+  const r = robotOf(w, id), base = `robots.${id}`, flag = flagOf(r);
+  const doing = { key: "doing", title: "Doing", who: id, lines: [{ code: rule(flag), value: `${base}.${flag}` }] };
+  const going = { key: "going", title: "Going to", who: id,
+    lines: r.action === "charge" ? [{ live: `${base}.lightDist` }] : r.action === "tip" ? [{ live: `${base}.tipPos` }, ...(r.tipMsg != null ? [{ live: `${base}.tipMsg` }] : [])]
+      : r.action === "water" ? [{ code: codeOf("objects.flower.pos", r.k.read("objects.flower.pos")) }] : [],
+    page: !["charge", "tip", "water"].includes(r.action) };   // explore / shelter / watch / sleep: its path is the simulation's state
+  const msgs = { key: "msgs", title: "Messages", who: id, lines: [{ live: `${base}.sent` }, { live: `${base}.received` }, { code: rule("outboxKept"), value: `${base}.outboxKept` }, { code: rule("inboxKept"), value: `${base}.inboxKept` }] };
+  const ice = { key: "ice", title: r.studies ? "Ice samples" : r.slips ? "Ice spots found" : "Ice mined", who: id, lines: [{ live: `${base}.${r.slips ? "found" : "ice"}` }] };
+  return [doing, going, msgs, ice];
+}
+export const cardLines = (w, id) => checkGroups(w, CARDS(w, id));
 
 // One robot kernel. write() = one real kernel write; returns the kernel's wave for it (k, recomputed, changed).
 export function createKernel(ME, id, opts = {}) {
@@ -283,7 +320,8 @@ function rng(seed) { let a = seed >>> 0; return () => { a = (a + 0x6d2b79f5) >>>
 // ── the world ──
 export function createWorld(ME, opts = {}) {
   // opts.mode: "eager" (default) or "lazy" recompute; opts.explicit: the 4.1 explicit battery sum instead of the aggregate
-  const w = { t: 0, rand: rng(opts.seed ?? 7), rocks: [], robots: [], packets: [], events: [], lost: 0, delivered: 0, unheard: 0, nextMsg: 1, log: [], comet: { on: false, x: 0, y: 0, n: 0 }, mode: opts.mode || "eager", explicit: !!opts.explicit };
+  const w = { t: 0, rand: rng(opts.seed ?? 7), rocks: [], robots: [], packets: [], events: [], lost: 0, delivered: 0, unheard: 0, nextMsg: 1, log: [], comet: { on: false, x: 0, y: 0, n: 0 }, mode: opts.mode || "eager", explicit: !!opts.explicit,
+    flower: !opts.flower ? null : { ...FLOWER, waterings: 0 } };
   for (const rk of ROCKS) w.rocks.push({ ...rk, x: rk.home.x, y: rk.home.y, pinned: null, phase: 0, spots: rk.ice.map((a, i) => ({ id: `${rk.id}.${i}`, rock: rk.id, pos: a, left: 3 })) });
   for (const def of ROBOTS) {
     const rock = w.rocks.find((x) => x.id === def.rock);
@@ -296,13 +334,15 @@ export function createWorld(ME, opts = {}) {
     const facts = { ...bat, pos: def.pos, lightDist: r4(lightDistOf(def.pos)), charging: false, now: 0,
       tipRock: 0, tipPos: 0, tipAt: NEVER,
       myRock: rock.id, maxAge: 120, costPerRad: r4(DRAIN_MOVE / omega(rock)), margin: 8, full: 95, ice: 0, found: 0, sent: 0, received: 0,
-      role: def.role, mines: def.mines, slips: def.slips, studies: def.studies,
+      role: def.role, mines: def.mines, slips: def.slips, studies: def.studies, ...(w.flower ? { thirstyBelow: 40 } : {}),
       "objects.ice.seen": false, "objects.ice.near": false, "objects.comet.near": false, "objects.rock.inRange": false };
+    // the robots on the flower's rock know it from the start: where it grows and the water they see in it now
+    if (w.flower && rock.id === w.flower.rock) Object.assign(facts, { "objects.flower.pos": w.flower.pos, "objects.flower.water": Math.round(w.flower.water) });
     for (const [f, v] of Object.entries(facts)) k.write(factPath(def.id, f), v, false);
     k.write("objects.ice.name", "ice", false); k.write("objects.comet.name", "comet", false); k.write("objects.rock.name", ROCKS.find((x) => x.id !== rock.id).name, false);
-    installRules(k.me, k.script, def.id, { explicit: w.explicit, bats }); k.index();
+    installRules(k.me, k.script, def.id, { explicit: w.explicit, bats, flower: !!w.flower }); k.index();
     w.robots.push({ ...def, def, rockObj: rock, bats, k, truth: { pos: def.pos, battery: def.battery }, written: { ...facts }, moving: 0, walked: 0,
-      dead: false, drillT: 0, queue: [], ring: { inbox: {}, outbox: {} }, tipMsg: null, known: new Set(), lastSend: -SEND_GAP, nextHello: 3 + def.id * 7, seen: new Set(), action: "explore", status: "exploring", dest: "around the rock", lastBatch: [] });
+      dead: false, drillT: 0, waterT: 0, queue: [], ring: { inbox: {}, outbox: {} }, tipMsg: null, known: new Set(), lastSend: -SEND_GAP, nextHello: 3 + def.id * 7, seen: new Set(), action: "explore", status: "exploring", dest: "around the rock", lastBatch: [] });
   }
   return w;
 }
@@ -429,8 +469,12 @@ function stepRobot(w, r, dt) {
   put("objects.rock.inRange", !r.dead && w.robots.some((o) => o.rock !== r.rock && radio(w, r, o).ok));
   const ki = nearestKnownIce(r);
   put("objects.ice.near", !!ki && Math.abs(wrap(ki.pos - r.truth.pos)) < 0.4);
+  // the flower: a robot on its rock that is close enough sees how much water it has, and writes what it sees
+  const fl = w.flower, seesFlower = fl && r.rock === fl.rock && !r.dead && Math.abs(wrap(fl.pos - r.truth.pos)) < fl.sees;
+  if (seesFlower) put("objects.flower.water", Math.round(fl.water));
   if (r.dead) { r.status = "asleep"; r.action = "sleep"; r.dest = "nowhere"; r.moving = 0; return; }
-  const flags = { charge: k.read(`${base}.goCharge`), shelter: k.read(`${base}.shelter`), watch: k.read(`${base}.watchComet`), follow: k.read(`${base}.followTip`), avoid: k.read(`${base}.avoidIce`) };
+  const flags = { charge: k.read(`${base}.goCharge`), shelter: k.read(`${base}.shelter`), watch: k.read(`${base}.watchComet`), follow: k.read(`${base}.followTip`), avoid: k.read(`${base}.avoidIce`),
+    water: fl ? k.read(`${base}.shouldWaterFlower`) === true : false };   // Lua's is undefined: it does not know the flower
   const tipFrom = r.tipMsg != null ? k.read(`${base}.tipMsg.from`) : null;   // whose tip its plan is, read through the pointer as it decides
   const om = omega(rk) * dt, pos = r.truth.pos;
   let target = null, action, mv = 0;
@@ -438,11 +482,14 @@ function stepRobot(w, r, dt) {
   else if (flags.shelter) action = "shelter";
   else if (flags.watch) action = "watch";
   else if (flags.follow) { action = "tip"; const tp = k.read(`${base}.tipPos`); if (Math.abs(wrap(tp - pos)) > 0.02) target = tp; }
+  else if (flags.water) { action = "water"; const fp = k.read("objects.flower.pos"); if (Math.abs(wrap(fp - pos)) > 0.02) target = fp; }   // its own fact: where the flower grows
   else {
     action = "explore";
     if (flags.avoid && ki && Math.sign(wrap(ki.pos - pos)) === r.dir) { r.dir = -r.dir; r.avoidedAt = w.t; }   // ice ahead means "slippery": turn around
   }
   r.action = action;
+  // the flag that decided it, as read at this moment (its own writes later this minute can flip it: a one-minute lag)
+  r.decided = { flag: (DECIDED.find(([a]) => a === action) || DECIDED[5])[1], t: w.t, v: action === "explore" ? k.read(`${base}.explore`) : true };
   if (target != null) { const d = wrap(target - pos); mv = Math.sign(d) * Math.min(Math.abs(d), om); }
   else if (action === "explore") mv = r.dir * om;
   r.truth.pos = wrap(pos + mv); r.moving = mv;
@@ -472,6 +519,12 @@ function stepRobot(w, r, dt) {
       if (s.left <= 0) { put("tipAt", NEVER); dropTipMsg(r, batch); drilling = false; }   // nothing left: forget the tip
     } else { put("tipAt", NEVER); dropTipMsg(r, batch); }                                 // nothing there (any more): forget the tip
   } else r.drillT = 0;
+  // watering: at the flower for a few minutes, then it has water again; the robot sees it and writes the new level
+  let watering = false;
+  if (action === "water" && target == null && !r.dead) {
+    watering = true; r.waterT += dt;
+    if (r.waterT >= fl.wateringMin) { r.waterT = 0; fl.water = fl.fill; fl.waterings++; put("objects.flower.water", Math.round(fl.water)); w.events.push({ t: w.t, kind: "watered", by: r.id }); watering = false; }
+  } else r.waterT = 0;
   put("pos", r4(r.truth.pos)); put("lightDist", r4(lightDistOf(r.truth.pos)));
   charges(r4(r.truth.battery), r.bats).forEach((c, j) => put(`batteries.${r.bats[j].i}.charge`, c));   // it measures each of its batteries
   // charging = "I have decided to charge": it stays true until the battery is full (goCharge reads it back)
@@ -481,13 +534,15 @@ function stepRobot(w, r, dt) {
   const work = r.studies ? "studying the ice" : "mining ice";
   r.status = r.dead ? "asleep" : action === "charge" ? (charging ? "charging" : "going to the sun")
     : action === "shelter" ? "hiding from the comet dust" : action === "watch" ? "studying the comet"
-    : action === "tip" ? (drilling ? work : "going to the ice") : (r.avoidedAt != null && w.t - r.avoidedAt < 25 ? "turning away from the ice" : "exploring");
+    : action === "tip" ? (drilling ? work : "going to the ice") : action === "water" ? (watering ? "watering the flower" : "going to the flower") : (r.avoidedAt != null && w.t - r.avoidedAt < 25 ? "turning away from the ice" : "exploring");
   r.dest = r.dead ? "nowhere: it is asleep" : action === "charge" ? (charging ? "stays here, in the sun" : "the sunny side") : action === "shelter" || action === "watch" ? "stays where it is"
-    : action === "tip" ? (drilling ? "stays here, at the ice" : tipFrom ? `the ice ${NAME[tipFrom]} told it about` : "the ice it found") : "around its rock, looking";
+    : action === "tip" ? (drilling ? "stays here, at the ice" : tipFrom ? `the ice ${NAME[tipFrom]} told it about` : "the ice it found")
+    : action === "water" ? (watering ? "stays here, at the flower" : "the flower") : "around its rock, looking";
 }
 
 export function step(w, dt = 1) {
   w.t += dt;
+  if (w.flower) w.flower.water = Math.max(0, w.flower.water - w.flower.dry * dt);   // the flower dries a little every minute
   placeRocks(w, dt); placeComet(w);
   for (const r of w.robots) r.lastBatch = [];
   for (const r of w.robots) stepRobot(w, r, dt);
@@ -542,6 +597,8 @@ export function shareTip(w, id) {   // the robot's radio sends a tip about the n
 export function holdRock(w, id, xy) { const rk = rockOf(w, id); rk.pinned = xy ? { x: xy.x, y: xy.y } : null; if (!xy) rk.phase = Math.atan2((rk.y - DRIFT[id].cy) / DRIFT[id].ay, (rk.x - DRIFT[id].cx) / DRIFT[id].ax) + 1.9; }
 export function moveRockNow(w, id, xy) { const rk = rockOf(w, id); rk.x = xy.x; rk.y = xy.y; rk.pinned = { ...xy }; }
 export const FAR = { x: 925, y: 110 }, NEAR = { x: 600, y: 230 };
+// the user lets the flower get thirsty (the world changes; the robots only learn it when they see it)
+export function dryFlower(w, level = 20) { if (w.flower) w.flower.water = level; }
 
 // Every derived path of every kernel compared with a fresh kernel rebuilt from the same facts + same rules,
 // and with the same rules computed in plain JS.
@@ -555,18 +612,21 @@ export function verifyWorld(ME, w) {
     const facts = Object.fromEntries(all.map((f) => [f, r.k.read(factPath(i, f))]));
     facts.bats = r.bats.map((b) => ({ charge: facts[`batteries.${b.i}.charge`], capacity: facts[`batteries.${b.i}.capacity`] }));
     const put = (path, v) => path.split(".").map((x) => (/^\d+$/.test(x) ? Number(x) : x)).reduce((n, seg, j, arr) => (j === arr.length - 1 ? n[seg](v) : n[seg]), fresh);
-    for (const f of all) put(factPath(i, f), facts[f]);
+    for (const f of all) if (facts[f] !== undefined) put(factPath(i, f), facts[f]);   // Lua holds no flower facts
     // every message its inbox keeps, with its own facts (acceptTip is computed on each of them)
     const inbox = msgIds(r, "inbox").map((id) => { const m = { id }; for (const f of MSG_FACTS) { const v = r.k.read(`robots.${i}.inbox.${id}.${f}`); if (v != null) { m[f] = v; put(`robots.${i}.inbox.${id}.${f}`, v); } } return m; });
     // every message its outbox keeps (the kept counts read them)
     for (const id of msgIds(r, "outbox")) for (const f of MSG_FACTS) { const v = r.k.read(`robots.${i}.outbox.${id}.${f}`); if (v != null) put(`robots.${i}.outbox.${id}.${f}`, v); }
-    installRules(fresh, null, i, { explicit: w.explicit, bats: r.bats });
+    installRules(fresh, null, i, { explicit: w.explicit, bats: r.bats, flower: !!w.flower });
     const js = rulesJS(facts, w.explicit);
     for (const n of RULE_NAMES) {
+      if (!w.flower && FLOWER_RULES.includes(n)) continue;
       const p = `robots.${i}.${n}`, a = r.k.read(p), b = fresh(p), c = js[n];
       checked++; if (!eq(a, b)) mismatches.push({ who: r.name, path: p, live: a, fresh: b });
       checked++; if (!eq(a, c)) mismatches.push({ who: r.name, path: p + " (JS)", live: a, js: c });
-      checked++; if (a === undefined) mismatches.push({ who: r.name, path: p + " (undefined)" });
+      // every rule is defined, except the flower rules of a robot that does not know the flower (they must be undefined)
+      const knows = r.k.read("objects.flower.water") !== undefined, expectUndef = FLOWER_RULES.includes(n) && !knows;
+      checked++; if ((a === undefined) !== expectUndef) mismatches.push({ who: r.name, path: p + (expectUndef ? " (should be undefined: no flower facts)" : " (undefined)"), live: a });
     }
     if (!w.explicit) for (const box of ["inbox", "outbox"]) {   // the kept counts: x[] over each box (undefined while empty)
       const p = `robots.${i}.${box}Kept`, a = r.k.read(p), b = fresh(p), n = msgIds(r, box).length, c = n || undefined;

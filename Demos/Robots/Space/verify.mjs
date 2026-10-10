@@ -36,7 +36,7 @@ const file41 = await kernel41File(), hash41 = createHash("sha256").update(await 
 if (hash41 !== SHA41) { console.error(`4.1.0 sha256 mismatch: ${hash41}`); process.exit(2); }
 const ME41 = (await import(pathToFileURL(file41).href)).default;
 
-let checks = 0; const fails = []; const by = { rebuild: 0, radio: 0, own: 0, scenario: 0, aggregate: 0, compare: 0 };
+let checks = 0; const fails = []; const by = { rebuild: 0, radio: 0, own: 0, scenario: 0, aggregate: 0, compare: 0, cards: 0, flower: 0 };
 const check = (label, ok, detail, cat = "scenario") => { checks++; by[cat]++; if (!ok) fails.push({ label, detail }); };
 const section = (s) => console.log(`\n· ${s}`);
 const writeStats = { n: 0, us: 0, usMax: 0, k: 0, kMax: 0 };
@@ -92,7 +92,7 @@ section("kernel");
 check("kernel sha256", hash === SHA);
 {
   const w = M.createWorld(ME);
-  for (const r of w.robots) for (const [n, e] of M.RULES) check(`${r.name} ${n}: the same rule text in its kernel`, r.k.me.explain(`robots.${r.id}.${n}`).expr === e.replace(/\[i\]/g, `[${r.id}]`));
+  for (const r of w.robots) for (const [n, e] of M.RULES) if (w.flower || !M.FLOWER_RULES.includes(n)) check(`${r.name} ${n}: the same rule text in its kernel`, r.k.me.explain(`robots.${r.id}.${n}`).expr === e.replace(/\[i\]/g, `[${r.id}]`));
   for (const r of w.robots) check(`${r.name}: the inbox rule is in its setup script`, r.k.script.includes(M.inboxRuleCode(r.id)));
   for (const r of w.robots) {   // the battery level is the rule over its batteries (total charge, % of total capacity)
     const c = (i, f) => r.k.read(`robots.${r.id}.batteries.${i}.${f}`), pct = M.batteryJS([1, 2].map((i) => ({ charge: c(i, "charge"), capacity: c(i, "capacity") })));
@@ -235,7 +235,7 @@ section("G · the story and the robot panel: every .me line shown really runs in
   all("after the run");   // after play: every live line is the latest real write, and the kernel still holds that value
   for (let a = 1; a < M.STORY.length; a++) for (const x of M.storyLines(w, a)) { if (x.live) { live++; check(`G act ${a}: ${x.live} was written by the simulation`, !!x.code, x); } else fixed++; }
   let panel = 0; for (const id of M.IDS) { const ls = M.panelLines(w, id);
-    for (const x of ls) { panel++; check(`G panel ${M.NAME[id]}: ${x.live} was written by the simulation`, !!x.code, x);
+    for (const x of ls) { if (!w.flower && x.live?.startsWith("objects.flower.")) continue; panel++; check(`G panel ${M.NAME[id]}: ${x.live} was written by the simulation`, !!x.code, x);
       check(`G panel ${M.NAME[id]}: ${x.live} is in its own kernel`, x.live.startsWith("objects.") || x.live.startsWith(`robots.${id}.`), x); }
     const r = M.robotOf(w, id), inb = M.msgIds(r, "inbox"), outb = M.msgIds(r, "outbox");
     check(`G panel ${M.NAME[id]}: Inbox lists every message its inbox keeps, by id (from + what it says)`, inb.length > 0 && inb.every((m) => ls.some((x) => x.live === `robots.${id}.inbox.${m}.from`) && ls.some((x) => /\.(battery|rock)$/.test(x.live) && x.live.startsWith(`robots.${id}.inbox.${m}.`))), inb);
@@ -272,6 +272,80 @@ section("H · outbox and inbox: one message, one id, each side in its own kernel
   console.log(`  ${delivered} delivered (same id both sides) · ${noLink} sent with no link: in the sender's outbox only · ${removed} old messages removed with ["-"] · ${same} kept messages still in both boxes now`);
   console.log(`  cost: k of a now write avg ${(kNow / nNow).toFixed(2)} · k max of any write ${kMax} · at most ${M.KEEP} messages per peer per box (+ the accepted tip)`);
 }
+
+// ── the dashboard cards ──
+section("K · the dashboard cards: every line is a rule → value, the latest write or a setup line of that robot's kernel");
+{
+  const w = M.createWorld(ME); let n = 0, page = 0; const seen = {};
+  for (let i = 0; i < 3000; i++) {
+    M.step(w, 1);
+    if (w.t % 10) continue;
+    for (const r of w.robots) {
+      const groups = M.CARDS(w, r.id), lines = M.cardLines(w, r.id), [doing, going, msgs, ice] = groups, flag = M.flagOf(r), base = `robots.${r.id}`;
+      for (const x of lines) { n++; check(`K t=${w.t} ${r.name} card: ${x.code || x.live}`, x.ok, x, "cards"); }
+      check(`K t=${w.t} ${r.name} Doing: ${flag} is true in its kernel and is what it does (${r.action})`, r.decided?.flag === flag && r.decided.v === true && doing.lines[0].value === `${base}.${flag}`, { flag, v: r.k.read(`${base}.${flag}`), action: r.action }, "cards");
+      check(`K t=${w.t} ${r.name} Going to: a kernel fact when it has a goal, page state otherwise`, going.page === !["charge", "tip", "water"].includes(r.action) && (going.page ? going.lines.length === 0 : going.lines.length > 0), going, "cards");
+      if (going.page) page++;
+      for (const box of ["inbox", "outbox"]) check(`K t=${w.t} ${r.name} Messages: ${box}Kept = the messages its ${box} keeps`, r.k.read(`${base}.${box}Kept`) === (M.msgIds(r, box).length || undefined), null, "cards");
+      check(`K t=${w.t} ${r.name} Messages: sent / received are its latest writes`, r.k.last[`${base}.sent`].value === r.written.sent && r.k.last[`${base}.received`].value === r.written.received, null, "cards");
+      check(`K t=${w.t} ${r.name} ${ice.title}: its latest write`, r.k.last[ice.lines[0].live].value === r.written[r.slips ? "found" : "ice"], null, "cards");
+      seen[`${r.name}: ${flag}`] = (seen[`${r.name}: ${flag}`] || 0) + 1;
+    }
+  }
+  console.log(`  ${n} card lines checked (every 10 min, 3 robots, 3,000 min) · Going to was page state in ${page} of 900 readings (exploring, sheltering, watching: its path is the simulation's)`);
+  console.log(`  Doing, by the kernel flag that decided it: ${Object.entries(seen).map(([k, v]) => `${k} ${v}`).join(" · ")}`);
+}
+
+// ── the flower ──
+if (process.env.FLOWER === "1") {
+section("L · the flower on B 612: not a kernel; Oli and Tiko keep what they see of it, and their own rule decides");
+{
+  const w = M.createWorld(ME, { flower: true }), [oli, tiko, lua] = w.robots;
+  check("L: Lua's kernel holds no flower facts", lua.k.read("objects.flower.water") === undefined && lua.k.read("objects.flower.pos") === undefined && !lua.k.script.some((x) => x.includes("flower.")), null, "flower");
+  const ex = lua.k.me.explain("robots.3.flowerThirsty");
+  check("L: Lua's flowerThirsty and shouldWaterFlower are undefined (missing input objects.flower.water): it cannot decide", lua.k.read("robots.3.flowerThirsty") === undefined && lua.k.read("robots.3.shouldWaterFlower") === undefined && ex.meta.unresolved?.reason === "missing-input" && ex.meta.unresolved.inputs.some((x) => x.endsWith("objects.flower.water")), ex.meta.unresolved, "flower");
+  check("L: the same rule text in the three kernels", w.robots.every((r) => M.FLOWER_RULES.every((n) => r.k.me.explain(`robots.${r.id}.${n}`).expr === M.RULES.find(([x]) => x === n)[1])), null, "flower");
+  check("L: Oli and Tiko know it from the start (where it grows, the water they see)", [oli, tiko].every((r) => r.k.read("objects.flower.pos") === M.FLOWER.pos && r.k.read("objects.flower.water") === M.FLOWER.water), null, "flower");
+  let waterings = 0, stale = 0, wateringMin = 0; const by = { 1: 0, 2: 0 };
+  runSteps(w, 3000, "L", { onStep: (w) => {
+    for (const r of w.robots) {
+      const P = (n) => r.k.read(`robots.${r.id}.${n}`);
+      if (r.action === "water") { wateringMin++;
+        check(`L t=${w.t}: ${r.name} goes to / waters the flower only when its own rule says so, never before charging`, P("shouldWaterFlower") === true && P("goCharge") === false && P("mustCharge") === false && P("battery") > P("reserve") && P("flowerThirsty") === true && P("explore") === true, { b: P("battery"), res: P("reserve") }, "flower"); }
+      if (r.rock === 1 && Math.round(w.flower.water) !== r.k.read("objects.flower.water")) stale++;
+    }
+    for (const e of w.events) if (e.t === w.t && e.kind === "watered") { waterings++; by[e.by]++; const r = M.robotOf(w, e.by);
+      check(`L t=${w.t}: ${r.name} watered it and wrote what it sees now: me.objects.flower.water(${M.FLOWER.fill})`, r.k.last["objects.flower.water"].code === `me.objects.flower.water(${M.FLOWER.fill})` && r.k.read(`robots.${r.id}.flowerThirsty`) === false, null, "flower"); }
+    check(`L t=${w.t}: Lua never acts on the flower`, lua.action !== "water" && lua.k.read("objects.flower.water") === undefined, null, "flower");
+  } });
+  check("L: the flower got water several times in 3,000 min", waterings >= 2, waterings, "flower");
+  console.log(`  3,000 min: watered ${waterings} times (Oli ${by[1]}, Tiko ${by[2]}) · ${wateringMin} robot-minutes going to or watering it · the level a robot on B 612 knows differs from the real one in ${stale} of 6,000 readings (it only knows what it last saw)`);
+}
+{ // charging wins: a thirsty flower and an empty battery
+  const w = M.createWorld(ME, { flower: true }), oli = M.robotOf(w, 1), P = (n) => oli.k.read(`robots.1.${n}`);
+  M.dryFlower(w, 10); oli.truth.pos = M.FLOWER.pos + 0.3; M.step(w, 1);
+  check("L: Oli sees the thirsty flower (10%) and its rule says water it", oli.k.read("objects.flower.water") === 10 && P("flowerThirsty") === true && P("shouldWaterFlower") === true, { b: P("battery"), r: P("reserve") }, "flower");
+  M.setBattery(w, 1, 6);
+  check("L: battery 6%: mustCharge → goCharge, so shouldWaterFlower is false (charging wins)", P("mustCharge") === true && P("goCharge") === true && P("shouldWaterFlower") === false, null, "flower");
+  M.step(w, 1);
+  check("L: and it goes to charge, not to the flower", oli.action === "charge", oli.action, "flower");
+  let n = 0; while (oli.action !== "water" && n < 2000) { M.step(w, 1); n++; }
+  check("L: once charged it goes back and waters the flower", oli.action === "water" && P("charged") === true || (oli.action === "water" && P("battery") > P("reserve")), { n, a: oli.action }, "flower");
+  while (w.flower.water < M.FLOWER.fill - 1 && n < 3000) { M.step(w, 1); n++; }
+  console.log(`  thirsty flower + battery 6%: it charged first (charging wins), then went back and watered it (${n} min later, the flower at ${Math.round(w.flower.water)}%)`);
+}
+{ // what the flower changes: the same world with and without it
+  const a = M.createWorld(ME, { flower: true }), b = M.createWorld(ME, { flower: false }); let diffAct = 0, firstDiff = null; const cnt = (w, k) => w.events.filter((e) => e.kind === k).length; let tipsA = 0, tipsB = 0, foundA = 0, foundB = 0;
+  for (let i = 0; i < 3000; i++) { M.step(a, 1); M.step(b, 1);
+    for (let j = 0; j < 3; j++) if (a.robots[j].action !== b.robots[j].action) { diffAct++; firstDiff ??= { t: a.t, robot: a.robots[j].name, with: a.robots[j].action, without: b.robots[j].action }; }
+    for (const e of a.events) if (e.t === a.t) { if (e.kind === "tip") tipsA++; if (e.kind === "found") foundA++; }
+    for (const e of b.events) if (e.t === b.t) { if (e.kind === "tip") tipsB++; if (e.kind === "found") foundB++; } }
+  const ice = (w) => w.robots.map((r) => r.written.ice).join("/"), sleep = (w) => w.robots.some((r) => r.dead);
+  check("L: with the flower nobody falls asleep", !sleep(a), null, "flower");
+  console.log(`  with vs without the flower (seed 7, 3,000 min): ${diffAct} robot-minutes with a different action (first: t=${firstDiff?.t} ${firstDiff?.robot} ${firstDiff?.with} instead of ${firstDiff?.without})`);
+  console.log(`    ice mined Oli/Tiko/Lua ${ice(a)} vs ${ice(b)} · ice found ${foundA} vs ${foundB} · tips received ${tipsA} vs ${tipsB} · lowest battery ${Math.min(...a.robots.map((r) => r.truth.battery)).toFixed(1)}% at the end vs ${Math.min(...b.robots.map((r) => r.truth.battery)).toFixed(1)}%`);
+}
+} // FLOWER=1 (follow-up, off by default)
 
 // ── 4.2: aggregates ──
 const readBats = (r) => r.bats.map((b) => ({ i: b.i, charge: r.k.read(`robots.${r.id}.batteries.${b.i}.charge`), capacity: r.k.read(`robots.${r.id}.batteries.${b.i}.capacity`) }));
@@ -369,5 +443,7 @@ console.log(`    ${by.own.toLocaleString("en-US")} writes, each into the writer'
 console.log(`    ${by.radio.toLocaleString("en-US")} radio checks (delivered only with a working link; same id in the sender's outbox and the receiver's inbox; no link, no inbox; boxes bounded; tips accepted only by the receiver's rule; out of range)`);
 console.log(`    ${by.scenario.toLocaleString("en-US")} scenario, meaning, isolation and pointer checks`);
 console.log(`    ${by.aggregate.toLocaleString("en-US")} aggregate checks (battery = oracle every minute while batteries change, explain members/terms, kept counts, incomplete/absent; eager and lazy)`);
+console.log(`    ${by.cards.toLocaleString("en-US")} dashboard card checks (each line a rule → value, the latest write or a setup line; Doing = the flag that decided it; Messages = the kept counts)`);
+console.log(`    ${by.flower.toLocaleString("en-US")} flower checks (Lua knows nothing of it; waters only when its own rule says so, charging first; the written level)`);
 console.log(`    ${by.compare.toLocaleString("en-US")} 4.2 vs 4.1 behaviour comparisons (long runs, 5 seeds + 3 with battery changes)`);
 if (fails.length) { console.log(JSON.stringify(fails.slice(0, 20), null, 1)); process.exit(1); }

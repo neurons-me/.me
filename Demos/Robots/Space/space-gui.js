@@ -38,7 +38,7 @@ function resolveInstance(path, ctx) {
   if ((m = /^robots\.(\d+)\.tipMsg$/.exec(path))) { const f = FME(`robots.${m[1]}.tipMsg.from`); return M.NAME[f] ? `robot:${f}` : null; }   // whose tip it keeps
   if ((m = /^robots\.(\d+)\.home$/.exec(path))) { const r = M.ROBOTS.find((x) => x.id === Number(m[1])); return r ? `rock:${r.rock}` : null; }   // the pointer → its rock
   if ((m = /^rocks\.(\w+)$/.exec(path))) { const rk = M.ROCKS.find((x) => x.key === m[1]); return rk ? `rock:${rk.id}` : null; }
-  if (path === "objects.ice" || path === "objects.comet") return `object:${path.slice(8)}`;
+  if (path === "objects.ice" || path === "objects.comet" || path === "objects.flower") return `object:${path.slice(8)}`;
   if (path === "objects.rock" && ctx) { const r = M.ROBOTS.find((x) => x.id === ctx); return r ? `rock:${r.rock === 1 ? 2 : 1}` : null; }
   return null;
 }
@@ -135,7 +135,8 @@ function loop(now) {
   if (now - lastUi > 250) { lastUi = now; announce(); tick.set(); }
   requestAnimationFrame(loop);
 }
-function reset() { W = M.createWorld(ME); acc = 0; lastWrites.clear(); ui.set({ verify: null }); announceAll(); tick.set(); frame.set(); }
+const FLOWER_ON = new URLSearchParams(location.search).get("flower") === "1";   // the flower is a follow-up, off by default
+function reset() { W = M.createWorld(ME, { flower: FLOWER_ON }); acc = 0; lastWrites.clear(); ui.set({ verify: null }); announceAll(); tick.set(); frame.set(); }
 const play = (on = true) => ui.set({ running: on });
 function interact(id, xs) { for (const x of [].concat(xs || [])) { noteWrite(id, x); lastWrites.set(id, { t: W.t, batch: [x], manual: true }); } announce(); tick.set(); frame.set(); }
 const robot = (id) => W?.robots.find((r) => r.id === id);
@@ -157,6 +158,7 @@ const act = {
   away: () => { M.holdRock(W, 2, M.FAR); interact(); },
   close: () => { M.holdRock(W, 2, M.NEAR); interact(); },
   drift: () => { M.holdRock(W, 2, null); interact(); },
+  thirsty: () => { M.dryFlower(W, 20); ui.set({ obj: "flower", focus: "object:flower" }); interact(); },
   verify: () => { const t0 = performance.now(); const v = M.verifyWorld(ME, W); ui.set({ verify: { ...v, ms: performance.now() - t0, t: W.t } }); },
 };
 
@@ -208,6 +210,26 @@ function Spider({ r, V, FS, sel }) {   // a small spider: body, head, antenna, e
     h("circle", { cx: r.moving < 0 ? -5.5 : 5.5, cy: -10, r: 2.4, fill: "var(--bg)" }),
     h("line", { x1: 0, y1: -12, x2: 0, y2: -17 }), h("circle", { cx: 0, cy: -18, r: 1.1, fill: sel ? "var(--accent)" : col, stroke: "none" }));
 }
+// The flower (page state: the world's real water level; each robot only knows what it last saw). Tap it: what is it to each?
+function FlowerG({ rk, FS, focus }) {
+  const fl = W.flower, a = M.sunAngle(rk) + fl.pos, s = Math.min(FS, 1.5), deg = (a * 180) / Math.PI + 90;
+  const base = { x: rk.x + rk.R * Math.cos(a), y: rk.y + rk.R * Math.sin(a) }, lvl = Math.max(0, Math.min(1, fl.water / 100));
+  const dry = fl.water < 40, col = dry ? "var(--sun)" : "var(--accent)";
+  return h("g", { className: "flower", "data-water": Math.round(fl.water), role: "button", tabIndex: 0, "aria-label": `A flower, ${Math.round(fl.water)}% water. What is it to each spider?`, style: { cursor: "pointer" },
+      onClick: (e) => { e.stopPropagation(); act.object("flower"); }, onPointerDown: (e) => e.stopPropagation(), onKeyDown: (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); act.object("flower"); } } },
+    h("g", { transform: `translate(${base.x.toFixed(1)} ${base.y.toFixed(1)}) rotate(${deg.toFixed(1)}) scale(${s.toFixed(2)})` },
+      h("path", { d: `M0,0 Q${dry ? 3 : 0},-7 ${dry ? 5 : 0},-13`, fill: "none", stroke: "var(--ink)", strokeWidth: 1.3, strokeLinecap: "round" }),
+      h("path", { d: "M0,-5 Q-5,-6 -6,-9 Q-2,-9 0,-5", fill: "var(--accent)", opacity: 0.7 }),
+      h("g", { transform: `translate(${dry ? 5 : 0} -15) rotate(${dry ? 35 : 0})` },
+        ...[0, 1, 2, 3, 4].map((i) => { const b = (i * 2 * Math.PI) / 5; return h("circle", { key: i, cx: 3.2 * Math.cos(b), cy: 3.2 * Math.sin(b), r: 2.4, fill: col, opacity: dry ? 0.6 : 0.9 }); }),
+        h("circle", { r: 1.6, fill: "var(--sun)" })),
+      // the water drop beside it: filled up to its water level
+      h("g", { transform: "translate(11 -9)" }, h("clipPath", { id: "drop-clip" }, h("path", { d: "M0,-6 Q4,-1 4,2 A4,4 0 0 1 -4,2 Q-4,-1 0,-6 Z" })),
+        h("rect", { x: -5, y: 6 - 12 * lvl, width: 10, height: 12 * lvl, fill: "var(--ice)", clipPath: "url(#drop-clip)" }),
+        h("path", { d: "M0,-6 Q4,-1 4,2 A4,4 0 0 1 -4,2 Q-4,-1 0,-6 Z", fill: "none", stroke: "var(--ice)", strokeWidth: 1 })),
+      focus === "object:flower" ? h("circle", { className: "focus-ring", cx: 2, cy: -11, r: 12, fill: "none", stroke: "var(--accent)", strokeWidth: 1.4, strokeDasharray: "3 2" }) : null,
+      h("circle", { cx: 3, cy: -10, r: 14, fill: "transparent" })));
+}
 function arcPath(rk, a0, a1, rad) {
   const n = Math.max(2, Math.ceil(Math.abs(a1 - a0) / 0.08)); let d = "";
   for (let i = 0; i <= n; i++) { const a = a0 + (a1 - a0) * (i / n); d += `${i ? "L" : "M"}${(rk.x + rad * Math.cos(a)).toFixed(1)},${(rk.y + rad * Math.sin(a)).toFixed(1)}`; }
@@ -219,17 +241,18 @@ function Intent({ r, V, FS }) {   // where it is heading: a dashed arc along the
   let goal = null, mark = null;
   if (r.action === "charge" && M.lightDistOf(r.truth.pos) > 1e-9) { goal = Math.sign(M.wrap(r.truth.pos) || 1) * (M.HALF_PI - M.LIT_IN); mark = "sun"; }
   else if (r.action === "tip") { const tp = r.k.read(`robots.${r.id}.tipPos`); if (Math.abs(M.wrap(tp - r.truth.pos)) > 0.02) { goal = tp; mark = "ice"; } }
+  else if (r.action === "water") { const fp = r.k.read("objects.flower.pos"); if (Math.abs(M.wrap(fp - r.truth.pos)) > 0.02) { goal = fp; mark = "flower"; } }
   else if (r.action === "explore") { goal = p + r.dir * 0.9; mark = "look"; }
   if (goal == null) return null;
   const a0 = sa + p, a1 = a0 + M.wrap(goal - p);
   const end = { x: rk.x + rad * Math.cos(a1), y: rk.y + rad * Math.sin(a1) }, tdir = Math.sign(a1 - a0) || 1;
   const ta = a1 + (tdir * Math.PI) / 2, ax = Math.cos(ta), ay = Math.sin(ta), nx = Math.cos(a1), ny = Math.sin(a1), u = 6 * Math.min(FS, 1.6);
-  const colr = mark === "sun" ? "var(--sun)" : mark === "ice" ? "var(--ice)" : "var(--accent)";
+  const colr = mark === "sun" ? "var(--sun)" : mark === "ice" || mark === "flower" ? "var(--ice)" : "var(--accent)";
   return h("g", { className: "intent", "data-robot": r.id, "data-mark": mark, opacity: 0.9, style: { pointerEvents: "none" } },
     h("path", { d: arcPath(rk, a0, a1, rad), fill: "none", stroke: colr, strokeWidth: 1.6, strokeDasharray: "3 5", strokeLinecap: "round" }),
     h("path", { d: `M${(end.x - ax * u + nx * u * 0.6).toFixed(1)},${(end.y - ay * u + ny * u * 0.6).toFixed(1)} L${(end.x + ax * u * 0.4).toFixed(1)},${(end.y + ay * u * 0.4).toFixed(1)} L${(end.x - ax * u - nx * u * 0.6).toFixed(1)},${(end.y - ay * u - ny * u * 0.6).toFixed(1)}`, fill: "none", stroke: colr, strokeWidth: 1.6, strokeLinecap: "round", strokeLinejoin: "round" }));
 }
-const STATUS_SVG = { "going to the sun": "sun", charging: "bolt", "going to the ice": "ice", "mining ice": "pick", "studying the ice": "eye", "studying the comet": "eye", "hiding from the comet dust": "shield", "turning away from the ice": "turn", exploring: "look", asleep: "zz" };
+const STATUS_SVG = { "going to the sun": "sun", charging: "bolt", "going to the ice": "ice", "mining ice": "pick", "studying the ice": "eye", "studying the comet": "eye", "hiding from the comet dust": "shield", "turning away from the ice": "turn", exploring: "look", asleep: "zz", "going to the flower": "drop", "watering the flower": "drop" };
 function Glyph({ kind, x, y, s = 1, color }) {
   const g = (...c) => h("g", { transform: `translate(${x.toFixed(1)} ${y.toFixed(1)}) scale(${s.toFixed(2)})`, fill: "none", stroke: color || "var(--ink)", strokeWidth: 1.4, strokeLinecap: "round", strokeLinejoin: "round" }, ...c);
   switch (kind) {
@@ -242,6 +265,8 @@ function Glyph({ kind, x, y, s = 1, color }) {
     case "turn": return g(h("path", { d: "M4,6 L4,-2 Q4,-6 0,-6 Q-4,-6 -4,-2 L-4,3 M-7,0 L-4,3.5 L-1,0" }));
     case "zz": return g(h("path", { d: "M-5,-5 L0,-5 L-5,0 L0,0 M1,-1 L5,-1 L1,4 L5,4" }));
     // the dashboard's icons (drawn here as SVG: no icon font, so no icon names can ever show as text)
+    case "drop": return g(h("path", { d: "M0,-7 Q5,-1 5,2.5 A5,5 0 0 1 -5,2.5 Q-5,-1 0,-7 Z", stroke: color || "var(--ice)" }));
+    case "flower": return g(h("path", { d: "M0,7 L0,-1 M0,3 Q-4,2 -5,-1 M0,4 Q4,3 5,0" }), ...[0, 1, 2, 3, 4].map((i) => { const a = (i * 2 * Math.PI) / 5 - Math.PI / 2; return h("circle", { key: i, cx: 2.6 * Math.cos(a), cy: -3.5 + 2.6 * Math.sin(a), r: 1.7 }); }), h("circle", { cy: -3.5, r: 1.1, fill: color || "var(--ink)" }));
     case "go": return g(h("path", { d: "M-6,0 L5,0 M1,-4 L5,0 L1,4" }));
     case "radio": return g(h("path", { d: "M0,-1 L-3.5,7 M0,-1 L3.5,7 M-2.2,4 L2.2,4" }), h("circle", { cy: -2.5, r: 1.3, fill: color || "var(--ink)" }), h("path", { d: "M-3.6,-5.6 Q-5.4,-2.5 -3.6,0.6 M3.6,-5.6 Q5.4,-2.5 3.6,0.6" }));
     case "warn": return g(h("path", { d: "M0,-6.5 L7,6 L-7,6 Z" }), h("path", { d: "M0,-2 L0,2" }), h("circle", { cy: 4, r: 0.4, fill: color || "var(--ink)" }));
@@ -323,6 +348,7 @@ function Scene(p) {
           s.left > 0 && !known ? h("circle", { cx: c.x, cy: c.y, r: 8, fill: "var(--bg)", opacity: 0.55 }) : null,
           focus === "object:ice" ? h("circle", { className: "focus-ring", cx: c.x, cy: c.y, r: 12, fill: "none", stroke: "var(--accent)", strokeWidth: 1.6, strokeDasharray: "3 2" }) : null,
           h("circle", { cx: c.x, cy: c.y, r: 13, fill: "transparent" })); }),
+      W.flower && rk.id === W.flower.rock ? h(FlowerG, { rk, FS, focus }) : null,
       h("circle", { cx: rk.x, cy: rk.y, r: rk.R, fill: "none", stroke: focus === `rock:${rk.id}` ? "var(--accent)" : "var(--ink)", strokeWidth: focus === `rock:${rk.id}` ? 2.4 : 1.2, opacity: 0.85, style: { pointerEvents: "none" } }),
       label(rk.x, rk.y + 4, rk.name, 10, "var(--faint)", false));
   };
@@ -457,22 +483,34 @@ function BatteryGauge({ id }) {
       h(Bound, { path, value: v, id: "battery-pct", sx: { display: "block", fontSize: 46, lineHeight: 1, fontWeight: 600, fontFamily: SERIF, color: `${lv}.main` } }, `${Math.round(pct)}%`),
       h(Typography, { component: "div", sx: { fontFamily: SERIF, fontStyle: "italic", fontSize: 14, color: "text.secondary", mt: .25 } }, charging && ld === 0 ? "charging in the sun" : pct >= 50 ? "plenty of battery" : pct >= 20 ? "getting low" : pct > 0 ? "very low" : "empty")));
 }
-const STATUS_ICON = { exploring: "look", "going to the sun": "sun", charging: "bolt", "going to the ice": "ice", "mining ice": "pick", "studying the ice": "flask", "studying the comet": "flask",
+const STATUS_ICON = { "going to the flower": "drop", "watering the flower": "drop", exploring: "look", "going to the sun": "sun", charging: "bolt", "going to the ice": "ice", "mining ice": "pick", "studying the ice": "flask", "studying the comet": "flask",
   "hiding from the comet dust": "shield", "turning away from the ice": "turn", asleep: "zz" };
-const Card = ({ icon, label, children, id, color }) => h(Box, { id, sx: { border: 1, borderColor: "divider", borderRadius: 2, p: 1.25, minWidth: 0, bgcolor: "background.default" } },
-  h(Box, { sx: { display: "flex", alignItems: "center", gap: .75, color: "text.secondary", fontSize: 9.5, letterSpacing: ".12em", textTransform: "uppercase", fontWeight: 600, mb: .5 } }, h(Ico, { kind: icon, size: 18 }), label),
-  h(Box, { sx: { fontFamily: SERIF, fontSize: 18, lineHeight: 1.25, color: color || "text.primary", overflowWrap: "anywhere" } }, children));
 // the action in a few plain words, for the "Doing" card
 const DOING_WORDS = { exploring: "exploring its rock", "going to the sun": "walking to the sun", charging: "charging in the sun", "going to the ice": "walking to the ice", "mining ice": "mining ice",
-  "studying the ice": "studying the ice", "studying the comet": "watching the comet", "hiding from the comet dust": "hiding from the comet dust", "turning away from the ice": "turning away from slippery ice", asleep: "asleep: its battery is empty" };
-// the kernel flag behind each action word (bound, so every word on the dashboard traces back to the robot's kernel)
-const FLAG_OF = { "going to the sun": "goCharge", charging: "goCharge", "hiding from the comet dust": "shelter", "studying the comet": "watchComet", "going to the ice": "followTip", "mining ice": "followTip", "studying the ice": "followTip", exploring: "explore", "turning away from the ice": "explore", asleep: "asleep" };
+  "studying the ice": "studying the ice", "studying the comet": "watching the comet", "hiding from the comet dust": "hiding from the comet dust", "turning away from the ice": "turning away from slippery ice", asleep: "asleep: its battery is empty",
+  "going to the flower": "walking to the flower to water it", "watering the flower": "watering the flower" };
+// A dashboard card: the real .me lines from that robot's kernel (M.CARDS: a rule → its value, the latest write, or
+// a setup line), highlighted and clickable, with the plain words under them in dim text.
+function CardLines({ r, g }) {
+  const k = r.k;
+  return h(React.Fragment, null, ...g.lines.map((L, i) => {
+    const x = L.live ? k.last[L.live] : null, code = L.code || x?.code; if (!code) return null;
+    const path = L.value || L.live, v = L.value ? FME(L.value) : x?.value;
+    return h(Box, { key: i, className: "card-line", "data-live": L.live || undefined, "data-me-path": path && !x?.ptr ? pagePath(r.id, path) : undefined, "data-me-value": path && !x?.ptr ? String(v) : undefined, sx: { fontSize: 10, lineHeight: 1.45, py: "1px" } },
+      h(MeCode, { code, ctx: r.id, unmarked: `robot:${r.id}`, sx: { fontSize: 10 } }),
+      L.value ? h(Box, { component: "span", className: "me-code", sx: { fontFamily: MONO, ml: .5, whiteSpace: "nowrap" } }, h("span", { className: "mes-arrow" }, "→ "), h(MeVal, { path: L.value, syn: true, d: 2 })) : null); }));
+}
+const Card = ({ icon, label, children, words, id, color, page }) => h(Box, { id, className: "card", sx: { border: 1, borderColor: "divider", borderRadius: 2, p: 1.1, minWidth: 0, bgcolor: "background.default" } },
+  h(Box, { sx: { display: "flex", alignItems: "center", gap: .75, color: "text.secondary", fontSize: 9.5, letterSpacing: ".12em", textTransform: "uppercase", fontWeight: 600, mb: .4 } }, h(Ico, { kind: icon, size: 16 }), label,
+    page ? h(Box, { component: "span", className: "page-state", title: "not a kernel fact: the simulation's own state", sx: { ml: "auto", letterSpacing: ".04em", textTransform: "none", fontWeight: 400, color: "text.disabled", fontStyle: "italic", fontFamily: SERIF, fontSize: 11 } }, "page state") : null),
+  children,
+  h(Box, { className: "card-words", sx: { fontFamily: SERIF, fontStyle: "italic", fontSize: 13.5, lineHeight: 1.3, color: color || "text.secondary", mt: .3, overflowWrap: "anywhere" } }, words));
 function RobotPanel(p) {
   const { sel } = useStore(ui); useStore(tick);
   const r = robot(sel), id = sel, base = `robots.${id}`;
-  const flag = FLAG_OF[r?.status] || "explore", flagV = useK(`${base}.${flag}`);
-  const sent = useK(`${base}.sent`), recv = useK(`${base}.received`), ice = useK(`${base}.ice`), found = useK(`${base}.found`);
   if (!r) return null;
+  const rd = (q) => r.k.read(q), cards = Object.fromEntries(M.CARDS(W, id).map((g) => [g.key, g]));
+  const kept = (b) => rd(`${base}.${b}Kept`) ?? 0;
   const btn = { fontFamily: MONO, fontSize: 10.5, textTransform: "none", lineHeight: 1.3 };
   return h(Box, { "data-gui-node-id": p["data-gui-node-id"], id: "robot-panel", sx: SECTION_SX },
     h(Box, { sx: { display: "flex", gap: .5, mb: 1.25 } }, ...W.robots.map((x) => h(Button, { key: x.id, className: "pick-robot", size: "small", variant: x.id === sel ? "contained" : "text", disableElevation: true, onClick: () => act.select(x.id), sx: { ...btn, flex: 1, fontSize: 12 } }, x.name))),
@@ -480,13 +518,12 @@ function RobotPanel(p) {
       h(Typography, { component: "h2", id: "robot-name", sx: { fontFamily: SERIF, fontSize: 28, m: 0, fontWeight: 400 } }, r.name),
       h(Typography, { component: "span", sx: { fontFamily: SERIF, fontStyle: "italic", fontSize: 14, color: "text.secondary" } }, `the ${r.role}, on ${M.ROCK_NAME[r.rock]}`)),
     h(BatteryGauge, { id }),
-    h(Box, { sx: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1, mt: 1.5 } },
-      h(Card, { id: "card-doing", icon: STATUS_ICON[r.status] || "look", label: "Doing", color: r.dead ? "error.main" : undefined }, h(Bound, { path: `${base}.${flag}`, value: flagV }, DOING_WORDS[r.status] || r.status)),
-      h(Card, { id: "card-going", icon: "go", label: "Going to" }, r.dest),
-      h(Card, { id: "card-msgs", icon: "radio", label: "Messages" }, h(Box, { component: "span" },
-        h(Bound, { path: `${base}.sent`, value: sent }, `${fmt(sent)} sent`), ", ", h(Bound, { path: `${base}.received`, value: recv }, `${fmt(recv)} received`))),
-      h(Card, { id: "card-ice", icon: r.studies ? "flask" : r.slips ? "ice" : "pick", label: r.studies ? "Ice samples" : r.slips ? "Ice spots found" : "Ice mined" },
-        r.slips ? h(Bound, { path: `${base}.found`, value: found }, fmt(found)) : h(Bound, { path: `${base}.ice`, value: ice }, fmt(ice)))),
+    h(Box, { id: "cards", sx: { display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: .75, mt: 1.5 } },
+      h(Card, { id: "card-doing", icon: STATUS_ICON[r.status] || "look", label: "Doing", color: r.dead ? "error.main" : undefined, words: DOING_WORDS[r.status] || r.status }, h(CardLines, { r, g: cards.doing })),
+      h(Card, { id: "card-going", icon: "go", label: "Going to", page: cards.going.page, words: r.dest }, h(CardLines, { r, g: cards.going })),
+      h(Card, { id: "card-msgs", icon: "radio", label: "Messages", words: `${fmt(rd(`${base}.sent`))} sent, ${fmt(rd(`${base}.received`))} received · it keeps ${kept("outbox")} it sent and ${kept("inbox")} it received` }, h(CardLines, { r, g: cards.msgs })),
+      h(Card, { id: "card-ice", icon: r.studies ? "flask" : r.slips ? "ice" : "pick", label: cards.ice.title,
+        words: r.studies ? "pieces of ice it has studied" : r.slips ? "patches of ice it found (and stays away from)" : "pieces of ice it has mined" }, h(CardLines, { r, g: cards.ice }))),
     h(KnowsHeard, { r }),
     h(Box, { sx: { display: "flex", gap: .75, mt: 1.25, flexWrap: "wrap" } },
       h(Button, { id: "btn-hello", size: "small", variant: "outlined", onClick: () => act.hello(id), sx: { ...btn, flex: 1 } }, "Say hello"),
@@ -521,6 +558,7 @@ function KnowsHeard({ r }) {
       case "ice": return v ? "there is ice on its rock" : "no ice seen yet";
       case "comet": return v ? "a comet is close" : "no comet close";
       case "reach": return v ? "its radio reaches the other rock" : "its radio can't reach the other rock";
+      case "flower": return `the water it last saw in the flower${v < rd(`${base}.thirstyBelow`) ? ": thirsty!" : ""}`;
       default: return "";
     }
   };
@@ -544,6 +582,8 @@ const MEANINGS = {
   ice: { title: "The ice", flags: [["iceIsFuel", "something to mine", "pick"], ["iceIsHazard", "slippery: stay away", "warn"], ["iceIsSample", "a sample to study", "flask"]], none: ["objects.ice.seen", "hasn't seen any yet", "noeye"], rules: ["iceIsFuel", "iceIsHazard", "iceIsSample", "avoidIce"] },
   comet: { title: "The comet", flags: [["cometIsHazard", "dust! hide and wait", "shield"], ["cometIsSample", "something to study", "flask"]], none: ["objects.comet.near", "not close: nothing to do", "dash"], rules: ["cometIsHazard", "cometIsSample", "shelter", "watchComet"] },
   rock: { title: "The other rock", flags: [["rockInReach", "friends it can talk to", "radio"]], none: ["objects.rock.inRange", "too far to hear", "nosignal"], rules: ["rockInReach"] },
+  flower: { title: "The flower", flags: [["shouldWaterFlower", "thirsty: it goes to water it", "drop"], ["flowerThirsty", "thirsty, but it is busy first", "drop"]],
+    none: ["objects.flower.water", (v) => (v === undefined ? "never seen it: its rule can't decide" : "has water: nothing to do"), "flower"], rules: ["flowerThirsty", "shouldWaterFlower"] },
 };
 function MeaningCol({ r, objKey }) {
   const def = MEANINGS[objKey], vals = def.flags.map(([f]) => G.useMeValue(`robots.${r.id}.${f}`)), seen = G.useMeValue(`r${r.id}.${def.none[0]}`);
@@ -553,16 +593,16 @@ function MeaningCol({ r, objKey }) {
     h(Box, { sx: { fontFamily: MONO, fontSize: 11.5, fontWeight: 600, letterSpacing: ".06em" } }, r.name),
     h(Box, { sx: { fontFamily: SERIF, fontStyle: "italic", fontSize: 11.5, color: "text.secondary" } }, r.role),
     h(Box, { sx: { my: .5, color: m ? "primary.main" : "text.disabled", lineHeight: 0 } }, h(Ico, { kind: m ? m[2] : def.none[2], size: 30 })),
-    h(Bound, { path, value, sx: { display: "block", fontFamily: SERIF, fontSize: 14, lineHeight: 1.25, color: m ? "text.primary" : "text.secondary" } }, m ? m[1] : def.none[1]));
+    h(Bound, { path, value, sx: { display: "block", fontFamily: SERIF, fontSize: 14, lineHeight: 1.25, color: m ? "text.primary" : "text.secondary" } }, m ? m[1] : typeof def.none[1] === "function" ? def.none[1](value) : def.none[1]));
 }
 function ObjectsPanel(p) {
   const { obj } = useStore(ui); useStore(tick); if (!W) return null;
   const btn = (k, label) => h(Button, { key: k, className: "pick-object", size: "small", variant: obj === k ? "contained" : "outlined", disableElevation: true, onClick: () => act.object(k), sx: { fontFamily: MONO, fontSize: 10.5, textTransform: "none", flex: 1 } }, label);
   return h(Box, { "data-gui-node-id": p["data-gui-node-id"], id: "objects-panel", sx: SECTION_SX },
     H2("What is it to each of them?"),
-    h(Box, { sx: { display: "flex", gap: .5, mb: 1 } }, btn("ice", "the ice"), btn("comet", "the comet"), btn("rock", "the other rock")),
+    h(Box, { sx: { display: "flex", gap: .5, mb: 1, flexWrap: "wrap" } }, btn("ice", "the ice"), btn("comet", "the comet"), btn("rock", "the other rock"), btn("flower", "the flower")),
     h(Box, { id: "meanings", "data-object": obj, sx: { display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: .75 } }, ...W.robots.map((r) => h(MeaningCol, { key: `${obj}${r.id}`, r, objKey: obj }))),
-    h(Typography, { component: "div", sx: { fontFamily: SERIF, fontStyle: "italic", fontSize: 13, color: "text.secondary", mt: .75 } }, "Same object, same rule text, three kernels: each answer is read from that spider's own kernel. Tap the ice, the comet or B 325 in the sky too."));
+    h(Typography, { component: "div", sx: { fontFamily: SERIF, fontStyle: "italic", fontSize: 13, color: "text.secondary", mt: .75 } }, "Same object, same rule text, three kernels: each answer is read from that spider's own kernel. Tap the ice, the comet, the flower or B 325 in the sky too."));
 }
 // ── under the hood (collapsed by default) ──
 function Hood(p) {
@@ -585,13 +625,14 @@ function HoodObjects() {
     ...W.robots.map((r) => h(Box, { key: r.id, className: "hood-kernel", sx: { mb: 1, border: 1, borderColor: "divider", borderRadius: 1, px: 1, py: .5 } },
       h(Box, { sx: { fontFamily: MONO, fontSize: 10, fontWeight: 600, mb: .25 } }, `${r.name}'s kernel · the ${r.role}`),
       ...["mines", "slips", "studies"].map((f) => line(`me.robots[${r.id}].${f}(${r[f]})`, `robots.${r.id}.${f}`, f, r.id)),
-      ...o.facts.map((f) => line(`me.${f}(${FME(`r${r.id}.${f}`)})   // its own view`, `r${r.id}.${f}`, f, r.id)),
+      ...o.facts.map((f) => r.k.last[f] ? line(`${r.k.last[f].code}   // its own view`, `r${r.id}.${f}`, f, r.id)
+        : h(Box, { key: f, className: "no-fact", sx: { fontFamily: SERIF, fontStyle: "italic", fontSize: 11.5, color: "text.disabled", py: .25 } }, `no ${f} in its kernel: it has never seen it`)),
       ...rules.map(([n, e]) => line(`me.robots["[i]"]["="]("${n}", "${e}")`, `robots.${r.id}.${n}`, n, r.id)))));
 }
 function HoodRobot() {
   const { sel, explain } = useStore(ui); useStore(tick); if (!W) return null;
   const r = robot(sel), base = `robots.${sel}`, lw = lastWrites.get(sel), bat = FME(`${base}.battery`);
-  const facts = [...M.batteryFacts(r.bats), "pos", "lightDist", "charging", "now", "role", "myRock", "tipRock", "tipPos", "tipAt", "sent", "received", "ice", "found", "maxAge", "costPerRad", "margin", "full"];
+  const facts = [...M.batteryFacts(r.bats), "thirstyBelow", "pos", "lightDist", "charging", "now", "role", "myRock", "tipRock", "tipPos", "tipAt", "sent", "received", "ice", "found", "maxAge", "costPerRad", "margin", "full"];
   const key = (f) => f.replace(/\.(\d+)\./g, "[$1].");
   // a pointer, read through: lastFrom[i] / lastTo[i] → the message, tipMsg → the tip it accepted
   const ptr = (p, label, sub) => { const t = FME(p)?.__ptr, m = t && /\.(inbox|outbox)\.(\d+)$/.exec(t), there = t && FME(`${t}.at`) != null;
