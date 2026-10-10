@@ -282,6 +282,7 @@ function Glyph({ kind, x, y, s = 1, color }) {
     case "sunline": return g(h("circle", { r: 3 }), ...[0, 1, 2, 3, 4, 5, 6, 7].map((i) => { const a = (i * Math.PI) / 4; return h("line", { key: i, x1: 5 * Math.cos(a), y1: 5 * Math.sin(a), x2: 6.8 * Math.cos(a), y2: 6.8 * Math.sin(a) }); }));
     case "down": return g(h("path", { d: "M-4,-2 L0,2 L4,-2" }));
     case "up": return g(h("path", { d: "M-4,2 L0,-2 L4,2" }));
+    case "search": return g(h("circle", { cx: -1, cy: -1, r: 4 }), h("line", { x1: 2, y1: 2, x2: 6, y2: 6 }));   // magnifier (the topbar search)
     case "palette": return g(h("path", { d: "M0,-6.5 C-4,-6.5 -6.5,-3.5 -6.5,0 C-6.5,4 -3.5,6.5 0,6.5 C1.5,6.5 1.5,4.5 0.5,4 C-0.5,3.2 0.3,1.8 1.8,1.8 L3.5,1.8 C5.3,1.8 6.5,0.5 6.5,-1 C6.5,-4 3.5,-6.5 0,-6.5 Z" }), ...[[-3, -1], [-1, -4], [2.5, -3.5]].map(([cx, cy], i) => h("circle", { key: i, cx, cy, r: 0.6, fill: color || "var(--ink)" })));
     default: return g(h("circle", { cx: -1, cy: -1, r: 4 }), h("line", { x1: 2, y1: 2, x2: 6, y2: 6 }));
   }
@@ -719,6 +720,44 @@ function KernelInfo() {
 // before the kernels load (and if they fail)
 function KernelStatus(p) { const { kernel } = useStore(ui); return h(Box, { "data-gui-node-id": p["data-gui-node-id"], sx: { ...SECTION_SX, fontFamily: MONO, fontSize: 10, color: kernel.state === "error" ? "error.main" : "text.secondary" } }, kernel.state === "error" ? kernel.text : `verifying ${KERNEL.label} and .GUI…`); }
 
+// ── search: the .GUI SearchBar (GUI.Components.SearchBar, the one on the neurons.me index / All.This) over the site
+//    index (absolute URLs, so it works from either repo). A magnifier until opened ("/" opens it too); Escape closes it,
+//    and so does leaving it while empty. On phones the open bar overlays the topbar, full width. ──
+const SEARCH_SRC = "https://neurons-me.github.io/index.json";
+// The SearchBar paints itself with fixed inline colours; re-skin it from the active theme (same rules as the index).
+const searchSkin = (t) => {
+  const P = t.palette, I = (v) => `${v} !important`, shadow = (t.shadows && t.shadows[8]) || "none";
+  return {
+    "& > div > div:first-of-type": { background: I(P.background.paper), borderColor: I(P.divider), color: I(P.text.primary), padding: I("6px 12px"), transition: "border-color 120ms ease" },
+    "& > div > div:first-of-type:focus-within": { borderColor: I(P.primary.main) },
+    "& input": { color: I(P.text.primary), caretColor: P.primary.main },
+    "& input::placeholder": { color: P.text.secondary, opacity: 1 },
+    "& [role=listbox]": { background: I(P.background.paper), borderColor: I(P.divider), boxShadow: I(shadow), color: P.text.primary },
+    "& [role=listbox] > div": { color: I(P.text.secondary) },
+    "& [role=option]": { color: I(P.text.primary), borderColor: I(P.divider) },
+    "& [role=option]:hover, & [role=option][aria-selected=true]": { background: I(P.action.hover) },
+    "& [role=option] > span:nth-of-type(2) > span:nth-of-type(2), & [role=option] > span:nth-of-type(3)": { color: I(P.text.secondary) },
+  };
+};
+function TopSearch() {
+  const SB = G.Components && G.Components.SearchBar;
+  const [open, setOpen] = React.useState(false), box = React.useRef(null), btn = React.useRef(null);
+  React.useEffect(() => { if (open) { const i = box.current && box.current.querySelector("input"); if (i) i.focus(); } }, [open]);
+  React.useEffect(() => {
+    if (open) return undefined;
+    const k = (e) => { const t = e.target; if (e.key === "/" && !e.metaKey && !e.ctrlKey && !(t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable))) { e.preventDefault(); setOpen(true); } };
+    window.addEventListener("keydown", k); return () => window.removeEventListener("keydown", k);
+  }, [open]);
+  if (!SB) return null;
+  const close = (refocus) => { setOpen(false); if (refocus) setTimeout(() => btn.current && btn.current.focus(), 0); };
+  if (!open) return h(G.Atoms.IconButton, { ref: btn, id: "site-search-open", size: "small", "aria-label": "Search", title: "Search (/)", onClick: () => setOpen(true), sx: { color: "text.secondary", p: { xs: .25, sm: .625 } } }, h(Ico, { kind: "search", size: 18 }));
+  return h(G.Atoms.Box, { ref: box, id: "site-search", role: "search",
+    onKeyDown: (e) => { if (e.key === "Escape") { e.preventDefault(); close(true); } },
+    onBlur: (e) => { const nx = e.relatedTarget; if (nx && box.current && box.current.contains(nx)) return; const i = box.current && box.current.querySelector("input"); if (!i || !i.value.trim()) close(false); },
+    sx: (t) => ({ zIndex: 1200, width: 300, minWidth: 0, flexShrink: 1, [t.breakpoints.down("sm")]: { position: "absolute", left: 8, right: 8, top: "50%", transform: "translateY(-50%)", width: "auto" },
+      "& > div": { maxWidth: "none !important" }, ...searchSkin(t) }) },
+    h(SB, { src: SEARCH_SRC, placeholder: "Search in All.This", themeMode: "auto", enableSlashShortcut: false }));
+}
 // ── chrome (as on the Veracruz .GUI page) ──
 const LOGO = "https://res.cloudinary.com/dkwnxf6gm/image/upload/v1760629064/neurons.me_b50f6a.png";
 const GITHUB_MARK = "M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z";
@@ -732,10 +771,11 @@ function BrandBar(p) {
   const seg = (s, i) => [i > 0 && !PATH_SEGMENTS[i - 1].text.endsWith("://") ? h(Box, { component: "span", key: `sep${i}`, sx: { color: "text.disabled", mx: .15 } }, "/") : null,
     s.href ? h(Link, { key: s.text, href: s.href, underline: "hover", title: s.title, sx: { color: "primary.main", fontFamily: MONO, fontSize: 13 } }, s.text)
       : h(Box, { component: "span", key: s.text, "aria-current": "page", sx: { color: "text.primary", fontFamily: MONO, fontSize: 13, fontWeight: 600 } }, s.text)];
-  return h(Box, { component: "header", "data-gui-node-id": p["data-gui-node-id"], sx: { display: "flex", alignItems: "center", gap: 1.25, flexWrap: "wrap", px: 1.75, py: .85, borderBottom: 1, borderColor: "divider", bgcolor: "background.paper" } },
+  return h(Box, { component: "header", "data-gui-node-id": p["data-gui-node-id"], sx: { position: "relative", display: "flex", alignItems: "center", gap: 1.25, flexWrap: "wrap", px: 1.75, py: .85, borderBottom: 1, borderColor: "divider", bgcolor: "background.paper" } },
     h(Link, { href: "https://neurons-me.github.io/", title: "neurons.me", underline: "none", sx: { display: "inline-flex", lineHeight: 0, flexShrink: 0 } }, h("img", { src: LOGO, alt: ".me", width: 34, height: 34, style: { display: "block", objectFit: "contain" } })),
     h(Box, { component: "nav", "aria-label": "me path", sx: { display: "inline-flex", alignItems: "center", flexWrap: "wrap", minWidth: 0 } }, ...PATH_SEGMENTS.flatMap(seg)),
     h(Box, { sx: { ml: "auto", display: "inline-flex", alignItems: "center", gap: 1.25 } },
+      h(TopSearch),
       h(Link, { href: "https://neurons-me.github.io/.me/docs/", underline: "hover", sx: { fontFamily: MONO, fontSize: 12, color: "text.secondary" } }, "Docs"),
       h(Link, { href: "https://github.com/neurons-me/.me", underline: "none", target: "_blank", rel: "noopener", title: "GitHub · neurons-me/.me", "aria-label": "GitHub", sx: { display: "inline-flex", lineHeight: 0, color: "text.secondary", "&:hover": { color: "text.primary" } } },
         h("svg", { viewBox: "0 0 16 16", width: 18, height: 18, fill: "currentColor", "aria-hidden": "true" }, h("path", { d: GITHUB_MARK }))),
