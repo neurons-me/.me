@@ -21,47 +21,65 @@
   <meta name="twitter:image" content="https://neurons-me.github.io/.me/Demos/assets/demos-og.png" />
   <link rel="canonical" href="https://neurons-me.github.io/.me/Demos/" />
   <link rel="icon" type="image/png" href="https://res.cloudinary.com/dkwnxf6gm/image/upload/v1769890772/this.me.png">
+  <!-- .GUI (this.gui@4.1.0) renders this page from the static markup below (/.me/assets/landing-gui/landing-gui.js); the static page stays as the no-JS / CDN-failure fallback.
+       Page-scoped theme keys, neurons.me, dark by default. -->
+  <script>
+    window.__thisGuiThemeScope = { scopeId: "me-demos", themeModeKey: "me-demos.themeMode", themeIdKey: "me-demos.themeId", defaultMode: "dark" };
+    try {
+      if (!localStorage.getItem("me-demos.themeMode")) localStorage.setItem("me-demos.themeMode", "dark");
+      if (!localStorage.getItem("me-demos.themeId")) localStorage.setItem("me-demos.themeId", "neurons.me");
+    } catch (e) {}
+    document.documentElement.classList.add("gui-boot");
+  </script>
+  <!-- No icon font: every icon is inline SVG; hide any icon-font span so its name never shows as text. -->
+  <style>.material-symbols-rounded,.material-symbols-outlined,.material-icons{display:none!important} body{margin:0} .gui-boot #static-landing{display:none}</style>
+  <!-- Pinned dependencies (jsDelivr, exact versions, Subresource Integrity), same as the Robots / Smart Cities landings and ContextLab. -->
+  <script src="https://cdn.jsdelivr.net/npm/react@18.3.1/umd/react.production.min.js" integrity="sha384-DGyLxAyjq0f9SPpVevD6IgztCFlnMF6oW/XQGmfe+IsZ8TqEiDrcHkMLKI6fiB/Z" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/react-dom@18.3.1/umd/react-dom.production.min.js" integrity="sha384-gTGxhz21lVGYNMcdJOyq01Edg0jhn/c22nsx0kyqP0TxaV5WVdsSH1fSDUf5YJj1" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/this.gui@4.1.0/dist/this.gui.umd.js" integrity="sha384-umBxi9YB2FkfPkyuR4Ej4TvKyweGkUbZnvIQh/ZzaF0YGstAGl5I6xJ9fnLC+76O" crossorigin="anonymous"></script>
+  <!-- Static page styles, off once .GUI has rendered (html.gui-on). -->
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: "Inter", "Helvetica Neue", Helvetica, Arial, sans-serif; background: #f4f7f8; color: #0f1720; min-height: 100vh; -webkit-font-smoothing: antialiased; }
-    .page { max-width: 960px; margin: 0 auto; padding: 72px 32px 80px; }
-    .breadcrumb { font-size: 0.8rem; color: #51606d; margin-bottom: 24px; }
-    .breadcrumb a { color: #0f6a78; text-decoration: none; }
-    .breadcrumb a:hover { text-decoration: underline; }
-    .kicker a, .page-subtitle a { color: #0f6a78; text-decoration: none; }
-    .kicker a:hover, .page-subtitle a:hover { text-decoration: underline; }
-    @media (prefers-color-scheme: dark) { .kicker a, .page-subtitle a { color: #4fd1c5; } }
-    .kicker { font-size: 0.75rem; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; color: #51606d; margin-bottom: 12px; }
-    .page-title { font-size: 2.75rem; font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; margin-bottom: 12px; }
-    .page-subtitle { font-size: 1.05rem; color: #51606d; margin-bottom: 48px; max-width: 560px; }
-    .grid { display: grid; grid-template-columns: 1fr; gap: 16px; }
-    @media (min-width: 720px) { .grid { grid-template-columns: 1fr 1fr; } }
-    .card { display: flex; flex-direction: row; padding: 0; gap: 0; min-height: 140px; overflow: hidden; align-items: stretch; border-radius: 12px; border: 1px solid rgba(15,23,32,0.10); background: #fff; text-decoration: none; color: inherit; transition: box-shadow 140ms, border-color 140ms, transform 140ms; }
-    .card:hover { box-shadow: 0 4px 20px rgba(15,23,32,0.10); border-color: #0f6a78; transform: translateY(-1px); }
-    .card-icon { width: clamp(140px, 45%, 240px); min-height: 140px; flex-shrink: 0; background: transparent; }
-    .card-icon img { width: 100%; height: 100%; object-fit: cover; display: block; }
-    .card-emoji { display:flex; align-items:center; justify-content:center; width:100%; height:100%; min-height:140px; font-size:3.5rem; background:linear-gradient(135deg,#e6f2f3,#f4f7f8); }
-    @media (prefers-color-scheme: dark) { .card-emoji { background:linear-gradient(135deg,#13262b,#0b1114); } }
-    .card-content { display: flex; flex-direction: column; justify-content: center; padding: 16px 20px; flex: 1; min-width: 0; gap: 6px; }
-    .card-title { font-size: 1.1rem; font-weight: 800; line-height: 1.2; }
-    .card-desc { font-size: 0.875rem; color: #51606d; line-height: 1.5; }
-    .card-path { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.75rem; color: #0f6a78; }
+    html:not(.gui-on) *, html:not(.gui-on) *::before, html:not(.gui-on) *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html:not(.gui-on) body { font-family: "Inter", "Helvetica Neue", Helvetica, Arial, sans-serif; background: #f4f7f8; color: #0f1720; min-height: 100vh; -webkit-font-smoothing: antialiased; }
+    html:not(.gui-on) .page { max-width: 960px; margin: 0 auto; padding: 72px 32px 80px; }
+    html:not(.gui-on) .breadcrumb { font-size: 0.8rem; color: #51606d; margin-bottom: 24px; }
+    html:not(.gui-on) .breadcrumb a { color: #0f6a78; text-decoration: none; }
+    html:not(.gui-on) .breadcrumb a:hover { text-decoration: underline; }
+    html:not(.gui-on) .kicker a, html:not(.gui-on) .page-subtitle a { color: #0f6a78; text-decoration: none; }
+    html:not(.gui-on) .kicker a:hover, html:not(.gui-on) .page-subtitle a:hover { text-decoration: underline; }
+    @media (prefers-color-scheme: dark) { html:not(.gui-on) .kicker a, html:not(.gui-on) .page-subtitle a { color: #4fd1c5; } }
+    html:not(.gui-on) .kicker { font-size: 0.75rem; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; color: #51606d; margin-bottom: 12px; }
+    html:not(.gui-on) .page-title { font-size: 2.75rem; font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; margin-bottom: 12px; }
+    html:not(.gui-on) .page-subtitle { font-size: 1.05rem; color: #51606d; margin-bottom: 48px; max-width: 560px; }
+    html:not(.gui-on) .grid { display: grid; grid-template-columns: 1fr; gap: 16px; }
+    @media (min-width: 720px) { html:not(.gui-on) .grid { grid-template-columns: 1fr 1fr; } }
+    html:not(.gui-on) .card { display: flex; flex-direction: row; padding: 0; gap: 0; min-height: 140px; overflow: hidden; align-items: stretch; border-radius: 12px; border: 1px solid rgba(15,23,32,0.10); background: #fff; text-decoration: none; color: inherit; transition: box-shadow 140ms, border-color 140ms, transform 140ms; }
+    html:not(.gui-on) .card:hover { box-shadow: 0 4px 20px rgba(15,23,32,0.10); border-color: #0f6a78; transform: translateY(-1px); }
+    html:not(.gui-on) .card-icon { width: clamp(140px, 45%, 240px); min-height: 140px; flex-shrink: 0; background: transparent; }
+    html:not(.gui-on) .card-icon img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    html:not(.gui-on) .card-emoji { display:flex; align-items:center; justify-content:center; width:100%; height:100%; min-height:140px; font-size:3.5rem; background:linear-gradient(135deg,#e6f2f3,#f4f7f8); }
+    @media (prefers-color-scheme: dark) { html:not(.gui-on) .card-emoji { background:linear-gradient(135deg,#13262b,#0b1114); } }
+    html:not(.gui-on) .card-content { display: flex; flex-direction: column; justify-content: center; padding: 16px 20px; flex: 1; min-width: 0; gap: 6px; }
+    html:not(.gui-on) .card-title { font-size: 1.1rem; font-weight: 800; line-height: 1.2; }
+    html:not(.gui-on) .card-desc { font-size: 0.875rem; color: #51606d; line-height: 1.5; }
+    html:not(.gui-on) .card-path { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.75rem; color: #0f6a78; }
     @media (prefers-color-scheme: dark) {
-      body { background: #0b1114; color: #e8eded; }
-      .kicker, .page-subtitle, .breadcrumb, .card-desc { color: #98a7b3; }
-      .breadcrumb a, .card-path { color: #4fd1c5; }
-      .card { background: #111a1f; border-color: rgba(232,237,237,0.10); }
-      .card:hover { border-color: #4fd1c5; box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
+      html:not(.gui-on) body { background: #0b1114; color: #e8eded; }
+      html:not(.gui-on) .kicker, html:not(.gui-on) .page-subtitle, html:not(.gui-on) .breadcrumb, html:not(.gui-on) .card-desc { color: #98a7b3; }
+      html:not(.gui-on) .breadcrumb a, html:not(.gui-on) .card-path { color: #4fd1c5; }
+      html:not(.gui-on) .card { background: #111a1f; border-color: rgba(232,237,237,0.10); }
+      html:not(.gui-on) .card:hover { border-color: #4fd1c5; box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
     }
-    .topnav { position:fixed; top:0; left:0; right:0; z-index:100; display:flex; align-items:center; gap:4px; padding:8px 20px; background:rgba(244,247,248,0.92); backdrop-filter:blur(8px); border-bottom:1px solid rgba(15,23,32,0.08); font-size:0.82rem; font-weight:600; }
-    @media (prefers-color-scheme: dark) { .topnav { background:rgba(11,17,20,0.92); border-bottom-color:rgba(232,237,237,0.08); } }
-    .topnav a { text-decoration:none; color:inherit; padding:4px 10px; border-radius:6px; }
-    .topnav a:hover { background:rgba(15,106,120,0.1); }
-    @media (prefers-color-scheme: dark) { .topnav a:hover { background:rgba(79,209,197,0.1); } }
-    .topnav .spacer { flex:1; }
+    html:not(.gui-on) .topnav { position:fixed; top:0; left:0; right:0; z-index:100; display:flex; align-items:center; gap:4px; padding:8px 20px; background:rgba(244,247,248,0.92); backdrop-filter:blur(8px); border-bottom:1px solid rgba(15,23,32,0.08); font-size:0.82rem; font-weight:600; }
+    @media (prefers-color-scheme: dark) { html:not(.gui-on) .topnav { background:rgba(11,17,20,0.92); border-bottom-color:rgba(232,237,237,0.08); } }
+    html:not(.gui-on) .topnav a { text-decoration:none; color:inherit; padding:4px 10px; border-radius:6px; }
+    html:not(.gui-on) .topnav a:hover { background:rgba(15,106,120,0.1); }
+    @media (prefers-color-scheme: dark) { html:not(.gui-on) .topnav a:hover { background:rgba(79,209,197,0.1); } }
+    html:not(.gui-on) .topnav .spacer { flex:1; }
   </style>
 </head>
 <body>
+<div id="static-landing">
   <nav class="topnav">
     <span class="spacer"></span>
     <a href="https://github.com/neurons-me/.me" target="_blank" rel="noopener">GitHub</a>
@@ -154,5 +172,8 @@
       </a>
     </div>
   </div>
+</div>
+<div id="root"></div>
+<script src="/.me/assets/landing-gui/landing-gui.js?v=1" onerror="document.documentElement.classList.remove('gui-boot')"></script>
 </body>
 </html>
