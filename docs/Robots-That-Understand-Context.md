@@ -1,6 +1,7 @@
 ---
 layout: readme
 title: Robots That Understand Context
+image: https://neurons-me.github.io/.me/docs/assets/contextlab-for-robots-live.jpg
 ---
 
 

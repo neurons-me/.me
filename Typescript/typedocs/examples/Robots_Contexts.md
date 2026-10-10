@@ -1,3 +1,8 @@
+---
+image: https://neurons-me.github.io/.me/docs/assets/contextlab-for-robots-policies.jpg
+imageAlt: ContextLab for Robots — context-aware policies broadcast to every robot
+---
+
 # Robots Understanding Context ​
 
 This example shows a practical `.me` pattern for robot reasoning:

@@ -21,16 +21,26 @@ export default defineConfig({
     ['meta', { property: 'og:title', content: '.me — Documentation' }],
     ['meta', { property: 'og:description', content: 'Documentation for .me' }],
     ['meta', { property: 'og:url', content: 'https://neurons-me.github.io/.me/Typescript/typedocs/' }],
-    ['meta', { property: 'og:image', content: socialImage }],
-    ['meta', { property: 'og:image:secure_url', content: socialImage }],
-    ['meta', { property: 'og:image:type', content: 'image/png' }],
-    ['meta', { property: 'og:image:alt', content: '.me social graph' }],
     ['meta', { name: 'twitter:card', content: 'summary_large_image' }],
     ['meta', { name: 'twitter:title', content: '.me — Documentation' }],
     ['meta', { name: 'twitter:description', content: 'Documentation for .me' }],
-    ['meta', { name: 'twitter:image', content: socialImage }],
-    ['meta', { name: 'twitter:image:alt', content: '.me social graph' }],
   ],
+
+  // Share image per page: frontmatter `image` (+ `imageAlt`) overrides the site-wide .me social graph.
+  transformHead({ pageData }) {
+    const fm = pageData.frontmatter || {}
+    const image = fm.image || socialImage
+    const alt = fm.imageAlt || '.me social graph'
+    const type = /\.jpe?g$/i.test(image) ? 'image/jpeg' : 'image/png'
+    return [
+      ['meta', { property: 'og:image', content: image }],
+      ['meta', { property: 'og:image:secure_url', content: image }],
+      ['meta', { property: 'og:image:type', content: type }],
+      ['meta', { property: 'og:image:alt', content: alt }],
+      ['meta', { name: 'twitter:image', content: image }],
+      ['meta', { name: 'twitter:image:alt', content: alt }],
+    ]
+  },
 
   themeConfig: {
     nav: [
