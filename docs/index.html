@@ -142,24 +142,30 @@
       html:not(.gui-on) .lang-nav a { border-color: rgba(232,237,237,0.15); }
       html:not(.gui-on) .lang-nav a:hover { background: rgba(79,209,197,0.10); border-color: #4fd1c5; }
     }
-    html:not(.gui-on) .topnav { position:fixed; top:0; left:0; right:0; z-index:100; display:flex; align-items:center; gap:4px; padding:8px 20px; background:rgba(244,247,248,0.92); backdrop-filter:blur(8px); border-bottom:1px solid rgba(15,23,32,0.08); font-size:0.82rem; font-weight:600; }
+    html:not(.gui-on) .topnav { position:fixed; top:0; left:0; right:0; z-index:100; display:flex; align-items:center; gap:10px; padding:0 20px; min-height:48px; background:rgba(244,247,248,0.92); backdrop-filter:blur(8px); border-bottom:1px solid rgba(15,23,32,0.08); }
     @media (prefers-color-scheme: dark) { html:not(.gui-on) .topnav { background:rgba(11,17,20,0.92); border-bottom-color:rgba(232,237,237,0.08); } }
-    html:not(.gui-on) .topnav button { background:none; border:none; cursor:pointer; font:inherit; padding:4px 8px; border-radius:6px; color:inherit; transition:background 120ms; }
-    html:not(.gui-on) .topnav button:hover, html:not(.gui-on) .topnav a:hover { background:rgba(15,106,120,0.1); }
-    html:not(.gui-on) .topnav a { text-decoration:none; color:inherit; padding:4px 10px; border-radius:6px; transition:background 120ms; }
-    @media (prefers-color-scheme: dark) { html:not(.gui-on) .topnav button:hover, html:not(.gui-on) .topnav a:hover { background:rgba(79,209,197,0.1); } }
+    html:not(.gui-on) .topnav a { text-decoration:none; color:inherit; }
+    html:not(.gui-on) .topnav .logo { display:inline-flex; line-height:0; flex-shrink:0; }
+    html:not(.gui-on) .topnav .logo img { width:28px; height:28px; object-fit:contain; display:block; }
+    html:not(.gui-on) .mepath { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; line-height:1.5; }
+    html:not(.gui-on) .mepath a { color:#0f6a78; }
+    html:not(.gui-on) .mepath a:hover { text-decoration:underline; }
+    html:not(.gui-on) .mepath .here { font-weight:600; }
     html:not(.gui-on) .topnav .spacer { flex:1; }
-    html:not(.gui-on) .topnav .mepath { display:inline-flex; align-items:center; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-weight:600; }
-    html:not(.gui-on) .topnav .mepath a { padding:4px 0 4px 10px; color:#0f6a78; }
-    @media (prefers-color-scheme: dark) { html:not(.gui-on) .topnav .mepath a { color:#4fd1c5; } }
+    html:not(.gui-on) .topnav .gh { display:inline-flex; line-height:0; color:#51606d; }
+    html:not(.gui-on) .topnav .gh:hover { color:#0f1720; }
+    @media (prefers-color-scheme: dark) {
+      html:not(.gui-on) .mepath a { color:#4fd1c5; }
+      html:not(.gui-on) .topnav .gh { color:#98a7b3; }
+      html:not(.gui-on) .topnav .gh:hover { color:#e8eded; }
+    }
   </style>
 <link rel="icon" type="image/png" href="https://res.cloudinary.com/dkwnxf6gm/image/upload/v1769890772/this.me.png"></head>
 <body>
 <div id="static-landing" data-layout="docs-index">
-  <nav class="topnav">
-    <button onclick="history.back()" title="Back">←</button>
-    <a href="https://neurons-me.github.io">⌂ Home</a>
-    <span class="mepath"><a href="https://neurons-me.github.io/.me/" title=".me">me://</a><span class="here">Docs</span></span>
+  <nav class="topnav" aria-label="me path">
+    <a class="logo" href="https://neurons-me.github.io/" title="neurons.me"><img src="https://res.cloudinary.com/dkwnxf6gm/image/upload/v1760629064/neurons.me_b50f6a.png" alt="neurons.me" width="28" height="28" /></a>
+    <div class="mepath"><a href="https://neurons-me.github.io/.me/" title=".me">me://</a><span class="here" aria-current="page">Docs</span></div>
     <span class="spacer"></span>
     <div
       data-gui-searchbar
@@ -167,7 +173,7 @@
       data-placeholder="Search in All.This"
       style="width:220px; max-width:38vw; margin-right:8px;"
     ></div>
-    <a href="https://github.com/neurons-me/.me" target="_blank" rel="noopener" title="GitHub · neurons-me/.me" aria-label="GitHub"><svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true" style="vertical-align:middle"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg></a>
+    <a class="gh" href="https://github.com/neurons-me/.me" target="_blank" rel="noopener" title="GitHub · neurons-me/.me" aria-label="GitHub"><svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true" style="vertical-align:middle"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg></a>
   </nav>
   <div class="page">
     <p class="kicker">Own your intelligence.</p>
