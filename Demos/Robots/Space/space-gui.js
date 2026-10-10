@@ -1,5 +1,5 @@
 // Autonomous Robotics in Space: .GUI page (this.gui@4.1.0, SRI-pinned in index.html, sha256-checked below)
-// over a LOCAL candidate build of this.me 4.2 (integ/4.2-rootfix @ 2b4b1fe, not published; sha256-checked below before import).
+// over the real, unmodified this.me@4.2.0 kernel from npm (jsDelivr, unpkg fallback; sha256-checked below before import).
 //
 // Who owns what:
 //   KERNEL (this.me): one kernel per spider robot (3). Every robot fact, its own view of the shared objects (objects.*),
@@ -11,8 +11,8 @@
 
 import * as M from "./space-model.js";
 
-const KERNEL = { version: "4.2 candidate", label: "this.me 4.2 candidate", build: "local build of integ/4.2-rootfix @ 2b4b1fe, not published", sha256: "50c643e1e6306855833227993de03ea5d23e279504319f2874c62c7793fc1563",
-  urls: ["./kernel/this.me-4.2-candidate.es.js"] };
+const KERNEL = { version: "4.2.0", label: "this.me@4.2.0", build: "from npm (unmodified)", sha256: "8cc94d5273b05728713e7c06bcba6ab0d88c85d2a748dc885e7bca745605a61a",
+  urls: ["https://cdn.jsdelivr.net/npm/this.me@4.2.0/dist/me.es.js", "https://unpkg.com/this.me@4.2.0/dist/me.es.js"] };
 const GUI_PIN = { label: "this.gui@4.1.0", repo: "https://github.com/neurons-me/GUI", npm: "https://www.npmjs.com/package/this.gui/v/4.1.0",
   url: "https://cdn.jsdelivr.net/npm/this.gui@4.1.0/dist/this.gui.umd.js", sha256: "d50e32f6a4f7603804228c074fc59df1cfdea73a4f3d5ad93ba9475227b2a577" };
 const SRC = "https://github.com/neurons-me/.me/blob/main/Demos/Robots/Space/";
@@ -93,7 +93,7 @@ function kernelFor(path) {
   m = /^robots\.(\d+)\./.exec(p); return [m && W?.robots.find((x) => x.id === Number(m[1]))?.k, p];
 }
 const FME = Object.assign((p) => { const [k, q] = kernelFor(p); return k ? k.me(q) : undefined; }, { explain: (p) => { const [k, q] = kernelFor(p); return k?.me.explain(q); } });
-// Explicit subscribe bridge: this.me@4.1.0 has no change events, and me.subscribe(...) on a kernel proxy would write a
+// Explicit subscribe bridge: this.me has no change events, and me.subscribe(...) on a kernel proxy would write a
 // fact named "subscribe". The page announces exactly the paths the kernel reported for each write (the written fact +
 // explain().meta.recomputed), batched to the 4 Hz UI tick.
 const kListeners = new Map();

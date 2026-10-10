@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// Autonomous Robotics in Space: Node verification against a LOCAL this.me 4.2 candidate build (kernel/, sha256-pinned;
-// integ/4.2-rootfix @ 2b4b1fe, not published), with this.me@4.1.0 (jsDelivr, sha256-pinned) for the 4.1 comparison.
+// Autonomous Robotics in Space: Node verification against this.me@4.2.0 (npm via jsDelivr, sha256-pinned), with
+// this.me@4.1.0 (jsDelivr, sha256-pinned) for the 4.1 comparison.
 // Runs the page's own model (space-model.js): two rocks, three spider robots, three separate kernels, a limited radio.
 // Checks, step by step: every derived path in every kernel = a fresh kernel rebuilt from the same facts + same rules =
 // the rule in plain JS; that messages only cross the void when the radio allows it; that each kernel is written only
@@ -10,7 +10,7 @@
 // limitation of 4.1.0 (known issue #4); the 4.2 aggregates (battery over robots[i].batteries[], kept counts over inbox[] /
 // outbox[]) against the contract oracle (exact BigInt sum, rounded once) while batteries are added, swapped and removed,
 // in eager and lazy; and the behaviour of the 4.2 model against the 4.1 model (explicit sum on this.me@4.1.0).
-// Usage: node verify.mjs [--kernel path/to/me.es.js]   (default: kernel/this.me-4.2-candidate.es.js, sha256-checked)
+// Usage: node verify.mjs [--kernel path/to/me.es.js]   (default: this.me@4.2.0 from jsDelivr, sha256-checked)
 import { createHash } from "node:crypto";
 import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -18,17 +18,18 @@ import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import * as M from "./space-model.js";
 
-const SHA = "50c643e1e6306855833227993de03ea5d23e279504319f2874c62c7793fc1563";   // kernel/this.me-4.2-candidate.es.js
+const SHA = "8cc94d5273b05728713e7c06bcba6ab0d88c85d2a748dc885e7bca745605a61a", URL42 = "https://cdn.jsdelivr.net/npm/this.me@4.2.0/dist/me.es.js";   // this.me@4.2.0/dist/me.es.js
 const SHA41 = "47cc8f9a9b5ee2921a59023d400e694d6c9b9f80a0782db850b06156cbb46afa", URL41 = "https://cdn.jsdelivr.net/npm/this.me@4.1.0/dist/me.es.js";
-async function kernel41File() {
+async function cachedKernel(name, url, sha) {
   const dir = join(tmpdir(), "space-robots-verify"); await mkdir(dir, { recursive: true });
-  const f = join(dir, "this.me-4.1.0-me.es.js");
-  try { const b = await readFile(f); if (createHash("sha256").update(b).digest("hex") === SHA41) return f; } catch {}
-  const res = await fetch(URL41); if (!res.ok) throw new Error(`HTTP ${res.status} for ${URL41}`);
+  const f = join(dir, name);
+  try { const b = await readFile(f); if (createHash("sha256").update(b).digest("hex") === sha) return f; } catch {}
+  const res = await fetch(url); if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
   await writeFile(f, Buffer.from(await res.arrayBuffer())); return f;
 }
+const kernel41File = () => cachedKernel("this.me-4.1.0-me.es.js", URL41, SHA41);
 const ki = process.argv.indexOf("--kernel");
-const file = ki > 0 ? process.argv[ki + 1] : new URL("./kernel/this.me-4.2-candidate.es.js", import.meta.url).pathname;
+const file = ki > 0 ? process.argv[ki + 1] : await cachedKernel("this.me-4.2.0-me.es.js", URL42, SHA);
 const hash = createHash("sha256").update(await readFile(file)).digest("hex");
 if (hash !== SHA) { console.error(`sha256 mismatch: ${hash}`); process.exit(2); }
 const ME = (await import(pathToFileURL(file).href)).default;
@@ -88,7 +89,7 @@ function runSteps(w, n, label, { every = 5, onStep } = {}) {
 }
 
 section("kernel");
-  console.log(`  this.me 4.2 candidate (local build, kernel/this.me-4.2-candidate.es.js) sha256 ${hash.slice(0, 16)}… verified · this.me@4.1.0 sha256 ${hash41.slice(0, 16)}… verified (comparison)`);
+  console.log(`  this.me@4.2.0 (npm, jsDelivr) sha256 ${hash.slice(0, 16)}… verified · this.me@4.1.0 sha256 ${hash41.slice(0, 16)}… verified (comparison)`);
 check("kernel sha256", hash === SHA);
 {
   const w = M.createWorld(ME);
@@ -111,14 +112,14 @@ check("kernel sha256", hash === SHA);
 }
 
 section("this.me 4.1.0 known issue #4: a formula through a pointer is not recomputed (why no rule here reads through one)");
-for (const [K, name] of [[ME41, "this.me@4.1.0"], [ME, "4.2 candidate"]]) {
+for (const [K, name] of [[ME41, "this.me@4.1.0"], [ME, "this.me@4.2.0"]]) {
   const me = new K(); me.asteroids.b612.radiusM(400); me.robots[612].home["->"]("asteroids.b612");
   me.robots["[i]"]["="]("homeDiameter", "home.radiusM * 2");
   const before = me("robots.612.homeDiameter"); me.asteroids.b612.radiusM(500);
   const after = me("robots.612.homeDiameter"), direct = me("robots.612.home.radiusM");
   console.log(`  ${name}: formula via pointer: ${before} → after target change: ${after} (target now ${direct})`);
   if (K === ME41) check("issue #4 reproduced: formula through pointer stays stale in 4.1.0", before === 800 && after === 800 && direct === 500);
-  else check("issue #4 fixed in the 4.2 candidate (17462dd): the formula follows its pointer target", before === 800 && after === 1000 && direct === 500);
+  else check("issue #4 fixed in this.me@4.2.0: the formula follows its pointer target", before === 800 && after === 1000 && direct === 500);
   me.robots["[i]"]["="]("homeDiameter", "home.radiusM * 2");
   check("re-applying the formula recomputes it", me("robots.612.homeDiameter") === 1000);
 }
@@ -406,7 +407,7 @@ console.log(`  eager vs lazy: ${traces.eager.filter((x, i) => x === traces.lazy[
 }
 
 // ── 4.2 vs 4.1: the same world on this.me@4.1.0 with the explicit sum ──
-section("J · behaviour: the 4.2 model (aggregate, candidate) vs the 4.1 model (explicit sum, this.me@4.1.0), long runs");
+section("J · behaviour: the 4.2 model (aggregate, this.me@4.2.0) vs the 4.1 model (explicit sum, this.me@4.1.0), long runs");
 const FLAGS = ["goCharge", "mustCharge", "followTip", "shelter", "explore"];
 const diffRuns = (a, b, n, plan) => {
   const d = { battery: 0, decision: 0, status: 0, truth: 0, events: 0, first: null, firstDecision: null };

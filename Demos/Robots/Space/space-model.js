@@ -1,5 +1,5 @@
 // Autonomous Robotics in Space: the model (shared by the page and verify.mjs).
-// KERNEL (this.me 4.2 candidate: a LOCAL build of integ/4.2-rootfix, not published): one kernel per robot. Every
+// KERNEL (this.me@4.2.0, from npm): one kernel per robot. Every
 // robot fact, every derived value, k, explain(). The battery level is a 4.2 collection aggregate (robots[i].batteries[]).
 // ADAPTER (plain JS, here): the physical truth (where a spider really stands, its real battery, where the rocks are),
 // walking, the radios (range, line of sight, delay, bandwidth, loss) and which action a spider takes from its flags.

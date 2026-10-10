@@ -1,13 +1,11 @@
 # Autonomous Robotics in Space (build notes)
 
-> **Branch `feat/space-4.2` (local, not published).** This branch runs on a **local candidate build of this.me 4.2**
-> (`kernel/this.me-4.2-candidate.es.js`, built from `integ/4.2-rootfix` @ `2b4b1fe`, sha256
-> `50c643e1e6306855833227993de03ea5d23e279504319f2874c62c7793fc1563`, checked before import). The battery level is the 4.2
+> **Runs on this.me@4.2.0** (npm, via jsDelivr with an unpkg fallback; sha256 checked in the browser before import). The battery level is the 4.2
 > collection aggregate `robots[i].batteries[].charge / robots[i].batteries[].capacity * 100`, so a robot can carry 2 or 3
 > batteries (plug one in, swap the spare, take one out: buttons under the hood), and `robots[i].inbox[]` / `outbox[]` count
 > the messages each box keeps. `verify.mjs` checks the aggregates against the contract oracle (exact BigInt sum) in eager
-> and lazy, and compares the behaviour with the 4.1 model (explicit sum on this.me@4.1.0). The rest of this README
-> describes the 4.1.0 demo it comes from.
+> and lazy, and compares the behaviour with the 4.1 model (explicit sum on this.me@4.1.0). Sections below that
+> mention 4.1.0 describe the 4.1.0 demo this one grew from.
 
 Page: <https://neurons-me.github.io/.me/Demos/Robots/Space/> (`Demos/Robots/Space/index.html`). Linked from the
 Robots landing (<https://neurons-me.github.io/robots/>) and from `.me/Demos`. `Demos/Robots/` redirects to the landing,
@@ -15,7 +13,7 @@ the same way `Demos/SmartCities/` redirects to the Smart Cities hub.
 
 A short story in seven passages, in the spirit of *The Little Prince*: two small asteroids drift in the void. On the
 bigger one, B 612, live two spider robots, Oli (a miner) and Tiko (a light scout). On the smaller one, B 325, lives Lua
-(a scientist). Nobody drives them: each one carries its own this.me@4.1.0 kernel and decides from it. They can talk, but
+(a scientist). Nobody drives them: each one carries its own this.me@4.2.0 kernel and decides from it. They can talk, but
 only a little: on the same rock easily, across the void only when the radio reaches and no rock is in the way; messages
 take time, the radio sends one at a time, and some get lost. A patch of ice, a passing comet and the other rock are seen
 by all three, and mean something different in each kernel.
@@ -24,7 +22,8 @@ by all three, and mean something different in each kernel.
 
 | File | sha256 | how it is checked |
 |---|---|---|
-| `this.me@4.1.0/dist/me.es.js` | `47cc8f9a9b5ee2921a59023d400e694d6c9b9f80a0782db850b06156cbb46afa` | fetched, hashed in the browser, imported only if it matches (unpkg fallback) |
+| `this.me@4.2.0/dist/me.es.js` | `8cc94d5273b05728713e7c06bcba6ab0d88c85d2a748dc885e7bca745605a61a` | fetched, hashed in the browser, imported only if it matches (unpkg fallback). SRI form: `sha384-mE9tYKOMpHpBjwb8N4EORuiVt5pS3hcfXirKkcrzSYdzub3Vvj2yqbwGdpqeeYFD` |
+| `this.me@4.1.0/dist/me.es.js` | `47cc8f9a9b5ee2921a59023d400e694d6c9b9f80a0782db850b06156cbb46afa` | `verify.mjs` only (4.1 comparison) |
 | `this.gui@4.1.0/dist/this.gui.umd.js` | `d50e32f6a4f7603804228c074fc59df1cfdea73a4f3d5ad93ba9475227b2a577` | `<script>` SRI `sha384-umBxi9YB2FkfPkyuR4Ej4TvKyweGkUbZnvIQh/ZzaF0YGstAGl5I6xJ9fnLC+76O` + sha256 re-check |
 | `react@18.3.1` / `react-dom@18.3.1` UMD | | SRI (same pins as the Veracruz .GUI page) |
 
@@ -35,7 +34,7 @@ by all three, and mean something different in each kernel.
 | `index.html` | head, pinned scripts, meta / og |
 | `space-model.js` | the model, shared by the page and Node: rules, kernels, rocks, robots, the radio, verifyWorld |
 | `space-gui.js` | the .GUI page: one spec resolved by `GUI.mount`, the scene, the passages, the dashboard, under the hood |
-| `verify.mjs` | Node verification against this.me@4.1.0 |
+| `verify.mjs` | Node verification against this.me@4.2.0 (and this.me@4.1.0 for the comparison) |
 | `assets/space-robots-og-4.2.png` | og:image, 1200×630 (a real screenshot of the scene; no title text, og:title carries it) |
 | `../../../assets/me-syntax/` | shared .me syntax highlighter (JS + CSS), used for every line of .me code on the page |
 
@@ -138,7 +137,7 @@ facade over the three kernels: `robots.<id>.*` goes to that robot's kernel, `r<i
 ## Verify
 
 ```
-node Demos/Robots/Space/verify.mjs            # downloads this.me@4.1.0 from jsDelivr, checks sha256
+node Demos/Robots/Space/verify.mjs            # downloads this.me@4.2.0 and 4.1.0 from jsDelivr, checks sha256
 node Demos/Robots/Space/verify.mjs --kernel path/to/me.es.js
 ```
 
