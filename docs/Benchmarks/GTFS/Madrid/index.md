@@ -146,6 +146,32 @@ The interactive chart needs JavaScript. The same numbers, each with the results 
 
 One run per version on the same shared VM, on different days (4.1.0 skew 2026-10-07; 4.1.0 and 4.2.0 sweeps 2026-10-10; 4.2.1 2026-10-13): differences under ~10% (the load column) are within noise. k is the same on all three. Changelog: [CHANGELOG.md](https://github.com/neurons-me/.me/blob/main/Typescript/CHANGELOG.md).
 
+## Reproduce {#reproduce}
+
+A manual GitHub Actions workflow, [Bench Madrid (k check)](https://github.com/neurons-me/.me/actions/workflows/bench-madrid.yml), regenerates the scale-1 base→seed0 sweep and compares it with the committed [scale1-base-seed0-sweep.tsv](https://github.com/neurons-me/.me/blob/main/Typescript/tests/Benchmarks/GTFS-Madrid/results/scale1-base-seed0-sweep.tsv).
+
+- **What it checks:** k, recomputed, changed, unchanged, sourcePath and probePath are identical to the golden file for every row (151 rows, from the first run on this repo's `main`). Timings (`mutationApplyMs`, `recomputeMs`, `latency_ms`) are not compared; both TSVs are uploaded as the `madrid-s1-sweep` artifact.
+- **What it builds:** the `dist/` of the checked-out source with Node 22, not the npm tarball used for the published runs above.
+- **Data:** `GTFS-Scale-1-CHANGE.tar.xz` is downloaded from Zenodo at run time. It is not in the repository.
+- **Run it:** open the workflow link, then Actions → Bench Madrid (k check) → Run workflow. It is manual only and takes about 30 seconds.
+
+The same check locally, from `Typescript/`:
+
+```bash
+npm install && npx vite build --config vite.config.ts
+D=tests/Benchmarks/GTFS-Madrid/data/scale1
+curl -fsSL -o /tmp/s1.tar.xz "https://zenodo.org/records/14038823/files/GTFS-Scale-1-CHANGE.tar.xz?download=1"
+mkdir /tmp/s1 && tar -xJf /tmp/s1.tar.xz -C /tmp/s1
+S=$(dirname "$(find /tmp/s1 -name base-1-ROUTES.csv | head -n 1)")
+for v in base seed0; do mkdir -p $D/$v; for t in routes trips stop_times calendar calendar_dates; do
+  cp "$S/$v-1-$(echo $t | tr a-z A-Z).csv" $D/$v/$t.txt; done; done
+R=tests/Benchmarks/GTFS-Madrid/results/scale1-base-seed0-sweep.tsv
+cp $R /tmp/golden.tsv                    # the sweep overwrites $R
+node --expose-gc tests/Benchmarks/GTFS-Madrid/sweep-seed0.ts --scale=1
+diff <(cut -f1-8,12,13 /tmp/golden.tsv) <(cut -f1-8,12,13 $R) && echo "k identical"
+git checkout -- $R                       # restore the committed golden file
+```
+
 ## Known limits {#known-limits}
 
 - **[`explain()`](https://neurons-me.github.io/.me/docs/Explain.html) grows with k:** about 1.9 KB + 56 bytes per recomputed value (unchanged in 4.2.1). On the trip with 14,378 `stop_times` (Zipf 2) it returns about 1.6 MB. There is no pagination or summary mode yet; it is an open item.
