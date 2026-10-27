@@ -1,0 +1,70 @@
+name: Bench Madrid (k check)
+
+# Manual only. Regenerates the GTFS-Madrid scale-1 base->seed0 sweep and checks that k (and the
+# other deterministic columns) equal the committed golden TSV. Timings are uploaded, never asserted.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  bench-check:
+    name: bench-check (Node 22)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Typescript
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
+      - name: Install
+        run: npm install --no-audit --no-fund
+
+      - name: Build dist
+        run: npx vite build --config vite.config.ts
+
+      # The data is not in the repo (gitignored): fetched at runtime from Zenodo 10.5281/zenodo.14038823.
+      - name: Fetch GTFS-Madrid scale-1 CHANGE (not committed)
+        run: |
+          D=tests/Benchmarks/GTFS-Madrid/data/scale1
+          curl -fsSL --retry 3 -o "$RUNNER_TEMP/s1.tar.xz" "https://zenodo.org/records/14038823/files/GTFS-Scale-1-CHANGE.tar.xz?download=1"
+          mkdir "$RUNNER_TEMP/s1"
+          tar -xJf "$RUNNER_TEMP/s1.tar.xz" -C "$RUNNER_TEMP/s1"
+          S=$(dirname "$(find "$RUNNER_TEMP/s1" -name base-1-ROUTES.csv | head -n 1)")
+          for v in base seed0; do
+            mkdir -p "$D/$v"
+            for t in routes trips stop_times calendar calendar_dates; do
+              cp "$S/$v-1-$(echo $t | tr a-z A-Z).csv" "$D/$v/$t.txt"
+            done
+          done
+
+      - name: Regenerate scale-1 sweep
+        run: |
+          R=tests/Benchmarks/GTFS-Madrid/results/scale1-base-seed0-sweep.tsv
+          mkdir -p "$RUNNER_TEMP/bench"
+          cp "$R" "$RUNNER_TEMP/bench/golden.tsv"
+          node --expose-gc tests/Benchmarks/GTFS-Madrid/sweep-seed0.ts --scale=1
+          cp "$R" "$RUNNER_TEMP/bench/fresh.tsv"
+
+      # Columns: type kind id field k recomputed changed unchanged | sourcePath probePath.
+      # Dropped: mutationApplyMs, recomputeMs, latency_ms (timings).
+      - name: Assert k columns equal golden (timings ignored)
+        run: |
+          cut -f1-8,12,13 "$RUNNER_TEMP/bench/golden.tsv" > "$RUNNER_TEMP/bench/golden.k"
+          cut -f1-8,12,13 "$RUNNER_TEMP/bench/fresh.tsv"  > "$RUNNER_TEMP/bench/fresh.k"
+          diff -u "$RUNNER_TEMP/bench/golden.k" "$RUNNER_TEMP/bench/fresh.k"
+          echo "k columns identical: $(($(wc -l < "$RUNNER_TEMP/bench/golden.k") - 1)) rows"
+
+      - name: Upload golden and fresh TSVs
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: madrid-s1-sweep
+          path: |
+            ${{ runner.temp }}/bench/golden.tsv
+            ${{ runner.temp }}/bench/fresh.tsv
