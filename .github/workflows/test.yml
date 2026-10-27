@@ -1,0 +1,41 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: test (Node ${{ matrix.node-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Node 22 only: the test scripts run TypeScript files directly with `node tests/*.ts`
+        # (native type stripping), which Node 20 cannot do (ERR_UNKNOWN_FILE_EXTENSION).
+        node-version: [22]
+    defaults:
+      run:
+        working-directory: Typescript
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      # Typescript/package-lock.json is gitignored, so `npm ci` is not available.
+      - name: Install
+        run: npm install --no-audit --no-fund
+
+      # `prebuild` runs the pre-build gate (build, URI/axioms/phases/CJS/ESM/types/UMD checks).
+      - name: Build
+        run: npm run build
+
+      - name: Test
+        run: npm test
