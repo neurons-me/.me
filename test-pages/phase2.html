@@ -1,0 +1,68 @@
+---
+permalink: /tests/phase2/
+---
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Phase 2: disk smoke · tests · .me</title>
+  <meta name="description" content="A 10 MB encrypted workload is written to disk in chunks, read back and explained." />
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content=".me" />
+  <meta property="og:description" content="A 10 MB encrypted workload is written to disk in chunks, read back and explained." />
+  <link rel="icon" type="image/png" href="https://res.cloudinary.com/dkwnxf6gm/image/upload/v1760629064/neurons.me_b50f6a.png" />
+  <!-- .GUI (this.gui@4.2.0) renders this page from the static markup below (/.me/assets/landing-gui/landing-gui.js); the static page stays as the no-JS / CDN-failure fallback.
+       Same page-scoped theme keys as /.me/ and /.me/docs/, neurons.me, dark by default. -->
+  <script>
+    window.__thisGuiThemeScope = { scopeId: "me-docs", themeModeKey: "me-docs.themeMode", themeIdKey: "me-docs.themeId", defaultMode: "dark" };
+    try {
+      if (!localStorage.getItem("me-docs.themeMode")) localStorage.setItem("me-docs.themeMode", "dark");
+      if (!localStorage.getItem("me-docs.themeId")) localStorage.setItem("me-docs.themeId", "neurons.me");
+    } catch (e) {}
+    document.documentElement.classList.add("gui-boot");
+  </script>
+  <style>.material-symbols-rounded,.material-symbols-outlined,.material-icons{display:none!important} body{margin:0} .gui-boot #static-landing{display:none}</style>
+  <script src="https://cdn.jsdelivr.net/npm/react@18.3.1/umd/react.production.min.js" integrity="sha384-DGyLxAyjq0f9SPpVevD6IgztCFlnMF6oW/XQGmfe+IsZ8TqEiDrcHkMLKI6fiB/Z" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/react-dom@18.3.1/umd/react-dom.production.min.js" integrity="sha384-gTGxhz21lVGYNMcdJOyq01Edg0jhn/c22nsx0kyqP0TxaV5WVdsSH1fSDUf5YJj1" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/this.gui@4.2.0/dist/this.gui.umd.js" integrity="sha384-tAyskhiyJweQ9xXPVOSEJ0OQDE+lFsqRJvGRb8LVoqLbdNxYmJEhW21+fxcAYG0d" crossorigin="anonymous"></script>
+  <style>
+    html:not(.gui-on) body { font-family: "Inter", "Helvetica Neue", Helvetica, Arial, sans-serif; background:#0b1114; color:#e8eded; }
+    html:not(.gui-on) .topnav { display:flex; align-items:center; gap:10px; padding:0 20px; min-height:48px; border-bottom:1px solid rgba(232,237,237,0.08); }
+    html:not(.gui-on) .topnav a { color:inherit; text-decoration:none; }
+    html:not(.gui-on) .topnav .logo img { width:28px; height:28px; display:block; }
+    html:not(.gui-on) .mepath { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size:13px; }
+    html:not(.gui-on) .mepath a { color:#4fb3bf; }
+    html:not(.gui-on) .mepath .here { font-weight:600; }
+    html:not(.gui-on) .spacer { flex:1; }
+    html:not(.gui-on) .wrap { max-width:760px; margin:32px auto; padding:0 16px; }
+    html:not(.gui-on) .mls-card { margin:12px 0; padding:12px; border:1px solid rgba(232,237,237,0.15); border-radius:12px; }
+    html:not(.gui-on) .mls-title { font-weight:600; color:#4fb3bf; text-decoration:none; }
+    html:not(.gui-on) .mls-meta { float:right; opacity:.7; font-size:.85rem; }
+    html:not(.gui-on) a { color:#4fb3bf; }
+  </style>
+</head>
+<body>
+<div id="static-landing">
+  <nav class="topnav" aria-label="me path">
+    <a class="logo" href="https://neurons-me.github.io/" title="neurons.me"><img src="https://res.cloudinary.com/dkwnxf6gm/image/upload/v1760629064/neurons.me_b50f6a.png" alt="neurons.me" width="28" height="28" /></a>
+    <div class="mepath"><a href="/.me/" title=".me">me://</a><a href="/.me/" title=".me">.me</a><a href="/.me/tests/" title="tests">tests</a><span class="here" aria-current="page">phase2</span></div>
+    <span class="spacer"></span>
+    <a class="act" href="/.me/docs/">Docs</a>
+    <a class="gh" href="https://github.com/neurons-me/.me">GitHub</a>
+  </nav>
+  <div class="wrap">
+    <header>
+      <h1>Phase 2: disk smoke</h1>
+      <p class="lede">A 10 MB encrypted workload is written to disk in chunks, read back and explained.</p>
+      <p class="lede">1 smoke run in 1 file. Run: <code>cd Typescript &amp;&amp; npm run test:phase2</code>. Source: <a href="https://github.com/neurons-me/.me/tree/main/Typescript/tests/">Typescript/tests/</a></p>
+      <div class="mls-card"><a class="mls-title" href="https://github.com/neurons-me/.me/blob/main/Typescript/tests/Phases/Phase.2.0.smoke.test.js">Phase.2.0.smoke.test.js</a><span class="mls-meta">1 smoke run</span><p class="item-desc">Writes a 10.0 MB target as 1,668 items in 17 chunks of 100, then reads it back and runs explain(). It prints timings and memory; the test asserts completion, not speed.</p><div class="mls-links"></div></div>
+      <p class="lede">Last result: PASS: Fase 2.0 smoke test completed. <a href="/.me/tests/runs/2026-10-26/">Run summary 2026-10-26</a></p>
+    </header>
+    <footer>MIT · neurons.me</footer>
+  </div>
+</div>
+<div id="root"></div>
+<script src="/.me/assets/landing-gui/landing-gui.js?v=29" onerror="document.documentElement.classList.remove('gui-boot')"></script>
+</body>
+</html>

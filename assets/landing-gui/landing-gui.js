@@ -71,13 +71,17 @@
     }),
   } : {
     path, docs: SRC.querySelector(".topnav .act")?.getAttribute("href"), github: SRC.querySelector(".topnav .gh")?.getAttribute("href"),
-    h1: txt(header.querySelector("h1")),
+    h1: txt(header.querySelector("h1")), lede: header.querySelector(".lede") && inline(header.querySelector(".lede")), ledes2: [...header.querySelectorAll(".lede")].slice(1).map(inline),
     mls: [...header.querySelectorAll(".mls-card")].map((c) => {
       const t = c.querySelector(".mls-title");
-      return { title: txt(t), href: t.getAttribute("href"), desc: txt(c.querySelector(".item-desc")), links: [...c.querySelectorAll(".mls-links a")].map((a) => ({ text: txt(a), href: a.getAttribute("href") })) };
+      return { title: txt(t), href: t.getAttribute("href"), meta: txt(c.querySelector(".mls-meta")), desc: txt(c.querySelector(".item-desc")), links: [...c.querySelectorAll(".mls-links a")].map((a) => ({ text: txt(a), href: a.getAttribute("href") })) };
     }),
     sections: [...SRC.querySelectorAll(".wrap > section")].map((s) => {
       const grid = s.querySelector(".links");
+      // a section of .mls-card blocks (title link, line, chip links) instead of an item grid
+      if (!grid) return { title: txt(s.querySelector(".section-title")), label: txt(s.querySelector(".section-label")), lede: s.querySelector(".section-lede") && inline(s.querySelector(".section-lede")),
+        mls: [...s.querySelectorAll(".mls-card")].map((c) => { const t = c.querySelector(".mls-title");
+          return { title: txt(t), href: t.getAttribute("href"), meta: txt(c.querySelector(".mls-meta")), desc: txt(c.querySelector(".item-desc")), links: [...c.querySelectorAll(".mls-links a")].map((a) => ({ text: txt(a), href: a.getAttribute("href") })) }; }) };
       return {
         title: txt(s.querySelector(".section-title")), label: txt(s.querySelector(".section-label")),
         kind: grid.classList.contains("demo-grid") ? "demo" : grid.classList.contains("docs-grid") ? "docs" : "list",
@@ -238,9 +242,9 @@
   // The .me landing hero (index.md: <div class="me-landing-hero"> around _includes/interactive-hero.html): the same
   // live keccak-256 identity demo as the static include, with the Docs-card orb (MeOrbMark) drawn large, centered and
   // floating in place of the old image. Mirrors me.ts: compoundSeed = keccak256("me.seed/compound:v1::" + who + "::" + secret),
-  // identityHash = keccak256("this.me/identity:v1::" + seed); namespace is display only, never hashed; secret never leaves the input.
-  function MeLandingHero({ tag, seedHref, seedTitle, docsHref }) {
-    const [who, setWho] = React.useState(""), [secret, setSecret] = React.useState(""), [ns, setNs] = React.useState("");
+  // identityHash = keccak256("this.me/identity:v1::" + seed); no namespace is needed; secret never leaves the input.
+  function MeLandingHero({ tag, seedHref, seedTitle, cards }) {
+    const [who, setWho] = React.useState(""), [secret, setSecret] = React.useState("");
     const k = window.keccak256, name = who || ".me";
     const hash = k ? k("this.me/identity:v1::" + (secret ? k("me.seed/compound:v1::" + name + "::" + secret) : name)) : "";
     const field = (value, set, ph, label, type, sx) => h(Box, { component: "input", type, value, placeholder: ph, "aria-label": label, spellCheck: false, autoComplete: "off",
@@ -251,14 +255,21 @@
       h(MeOrbMark, { alt: ".me as a coordinate", big: "clamp(180px, 42vw, 280px)" }),
       h(Box, { title: hash ? "ID Hash: " + hash : "ID Hash", sx: { ...mono, mt: 2, fontSize: ".78rem", color: "text.secondary" } }, hash ? hash.slice(0, 8) + "…" + hash.slice(-6) : "…"),
       h(Link, { href: seedHref, title: seedTitle, underline: "always", sx: { ...mono, display: "inline-block", mt: .25, fontSize: ".72rem", color: "primary.main" } }, "keccak-256"),
-      h(Box, { title: "Where, not what generates the hash", sx: { ...mono, mt: 1, fontSize: ".74rem", color: "primary.main" } }, ns ? name + "." + ns : name),
       h(Box, { component: "h1", sx: { fontSize: "clamp(2rem, 6vw, 2.8rem)", fontWeight: 800, letterSpacing: "-.02em", lineHeight: 1.15, mt: 3, mb: 1 } },
         "Hello, I am ", field(who, setWho, ".me", "Type your own name", "text", { fontWeight: 800, borderColor: "text.primary" })),
       h(Box, { sx: { fontSize: "1.15rem", color: "text.secondary", display: "flex", flexDirection: "column", alignItems: "center", gap: .75 } },
-        field(secret, setSecret, "<secret>", "Secret — feeds the hash, stays local, never a URL", "password", {}),
-        field(ns, setNs, "<namespace>", "Namespace — where, not what generates the hash", "text", {})),
+        field(secret, setSecret, "<secret>", "Secret — feeds the hash, stays local, never a URL", "password", {})),
       tag ? h(Box, { sx: { ...mono, mt: 2.5, fontSize: ".7rem", textTransform: "uppercase", letterSpacing: ".08em", color: "text.secondary" } }, tag) : null,
-      h(Button, { href: docsHref, variant: "outlined", sx: { mt: 2.5, borderRadius: "999px", textTransform: "none", fontWeight: 700, px: 2.5 } }, "⌬ Docs"));
+      cards && cards.length ? h(Box, { sx: { display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: { xs: 1, sm: 2 }, mt: 3, maxWidth: 560, mx: "auto" } }, cards.map((c) => h(GlyphCard, c))) : null);
+  }
+  // .me landing cards: a monochrome line glyph (inline SVG, currentColor, so it follows the theme and never shows tofu) + title
+  function GlyphCard(p) {
+    return h(Box, { "data-gui-node-id": p["data-gui-node-id"], component: "a", href: p.href, sx: { display: "flex", flexDirection: "column", alignItems: "center", gap: 1.25, py: 3, px: { xs: .5, sm: 2 },
+        border: 1, borderColor: "divider", borderRadius: "12px", bgcolor: "background.paper", color: "text.primary", textDecoration: "none", transition: "border-color .14s, transform .14s",
+        "&:hover": { borderColor: "primary.main", transform: "translateY(-1px)", "& svg": { color: "primary.main" } } } },
+      h("svg", { viewBox: "0 0 24 24", width: 40, height: 40, "aria-hidden": "true", fill: "none", stroke: "currentColor", strokeWidth: 1.4, strokeLinecap: "round", strokeLinejoin: "round", style: { display: "block" },
+        dangerouslySetInnerHTML: { __html: p.glyph } }),
+      h("span", { style: { fontWeight: 700, fontSize: "clamp(.85rem, 3.6vw, 1.05rem)" } }, p.title));
   }
   function DocsCover(p) {
     const c = page.cards[p.card], im = c.img;
@@ -287,18 +298,21 @@
   const docCard = (kind) => (it) => N("Card", { component: "a", href: it.href, variant: "outlined", sx: { ...cardSx, p: "16px 20px" } }, [
     it.img && (kind === "docs" ? media(it.img) : listMedia(it.img)), title(it.title), it.desc && desc(it.desc)].filter(Boolean));
   const mlsCard = (m) => N("Card", { variant: "outlined", sx: { borderRadius: "14px", bgcolor: "background.paper", p: "16px 20px", mt: "18px" } }, [
-    N("Link", { href: m.href, underline: "hover", sx: { fontWeight: 600, fontSize: "1.02rem", color: "text.primary" } }, [m.title]),
+    N("Box", { sx: { display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 2 } }, [
+      N("Link", { href: m.href, underline: "hover", sx: { fontWeight: 600, fontSize: "1.02rem", color: "text.primary" } }, [m.title]),
+      m.meta && T(m.meta, { color: "text.secondary", fontSize: ".82rem", whiteSpace: "nowrap" }, { component: "span" })].filter(Boolean)),
     m.desc && desc(m.desc),
-    N("Box", { sx: { display: "flex", flexWrap: "wrap", gap: 1, mt: 1.5 } }, m.links.map((l) => N("Chip", { label: l.text, component: "a", href: l.href, clickable: true, variant: "outlined", size: "small",
-      sx: { fontSize: ".82rem", color: "primary.main", borderColor: "divider", "&:hover": { borderColor: "primary.main" } } }))),
+    m.links.length ? N("Box", { sx: { display: "flex", flexWrap: "wrap", gap: 1, mt: 1.5 } }, m.links.map((l) => N("Chip", { label: l.text, component: "a", href: l.href, clickable: true, variant: "outlined", size: "small",
+      sx: { fontSize: ".82rem", color: "primary.main", borderColor: "divider", "&:hover": { borderColor: "primary.main" } } }))) : null,
   ].filter(Boolean));
   const gridSx = (kind) => kind === "list" ? { display: "flex", flexDirection: "column", gap: "10px" }
     : { display: "grid", gridTemplateColumns: "1fr", gap: kind === "demo" ? "14px" : "10px", [WIDE]: { gridTemplateColumns: "repeat(2, minmax(0, 1fr))" } };
   const section = (s) => N("Box", { component: "section", sx: { py: 4, borderTop: 1, borderColor: "divider" } }, [
     s.title ? T(s.title, { fontSize: "clamp(1.6rem, 4vw, 2.2rem)", lineHeight: 1.1, letterSpacing: "-.02em", fontWeight: 800, m: 0, mb: "18px" }, { component: "h2" })
       : T(s.label, { fontSize: ".78rem", textTransform: "uppercase", letterSpacing: ".08em", color: "text.secondary", m: 0, mb: "18px" }, { component: "p" }),
-    N("Box", { sx: gridSx(s.kind) }, s.items.map(s.kind === "demo" ? demoCard : docCard(s.kind))),
-  ]);
+    s.lede && T(s.lede, { color: "text.secondary", fontSize: ".95rem", lineHeight: 1.6, m: 0, mb: "6px" }, { component: "p" }),
+    s.mls ? N("Box", {}, s.mls.map(mlsCard)) : N("Box", { sx: gridSx(s.kind) }, s.items.map(s.kind === "demo" ? demoCard : docCard(s.kind))),
+  ].filter(Boolean));
   // /.me/Demos/ index: kicker, h1, one line, then image-left cards in 2 columns from 720px (as the static page)
   const indexCard = (c) => N("Card", { component: "a", href: c.href, variant: "outlined", sx: { ...cardSx, display: "flex", flexDirection: "row", alignItems: "stretch", minHeight: 140, overflow: "hidden", borderRadius: "12px",
       "&:hover": { borderColor: "primary.main", boxShadow: 3, transform: "translateY(-1px)", textDecoration: "none" } } }, [
@@ -492,8 +506,8 @@
   const blocks = (el) => [...el.children].map((b) => {
     const t = tagOf(b);
     if (t === "script" || t === "style") return null;
-    if (landing && b === landing) { const a = b.querySelector("a[href*='Seed']"), d = b.querySelector("a[href$='/docs'], a[href$='/docs/']");
-      return N("MeLandingHero", { tag: txt(b.querySelector(".me-hero-tag")), seedHref: a && a.getAttribute("href"), seedTitle: a && a.getAttribute("title"), docsHref: d && d.getAttribute("href") }); }
+    if (landing && b === landing) { const a = b.querySelector("a[href*='Seed']"), cards = [...b.querySelectorAll(".root-cards > a.card")].map((c) => ({ href: c.getAttribute("href"), title: txt(c.querySelector(".card-title")), glyph: c.querySelector("svg.card-glyph")?.innerHTML || "" }));
+      return N("MeLandingHero", { tag: txt(b.querySelector(".me-hero-tag")), seedHref: a && a.getAttribute("href"), seedTitle: a && a.getAttribute("title"), cards }); }
     if (landing && (b.classList.contains("static-hero") || b.classList.contains("readme-intro") || b.classList.contains("readme-demos"))) return null;
     // the landing's demo grid (index.md): emoji title, one line, a 1-2 line .me example (.me highlighter), whole card links
     if (b.classList.contains("me-demo-cards")) return N("Box", { sx: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(250px, 1fr))", gap: "14px", mt: 1, mb: 2 } },
@@ -577,8 +591,10 @@
     N("Box", { component: "main", sx: { width: "min(760px, calc(100% - 40px))", mx: "auto", pt: 1.5 } }, [
       N("Box", { component: "header", sx: { pt: 3.5, pb: 5 } }, [
         T(page.h1, { fontSize: "clamp(2.2rem, 6vw, 3.4rem)", lineHeight: 1.05, letterSpacing: "-.03em", fontWeight: 800, m: 0, mb: 1.75 }, { component: "h1" }),
+        page.lede && T(page.lede, { fontSize: "1.05rem", color: "text.secondary", lineHeight: 1.6, m: 0, mb: 1 }, { component: "p" }),
+        ...(page.ledes2 || []).map((l) => T(l, { fontSize: ".9rem", color: "text.secondary", lineHeight: 1.6, m: 0, mb: 1 }, { component: "p" })),
         ...page.mls.map(mlsCard),
-      ]),
+      ].filter(Boolean)),
       ...page.sections.map(section),
       page.footer && T(page.footer, { pt: 3.75, pb: 7.5, color: "text.secondary", fontSize: ".85rem", borderTop: 1, borderColor: "divider", mt: 2.5 }, { component: "footer" }),
     ].filter(Boolean)),
@@ -596,7 +612,7 @@
   const FK = docPage && window.FanoutKernel && document.querySelector(".fanout-viz") ? window.FanoutKernel : null;
   G.mount(spec, ROOT, {
     ...(FK ? { me: FK } : {}),
-    gui: { ...G, ...(FK ? { render: undefined, RunMe: undefined } : {}), Theme: PageTheme, registry: { ...(G.Registry || G.registry), LandingTopBar, DocsCover, MeOrbMark, MeLandingHero, MeCodeBlock, DocCardCover, ModeHtml, ...(window.KernelTimeline ? { KernelTimeline: window.KernelTimeline } : {}), KernelBadge, ...(window.MeRun ? { MeRunBlock: window.MeRun.MeRunBlock } : {}), ...(window.AxiomsLive ? { AxiomProof: window.AxiomsLive.AxiomProof, AxiomKernel: window.AxiomsLive.AxiomKernel } : {}), ...(window.FanoutViz ? { FanoutViz: window.FanoutViz } : {}), ...(window.AudienceVenn ? { AudienceVenn: window.AudienceVenn } : {}), ...(window.SocialGraphLive ? { SocialGraphLive: window.SocialGraphLive } : {}) } },
+    gui: { ...G, ...(FK ? { render: undefined, RunMe: undefined } : {}), Theme: PageTheme, registry: { ...(G.Registry || G.registry), LandingTopBar, GlyphCard, DocsCover, MeOrbMark, MeLandingHero, MeCodeBlock, DocCardCover, ModeHtml, ...(window.KernelTimeline ? { KernelTimeline: window.KernelTimeline } : {}), KernelBadge, ...(window.MeRun ? { MeRunBlock: window.MeRun.MeRunBlock } : {}), ...(window.AxiomsLive ? { AxiomProof: window.AxiomsLive.AxiomProof, AxiomKernel: window.AxiomsLive.AxiomKernel } : {}), ...(window.FanoutViz ? { FanoutViz: window.FanoutViz } : {}), ...(window.AudienceVenn ? { AudienceVenn: window.AudienceVenn } : {}), ...(window.SocialGraphLive ? { SocialGraphLive: window.SocialGraphLive } : {}) } },
     devtools: { enabled: true, inspector: INSPECTOR_ON, adminView: false, inspectorToggleVisible: false },
   });
   html.classList.add("gui-on");
