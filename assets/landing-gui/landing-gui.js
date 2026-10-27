@@ -512,6 +512,12 @@
     // the landing's demo grid (index.md): emoji title, one line, a 1-2 line .me example (.me highlighter), whole card links
     if (b.classList.contains("me-demo-cards")) return N("Box", { sx: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(250px, 1fr))", gap: "14px", mt: 1, mb: 2 } },
       [...b.querySelectorAll("a.card")].map((a) => { const c = txt(a.querySelector(".card-code"));
+        // last slot: the Demos mosaic (same cover as the docs index) over one line; the image fills whatever height the row gives
+        if (a.classList.contains("card-all")) return N("Card", { component: "a", href: a.getAttribute("href"), variant: "outlined", "aria-label": "View all demos", sx: { display: "flex", flexDirection: "column", p: 0, overflow: "hidden", borderRadius: "12px", textDecoration: "none",
+            transition: "border-color .14s, box-shadow .14s, transform .14s", "&:hover": { borderColor: "primary.main", boxShadow: 3, transform: "translateY(-1px)", textDecoration: "none" } } }, [
+          N("Box", { sx: { position: "relative", flex: 1, minHeight: "150px" } }, [N("Box", { component: "img", src: a.querySelector("img").getAttribute("src"), alt: "", loading: "lazy", sx: { position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", display: "block" } })]),
+          T(txt(a.querySelector(".card-title")), { fontSize: "1rem", fontWeight: 700, lineHeight: 1.3, color: "text.primary", textAlign: "center", py: 1.5, px: 2 }),
+        ]);
         return N("Card", { component: "a", href: a.getAttribute("href"), variant: "outlined", sx: { display: "flex", flexDirection: "column", gap: .75, p: 2, borderRadius: "12px", textDecoration: "none",
             transition: "border-color .14s, box-shadow .14s, transform .14s", "&:hover": { borderColor: "primary.main", boxShadow: 3, transform: "translateY(-1px)", textDecoration: "none" } } }, [
           T(txt(a.querySelector(".card-title")), { fontSize: "1rem", fontWeight: 700, lineHeight: 1.3, color: "text.primary" }),

@@ -23,10 +23,10 @@ scripts:
 <a class="card" href="https://neurons-me.github.io/smart-cities/"><span class="card-title">🏙️ Smart City</span><span class="card-desc">A city reacting as one connected graph.</span><code class="card-code">me.as(null)(&quot;security.alertLevel&quot;)</code></a>
 <a class="card" href="https://neurons-me.github.io/.me/docs/Hemisphere-Scale.html"><span class="card-title">🌐 Hemisphere Scale</span><span class="card-desc">1 million sensors. One flips. Only 6 recompute.</span><code class="card-code">me.explain(&quot;services.generatorMode&quot;).meta.k // 6</code></a>
 <a class="card" href="https://neurons-me.github.io/.me/docs/Extreme-Fan-Out.html"><span class="card-title">⚡ Extreme Fan-Out</span><span class="card-desc">One write updates 100k dependents.</span><code class="card-code">me.explain(&quot;dep[100000].out&quot;).meta.k // 100000</code></a>
+<a class="card card-all" href="https://neurons-me.github.io/.me/Demos/"><img src="https://neurons-me.github.io/.me/docs/assets/demos-cover.webp" alt="Demos"><span class="card-title">View all demos →</span></a>
 </div>
-<p class="me-demo-all"><a href="https://github.com/neurons-me/.me/tree/main/Typescript/tests/Demos">⌬ ⊚ View all demos →</a></p>
 
-<style>.readme-demos{display:none} .me-demo-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px;margin:0 0 12px} .me-demo-cards a.card{display:flex;flex-direction:column;gap:6px;padding:14px;border:1px solid rgba(127,127,127,.35);border-radius:12px;text-decoration:none;color:inherit} .me-demo-cards .card-title{font-weight:700} .me-demo-cards .card-desc{font-size:.88rem;opacity:.8} .me-demo-cards .card-code{font-size:.78rem;overflow-x:auto;white-space:nowrap}</style>
+<style>.readme-demos{display:none} .me-demo-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px;margin:0 0 12px} .me-demo-cards a.card{display:flex;flex-direction:column;gap:6px;padding:14px;border:1px solid rgba(127,127,127,.35);border-radius:12px;text-decoration:none;color:inherit} .me-demo-cards .card-title{font-weight:700} .me-demo-cards .card-desc{font-size:.88rem;opacity:.8} .me-demo-cards a.card-all{padding:0;overflow:hidden;gap:0} .me-demo-cards a.card-all img{flex:1;width:100%;min-height:130px;object-fit:cover;display:block} .me-demo-cards a.card-all .card-title{padding:12px 14px;text-align:center} .me-demo-cards .card-code{font-size:.78rem;overflow-x:auto;white-space:nowrap}</style>
 
 <div class="me-intro-head" markdown="1">
 
