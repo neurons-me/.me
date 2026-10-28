@@ -37,14 +37,21 @@ assert.equal(wrongKeyRejected, true);
 console.log("   • outsider private key could not unwrap the secret");
 
 console.log("");
+// Flip one bit in the middle decoded byte so the bytes always really change. (Swapping the last base64url
+// character for "A"/"B" could touch only padding bits: same bytes, unwrap correctly succeeded, flaky failure.)
+function flipMiddleB64u(blob) {
+  const prefix = blob.startsWith("b64u:") ? "b64u:" : "";
+  const bytes = Buffer.from(prefix ? blob.slice(prefix.length) : blob, "base64url");
+  bytes[bytes.length >> 1] ^= 0x01;
+  return prefix + bytes.toString("base64url");
+}
+
 console.log("--- Case 2: tampered ciphertext must fail ---");
 const tamperedCiphertext = {
   ...envelope,
   encryption: {
     ...envelope.encryption,
-    ciphertext:
-      envelope.encryption.ciphertext.slice(0, -1) +
-      (envelope.encryption.ciphertext.endsWith("A") ? "B" : "A"),
+    ciphertext: flipMiddleB64u(envelope.encryption.ciphertext),
   },
 };
 
@@ -63,7 +70,7 @@ const tamperedTag = {
   ...envelope,
   encryption: {
     ...envelope.encryption,
-    tag: envelope.encryption.tag.slice(0, -1) + (envelope.encryption.tag.endsWith("A") ? "B" : "A"),
+    tag: flipMiddleB64u(envelope.encryption.tag),
   },
 };
 
