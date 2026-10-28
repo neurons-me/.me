@@ -78,6 +78,8 @@
     }),
     sections: [...SRC.querySelectorAll(".wrap > section")].map((s) => {
       const grid = s.querySelector(".links");
+      // a live widget section (<section data-live="Name">): a component a page script put on window.LandingLive
+      if (s.dataset.live && window.LandingLive && window.LandingLive[s.dataset.live]) return { title: txt(s.querySelector(".section-title")), label: txt(s.querySelector(".section-label")), lede: s.querySelector(".section-lede") && inline(s.querySelector(".section-lede")), live: s.dataset.live };
       // a section of .mls-card blocks (title link, line, chip links) instead of an item grid
       if (!grid) return { title: txt(s.querySelector(".section-title")), label: txt(s.querySelector(".section-label")), lede: s.querySelector(".section-lede") && inline(s.querySelector(".section-lede")),
         mls: [...s.querySelectorAll(".mls-card")].map((c) => { const t = c.querySelector(".mls-title");
@@ -314,7 +316,7 @@
     s.title ? T(s.title, { fontSize: "clamp(1.6rem, 4vw, 2.2rem)", lineHeight: 1.1, letterSpacing: "-.02em", fontWeight: 800, m: 0, mb: "18px" }, { component: "h2" })
       : T(s.label, { fontSize: ".78rem", textTransform: "uppercase", letterSpacing: ".08em", color: "text.secondary", m: 0, mb: "18px" }, { component: "p" }),
     s.lede && T(s.lede, { color: "text.secondary", fontSize: ".95rem", lineHeight: 1.6, m: 0, mb: "6px" }, { component: "p" }),
-    s.mls ? N("Box", {}, s.mls.map(mlsCard)) : N("Box", { sx: gridSx(s.kind) }, s.items.map(s.kind === "demo" ? demoCard : docCard(s.kind))),
+    s.live ? N(s.live, {}) : s.mls ? N("Box", {}, s.mls.map(mlsCard)) : N("Box", { sx: gridSx(s.kind) }, s.items.map(s.kind === "demo" ? demoCard : docCard(s.kind))),
   ].filter(Boolean));
   // /.me/Demos/ index: kicker, h1, one line, then image-left cards in 2 columns from 720px (as the static page)
   const indexCard = (c) => N("Card", { component: "a", href: c.href, variant: "outlined", sx: { ...cardSx, display: "flex", flexDirection: "row", alignItems: "stretch", minHeight: 140, overflow: "hidden", borderRadius: "12px",
@@ -621,7 +623,7 @@
   const FK = docPage && window.FanoutKernel && document.querySelector(".fanout-viz") ? window.FanoutKernel : null;
   G.mount(spec, ROOT, {
     ...(FK ? { me: FK } : {}),
-    gui: { ...G, ...(FK ? { render: undefined, RunMe: undefined } : {}), Theme: PageTheme, registry: { ...(G.Registry || G.registry), LandingTopBar, GlyphCard, DocsCover, MeOrbMark, MeLandingHero, MeCodeBlock, DocCardCover, ModeHtml, ...(window.KernelTimeline ? { KernelTimeline: window.KernelTimeline } : {}), KernelBadge, ...(window.MeRun ? { MeRunBlock: window.MeRun.MeRunBlock } : {}), ...(window.AxiomsLive ? { AxiomProof: window.AxiomsLive.AxiomProof, AxiomKernel: window.AxiomsLive.AxiomKernel } : {}), ...(window.FanoutViz ? { FanoutViz: window.FanoutViz } : {}), ...(window.AudienceVenn ? { AudienceVenn: window.AudienceVenn } : {}), ...(window.SocialGraphLive ? { SocialGraphLive: window.SocialGraphLive } : {}) } },
+    gui: { ...G, ...(FK ? { render: undefined, RunMe: undefined } : {}), Theme: PageTheme, registry: { ...(G.Registry || G.registry), ...(window.LandingLive || {}), LandingTopBar, GlyphCard, DocsCover, MeOrbMark, MeLandingHero, MeCodeBlock, DocCardCover, ModeHtml, ...(window.KernelTimeline ? { KernelTimeline: window.KernelTimeline } : {}), KernelBadge, ...(window.MeRun ? { MeRunBlock: window.MeRun.MeRunBlock } : {}), ...(window.AxiomsLive ? { AxiomProof: window.AxiomsLive.AxiomProof, AxiomKernel: window.AxiomsLive.AxiomKernel } : {}), ...(window.FanoutViz ? { FanoutViz: window.FanoutViz } : {}), ...(window.AudienceVenn ? { AudienceVenn: window.AudienceVenn } : {}), ...(window.SocialGraphLive ? { SocialGraphLive: window.SocialGraphLive } : {}) } },
     devtools: { enabled: true, inspector: INSPECTOR_ON, adminView: false, inspectorToggleVisible: false },
   });
   html.classList.add("gui-on");
