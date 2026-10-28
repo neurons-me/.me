@@ -760,6 +760,8 @@ function TopSearch() {
 }
 // ── chrome (as on the Veracruz .GUI page) ──
 const LOGO = "https://res.cloudinary.com/dkwnxf6gm/image/upload/v1760629064/neurons.me_b50f6a.png";
+// me:// sibling switcher: ▾ after a path segment lists the pages at the same level (shared map + menu: /assets/me-siblings.js, loaded on demand)
+function SibSlot(p) { var f = React.useState(0)[1]; React.useEffect(function () { if (window.MeSiblings) return; var on = function () { f(1); }; addEventListener("me-siblings", on); if (!document.getElementById("me-siblings")) { var s = document.createElement("script"); s.id = "me-siblings"; s.src = "/assets/me-siblings.js?v=1"; document.head.appendChild(s); } return function () { removeEventListener("me-siblings", on); }; }, []); return window.MeSiblings ? window.MeSiblings.node(p.path, p.i) : null; }
 const PATH_SEGMENTS = [
   { text: "me://", href: "https://neurons-me.github.io/.me/", title: ".me" },
   { text: "Demos", href: "https://neurons-me.github.io/.me/Demos/", title: ".me demos" },
@@ -769,7 +771,7 @@ const PATH_SEGMENTS = [
 function BrandBar(p) {
   const seg = (s, i) => [i > 0 && !PATH_SEGMENTS[i - 1].text.endsWith("://") ? h(Box, { component: "span", key: `sep${i}`, sx: { color: "text.disabled", mx: .15 } }, "/") : null,
     s.href ? h(Link, { key: s.text, href: s.href, underline: "hover", title: s.title, sx: { color: "primary.main", fontFamily: MONO, fontSize: 13 } }, s.text)
-      : h(Box, { component: "span", key: s.text, "aria-current": "page", sx: { color: "text.primary", fontFamily: MONO, fontSize: 13, fontWeight: 600 } }, s.text)];
+      : h(Box, { component: "span", key: s.text, "aria-current": "page", sx: { color: "text.primary", fontFamily: MONO, fontSize: 13, fontWeight: 600 } }, s.text), h(SibSlot, { key: "sib" + i, path: PATH_SEGMENTS, i: i })];
   return h(Box, { component: "header", "data-gui-node-id": p["data-gui-node-id"], sx: { position: "relative", display: "flex", alignItems: "center", gap: 1.25, flexWrap: "wrap", px: 1.75, py: .85, borderBottom: 1, borderColor: "divider", bgcolor: "background.paper" } },
     h(Link, { href: "https://neurons-me.github.io/", title: "neurons.me", underline: "none", sx: { display: "inline-flex", lineHeight: 0, flexShrink: 0 } }, h("img", { src: LOGO, alt: ".me", width: 34, height: 34, style: { display: "block", objectFit: "contain" } })),
     h(Box, { component: "nav", "aria-label": "me path", sx: { display: "inline-flex", alignItems: "center", flexWrap: "wrap", minWidth: 0 } }, ...PATH_SEGMENTS.flatMap(seg)),

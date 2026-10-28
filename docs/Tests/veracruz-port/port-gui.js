@@ -821,7 +821,7 @@ const pageType = (type, C) => ({ type, resolve: (spec) => { const { key: _k, ...
 const PAGE_TYPES = Object.fromEntries([
   ["PortValue", ValView], ["PortSum", SumView], ["PortBar", BarView], ["PortRow", Row], ["PortFormula", Formula], ["PortPanel", Panel], ["PortSectionHeader", SectionHeader], ["PortSectionToggle", SectionToggle], ["PortSectionBody", SectionBody],
   ["PortLegend", PortLegend], ["PortHud", PortHud], ["PortMarker", PortMarker], ["PortPins", PortPins], ["PortSvgGroup", SvgGroup],
-  ["PortTour", TourStrip], ["PortKernelStrip", KernelStrip], ["PortBrandLogo", BrandLogo], ["PortBrandActions", BrandActions], ["PortKernelLink", KernelLink], ["PortRunControls", RunControls], ["PortStats", Stats], ["PortWrites", Writes],
+  ["PortTour", TourStrip], ["PortKernelStrip", KernelStrip], ["PortBrandLogo", BrandLogo], ["PortSibSlot", PortSibSlot], ["PortBrandActions", BrandActions], ["PortKernelLink", KernelLink], ["PortRunControls", RunControls], ["PortStats", Stats], ["PortWrites", Writes],
   ["PortExplain", ExplainLeaf], ["PortClassExplain", ClassExplain], ["PortGuiBuild", GuiBuildInfo], ["PortTruckCard", TruckCard], ["PortLmStrip", LmStrip], ["PortLmEstimate", LmEstimate], ["PortLmFeed", LmFeed], ["PortSeed", SeedCode],
   ["PortVerifyOut", VerifyOut], ["PortKernelWait", KernelWait], ["PortOffMap", OffMap], ["PortSimClock", SimClock],
 ].map(([t, C]) => [t, pageType(t, C)]).concat([
@@ -1159,6 +1159,9 @@ function mapSpec(live) {
 }
 
 // One brand line: cerebrito + navigable me:// path (SmartCity → hub). Smart Cities left the right menu.
+// me:// sibling switcher: ▾ after a path segment lists the pages at the same level (shared map + menu: /assets/me-siblings.js, loaded on demand)
+function SibSlot(p) { var f = React.useState(0)[1]; React.useEffect(function () { if (window.MeSiblings) return; var on = function () { f(1); }; addEventListener("me-siblings", on); if (!document.getElementById("me-siblings")) { var s = document.createElement("script"); s.id = "me-siblings"; s.src = "/assets/me-siblings.js?v=1"; document.head.appendChild(s); } return function () { removeEventListener("me-siblings", on); }; }, []); return window.MeSiblings ? window.MeSiblings.node(p.path, p.i) : null; }
+function PortSibSlot(p) { return h(SibSlot, { path: PATH_SEGMENTS, i: p.i }); }
 const PATH_SEGMENTS = [
   { text: "me://", href: "https://neurons-me.github.io/.me/", title: ".me" },
   { text: "Demos", href: "https://neurons-me.github.io/.me/Demos/", title: ".me demos" },
@@ -1174,7 +1177,8 @@ function brandBarSpec(s = "brand") {
     const node = seg.href
       ? LINK(id, { href: seg.href, underline: "hover", title: seg.title, sx: { color: "primary.main", fontFamily: MONO, fontSize: 13 } }, seg.text)
       : N("Typography", id, { component: "span", title: seg.title, sx: { color: "text.primary", fontFamily: MONO, fontSize: 13, fontWeight: 600 } }, seg.text);
-    return sep ? [sep, node] : [node];
+    const sib = N("PortSibSlot", `${id}:sib`, { i });
+    return sep ? [sep, node, sib] : [node, sib];
   };
   return N("Box", s, {
     component: "header",

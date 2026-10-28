@@ -179,35 +179,8 @@
       h(Menu, { id: "settings-menu", anchorEl: anchor, open: !!anchor, onClose: close, "data-gui-inspector-control": "true", anchorOrigin: { vertical: "bottom", horizontal: "right" }, transformOrigin: { vertical: "top", horizontal: "right" } },
         ...items.map((it) => h(MenuItem, { key: it.key, "data-settings-item": it.key, onClick: () => { close(); it.onClick(); } }, h(ListItemIcon, null, it.icon), h(ListItemText, null, it.label)))));
   }
-  // ── sibling switcher: a ▾ after a path segment lists the other pages at the same level (children of the segment
-  // before it). Only real, existing sections; keyed by the parent's path. Shown only when the segment is in its list.
-  const ME = "https://neurons-me.github.io";
-  const SIBLINGS = {
-    "/.me/": [["Docs", "/.me/docs/"], ["Demos", "/.me/Demos/"], ["Benchmarks", "/.me/docs/Benchmarks/"]],
-    "/.me/Demos/": [["Smart Cities", "/smart-cities/"], ["Robots", "/robots/"], ["Social Graphs", "/social-graphs/"], ["Digital Space Algebra", "/digital-space-algebra/"],
-      ["Wallet Split", "/.me/Typescript/typedocs/examples/WalletSplit.html"], ["AffinityModel", "/.me/Demos/AffinityModel/"], ["Shops", "/.me/Typescript/typedocs/examples/Shops_Admin.html"]],
-    "/.me/docs/Benchmarks/": [["Kernel", "/.me/docs/Benchmarks/benchmarks.html"], ["GTFS", "/.me/docs/Benchmarks/GTFS/"], ["Phases", "/.me/docs/Benchmarks/Phases/"], ["Secret-Scope", "/.me/docs/Benchmarks/Secret-Scope/"]],
-  };
-  const pathOf = (u) => { try { return decodeURI(new URL(u, location.href).pathname).replace(/index\.html?$/i, ""); } catch (e) { return null; } };
-  function siblingsFor(P, i) {
-    const list = i > 0 && P[i - 1].href && SIBLINGS[pathOf(P[i - 1].href)];
-    if (!list) return null;
-    const me = pathOf(P[i].href || location.href);
-    const items = list.map(([text, u]) => ({ text, href: ME + u, current: pathOf(ME + u) === me || text === P[i].text }));
-    return items.some((x) => x.current) ? items : null;
-  }
-  function SiblingMenu({ items, label }) {
-    const [anchor, setAnchor] = React.useState(null), close = () => setAnchor(null), id = React.useId ? React.useId() : "sib-" + label;
-    return h(React.Fragment, null,
-      h(IconButton, { size: "small", "data-sibling-switcher": label, "aria-label": `Pages at the same level as ${label}`, "aria-haspopup": "menu", "aria-expanded": anchor ? "true" : "false", "aria-controls": anchor ? id : undefined,
-        title: "Same level", onClick: (e) => setAnchor(anchor ? null : e.currentTarget),
-        sx: { color: "text.secondary", p: 0, ml: .1, width: { xs: 32, sm: 24 }, height: { xs: 32, sm: 24 }, borderRadius: 1, flexShrink: 0, "&:hover": { color: "text.primary" } } }, h(Ico, { kind: "down", size: 16 })),
-      h(Menu, { id, anchorEl: anchor, open: !!anchor, onClose: close, "data-gui-inspector-control": "true", anchorOrigin: { vertical: "bottom", horizontal: "left" }, transformOrigin: { vertical: "top", horizontal: "left" }, marginThreshold: 8,
-        slotProps: { list: { "aria-label": `Pages at the same level as ${label}`, dense: true }, paper: { sx: { mt: .5, minWidth: 200, maxWidth: "calc(100vw - 16px)" } } } },
-        ...items.map((it) => h(MenuItem, { key: it.href, component: "a", href: it.href, selected: it.current, "aria-current": it.current ? "page" : undefined, onClick: close,
-          sx: { fontFamily: MONO, fontSize: 13, minHeight: 36, gap: 1, color: it.current ? "text.primary" : "text.secondary", fontWeight: it.current ? 700 : 400, whiteSpace: "normal" } },
-          h(Box, { component: "span", "aria-hidden": "true", sx: { width: 8, color: "primary.main" } }, it.current ? "\u2022" : ""), it.text))));
-  }
+  // me:// sibling switcher: ▾ after a path segment lists the pages at the same level (shared map + menu: /assets/me-siblings.js, loaded on demand)
+  function SibSlot(p) { var f = React.useState(0)[1]; React.useEffect(function () { if (window.MeSiblings) return; var on = function () { f(1); }; addEventListener("me-siblings", on); if (!document.getElementById("me-siblings")) { var s = document.createElement("script"); s.id = "me-siblings"; s.src = "/assets/me-siblings.js?v=1"; document.head.appendChild(s); } return function () { removeEventListener("me-siblings", on); }; }, []); return window.MeSiblings ? window.MeSiblings.node(p.path, p.i) : null; }
   function LandingTopBar(p) {
     // when the path doesn't fit (deep pages on phones), the middle segments collapse to "…" (a link to the parent), so the last one shows in full
     const P = page.path, last = P.length - 1, [mode, setMode] = React.useState("measure"), col = mode === "col", pathRef = React.useRef(null);
@@ -220,7 +193,7 @@
       ell ? h(Box, { component: "span", key: "ellsep", sx: { color: "text.disabled", mx: .15 } }, "/") : null,
       hide ? null : s.href ? h(Link, { key: s.text, href: s.href, underline: "hover", title: s.title, sx: { color: "primary.main", fontFamily: MONO, fontSize: { xs: 12, sm: 13 } } }, s.text)
         : h(Box, { component: "span", key: s.text, "aria-current": "page", sx: { color: "text.primary", fontFamily: MONO, fontSize: { xs: 12, sm: 13 }, fontWeight: 600, flexShrink: 0 } }, s.text),
-      !hide && siblingsFor(P, i) ? h(SiblingMenu, { key: `sib${i}`, items: siblingsFor(P, i), label: s.text }) : null]; };
+      hide ? null : h(SibSlot, { key: "sib" + i, path: P, i: i })]; };
     return h(Box, { component: "nav", "aria-label": "me path", "data-gui-node-id": p["data-gui-node-id"], sx: { position: "sticky", top: 0, zIndex: 100, display: "flex", alignItems: "center", gap: { xs: .5, sm: 1.25 }, px: { xs: .75, sm: 2.5 }, minHeight: 48, borderBottom: 1, borderColor: "divider", bgcolor: "background.paper" } },
       h(Link, { href: "https://neurons-me.github.io/", title: "neurons.me", underline: "none", sx: { display: "inline-flex", lineHeight: 0, flexShrink: 0 } }, h("img", { src: LOGO, alt: "neurons.me", width: 28, height: 28, style: { display: "block", objectFit: "contain" } })),
       h(Box, { ref: pathRef, sx: { display: "inline-flex", alignItems: "center", minWidth: 0, overflowX: "auto", whiteSpace: "nowrap", scrollbarWidth: "none", "&::-webkit-scrollbar": { display: "none" } } }, ...page.path.flatMap(seg)),
