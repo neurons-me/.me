@@ -532,7 +532,13 @@ async function sha256Hex(text) {
 }
 
 async function loadKernel() {
-  const npm = new URLSearchParams(location.search).get("npm");
+  // Shared version selector (/.me/tests/): ?v=x.y.z (or the older ?npm=), default = npm "latest" from jsDelivr.
+  // ?v=KERNEL.version (or the API being unreachable) runs the hash-pinned kernel below.
+  const q = new URLSearchParams(location.search);
+  let npm = q.get("v") || q.get("npm");
+  if (!npm || npm === "latest") {
+    try { npm = (await (await fetch("https://data.jsdelivr.com/v1/packages/npm/this.me")).json()).tags.latest; } catch (e) { npm = null; }
+  }
   if (npm && /^\d+\.\d+\.\d+(-[0-9A-Za-z.]+)?$/.test(npm) && npm !== KERNEL.version) {
     const url = `https://cdn.jsdelivr.net/npm/this.me@${npm}/dist/me.es.js`;
     const mod = await import(url);
@@ -822,5 +828,6 @@ const CASES = [
 
 main();
 </script>
+<script src="/.me/assets/live-tests/version-bar.js?v=1"></script>
 </body>
 </html>

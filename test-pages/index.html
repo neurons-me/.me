@@ -7,10 +7,10 @@ permalink: /tests/
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Tests · .me</title>
-  <meta name="description" content=".me: the test suites, what each one checks, and the last run." />
+  <meta name="description" content="What .me promises, in five groups, and the last run. Pick a this.me version on any live page." />
   <meta property="og:type" content="website" />
   <meta property="og:title" content=".me" />
-  <meta property="og:description" content=".me: the test suites, what each one checks, and the last run." />
+  <meta property="og:description" content="What .me promises, in five groups, and the last run. Pick a this.me version on any live page." />
   <link rel="icon" type="image/png" href="https://res.cloudinary.com/dkwnxf6gm/image/upload/v1760629064/neurons.me_b50f6a.png" />
   <!-- .GUI (this.gui@4.2.0) renders this page from the static markup below (/.me/assets/landing-gui/landing-gui.js); the static page stays as the no-JS / CDN-failure fallback.
        Same page-scoped theme keys as /.me/ and /.me/docs/, neurons.me, dark by default. -->
@@ -54,57 +54,28 @@ permalink: /tests/
   <div class="wrap">
     <header>
       <h1>Tests</h1>
-      <p class="lede">What the .me test suites check, and the last run. One page per npm test script.</p>
-      <div class="mls-card"><a class="mls-title" href="/.me/tests/types/">Types</a><span class="mls-meta">0 type errors</span><p class="item-desc">The whole TypeScript project (src, tests, entry points) type-checks with tsc --noEmit.</p><div class="mls-links"></div></div>
-      <div class="mls-card"><a class="mls-title" href="/.me/tests/readme/">README examples</a><span class="mls-meta">8 examples</span><p class="item-desc">The examples in the README still do what the README says.</p><div class="mls-links"></div></div>
-      <div class="mls-card"><a class="mls-title" href="/.me/tests/derivations/">Derivations</a><span class="mls-meta">102 checks, 2 known failures</span><p class="item-desc">A derived value recomputes when, and only when, an input it reads changes.</p><div class="mls-links"></div></div>
-      <div class="mls-card"><a class="mls-title" href="/.me/tests/perf-fix/">Evaluator memo</a><span class="mls-meta">21 checks</span><p class="item-desc">The compiled-formula memo and the no-secret-scope fast path return what the plain evaluator returned.</p><div class="mls-links"></div></div>
-      <div class="mls-card"><a class="mls-title" href="/.me/tests/aggregates/">Collection aggregates []</a><span class="mls-meta">242 checks</span><p class="item-desc">x[] counts members and x[].f sums a field: grammar, routing, exact sums, statuses and secret-scope behavior.</p><div class="mls-links"></div></div>
-      <div class="mls-card"><a class="mls-title" href="/.me/tests/paths/">Path identity</a><span class="mls-meta">2 known failures, 0 passing checks</span><p class="item-desc">Two different segment lists must be two different places. Today they are not: this suite pins that bug.</p><div class="mls-links"></div></div>
-      <div class="mls-card"><a class="mls-title" href="/.me/tests/demos/">Demos</a><span class="mls-meta">10 demos</span><p class="item-desc">Each demo under tests/Demos runs to the end, one after another, in one process.</p><div class="mls-links"></div></div>
-      <div class="mls-card"><a class="mls-title" href="/.me/tests/umd/">UMD build</a><span class="mls-meta">1 test</span><p class="item-desc">The UMD bundle in dist/ loads and a kernel writes and reads a value through it.</p><div class="mls-links"></div></div>
-      <div class="mls-card"><a class="mls-title" href="/.me/tests/contracts/">Contracts</a><span class="mls-meta">38 checks</span><p class="item-desc">The DSL, the secret-blob format and pointer resolution keep their documented contracts.</p><div class="mls-links"></div></div>
-      <div class="mls-card"><a class="mls-title" href="/.me/tests/identity-bound-secrets/">Identity-bound secrets</a><span class="mls-meta">11 tests</span><p class="item-desc">A secret branch opens only for the identity, scope secrets and noise boundary that wrote it.</p><div class="mls-links"></div></div>
-      <div class="mls-card"><a class="mls-title" href="/.me/tests/security/">Security battery</a><span class="mls-meta">165 checks</span><p class="item-desc">An adversarial battery against identity-bound secrets: isolation, leakage, tampering, lifecycle, migration, audiences.</p><div class="mls-links"></div></div>
-      <div class="mls-card"><a class="mls-title" href="/.me/tests/phase2/">Phase 2: disk smoke</a><span class="mls-meta">1 smoke run</span><p class="item-desc">A 10 MB encrypted workload is written to disk in chunks, read back and explained.</p><div class="mls-links"></div></div>
-      <div class="mls-card"><a class="mls-title" href="/.me/tests/phase3/">Phase 3: vector search</a><span class="mls-meta">2 scripts</span><p class="item-desc">Exact and IVF vector search return the right neighbors over encrypted chunks.</p><div class="mls-links"></div></div>
+      <p class="lede">What .me promises, in five groups, and the last run. Pick a this.me version on any live page.</p>
+      <div class="mls-card"><a class="mls-title" href="/.me/tests/axioms/">Axioms &amp; operators</a><span class="mls-meta">13 axioms · live</span><p class="item-desc">A0–A9 and the operators @ _ ~ __ -&gt; ? -, run live in your browser against any this.me version, each with its Rust twin.</p><div class="mls-links"></div></div>
+      <div class="mls-card"><a class="mls-title" href="/.me/tests/identity/">Identity</a><span class="mls-meta">5 suites</span><p class="item-desc">Seed and reseed, the root claim, identity-bound secrets, isolation, reconstruction.</p><div class="mls-links"></div></div>
+      <div class="mls-card"><a class="mls-title" href="/.me/tests/space-algebra/">Space algebra</a><span class="mls-meta">4 entries</span><p class="item-desc">Digital Space Algebra, encrypted audiences, audience laws L1–L9, the audience seed.</p><div class="mls-links"></div></div>
+      <div class="mls-card"><a class="mls-title" href="/.me/tests/guarantees/">Guarantees</a><span class="mls-meta">11 suites</span><p class="item-desc">Core guarantees (README, live), contracts, derivations, aggregates, paths, evaluator memo, storage, search, builds, language phases.</p><div class="mls-links"></div></div>
+      <div class="mls-card"><a class="mls-title" href="/.me/tests/security/">Security</a><span class="mls-meta">165 checks · 6 live panels</span><p class="item-desc">The adversarial battery, plus the live panels for tampering, leakage, replay, derived-from-secret and wrapped secrets.</p><div class="mls-links"></div></div>
       <div class="mls-card"><a class="mls-title" href="/.me/tests/runs/2026-10-26/">Last run</a><span class="mls-meta">2026-10-26</span><p class="item-desc">npm test passed on Node 22.23.4; 13 scripts, all exit 0. CI: Tests workflow, Node 22.</p><div class="mls-links"></div></div>
     </header>
     <section><h2 class="section-title">Run them</h2>
-      <div class="links demo-grid"><a class="item" href="https://github.com/neurons-me/.me/blob/main/Typescript/package.json"><span class="item-title">npm test</span><span class="item-desc">The thirteen scripts above, one after another. Needs Node 22.6 or newer: the tests are .ts files run by node.</span><code class="item-code">cd Typescript
+      <div class="links demo-grid"><a class="item" href="https://github.com/neurons-me/.me/blob/main/Typescript/package.json"><span class="item-title">npm test</span><span class="item-desc">The thirteen npm test scripts, one after another. Needs Node 22.6 or newer: the tests are .ts files run by node.</span><code class="item-code">cd Typescript
 npm install
 npm run build
 npm test</code></a>
       <a class="item" href="https://github.com/neurons-me/.me/actions/workflows/test.yml"><span class="item-title">CI</span><span class="item-desc">The Tests workflow runs build and npm test on Node 22 for every push and pull request to main.</span></a></div>
     </section>
-    <section><h2 class="section-title">Outside npm test</h2>
-      <div class="mls-card"><a class="mls-title" href="https://github.com/neurons-me/.me/blob/main/Typescript/package.json">test:me-uri</a><span class="mls-meta">2 scripts</span><p class="item-desc">me-uri.test.ts and factory-root.test.ts: Canonical me:// URIs and factory root declarations. Not part of npm test.</p><div class="mls-links"></div></div>
-      <div class="mls-card"><a class="mls-title" href="https://github.com/neurons-me/.me/blob/main/Typescript/package.json">test:prebuild</a><span class="mls-meta">13/13 axioms, 11/11 fire phases</span><p class="item-desc">tests/pre-build.test.mjs: The pre-build gate: builds dist, then runs the URI test, the axioms fire test, the CJS, ESM, types and UMD checks. Not part of npm test.</p><div class="mls-links"></div></div>
-    </section>
-    <section><h2 class="section-title">Kernel suites</h2>
-      <div class="mls-card"><a class="mls-title" href="/.me/docs/Tests/fire.test.html">Fire test</a><span class="mls-meta">node tests/fire.test.ts</span><p class="item-desc">Full kernel validation: phases 0–8, reconstruction proof, secret contracts and contract suite.</p><div class="mls-links"></div></div>
-      <div class="mls-card"><a class="mls-title" href="/.me/docs/Tests/fire.test.results.html">Fire test results</a><span class="mls-meta">Run #001 · v3.9.2</span><p class="item-desc">Fire test run #001 results for .me v3.9.2.</p><div class="mls-links"></div></div>
-      <div class="mls-card"><a class="mls-title" href="/.me/docs/Tests/">docs/Tests index</a><span class="mls-meta">older index</span><p class="item-desc">Full test suite results: phases, reconstruction proofs, secret contracts and benchmarks.</p><div class="mls-links"></div></div>
-    </section>
-    <section><h2 class="section-title">Security, live in the browser</h2>
-      <div class="mls-card"><a class="mls-title" href="/.me/docs/Tests/isolation-between-identities.html">Isolation between identities</a><span class="mls-meta">runs in your browser</span><p class="item-desc">Data encrypted under one .me identity root does not open under another.</p><div class="mls-links"></div></div>
-      <div class="mls-card"><a class="mls-title" href="/.me/docs/Tests/information-leakage.html">Information leakage</a><span class="mls-meta">runs in your browser</span><p class="item-desc">Protected values, scope secrets and passwords never appear in snapshots, memory logs or error messages.</p><div class="mls-links"></div></div>
-      <div class="mls-card"><a class="mls-title" href="/.me/docs/Tests/crypto-tampering.html">Crypto tampering</a><span class="mls-meta">runs in your browser</span><p class="item-desc">Tampered, truncated or relabelled blobs and envelopes fail closed.</p><div class="mls-links"></div></div>
-      <div class="mls-card"><a class="mls-title" href="/.me/docs/Tests/replay-and-restart.html">Replay and restart</a><span class="mls-meta">runs in your browser</span><p class="item-desc">A kernel rebuilt from a snapshot comes back closed and recovers exactly once its owner supplies the secrets.</p><div class="mls-links"></div></div>
-      <div class="mls-card"><a class="mls-title" href="/.me/docs/Tests/derived-from-secret.html">Derived from secret</a><span class="mls-meta">runs in your browser</span><p class="item-desc">Public derivations of a secret: only someone who can open the secret can expose them.</p><div class="mls-links"></div></div>
-      <div class="mls-card"><a class="mls-title" href="/.me/docs/Tests/wrapped-secret.html">Secret wrapped for a recipient</a><span class="mls-meta">runs in your browser</span><p class="item-desc">A secret wrapped for one P-256 public key opens only with the matching private key.</p><div class="mls-links"></div></div>
-    </section>
-    <section><h2 class="section-title">Demos and data</h2>
-      <div class="mls-card"><a class="mls-title" href="/.me/Tests/gtfs-madrid-universe.html">GTFS Madrid: live knowledge universe</a><span class="mls-meta">GTFS Madrid</span><p class="item-desc">Real GTFS Madrid shaped as a reactive knowledge graph in this.me: relationships → dependencies, mutate → affected set k.</p><div class="mls-links"></div></div>
-      <div class="mls-card"><a class="mls-title" href="/.me/docs/Tests/semantic-reactive.html">Semantic graph / reactive</a><span class="mls-meta">GTFS Madrid</span><p class="item-desc">GTFS Madrid as a semantic graph in this.me: click a node → me.explain(path), dependsOn + recomputed wave.</p><div class="mls-links"></div></div>
-      <div class="mls-card"><a class="mls-title" href="/.me/docs/Tests/madrid-knowledge.html">Madrid fares, reactive</a><span class="mls-meta">GTFS Madrid</span><p class="item-desc">Change a fare or abono, watch dependents and k recompute. Syntax → graph → output.</p><div class="mls-links"></div></div>
-      <div class="mls-card"><a class="mls-title" href="/.me/docs/Tests/veracruz-port.html">Port of Veracruz: live operations</a><span class="mls-meta">Port of Veracruz</span><p class="item-desc">500 trucks on real OpenStreetMap roads, ships unloading, a train loading; every haul a real kernel write, with wave and explain().</p><div class="mls-links"></div></div>
-      <div class="mls-card"><a class="mls-title" href="/.me/Demos/SmartCities/Veracruz.Port/">Port of Veracruz (.GUI)</a><span class="mls-meta">Port of Veracruz</span><p class="item-desc">The .GUI version of the port page (docs/Tests/veracruz-port-gui.html redirects here).</p><div class="mls-links"></div></div>
+    <section><h2 class="section-title">Demos</h2>
+      <div class="mls-card"><a class="mls-title" href="/.me/Demos/">Demos</a><span class="mls-meta">moved</span><p class="item-desc">The live data demos (GTFS Madrid, Madrid fares, semantic graph, Port of Veracruz) and the demos smoke test are listed on the Demos page.</p><div class="mls-links"></div></div>
     </section>
     <footer>MIT · neurons.me</footer>
   </div>
 </div>
 <div id="root"></div>
-<script src="/.me/assets/landing-gui/landing-gui.js?v=33" onerror="document.documentElement.classList.remove('gui-boot')"></script>
+<script src="/.me/assets/landing-gui/landing-gui.js?v=34" onerror="document.documentElement.classList.remove('gui-boot')"></script>
 </body>
 </html>

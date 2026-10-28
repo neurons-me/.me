@@ -75,10 +75,19 @@ permalink: /tests/security/
       <p class="lede">run-all.mjs runs each file in its own process. Attack model and findings: tests/Security/README.md.</p>
       <p class="lede">Last result: 165 passed, 0 failed in 16 files. <a href="/.me/tests/runs/2026-10-26/">Run summary 2026-10-26</a></p>
     </header>
+    <section><h2 class="section-title">Live in your browser</h2>
+      <div class="mls-card"><a class="mls-title" href="/.me/docs/Tests/isolation-between-identities.html">Isolation between identities</a><span class="mls-meta">live in your browser · latest</span><p class="item-desc">Data encrypted under one .me identity root does not open under another.</p><div class="mls-links"></div></div>
+      <div class="mls-card"><a class="mls-title" href="/.me/docs/Tests/information-leakage.html">Information leakage</a><span class="mls-meta">live in your browser · latest</span><p class="item-desc">Protected values, scope secrets and passwords never appear in snapshots, memory logs or error messages.</p><div class="mls-links"></div></div>
+      <div class="mls-card"><a class="mls-title" href="/.me/docs/Tests/crypto-tampering.html">Crypto tampering</a><span class="mls-meta">live in your browser · latest</span><p class="item-desc">Tampered, truncated or relabelled blobs and envelopes fail closed.</p><div class="mls-links"></div></div>
+      <div class="mls-card"><a class="mls-title" href="/.me/docs/Tests/replay-and-restart.html">Replay and restart</a><span class="mls-meta">live in your browser · latest</span><p class="item-desc">A kernel rebuilt from a snapshot comes back closed and recovers once its owner supplies the secrets.</p><div class="mls-links"></div></div>
+      <div class="mls-card"><a class="mls-title" href="/.me/docs/Tests/derived-from-secret.html">Derived from secret</a><span class="mls-meta">live in your browser · latest</span><p class="item-desc">Public derivations of a secret: only someone who can open the secret can expose them.</p><div class="mls-links"></div></div>
+      <div class="mls-card"><a class="mls-title" href="/.me/docs/Tests/wrapped-secret.html">Secret wrapped for a recipient</a><span class="mls-meta">live in your browser · latest</span><p class="item-desc">A secret wrapped for one P-256 public key opens only with the matching private key.</p><div class="mls-links"></div></div>
+      <p class="lede">Each panel runs npm latest by default; pick another version in its top bar, or add ?v=x.y.z (?v=4.0.2 runs the hash-pinned kernel).</p>
+    </section>
     <footer>MIT · neurons.me</footer>
   </div>
 </div>
 <div id="root"></div>
-<script src="/.me/assets/landing-gui/landing-gui.js?v=33" onerror="document.documentElement.classList.remove('gui-boot')"></script>
+<script src="/.me/assets/landing-gui/landing-gui.js?v=34" onerror="document.documentElement.classList.remove('gui-boot')"></script>
 </body>
 </html>

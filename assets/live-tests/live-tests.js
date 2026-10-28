@@ -1,11 +1,12 @@
-/*! readme-live 1.0.0 · the README examples, run live in the browser · MIT · neurons.me
- * Ports Typescript/tests/readme.examples.test.mjs (same 8 examples, same assertions) and runs them against this.me
- * loaded from jsDelivr (ESM, +esm). The version selector lists the npm versions (jsDelivr data API) and defaults to the
+/*! live-tests 1.0.0 · test suites run live in the browser, one shared runner · MIT · neurons.me
+ * Runs a suite registered on window.LiveSuites[name] (assets/live-tests/suite-*.js, each a verbatim port of a Node
+ * test file: README examples, axioms) against this.me loaded from jsDelivr (ESM, +esm). The version selector lists the npm versions (jsDelivr data API) and defaults to the
  * npm "latest" tag; the version shown is read back from the loaded package's own package.json.
  * keccak256 comes from js-sha3 (the same package the Node test uses); assert.equal / assert.deepEqual are small strict
  * equivalents of node:assert/strict. An example that fails only because a Node-only API is missing is shown as
  * "Node only" instead of as a failure.
- * landing-gui.js renders <section data-live="ReadmeLive"> as this component (window.LandingLive registry).
+ * landing-gui.js renders <section data-live="LiveTests" data-suite="axioms"> as this component (window.LandingLive
+ * registry; the section's data-* attributes become props). ?v=x.y.z picks the version on every page that uses it.
  */
 (function (root) {
   var React = root.React; if (!React) return;
@@ -36,7 +37,9 @@
     ".rl pre{margin:0;padding:10px 12px;border-radius:8px;border:1px solid " + GRID + ";background:" + mix(FG, 4, "transparent") + ";font-family:" + MONO + ";font-size:12.5px;line-height:1.55;overflow:auto;white-space:pre}" +
     ".rl pre.err{color:" + BAD + ";white-space:pre-wrap}" +
     ".rl-note{color:" + FG2 + ";font-size:12.5px;margin:10px 0 0}" +
-    "@media (max-width:600px){.rl-body{padding-left:12px}.rl-ms{display:none}}";
+    ".rl-id{flex:none;font-family:" + MONO + ";font-size:12px;font-weight:800;color:" + RUN + ";min-width:5.6em}" +
+    ".rl-ck{margin:0;padding-left:18px;color:" + FG2 + ";font-size:13px;line-height:1.6}.rl-twin{margin:8px 0 0;font-size:12.5px;color:" + FG2 + "}.rl-twin code{font-family:" + MONO + "}" +
+    "@media (max-width:600px){.rl-id{min-width:0;font-size:11px}.rl-body{padding-left:12px}.rl-ms{display:none}}";
 
   // ---- node:assert/strict, the two calls the test uses ----------------------------------------------------------
   function show(v) { try { return JSON.stringify(v); } catch (e) { return String(v); } }
@@ -49,147 +52,23 @@
   }
   function AssertionError(m) { var e = new Error(m); e.name = "AssertionError"; return e; }
   var assert = {
-    equal: function (a, b) { if (!Object.is(a, b)) throw AssertionError("Expected values to be strictly equal:\n  actual:   " + show(a) + "\n  expected: " + show(b)); },
-    deepEqual: function (a, b) { if (!deq(a, b)) throw AssertionError("Expected values to be strictly deep-equal:\n  actual:   " + show(a) + "\n  expected: " + show(b)); },
+    equal: function (a, b, m) { if (!Object.is(a, b)) throw AssertionError((m ? m + "\n" : "") + "Expected values to be strictly equal:\n  actual:   " + show(a) + "\n  expected: " + show(b)); },
+    deepEqual: function (a, b, m) { if (!deq(a, b)) throw AssertionError((m ? m + "\n" : "") + "Expected values to be strictly deep-equal:\n  actual:   " + show(a) + "\n  expected: " + show(b)); },
+    notEqual: function (a, b, m) { if (Object.is(a, b)) throw AssertionError(m || "Expected " + show(a) + " to be not strictly equal to " + show(b)); },
+    ok: function (v, m) { if (!v) throw AssertionError(m || "Expected a truthy value, got " + show(v)); },
+    throws: function (fn, m) { try { fn(); } catch (e) { return; } throw AssertionError(m || "Missing expected exception."); },
+    doesNotThrow: function (fn, m) { try { fn(); } catch (e) { throw AssertionError((m || "Got unwanted exception.") + "\n  " + (e && e.message)); } },
   };
-
-  // ---- the 8 examples, verbatim from readme.examples.test.mjs (each returns what it observed, for the panel) ------
-  var EX = [
-    ["identity derives the documented compound seed", function (ThisMe, keccak256, assert) {
-  const me = ThisMe("ana", "secret");
-
-  const seed = keccak256("me.seed/compound:v1::ana::secret");
-  const identityHash = keccak256("this.me/identity:v1::" + seed);
-
-  assert.deepEqual(me["!"].identity(), {
-    hash: identityHash,
-    expression: "ana",
-  });
-  return { identity: me["!"].identity() };
-    }],
-    ["kernel callable reseed uses the same compound seed", function (ThisMe, keccak256, assert) {
-  const me = ThisMe();
-  me("ana", "secret");
-
-  const same = ThisMe("ana", "secret");
-  const constructed = new ThisMe.ME("ana", "secret");
-
-  assert.deepEqual(me["!"].identity(), same["!"].identity());
-  assert.deepEqual(constructed["!"].identity(), same["!"].identity());
-  return { reseeded: me["!"].identity(), constructed: constructed["!"].identity() };
-    }],
-    ["semantic tree reads, private branch reads, and links work", function (ThisMe, keccak256, assert) {
-  const me = ThisMe("suign", "secret");
-  me.name("Sui Gn");
-  me.bio("Building the semantic web.");
-  me.wallet["_"]("wallet-key-2026");
-  me.wallet.balance(12480);
-
-  me.people.ana.name("Ana");
-  me.people.ana.age(24);
-  me.people.pablo.name("Pablo");
-  me.people.pablo.age(17);
-  me.people["[i]"]["="]("isAdult", "age >= 18");
-
-  me.users.ana.name("Ana");
-  me.friends.ana["->"]("users.ana");
-
-  assert.equal(me("name"), "Sui Gn");
-  assert.equal(me("wallet"), undefined);
-  assert.equal(me("wallet.balance"), 12480);
-  assert.equal(me("people.ana.isAdult"), true);
-  assert.equal(me("people.pablo.isAdult"), false);
-  assert.equal(me("friends.ana.name"), "Ana");
-  return { name: me("name"), wallet: me("wallet"), "wallet.balance": me("wallet.balance"), "people.ana.isAdult": me("people.ana.isAdult"), "people.pablo.isAdult": me("people.pablo.isAdult"), "friends.ana.name": me("friends.ana.name") };
-    }],
-    ["privacy example keeps encrypted root hidden", function (ThisMe, keccak256, assert) {
-  const me = ThisMe();
-
-  me.secrets["_"]("private-key-2026");
-  me.secrets.notes("Only I can see this.");
-  me.name("Public Name");
-
-  assert.equal(me("secrets"), undefined);
-  assert.equal(me("secrets.notes"), "Only I can see this.");
-  assert.equal(me("name"), "Public Name");
-  return { secrets: me("secrets"), "secrets.notes": me("secrets.notes"), name: me("name") };
-    }],
-    ["reactivity and explainability example recomputes total", function (ThisMe, keccak256, assert) {
-  const me = ThisMe();
-
-  me.order.price(100);
-  me.order.quantity(5);
-  me.order["="]("total", "price * quantity");
-  me.order.price(200);
-
-  const trace = me.explain("order.total");
-
-  assert.equal(me("order.total"), 1000);
-  assert.equal(trace.value, 1000);
-  assert.equal(trace.expr, "price * quantity");
-  assert.deepEqual(trace.meta.dependsOn, ["order.price", "order.quantity"]);
-  return { "order.total": me("order.total"), trace: { value: trace.value, expr: trace.expr, dependsOn: trace.meta.dependsOn } };
-    }],
-    ["search examples return the nearest encrypted vector", function (ThisMe, keccak256, assert) {
-  const me = ThisMe();
-
-  me.memory.episodic["_"]("search-key");
-  me.memory.episodic[0]({
-    id: 0,
-    embedding: [1, 0],
-    text: "semantic web",
-  });
-  me.memory.episodic[1]({
-    id: 1,
-    embedding: [0, 1],
-    text: "robotics",
-  });
-
-  const exact = me.searchExact("memory.episodic", [1, 0], { k: 1 });
-  assert.equal(exact.hits[0].path, "memory.episodic.0");
-
-  const build = me.buildVectorIndex("memory.episodic", { k: 2, nprobe: 1 });
-  assert.equal(build.totalVectors, 2);
-
-  const approx = me.searchVector("memory.episodic", [1, 0], { k: 1, nprobe: 1 });
-  assert.equal(approx.hits[0].path, "memory.episodic.0");
-  return { exact: exact.hits[0], totalVectors: build.totalVectors, approx: approx.hits[0] };
-    }],
-    ["snapshot and replay example restores state", function (ThisMe, keccak256, assert) {
-  const me = ThisMe();
-  me.name("Sui Gn");
-
-  const snapshot = me.exportSnapshot();
-  const restored = ThisMe();
-  restored.hydrate(snapshot);
-
-  assert.equal(restored("name"), "Sui Gn");
-  return { "restored.name": restored("name") };
-    }],
-    ["audience seed example is order independent", function (ThisMe, keccak256, assert) {
-  function audienceSeed(seeds) {
-    return keccak256("me.seed/audience:v1::" + [...seeds].sort().join("::"));
-  }
-
-  assert.equal(
-    audienceSeed(["frank-seed", "ana-seed"]),
-    audienceSeed(["ana-seed", "frank-seed"]),
-  );
-  return { seed: audienceSeed(["frank-seed", "ana-seed"]) };
-    }],
-  ].map(function (e) {
-    var src = e[1].toString(), body = src.slice(src.indexOf("{") + 1, src.lastIndexOf("}"));
-    var lines = body.split("\n").filter(function (l) { return !/^\s*return \{/.test(l); });
-    return { name: e[0], fn: e[1], code: lines.join("\n").replace(/^\s*\n|\s+$/g, "") };
-  });
+  root.LiveAssert = assert;
 
   var CDN = "https://cdn.jsdelivr.net/npm/";
-  var NODE_ONLY = /\b(require|process|Buffer|__dirname|module) is not defined\b|node:|Cannot find module/;
+  var NODE_ONLY = /^Node only|\b(require|process|Buffer|__dirname|module) is not defined\b|node:|Cannot find module/;
   function fmt(v) {
     return JSON.stringify(v, function (k, x) { return x === undefined ? "‹undefined›" : x; }, 2);
   }
 
-  function ReadmeLive() {
+  function LiveTests(props) {
+    var SUITE = (root.LiveSuites || {})[props.suite] || { cases: [] }, EX = SUITE.cases;
     var st = useState({ tags: null, versions: [] }), meta = st[0], setMeta = st[1];
     var sv = useState(""), ver = sv[0], setVer = sv[1];
     var sl = useState(null), loaded = sl[0], setLoaded = sl[1];
@@ -225,7 +104,7 @@
           out[i] = { status: "running" }; setRows(EX.map(function (_, j) { return out[j] || { status: "pending" }; }));
           setTimeout(function () {
             var t0 = performance.now(), r;
-            try { var res = EX[i].fn(ThisMe, keccak256, assert); r = { status: "pass", ms: performance.now() - t0, result: fmt(res) }; }
+            try { if (EX[i].nodeOnly) throw new Error("Node only: " + EX[i].nodeOnly); var res = EX[i].fn(ThisMe, keccak256, assert); r = { status: "pass", ms: performance.now() - t0, result: fmt(res) }; }
             catch (e) { var msg = (e && (e.stack && e.name !== "AssertionError" ? e.name + ": " + e.message : e.message)) || String(e);
               r = { status: NODE_ONLY.test(msg) ? "node" : "fail", ms: performance.now() - t0, error: msg }; }
             out[i] = r; setRows(EX.map(function (_, j) { return out[j] || { status: "pending" }; }));
@@ -261,11 +140,15 @@
           h("summary", { key: "s" }, [
             h("span", { key: "c", className: "rl-car", "aria-hidden": "true" }, "▸"),
             h("span", { key: "n", className: "rl-n" }, i + 1),
+            ex.id && h("span", { key: "id", className: "rl-id" }, ex.id),
             h("span", { key: "t", className: "rl-name" }, ex.name),
             h("span", { key: "m", className: "rl-ms" }, r.ms != null ? r.ms.toFixed(1) + " ms" : ""),
             h("span", { key: "st", className: "rl-st " + r.status }, label[r.status]),
           ]),
           h("div", { key: "b", className: "rl-body" }, [
+            ex.checks && h("div", { key: "l0", className: "rl-lab" }, "Checks"),
+            ex.checks && h("ul", { key: "ck", className: "rl-ck" }, ex.checks.map(function (c, k) { return h("li", { key: k }, c); })),
+            ex.twin && h("p", { key: "tw", className: "rl-twin" }, ["Rust twin: ", h("code", { key: "c" }, ex.twin)]),
             h("div", { key: "l1", className: "rl-lab" }, "Code"),
             h("pre", { key: "c" }, ex.code),
             r.result != null && h("div", { key: "l2", className: "rl-lab" }, "Result"),
@@ -275,8 +158,8 @@
           ]),
         ]);
       })),
-      h("p", { key: "note", className: "rl-note" }, "Runs in this tab: this.me and js-sha3 from jsDelivr (ESM), the same 8 examples and assertions as readme.examples.test.mjs. Pick a version, or add ?v=x.y.z to the URL."),
+      h("p", { key: "note", className: "rl-note" }, "Runs in this tab: this.me and js-sha3 from jsDelivr (ESM), the same " + EX.length + " cases and assertions as " + (SUITE.source || "the Node test") + ". Pick a version, or add ?v=x.y.z to the URL."),
     ]);
   }
-  root.LandingLive = Object.assign(root.LandingLive || {}, { ReadmeLive: ReadmeLive });
+  root.LandingLive = Object.assign(root.LandingLive || {}, { LiveTests: LiveTests });
 })(window);
