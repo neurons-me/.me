@@ -68,7 +68,7 @@
     kicker: SRC.querySelector(".kicker") && inline(SRC.querySelector(".kicker")), h1: txt(SRC.querySelector(".page-title")), h1Hidden: !!SRC.querySelector(".page-title.visually-hidden"),
     subtitle: SRC.querySelector(".page-subtitle") && inline(SRC.querySelector(".page-subtitle")),
     // optional hero (.page-hero img + .page-hero-caption) and several titled grids (.section-title before a .grid); a page with one plain grid renders as before
-    hero: (() => { const im = SRC.querySelector(".page-hero img"); return im && { src: im.getAttribute("src"), alt: im.getAttribute("alt") || "", caption: txt(SRC.querySelector(".page-hero-caption")) }; })(),
+    hero: (() => { const f = SRC.querySelector(".page-hero"), lv = f && f.dataset.live; if (lv && window.LandingLive && window.LandingLive[lv]) return { live: lv, props: { ...f.dataset } }; const im = SRC.querySelector(".page-hero img"); return im && { src: im.getAttribute("src"), alt: im.getAttribute("alt") || "", caption: txt(SRC.querySelector(".page-hero-caption")) }; })(),
     groups: [...SRC.querySelectorAll(".page .grid")].map((g) => {
       const prev = g.previousElementSibling;
       return { title: prev && prev.classList.contains("section-title") ? txt(prev) : null, cards: [...g.querySelectorAll(":scope > .card")].map((a) => {
@@ -349,7 +349,8 @@
       page.kicker && T(page.kicker, { fontSize: ".75rem", fontWeight: 600, letterSpacing: ".18em", textTransform: "uppercase", color: "text.secondary", mb: 1.5 }, { component: "p" }),
       T(page.h1, page.h1Hidden ? { position: "absolute", width: "1px", height: "1px", overflow: "hidden", clip: "rect(0 0 0 0)", whiteSpace: "nowrap" } : { fontSize: "2.75rem", fontWeight: 800, letterSpacing: "-.02em", lineHeight: 1.1, mb: 1.5 }, { component: "h1" }),
       page.subtitle && T(page.subtitle, { fontSize: "1.05rem", color: "text.secondary", mb: 6, maxWidth: 560 }, { component: "p" }),
-      page.hero && N("Box", { component: "figure", sx: { m: 0, mb: 6 } }, [
+      page.hero && page.hero.live && N("Box", { sx: { mb: 6 } }, N(page.hero.live, page.hero.props)),
+      page.hero && !page.hero.live && N("Box", { component: "figure", sx: { m: 0, mb: 6 } }, [
         N("Box", { component: "img", src: page.hero.src, alt: page.hero.alt, sx: { width: "100%", height: "auto", display: "block", borderRadius: "12px", border: 1, borderColor: "divider" } }),
         page.hero.caption && T(page.hero.caption, { fontFamily: MONO, fontSize: ".85rem", color: "text.secondary", mt: 1.5 }, { component: "figcaption" }),
       ].filter(Boolean)),
