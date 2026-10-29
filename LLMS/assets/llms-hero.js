@@ -8,57 +8,57 @@
   var React = root.React; if (!React) return;
   var h = React.createElement, useState = React.useState, useEffect = React.useEffect;
 
-  // eval item e24 (LLMS/eval): sentence, starting state, validated ops
-  var ITEM = {
-    say: "cambia el precio del pan a 25 y que el total del menú sea café más pan",
-    state: { menu: { cafe: { precio: 45 }, pan: { precio: 20 } } },
-    ops: [{ op: "set", path: "menu.pan.precio", value: 25 }, { op: "define", path: "menu", name: "total", expr: "cafe.precio + pan.precio" }]
-  };
-
-  // e24 in the languages that reached e24's final state with the Meta adapter (eval/results/multilang-e24-2026-10-29.json);
-  // [word|k] marks the words that name a path (eval/multilang-e24.json), checked against the paths the model's ops touched
-  var LANGS = [{"lang": "es", "name": "Español", "text": "cambia el [precio|pr] del [pan|p] a [25|v] y que el [total|t] del [menú|m] sea [café|c] más [pan|p]"}, {"lang": "en", "name": "English", "text": "change the [price|pr] of [bread|p] to [25|v] and make the [menu|m] [total|t] [coffee|c] plus [bread|p]"}, {"lang": "ru", "name": "Русский", "text": "измени [цену|pr] [хлеба|p] на [25|v], и пусть [итог|t] [меню|m] будет [кофе|c] плюс [хлеб|p]"}, {"lang": "ja", "name": "日本語", "text": "[パン|p]の[値段|pr]を[25|v]に変えて、[メニュー|m]の[合計|t]を[コーヒー|c]と[パン|p]の合計にして"}, {"lang": "zh", "name": "中文", "text": "把[面包|p]的[价格|pr]改成[25|v]，并让[菜单|m]的[总计|t]等于[咖啡|c]加[面包|p]"}, {"lang": "fr", "name": "Français", "text": "change le [prix|pr] du [pain|p] à [25|v] et que le [total|t] du [menu|m] soit [café|c] plus [pain|p]"}, {"lang": "pt", "name": "Português", "text": "muda o [preço|pr] do [pão|p] para [25|v] e que o [total|t] do [menu|m] seja [café|c] mais [pão|p]"}, {"lang": "ar", "name": "العربية", "dir": "rtl", "text": "غيّر [سعر|pr] [الخبز|p] إلى [25|v]، واجعل [مجموع|t] [القائمة|m] يساوي [القهوة|c] زائد [الخبز|p]"}, {"lang": "hi", "name": "हिन्दी", "text": "[ब्रेड|p] की [कीमत|pr] [25|v] कर दो और [मेन्यू|m] का [कुल|t] [कॉफ़ी|c] और [ब्रेड|p] का जोड़ हो"}];
-  var KMAP = { m: "menu", c: "menu.cafe", p: "menu.pan", pr: "menu.pan.precio", v: "menu.pan.precio=", t: "menu.total" };
-  LANGS.forEach(function (l) { l.segs = []; var re = /\[([^|\]]+)\|([^\]]+)\]/g, i = 0, m;
-    while ((m = re.exec(l.text))) { if (m.index > i) l.segs.push({ t: l.text.slice(i, m.index) }); l.segs.push({ t: m[1], k: KMAP[m[2]] }); i = re.lastIndex; }
-    if (i < l.text.length) l.segs.push({ t: l.text.slice(i) }); });
-  var norm = function (w) { return w.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase(); };
+  // e24 in each language with a starting state in that language's keys, and the ops the Meta adapter (muse-spark-1.3)
+  // actually returned for it: only the languages that passed the structural dry-run check
+  // (eval/results/multilang-native-e24-2026-10-29.json). [word|role] marks the words (eval/multilang-native-e24.json);
+  // each role resolves to a path of that language's own ops: pr = the set path, p = its parent, v = its value,
+  // m = the define path, t = the derived key, c = the other price's parent.
+  var LANGS = [{"lang": "en", "name": "English", "text": "change the [price|pr] of [bread|p] to [25|v] and make the [menu|m] [total|t] [coffee|c] plus [bread|p]", "state": {"menu": {"coffee": {"price": 45}, "bread": {"price": 20}}}, "ops": [{"op": "set", "path": "menu.bread.price", "value": 25}, {"op": "define", "path": "menu", "name": "total", "expr": "coffee.price + bread.price"}]}, {"lang": "es", "name": "Español", "text": "cambia el [precio|pr] del [pan|p] a [25|v] y que el [total|t] del [menú|m] sea [café|c] más [pan|p]", "state": {"menu": {"cafe": {"precio": 45}, "pan": {"precio": 20}}}, "ops": [{"op": "set", "path": "menu.pan.precio", "value": 25}, {"op": "define", "path": "menu", "name": "total", "expr": "menu.cafe.precio + menu.pan.precio"}]}, {"lang": "fr", "name": "Français", "text": "change le [prix|pr] du [pain|p] à [25|v] et que le [total|t] du [menu|m] soit [café|c] plus [pain|p]", "state": {"menu": {"cafe": {"prix": 45}, "pain": {"prix": 20}}}, "ops": [{"op": "set", "path": "menu.pain.prix", "value": 25}, {"op": "define", "path": "menu", "name": "total", "expr": "cafe.prix + pain.prix"}]}, {"lang": "de", "name": "Deutsch", "text": "ändere den [Preis|pr] des [Brots|p] auf [25|v], und die [Summe|t] des [Menüs|m] soll [Kaffee|c] plus [Brot|p] sein", "state": {"menue": {"kaffee": {"preis": 45}, "brot": {"preis": 20}}}, "ops": [{"op": "set", "path": "menue.brot.preis", "value": 25}, {"op": "define", "path": "menue", "name": "summe", "expr": "menue.kaffee.preis + menue.brot.preis"}]}, {"lang": "it", "name": "Italiano", "text": "cambia il [prezzo|pr] del [pane|p] a [25|v] e fai che il [totale|t] del [menù|m] sia [caffè|c] più [pane|p]", "state": {"menu": {"caffe": {"prezzo": 45}, "pane": {"prezzo": 20}}}, "ops": [{"op": "set", "path": "menu.pane.prezzo", "value": 25}, {"op": "define", "path": "menu", "name": "totale", "expr": "caffe.prezzo + pane.prezzo"}]}, {"lang": "pt", "name": "Português", "text": "muda o [preço|pr] do [pão|p] para [25|v] e que o [total|t] do [menu|m] seja [café|c] mais [pão|p]", "state": {"cardapio": {"cafe": {"preco": 45}, "pao": {"preco": 20}}}, "ops": [{"op": "set", "path": "cardapio.pao.preco", "value": 25}, {"op": "define", "path": "cardapio", "name": "total", "expr": "cafe.preco + pao.preco"}]}];
   var get = function (o, p) { return p.split(".").reduce(function (a, k) { return a == null ? a : a[k]; }, o); };
   var clone = function (o) { return JSON.parse(JSON.stringify(o)); };
+  var ID = /[\p{L}_$][\p{L}\p{N}_$.-]*/gu;
 
-  // apply the ops: set writes a value, define records a derived key (base path, expr, the absolute paths it reads)
-  var state = clone(ITEM.state), derived = {};
-  ITEM.ops.forEach(function (o) {
-    if (o.op === "set") { var ks = o.path.split("."), last = ks.pop(), t = ks.reduce(function (a, k) { return a[k] = a[k] || {}; }, state); t[last] = o.value; }
-    if (o.op === "define") {
-      var base = get(state, o.path), deps = (o.expr.match(/[A-Za-z_][\w.]*/g) || []).map(function (r) { return o.path + "." + r; });
-      var val = deps.reduce(function (s, d) { return s + Number(get(state, d)); }, 0); // the expr is a sum of paths (e24)
-      base[o.name] = val; derived[o.path + "." + o.name] = { deps: deps, base: o.path, value: val };
-    }
-  });
-  var setPaths = ITEM.ops.filter(function (o) { return o.op === "set"; }).map(function (o) { return o.path; });
-
-  var allPaths = [];
-  (function walk(o, pre) { Object.keys(o).forEach(function (k) { var p = pre ? pre + "." + k : k; allPaths.push(p); if (o[k] && typeof o[k] === "object") walk(o[k], p); }); })(state, "");
-
-  // a word → paths: a number names the set op that writes it; a word names the paths whose last key it is
-  // (preferring the paths the ops write, so "precio del pan" is menu.pan.precio, not every precio)
-  function wordPath(w) {
-    if (/^\d+$/.test(w)) { var o = ITEM.ops.filter(function (x) { return x.op === "set" && String(x.value) === w; })[0]; return o ? o.path + "=" : null; }
-    var n = norm(w), hits = allPaths.filter(function (p) { return p.split(".").pop() === n; });
-    if (hits.length > 1) { var s = hits.filter(function (p) { return setPaths.indexOf(p) >= 0; }); if (s.length) hits = s; }
-    return hits[0] || null;
+  function build(L) {
+    var state = clone(L.state), derived = {}, setOp = null, defOp = null;
+    L.ops.forEach(function (o) {
+      if (o.op === "set") { setOp = o; var ks = o.path.split("."), last = ks.pop(), t = ks.reduce(function (a, k) { return a[k] = a[k] || {}; }, state); t[last] = o.value; }
+      if (o.op === "define") {
+        defOp = o;
+        var deps = (o.expr.match(ID) || []).map(function (r) { return r.indexOf(o.path + ".") === 0 ? r : o.path + "." + r; });
+        var val = deps.reduce(function (s, d) { return s + Number(get(state, d)); }, 0); // a sum of two paths (checked by the eval)
+        get(state, o.path)[o.name] = val; derived[o.path + "." + o.name] = { deps: deps, base: o.path, value: val };
+      }
+    });
+    var rootKey = defOp.path, t = rootKey + "." + defOp.name, pr = setOp.path, p = pr.split(".").slice(0, -1).join(".");
+    var other = derived[t].deps.filter(function (d) { return d !== pr; })[0], c = other.split(".").slice(0, -1).join(".");
+    var ROLE = { m: rootKey, c: c, p: p, pr: pr, v: pr + "=", t: t };
+    var segs = [], re = /\[([^|\]]+)\|([^\]]+)\]/g, i = 0, mm;
+    while ((mm = re.exec(L.text))) { if (mm.index > i) segs.push({ t: L.text.slice(i, mm.index) }); segs.push({ t: mm[1], k: ROLE[mm[2]] }); i = re.lastIndex; }
+    if (i < L.text.length) segs.push({ t: L.text.slice(i) });
+    var lines = L.ops.map(function (o) { return o.op === "set" ? "me." + o.path + "(" + JSON.stringify(o.value) + ")" : "me." + o.path + '["="](' + JSON.stringify(o.name) + ", " + JSON.stringify(o.expr) + ")"; });
+    // graph: fixed positions by role (other item top, derived middle, the item whose price is set bottom), labels from the keys
+    var last = function (x) { return x.split(".").pop(); };
+    var N = [{ k: rootKey, label: rootKey, x: 62, y: 128, kind: "root" }], E = [], VAL = [];
+    [[c, 48, false], [t, 128, true], [p, 208, false]].forEach(function (r) {
+      var k = r[0], y = r[1], d = r[2];
+      N.push({ k: k, label: last(k), x: d ? 168 : 152, y: y, kind: d ? "derived" : "key", value: d ? derived[t].value : null });
+      E.push({ k: k, from: rootKey, to: k });
+      var v = get(state, k);
+      if (v && typeof v === "object") Object.keys(v).forEach(function (leaf) { var lp = k + "." + leaf; VAL.push({ k: lp + "=", path: lp, label: String(v[leaf]), x: 268, y: y, key: leaf }); E.push({ k: lp, from: k, to: lp + "=", label: leaf }); });
+    });
+    var pos = {}; N.concat(VAL).forEach(function (n) { pos[n.k] = n; });
+    var DEP = []; Object.keys(derived).forEach(function (x) { derived[x].deps.forEach(function (d) { DEP.push({ from: d + "=", to: x, dep: d }); }); });
+    return { L: L, state: state, derived: derived, rootKey: rootKey, q: t, segs: segs, lines: lines, N: N, E: E, VAL: VAL, pos: pos, DEP: DEP, code: null };
   }
+  var MODELS = LANGS.map(build);
 
   // the code lines, written from the ops, then tokenized; each token learns the path it is on
-  var lines = ITEM.ops.map(function (o) { return o.op === "set" ? "me." + o.path + "(" + JSON.stringify(o.value) + ")" : "me." + o.path + '["="](' + JSON.stringify(o.name) + ", " + JSON.stringify(o.expr) + ")"; });
-  var q = Object.keys(derived)[0];
-  function tagged(code) {
+  function tagged(code, root0) {
     var M = root.MeSyntax, toks = M ? M.tokenize(code) : [{ c: null, v: code }], path = [], fx = [], base = "", out = [], callPath = null;
     toks.forEach(function (t) {
       var c = t.c || "", k = null;
       if (/mes-root/.test(c)) { path = []; }
-      else if (/mes-fx-id/.test(c)) { fx.push(t.v); k = base + "." + fx.join("."); }
+      else if (/mes-fx-id/.test(c)) { fx.push(t.v); k = fx[0] === root0 ? fx.join(".") : base + "." + fx.join("."); }
       else if (/mes-in-fx/.test(c) && /mes-quote/.test(c)) { fx = []; }
       else if (/mes-in-fx/.test(c) && !/mes-dot/.test(c)) { fx = []; }
       else if (/mes-key/.test(c)) { path.push(t.v); k = path.join("."); base = k; callPath = k; }
@@ -69,26 +69,12 @@
     });
     return out;
   }
-  var CODE = null; // tokenized on first render, once window.MeSyntax (loaded by landing-gui.js) is there
-  function code() { if (CODE && root.MeSyntax) return CODE; var c = lines.map(tagged), ql = tagged('me("' + q + '")');
-    ql.push({ c: "mes-comment", v: " // → " }, { c: "mes-num", v: String(derived[q].value), k: q }); c.push(ql); if (root.MeSyntax) CODE = c; return c; }
+  function codeOf(G) { if (G.code && root.MeSyntax) return G.code; var c = G.lines.map(function (l) { return tagged(l, G.rootKey); }), ql = tagged('me("' + G.q + '")', G.rootKey);
+    ql.push({ c: "mes-comment", v: " // → " }, { c: "mes-num", v: String(G.derived[G.q].value), k: G.q }); c.push(ql); if (root.MeSyntax) G.code = c; return c; }
 
-  // graph: the root, its children (derived keys in the middle), leaf values right of their parent
-  var rootKey = Object.keys(state)[0], kids = Object.keys(state[rootKey]);
-  kids.sort(function (a, b) { var da = derived[rootKey + "." + a] ? 1 : 0, db = derived[rootKey + "." + b] ? 1 : 0; return da - db; });
-  if (kids.length === 3) kids = [kids[0], kids[2], kids[1]];
-  var N = [{ k: rootKey, label: rootKey, x: 62, y: 128, kind: "root" }], E = [], VAL = [];
-  kids.forEach(function (c, i) {
-    var p = rootKey + "." + c, y = 48 + i * (160 / Math.max(1, kids.length - 1)), d = derived[p];
-    N.push({ k: p, label: c, x: d ? 168 : 152, y: y, kind: d ? "derived" : "key", value: d ? d.value : null });
-    E.push({ k: p, from: rootKey, to: p });
-    var v = state[rootKey][c];
-    if (v && typeof v === "object") Object.keys(v).forEach(function (leaf) { var lp = p + "." + leaf; VAL.push({ k: lp + "=", path: lp, label: String(v[leaf]), x: 268, y: y, key: leaf }); E.push({ k: lp, from: p, to: lp + "=", label: leaf }); });
-  });
-  var pos = {}; N.concat(VAL).forEach(function (n) { pos[n.k] = n; });
-  var DEP = []; Object.keys(derived).forEach(function (t) { derived[t].deps.forEach(function (d) { DEP.push({ from: d + "=", to: t, dep: d }); }); });
 
   // relation: what lights for the active path
+  var derived = {}, rootKey = "", state = {}; // the current language (set on each render)
   var bare = function (k) { return k ? k.replace(/=$/, "") : k; };
   function rel(el, a) {
     if (!a || !el) return "";
@@ -142,12 +128,12 @@
     ".lh-langs{display:flex;flex-wrap:wrap;gap:4px}" +
     ".lh-pill{font:600 10px/1 " + MONO + ";letter-spacing:.04em;padding:4px 6px;border-radius:999px;border:1px solid " + GRID + ";background:transparent;color:" + FG2 + ";cursor:pointer}" +
     ".lh-pill:hover{color:" + FG + "}.lh-pill.on{border-color:" + ACC + ";color:" + ACC + ";background:" + mix(ACC, 12, "transparent") + "}" +
-    ".lh-say{animation:lh-fade .45s ease both}@keyframes lh-fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}" +
+    ".lh-say,.lh-fade{animation:lh-fade .45s ease both}@keyframes lh-fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}" +
     ".lh-say:lang(ja),.lh-say:lang(zh),.lh-say:lang(ko){font-family:'Noto Sans CJK JP','Noto Sans JP','Hiragino Sans','PingFang SC','Microsoft YaHei','Malgun Gothic',sans-serif;line-break:strict}" +
     ".lh-say:lang(ar){font-family:'Noto Sans Arabic','Segoe UI','Geeza Pro',sans-serif;line-height:1.7}.lh-say:lang(hi){font-family:'Noto Sans Devanagari','Nirmala UI',sans-serif;line-height:1.6}" +
-    ".lh-same{font:600 10px/1 " + MONO + ";color:" + ACC + ";opacity:0}.lh-same.go{animation:lh-same 1.6s ease both}@keyframes lh-same{0%{opacity:0}20%{opacity:1}75%{opacity:1}100%{opacity:0}}" +
+    ".lh-same{font:600 10px/1 " + MONO + ";color:" + ACC + ";opacity:.75}.lh-same.go{animation:lh-same 1.6s ease both}@keyframes lh-same{0%{opacity:0}20%{opacity:1}100%{opacity:.75}}" +
     ".lh-pulse{animation:lh-pulse 1.1s ease}@keyframes lh-pulse{0%{filter:drop-shadow(0 0 0 transparent)}35%{filter:drop-shadow(0 0 6px " + mix(ACC, 70, "transparent") + ")}100%{filter:drop-shadow(0 0 0 transparent)}}" +
-    "@media (prefers-reduced-motion:reduce){.lh-say,.lh-pulse,.lh-same.go{animation:none}}" +
+    "@media (prefers-reduced-motion:reduce){.lh-say,.lh-fade,.lh-pulse,.lh-same.go{animation:none}}" +
     "@media (max-width:860px){.lh{grid-template-columns:1fr}.lh-ar{transform:rotate(90deg);justify-self:center;line-height:1}}";
 
   function LlmsHero() {
@@ -157,7 +143,8 @@
     var sl = useState(0), li = sl[0], setLi = sl[1];
     var sh = useState(false), hold = sh[0], setHold = sh[1];
     useEffect(function () { if (hold || pin) return; var t = setTimeout(function () { setLi((li + 1) % LANGS.length); }, 4000); return function () { clearTimeout(t); }; }, [li, hold, pin]);
-    var L = LANGS[li];
+    var L = LANGS[li], G = MODELS[li], N = G.N, E = G.E, VAL = G.VAL, DEP = G.DEP, pos = G.pos;
+    derived = G.derived; rootKey = G.rootKey; state = G.state;
     useEffect(function () {
       if (!document.getElementById("lh-css")) { var s = document.createElement("style"); s.id = "lh-css"; s.textContent = CSS; document.head.appendChild(s); }
       var off = function (e) { if (!e.target.closest || !e.target.closest("[data-k]")) setPin(null); };
@@ -173,12 +160,12 @@
     };
     var desc = function (k) { return bare(k) + (/=$/.test(k) ? " = " + get(state, bare(k)) : derived[k] ? " = " + derived[k].deps.join(" + ") + " → " + derived[k].value : ""); };
 
-    var words = L.segs.map(function (g, i) {
+    var words = G.segs.map(function (g, i) {
       return g.k ? h("span", Object.assign({ key: i, className: "lh-w" + rel(g.k, a) }, bind(g.k, "“" + g.t + "” → " + desc(g.k), true)), g.t) : g.t;
     });
     var pills = h("div", { className: "lh-langs", role: "tablist", "aria-label": "language" }, LANGS.map(function (l, i) {
       return h("button", { key: l.lang, type: "button", role: "tab", "aria-selected": i === li, lang: l.lang, className: "lh-pill" + (i === li ? " on" : ""), title: l.name, onClick: function () { setLi(i); } }, l.lang.toUpperCase()); }));
-    var codeEls = code().map(function (ln, i) {
+    var codeEls = codeOf(G).map(function (ln, i) {
       return h("span", { key: i, className: "ln" }, ln.map(function (t, j) {
         if (t.c === "mes-comment") return h("span", { key: j, className: "lh-cm" }, t.v);
         return h("span", Object.assign({ key: j, className: (t.c + " lh-t" + rel(t.k, a)).trim() }, t.k ? bind(t.k, null, false) : {}), t.v);
@@ -206,9 +193,9 @@
       h("div", { className: "lh", "aria-label": "e24: a sentence, the .me ops it becomes, and the state they produce" },
       h("div", { className: "lh-p" }, h("div", { className: "lh-sayhd" }, h("p", { className: "lh-h" }, "You say · " + L.name), pills), h("p", { key: L.lang, className: "lh-say", lang: L.lang, dir: L.dir || "ltr" }, "“", words, "”")),
       h("div", { className: "lh-ar", "aria-hidden": true }, "→"),
-      h("div", { className: "lh-p" }, h("p", { className: "lh-h" }, ".me ops"), h("pre", { className: "lh-code me-code" }, h("span", { className: "ln lh-cm" }, "// validated · dry-run"), codeEls)),
+      h("div", { className: "lh-p" }, h("p", { className: "lh-h" }, ".me ops"), h("pre", { key: "c" + li, className: "lh-code me-code lh-fade" }, h("span", { className: "ln lh-cm" }, "// validated · dry-run"), codeEls)),
       h("div", { className: "lh-ar", "aria-hidden": true }, "→"),
-      h("div", { className: "lh-p" }, h("div", { className: "lh-sayhd" }, h("p", { className: "lh-h" }, "State"), h("span", { key: "s" + li, className: "lh-same" + (li ? " go" : "") }, "same .me")), h("div", { key: "g" + li, className: li ? "lh-pulse" : "" }, svg)),
+      h("div", { className: "lh-p" }, h("div", { className: "lh-sayhd" }, h("p", { className: "lh-h" }, "State"), h("span", { key: "s" + li, className: "lh-same" + (li ? " go" : "") }, "same structure · = " + G.derived[G.q].value)), h("div", { key: "g" + li, className: li ? "lh-pulse" : "" }, svg)),
       h("p", { className: "lh-hint", "aria-live": "polite" }, a ? ["● ", h("b", { key: "b" }, desc(a))] : "hover, tap or tab through a word, a token or a node")));
   }
   root.LandingLive = Object.assign(root.LandingLive || {}, { LlmsHero: LlmsHero });

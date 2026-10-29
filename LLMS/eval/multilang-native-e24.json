@@ -1,0 +1,271 @@
+{
+ "id": "e24",
+ "note": "e24 in 12 languages, each with a starting state written in its own keys. [word|role]: m=menu, c=cafe, p=pan, pr=pan price, v=the value set, t=the derived total. Pass = same structure: one set of the pan price to 25 and one derived key on the menu that reads 70 (key names may differ).",
+ "langs": [
+  {
+   "lang": "en",
+   "name": "English",
+   "text": "change the [price|pr] of [bread|p] to [25|v] and make the [menu|m] [total|t] [coffee|c] plus [bread|p]",
+   "keys": {
+    "menu": "menu",
+    "cafe": "coffee",
+    "pan": "bread",
+    "precio": "price",
+    "total_hint": "total"
+   },
+   "state": {
+    "menu": {
+     "coffee": {
+      "price": 45
+     },
+     "bread": {
+      "price": 20
+     }
+    }
+   }
+  },
+  {
+   "lang": "es",
+   "name": "Español",
+   "text": "cambia el [precio|pr] del [pan|p] a [25|v] y que el [total|t] del [menú|m] sea [café|c] más [pan|p]",
+   "keys": {
+    "menu": "menu",
+    "cafe": "cafe",
+    "pan": "pan",
+    "precio": "precio",
+    "total_hint": "total"
+   },
+   "state": {
+    "menu": {
+     "cafe": {
+      "precio": 45
+     },
+     "pan": {
+      "precio": 20
+     }
+    }
+   }
+  },
+  {
+   "lang": "ru",
+   "name": "Русский",
+   "text": "измени [цену|pr] [хлеба|p] на [25|v], и пусть [итог|t] [меню|m] будет [кофе|c] плюс [хлеб|p]",
+   "keys": {
+    "menu": "меню",
+    "cafe": "кофе",
+    "pan": "хлеб",
+    "precio": "цена",
+    "total_hint": "итог"
+   },
+   "state": {
+    "меню": {
+     "кофе": {
+      "цена": 45
+     },
+     "хлеб": {
+      "цена": 20
+     }
+    }
+   }
+  },
+  {
+   "lang": "ja",
+   "name": "日本語",
+   "text": "[パン|p]の[値段|pr]を[25|v]に変えて、[メニュー|m]の[合計|t]を[コーヒー|c]と[パン|p]の合計にして",
+   "keys": {
+    "menu": "メニュー",
+    "cafe": "コーヒー",
+    "pan": "パン",
+    "precio": "値段",
+    "total_hint": "合計"
+   },
+   "state": {
+    "メニュー": {
+     "コーヒー": {
+      "値段": 45
+     },
+     "パン": {
+      "値段": 20
+     }
+    }
+   }
+  },
+  {
+   "lang": "zh",
+   "name": "中文",
+   "text": "把[面包|p]的[价格|pr]改成[25|v]，并让[菜单|m]的[总计|t]等于[咖啡|c]加[面包|p]",
+   "keys": {
+    "menu": "菜单",
+    "cafe": "咖啡",
+    "pan": "面包",
+    "precio": "价格",
+    "total_hint": "总计"
+   },
+   "state": {
+    "菜单": {
+     "咖啡": {
+      "价格": 45
+     },
+     "面包": {
+      "价格": 20
+     }
+    }
+   }
+  },
+  {
+   "lang": "fr",
+   "name": "Français",
+   "text": "change le [prix|pr] du [pain|p] à [25|v] et que le [total|t] du [menu|m] soit [café|c] plus [pain|p]",
+   "keys": {
+    "menu": "menu",
+    "cafe": "cafe",
+    "pan": "pain",
+    "precio": "prix",
+    "total_hint": "total"
+   },
+   "state": {
+    "menu": {
+     "cafe": {
+      "prix": 45
+     },
+     "pain": {
+      "prix": 20
+     }
+    }
+   }
+  },
+  {
+   "lang": "de",
+   "name": "Deutsch",
+   "text": "ändere den [Preis|pr] des [Brots|p] auf [25|v], und die [Summe|t] des [Menüs|m] soll [Kaffee|c] plus [Brot|p] sein",
+   "keys": {
+    "menu": "menue",
+    "cafe": "kaffee",
+    "pan": "brot",
+    "precio": "preis",
+    "total_hint": "summe"
+   },
+   "state": {
+    "menue": {
+     "kaffee": {
+      "preis": 45
+     },
+     "brot": {
+      "preis": 20
+     }
+    }
+   }
+  },
+  {
+   "lang": "it",
+   "name": "Italiano",
+   "text": "cambia il [prezzo|pr] del [pane|p] a [25|v] e fai che il [totale|t] del [menù|m] sia [caffè|c] più [pane|p]",
+   "keys": {
+    "menu": "menu",
+    "cafe": "caffe",
+    "pan": "pane",
+    "precio": "prezzo",
+    "total_hint": "totale"
+   },
+   "state": {
+    "menu": {
+     "caffe": {
+      "prezzo": 45
+     },
+     "pane": {
+      "prezzo": 20
+     }
+    }
+   }
+  },
+  {
+   "lang": "pt",
+   "name": "Português",
+   "text": "muda o [preço|pr] do [pão|p] para [25|v] e que o [total|t] do [menu|m] seja [café|c] mais [pão|p]",
+   "keys": {
+    "menu": "cardapio",
+    "cafe": "cafe",
+    "pan": "pao",
+    "precio": "preco",
+    "total_hint": "total"
+   },
+   "state": {
+    "cardapio": {
+     "cafe": {
+      "preco": 45
+     },
+     "pao": {
+      "preco": 20
+     }
+    }
+   }
+  },
+  {
+   "lang": "ar",
+   "name": "العربية",
+   "dir": "rtl",
+   "text": "غيّر [سعر|pr] [الخبز|p] إلى [25|v]، واجعل [مجموع|t] [القائمة|m] يساوي [القهوة|c] زائد [الخبز|p]",
+   "keys": {
+    "menu": "القائمة",
+    "cafe": "القهوة",
+    "pan": "الخبز",
+    "precio": "السعر",
+    "total_hint": "المجموع"
+   },
+   "state": {
+    "القائمة": {
+     "القهوة": {
+      "السعر": 45
+     },
+     "الخبز": {
+      "السعر": 20
+     }
+    }
+   }
+  },
+  {
+   "lang": "hi",
+   "name": "हिन्दी",
+   "text": "[ब्रेड|p] की [कीमत|pr] [25|v] कर दो और [मेन्यू|m] का [कुल|t] [कॉफ़ी|c] और [ब्रेड|p] का जोड़ हो",
+   "keys": {
+    "menu": "मेन्यू",
+    "cafe": "कॉफ़ी",
+    "pan": "ब्रेड",
+    "precio": "कीमत",
+    "total_hint": "कुल"
+   },
+   "state": {
+    "मेन्यू": {
+     "कॉफ़ी": {
+      "कीमत": 45
+     },
+     "ब्रेड": {
+      "कीमत": 20
+     }
+    }
+   }
+  },
+  {
+   "lang": "ko",
+   "name": "한국어",
+   "text": "[빵|p] [가격|pr]을 [25|v]로 바꾸고 [메뉴|m] [합계|t]는 [커피|c] 더하기 [빵|p]로 해 줘",
+   "keys": {
+    "menu": "메뉴",
+    "cafe": "커피",
+    "pan": "빵",
+    "precio": "가격",
+    "total_hint": "합계"
+   },
+   "state": {
+    "메뉴": {
+     "커피": {
+      "가격": 45
+     },
+     "빵": {
+      "가격": 20
+     }
+    }
+   }
+  }
+ ]
+}
