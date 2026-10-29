@@ -64,10 +64,15 @@
       { text: [...SRC.querySelector(".kicker").childNodes].filter((n) => n.nodeType === 3).map((n) => n.textContent).join("").trim(), href: null }],
     docs: SRC.querySelector(".topnav a[data-topbar=docs]")?.getAttribute("href"), github: SRC.querySelector(".topnav a[href*='github.com']")?.getAttribute("href"),
     kicker: inline(SRC.querySelector(".kicker")), h1: txt(SRC.querySelector(".page-title")), subtitle: inline(SRC.querySelector(".page-subtitle")),
-    cards: [...SRC.querySelectorAll(".grid > a.card")].map((a) => {
-      const img = a.querySelector(".card-icon img"), emoji = a.querySelector(".card-emoji");
-      return { href: a.getAttribute("href"), title: txt(a.querySelector(".card-title")), desc: txt(a.querySelector(".card-desc")), path: txt(a.querySelector(".card-path")),
-        img: img && { src: img.getAttribute("src"), alt: img.getAttribute("alt") || "" }, emoji: emoji && txt(emoji) };
+    // optional hero (.page-hero img + .page-hero-caption) and several titled grids (.section-title before a .grid); a page with one plain grid renders as before
+    hero: (() => { const im = SRC.querySelector(".page-hero img"); return im && { src: im.getAttribute("src"), alt: im.getAttribute("alt") || "", caption: txt(SRC.querySelector(".page-hero-caption")) }; })(),
+    groups: [...SRC.querySelectorAll(".page .grid")].map((g) => {
+      const prev = g.previousElementSibling;
+      return { title: prev && prev.classList.contains("section-title") ? txt(prev) : null, cards: [...g.querySelectorAll(":scope > .card")].map((a) => {
+        const img = a.querySelector(".card-icon img"), emoji = a.querySelector(".card-emoji");
+        return { href: a.getAttribute("href"), plain: a.classList.contains("card-plain"), title: txt(a.querySelector(".card-title")), desc: txt(a.querySelector(".card-desc")), path: txt(a.querySelector(".card-path")),
+          img: img && { src: img.getAttribute("src"), alt: img.getAttribute("alt") || "" }, emoji: emoji && txt(emoji) };
+      }), plain: g.classList.contains("grid-plain") };
     }),
   } : {
     path, docs: SRC.querySelector(".topnav .act")?.getAttribute("href"), github: SRC.querySelector(".topnav .gh")?.getAttribute("href"),
@@ -331,14 +336,25 @@
       c.path && T(c.path, { fontFamily: MONO, fontSize: ".75rem", color: "primary.main", overflowWrap: "anywhere" }),
     ].filter(Boolean)),
   ]);
+  const plainCard = (c) => N("Card", { variant: "outlined", sx: { ...cardSx, borderRadius: "12px", p: 2.25, display: "flex", flexDirection: "column", gap: .75 } }, [
+    T(c.title, { fontSize: "1rem", fontWeight: 800, color: "text.primary" }),
+    c.desc && T(c.desc, { fontSize: ".85rem", color: "text.secondary", lineHeight: 1.5 }),
+  ].filter(Boolean));
   const indexSpec = () => N("Box", { sx: { minHeight: "100vh", bgcolor: "background.default", color: "text.primary" } }, [
     N("LandingTopBar", {}),
     N("Box", { component: "main", sx: { maxWidth: 960, mx: "auto", px: 4, pt: 6, pb: 10, "@media (max-width:480px)": { px: 2.5, pt: 4 } } }, [
       T(page.kicker, { fontSize: ".75rem", fontWeight: 600, letterSpacing: ".18em", textTransform: "uppercase", color: "text.secondary", mb: 1.5 }, { component: "p" }),
       T(page.h1, { fontSize: "2.75rem", fontWeight: 800, letterSpacing: "-.02em", lineHeight: 1.1, mb: 1.5 }, { component: "h1" }),
       T(page.subtitle, { fontSize: "1.05rem", color: "text.secondary", mb: 6, maxWidth: 560 }, { component: "p" }),
-      N("Box", { sx: { display: "grid", gridTemplateColumns: "1fr", gap: 2, "@media (min-width:720px)": { gridTemplateColumns: "1fr 1fr" } } }, page.cards.map(indexCard)),
-    ]),
+      page.hero && N("Box", { component: "figure", sx: { m: 0, mb: 6 } }, [
+        N("Box", { component: "img", src: page.hero.src, alt: page.hero.alt, sx: { width: "100%", height: "auto", display: "block", borderRadius: "12px", border: 1, borderColor: "divider" } }),
+        page.hero.caption && T(page.hero.caption, { fontFamily: MONO, fontSize: ".85rem", color: "text.secondary", mt: 1.5 }, { component: "figcaption" }),
+      ].filter(Boolean)),
+      ...page.groups.flatMap((g) => [
+        g.title && T(g.title, { fontSize: "1.25rem", fontWeight: 800, mb: 2 }, { component: "h2" }),
+        N("Box", { sx: g.plain ? { display: "grid", gap: 2, mb: 6, gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))" } : { display: "grid", gridTemplateColumns: "1fr", gap: 2, mb: 6, "@media (min-width:720px)": { gridTemplateColumns: "1fr 1fr" } } }, g.cards.map((c) => c.plain ? plainCard(c) : indexCard(c))),
+      ].filter(Boolean)),
+    ].filter(Boolean)),
   ]);
   // /.me/docs/ index: cover image on top of every card (140px, cropped), title, text; 3 / 2 / 1 columns as the static page
   const docsCard = (c, i) => N("Card", { component: "a", href: c.href, variant: "outlined", sx: { ...cardSx, display: "flex", flexDirection: "column", overflow: "hidden", borderRadius: "12px",
