@@ -25,6 +25,7 @@ scripts:
 <a class="card" href="https://neurons-me.github.io/.me/docs/Extreme-Fan-Out.html"><span class="card-title">⚡ Extreme Fan-Out</span><span class="card-desc">One write updates 100k dependents.</span><code class="card-code">me.explain(&quot;dep[100000].out&quot;).meta.k // 100000</code></a>
 <a class="card card-all" href="https://neurons-me.github.io/.me/Demos/"><img src="https://neurons-me.github.io/.me/docs/assets/demos-cover.webp" alt="Demos"><span class="card-title">View all demos →</span></a>
 </div>
+<p class="me-split-live" style="font-size:.9rem;margin:.6rem 0 0">💳 Splitting your Bill — Try it live: <a href="https://neurons-me.github.io/.wallet/paypal/split/" target="_blank" rel="noopener noreferrer">.wallet Split →</a> (settles through PayPal.me links)</p>
 
 <style>.readme-demos{display:none} .me-demo-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px;margin:0 0 12px} .me-demo-cards a.card{display:flex;flex-direction:column;gap:6px;padding:14px;border:1px solid rgba(127,127,127,.35);border-radius:12px;text-decoration:none;color:inherit} .me-demo-cards .card-title{font-weight:700} .me-demo-cards .card-desc{font-size:.88rem;opacity:.8} .me-demo-cards a.card-all{padding:0;overflow:hidden;gap:0} .me-demo-cards a.card-all img{flex:1;width:100%;min-height:130px;object-fit:cover;display:block} .me-demo-cards a.card-all .card-title{padding:12px 14px;text-align:center} .me-demo-cards .card-code{font-size:.78rem;overflow-x:auto;white-space:nowrap}</style>
 

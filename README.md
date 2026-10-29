@@ -147,6 +147,8 @@ me("wallets.vancouver.balance_ana")
 
 A balance sheet for three friends and a settlement engine for a hundred-person retreat are built from identical arithmetic — only the numbers get bigger. **<a href="https://neurons-me.github.io/.me/docs/Splitting-your-Bill.html" target="_blank" rel="noopener noreferrer">Walk through Splitting the Bill.</a>**
 
+Try it live: <a href="https://neurons-me.github.io/.wallet/paypal/split/" target="_blank" rel="noopener noreferrer">.wallet Split →</a> (settles through PayPal.me links)
+
 ### <a href="https://neurons-me.github.io/.me/docs/Running-your-CoffeeShops.html" target="_blank" rel="noopener noreferrer">🏪 ⇄ 📦 ⇄ 📈 CoffeeShops</a> — ☕ Inventory and 📦 operations as a graph.
 
 ```ts
