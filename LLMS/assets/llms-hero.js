@@ -15,6 +15,13 @@
     ops: [{ op: "set", path: "menu.pan.precio", value: 25 }, { op: "define", path: "menu", name: "total", expr: "cafe.precio + pan.precio" }]
   };
 
+  // e24 in the languages that reached e24's final state with the Meta adapter (eval/results/multilang-e24-2026-10-29.json);
+  // [word|k] marks the words that name a path (eval/multilang-e24.json), checked against the paths the model's ops touched
+  var LANGS = [{"lang": "es", "name": "Español", "text": "cambia el [precio|pr] del [pan|p] a [25|v] y que el [total|t] del [menú|m] sea [café|c] más [pan|p]"}, {"lang": "en", "name": "English", "text": "change the [price|pr] of [bread|p] to [25|v] and make the [menu|m] [total|t] [coffee|c] plus [bread|p]"}, {"lang": "ru", "name": "Русский", "text": "измени [цену|pr] [хлеба|p] на [25|v], и пусть [итог|t] [меню|m] будет [кофе|c] плюс [хлеб|p]"}, {"lang": "ja", "name": "日本語", "text": "[パン|p]の[値段|pr]を[25|v]に変えて、[メニュー|m]の[合計|t]を[コーヒー|c]と[パン|p]の合計にして"}, {"lang": "zh", "name": "中文", "text": "把[面包|p]的[价格|pr]改成[25|v]，并让[菜单|m]的[总计|t]等于[咖啡|c]加[面包|p]"}, {"lang": "fr", "name": "Français", "text": "change le [prix|pr] du [pain|p] à [25|v] et que le [total|t] du [menu|m] soit [café|c] plus [pain|p]"}, {"lang": "pt", "name": "Português", "text": "muda o [preço|pr] do [pão|p] para [25|v] e que o [total|t] do [menu|m] seja [café|c] mais [pão|p]"}, {"lang": "ar", "name": "العربية", "dir": "rtl", "text": "غيّر [سعر|pr] [الخبز|p] إلى [25|v]، واجعل [مجموع|t] [القائمة|m] يساوي [القهوة|c] زائد [الخبز|p]"}, {"lang": "hi", "name": "हिन्दी", "text": "[ब्रेड|p] की [कीमत|pr] [25|v] कर दो और [मेन्यू|m] का [कुल|t] [कॉफ़ी|c] और [ब्रेड|p] का जोड़ हो"}];
+  var KMAP = { m: "menu", c: "menu.cafe", p: "menu.pan", pr: "menu.pan.precio", v: "menu.pan.precio=", t: "menu.total" };
+  LANGS.forEach(function (l) { l.segs = []; var re = /\[([^|\]]+)\|([^\]]+)\]/g, i = 0, m;
+    while ((m = re.exec(l.text))) { if (m.index > i) l.segs.push({ t: l.text.slice(i, m.index) }); l.segs.push({ t: m[1], k: KMAP[m[2]] }); i = re.lastIndex; }
+    if (i < l.text.length) l.segs.push({ t: l.text.slice(i) }); });
   var norm = function (w) { return w.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase(); };
   var get = function (o, p) { return p.split(".").reduce(function (a, k) { return a == null ? a : a[k]; }, o); };
   var clone = function (o) { return JSON.parse(JSON.stringify(o)); };
@@ -131,12 +138,26 @@
     ".lh-el{font-family:" + MONO + ";font-size:9.5px;fill:" + FG2 + ";text-anchor:middle}.lh-el.on{fill:" + ACC + ";font-weight:700}" +
     ".lh-hint{grid-column:1/-1;font-family:" + MONO + ";font-size:12px;color:" + FG2 + ";min-height:1.4em;margin:2px 2px 0}" +
     ".lh-hint b{color:" + PATHC + ";font-weight:600}" +
+    ".lh-sayhd{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:6px 10px;margin:0 0 14px}.lh-sayhd .lh-h{margin:0}" +
+    ".lh-langs{display:flex;flex-wrap:wrap;gap:4px}" +
+    ".lh-pill{font:600 10px/1 " + MONO + ";letter-spacing:.04em;padding:4px 6px;border-radius:999px;border:1px solid " + GRID + ";background:transparent;color:" + FG2 + ";cursor:pointer}" +
+    ".lh-pill:hover{color:" + FG + "}.lh-pill.on{border-color:" + ACC + ";color:" + ACC + ";background:" + mix(ACC, 12, "transparent") + "}" +
+    ".lh-say{animation:lh-fade .45s ease both}@keyframes lh-fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}" +
+    ".lh-say:lang(ja),.lh-say:lang(zh),.lh-say:lang(ko){font-family:'Noto Sans CJK JP','Noto Sans JP','Hiragino Sans','PingFang SC','Microsoft YaHei','Malgun Gothic',sans-serif;line-break:strict}" +
+    ".lh-say:lang(ar){font-family:'Noto Sans Arabic','Segoe UI','Geeza Pro',sans-serif;line-height:1.7}.lh-say:lang(hi){font-family:'Noto Sans Devanagari','Nirmala UI',sans-serif;line-height:1.6}" +
+    ".lh-same{font:600 10px/1 " + MONO + ";color:" + ACC + ";opacity:0}.lh-same.go{animation:lh-same 1.6s ease both}@keyframes lh-same{0%{opacity:0}20%{opacity:1}75%{opacity:1}100%{opacity:0}}" +
+    ".lh-pulse{animation:lh-pulse 1.1s ease}@keyframes lh-pulse{0%{filter:drop-shadow(0 0 0 transparent)}35%{filter:drop-shadow(0 0 6px " + mix(ACC, 70, "transparent") + ")}100%{filter:drop-shadow(0 0 0 transparent)}}" +
+    "@media (prefers-reduced-motion:reduce){.lh-say,.lh-pulse,.lh-same.go{animation:none}}" +
     "@media (max-width:860px){.lh{grid-template-columns:1fr}.lh-ar{transform:rotate(90deg);justify-self:center;line-height:1}}";
 
   function LlmsHero() {
     var st = useState(null), hov = st[0], setHov = st[1];
     var sp = useState(null), pin = sp[0], setPin = sp[1];
     var a = hov || pin;
+    var sl = useState(0), li = sl[0], setLi = sl[1];
+    var sh = useState(false), hold = sh[0], setHold = sh[1];
+    useEffect(function () { if (hold || pin) return; var t = setTimeout(function () { setLi((li + 1) % LANGS.length); }, 4000); return function () { clearTimeout(t); }; }, [li, hold, pin]);
+    var L = LANGS[li];
     useEffect(function () {
       if (!document.getElementById("lh-css")) { var s = document.createElement("style"); s.id = "lh-css"; s.textContent = CSS; document.head.appendChild(s); }
       var off = function (e) { if (!e.target.closest || !e.target.closest("[data-k]")) setPin(null); };
@@ -152,10 +173,11 @@
     };
     var desc = function (k) { return bare(k) + (/=$/.test(k) ? " = " + get(state, bare(k)) : derived[k] ? " = " + derived[k].deps.join(" + ") + " → " + derived[k].value : ""); };
 
-    var words = ITEM.say.split(/(\s+)/).map(function (w, i) {
-      var k = /\S/.test(w) ? wordPath(w) : null;
-      return k ? h("span", Object.assign({ key: i, className: "lh-w" + rel(k, a) }, bind(k, "“" + w + "” → " + desc(k), true)), w) : w;
+    var words = L.segs.map(function (g, i) {
+      return g.k ? h("span", Object.assign({ key: i, className: "lh-w" + rel(g.k, a) }, bind(g.k, "“" + g.t + "” → " + desc(g.k), true)), g.t) : g.t;
     });
+    var pills = h("div", { className: "lh-langs", role: "tablist", "aria-label": "language" }, LANGS.map(function (l, i) {
+      return h("button", { key: l.lang, type: "button", role: "tab", "aria-selected": i === li, lang: l.lang, className: "lh-pill" + (i === li ? " on" : ""), title: l.name, onClick: function () { setLi(i); } }, l.lang.toUpperCase()); }));
     var codeEls = code().map(function (ln, i) {
       return h("span", { key: i, className: "ln" }, ln.map(function (t, j) {
         if (t.c === "mes-comment") return h("span", { key: j, className: "lh-cm" }, t.v);
@@ -177,15 +199,16 @@
       N.map(function (n) { return h("g", { key: "n" + n.k }, node(n, n.kind === "root" ? 22 : 18, false),
         n.value != null && h("text", { className: "lh-el", x: n.x, y: n.y + 32, style: { fontSize: "11px", fill: DER } }, "= " + n.value)); }),
       VAL.map(function (v) { return node(v, 15, true); }));
-    return h("section", { className: "lh-card" },
+    return h("section", { className: "lh-card", onMouseEnter: function () { setHold(true); }, onMouseLeave: function () { setHold(false); },
+        onFocus: function () { setHold(true); }, onBlur: function () { setHold(false); } },
       h("h1", { className: "lh-title" }, "LLMS"),
       h("p", { className: "lh-sub" }, "natural language ", h("span", { className: "lh-acc" }, "→"), " .me"),
       h("div", { className: "lh", "aria-label": "e24: a sentence, the .me ops it becomes, and the state they produce" },
-      h("div", { className: "lh-p" }, h("p", { className: "lh-h" }, "You say"), h("p", { className: "lh-say", lang: "es" }, "“", words, "”")),
+      h("div", { className: "lh-p" }, h("div", { className: "lh-sayhd" }, h("p", { className: "lh-h" }, "You say · " + L.name), pills), h("p", { key: L.lang, className: "lh-say", lang: L.lang, dir: L.dir || "ltr" }, "“", words, "”")),
       h("div", { className: "lh-ar", "aria-hidden": true }, "→"),
       h("div", { className: "lh-p" }, h("p", { className: "lh-h" }, ".me ops"), h("pre", { className: "lh-code me-code" }, h("span", { className: "ln lh-cm" }, "// validated · dry-run"), codeEls)),
       h("div", { className: "lh-ar", "aria-hidden": true }, "→"),
-      h("div", { className: "lh-p" }, h("p", { className: "lh-h" }, "State"), svg),
+      h("div", { className: "lh-p" }, h("div", { className: "lh-sayhd" }, h("p", { className: "lh-h" }, "State"), h("span", { key: "s" + li, className: "lh-same" + (li ? " go" : "") }, "same .me")), h("div", { key: "g" + li, className: li ? "lh-pulse" : "" }, svg)),
       h("p", { className: "lh-hint", "aria-live": "polite" }, a ? ["● ", h("b", { key: "b" }, desc(a))] : "hover, tap or tab through a word, a token or a node")));
   }
   root.LandingLive = Object.assign(root.LandingLive || {}, { LlmsHero: LlmsHero });

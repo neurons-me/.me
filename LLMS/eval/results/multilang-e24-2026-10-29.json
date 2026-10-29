@@ -1,0 +1,346 @@
+{
+  "summary": {
+    "item": "e24",
+    "adapter": "meta",
+    "model": "muse-spark-1.3",
+    "date": "2026-10-29T04:23:07.203Z",
+    "languages": 12,
+    "passed": [
+      "es",
+      "en",
+      "ru",
+      "ja",
+      "zh",
+      "fr",
+      "pt",
+      "ar",
+      "hi"
+    ],
+    "failed": [
+      "de",
+      "it",
+      "ko"
+    ]
+  },
+  "expected_ops": [
+    {
+      "op": "set",
+      "path": "menu.pan.precio",
+      "value": 25
+    },
+    {
+      "op": "define",
+      "path": "menu",
+      "name": "total",
+      "expr": "cafe.precio + pan.precio"
+    }
+  ],
+  "rows": [
+    {
+      "lang": "es",
+      "name": "Español",
+      "text": "cambia el precio del pan a 25 y que el total del menú sea café más pan",
+      "ms": 4398,
+      "valid": true,
+      "attempts": 1,
+      "exact": false,
+      "state": true,
+      "wordPathsMissing": [],
+      "pass": true,
+      "predicted": [
+        {
+          "op": "set",
+          "path": "menu.pan.precio",
+          "value": 25
+        },
+        {
+          "op": "define",
+          "path": "menu",
+          "name": "total",
+          "expr": "menu.cafe.precio + menu.pan.precio"
+        }
+      ]
+    },
+    {
+      "lang": "en",
+      "name": "English",
+      "text": "change the price of bread to 25 and make the menu total coffee plus bread",
+      "ms": 3318,
+      "valid": true,
+      "attempts": 1,
+      "exact": true,
+      "state": true,
+      "wordPathsMissing": [],
+      "pass": true,
+      "predicted": [
+        {
+          "op": "set",
+          "path": "menu.pan.precio",
+          "value": 25
+        },
+        {
+          "op": "define",
+          "path": "menu",
+          "name": "total",
+          "expr": "cafe.precio + pan.precio"
+        }
+      ]
+    },
+    {
+      "lang": "ru",
+      "name": "Русский",
+      "text": "измени цену хлеба на 25, и пусть итог меню будет кофе плюс хлеб",
+      "ms": 9707,
+      "valid": true,
+      "attempts": 1,
+      "exact": false,
+      "state": true,
+      "wordPathsMissing": [],
+      "pass": true,
+      "predicted": [
+        {
+          "op": "set",
+          "path": "menu.pan.precio",
+          "value": 25
+        },
+        {
+          "op": "define",
+          "path": "menu",
+          "name": "total",
+          "expr": "menu.cafe.precio + menu.pan.precio"
+        }
+      ]
+    },
+    {
+      "lang": "ja",
+      "name": "日本語",
+      "text": "パンの値段を25に変えて、メニューの合計をコーヒーとパンの合計にして",
+      "ms": 3469,
+      "valid": true,
+      "attempts": 1,
+      "exact": false,
+      "state": true,
+      "wordPathsMissing": [],
+      "pass": true,
+      "predicted": [
+        {
+          "op": "set",
+          "path": "menu.pan.precio",
+          "value": 25
+        },
+        {
+          "op": "define",
+          "path": "menu",
+          "name": "total",
+          "expr": "menu.cafe.precio + menu.pan.precio"
+        }
+      ]
+    },
+    {
+      "lang": "zh",
+      "name": "中文",
+      "text": "把面包的价格改成25，并让菜单的总计等于咖啡加面包",
+      "ms": 4069,
+      "valid": true,
+      "attempts": 1,
+      "exact": false,
+      "state": true,
+      "wordPathsMissing": [],
+      "pass": true,
+      "predicted": [
+        {
+          "op": "set",
+          "path": "menu.pan.precio",
+          "value": 25
+        },
+        {
+          "op": "define",
+          "path": "menu",
+          "name": "total",
+          "expr": "menu.cafe.precio + menu.pan.precio"
+        }
+      ]
+    },
+    {
+      "lang": "fr",
+      "name": "Français",
+      "text": "change le prix du pain à 25 et que le total du menu soit café plus pain",
+      "ms": 3750,
+      "valid": true,
+      "attempts": 1,
+      "exact": true,
+      "state": true,
+      "wordPathsMissing": [],
+      "pass": true,
+      "predicted": [
+        {
+          "op": "set",
+          "path": "menu.pan.precio",
+          "value": 25
+        },
+        {
+          "op": "define",
+          "path": "menu",
+          "name": "total",
+          "expr": "cafe.precio + pan.precio"
+        }
+      ]
+    },
+    {
+      "lang": "de",
+      "name": "Deutsch",
+      "text": "ändere den Preis des Brots auf 25, und die Summe des Menüs soll Kaffee plus Brot sein",
+      "ms": 8310,
+      "valid": true,
+      "attempts": 1,
+      "exact": false,
+      "state": false,
+      "wordPathsMissing": [
+        "Summe→menu.total"
+      ],
+      "pass": false,
+      "predicted": [
+        {
+          "op": "set",
+          "path": "menu.pan.precio",
+          "value": 25
+        },
+        {
+          "op": "define",
+          "path": "menu",
+          "name": "summe",
+          "expr": "menu.cafe.precio + menu.pan.precio"
+        }
+      ]
+    },
+    {
+      "lang": "pt",
+      "name": "Português",
+      "text": "muda o preço do pão para 25 e que o total do menu seja café mais pão",
+      "ms": 4540,
+      "valid": true,
+      "attempts": 1,
+      "exact": false,
+      "state": true,
+      "wordPathsMissing": [],
+      "pass": true,
+      "predicted": [
+        {
+          "op": "set",
+          "path": "menu.pan.precio",
+          "value": 25
+        },
+        {
+          "op": "define",
+          "path": "menu",
+          "name": "total",
+          "expr": "menu.cafe.precio + menu.pan.precio"
+        }
+      ]
+    },
+    {
+      "lang": "it",
+      "name": "Italiano",
+      "text": "cambia il prezzo del pane a 25 e fai che il totale del menù sia caffè più pane",
+      "ms": 4777,
+      "valid": true,
+      "attempts": 1,
+      "exact": false,
+      "state": false,
+      "wordPathsMissing": [
+        "totale→menu.total"
+      ],
+      "pass": false,
+      "predicted": [
+        {
+          "op": "set",
+          "path": "menu.pan.precio",
+          "value": 25
+        },
+        {
+          "op": "define",
+          "path": "menu",
+          "name": "totale",
+          "expr": "cafe.precio + pan.precio"
+        }
+      ]
+    },
+    {
+      "lang": "ar",
+      "name": "العربية",
+      "text": "غيّر سعر الخبز إلى 25، واجعل مجموع القائمة يساوي القهوة زائد الخبز",
+      "ms": 21657,
+      "valid": true,
+      "attempts": 1,
+      "exact": false,
+      "state": true,
+      "wordPathsMissing": [],
+      "pass": true,
+      "predicted": [
+        {
+          "op": "set",
+          "path": "menu.pan.precio",
+          "value": 25
+        },
+        {
+          "op": "define",
+          "path": "menu",
+          "name": "total",
+          "expr": "menu.cafe.precio + menu.pan.precio"
+        }
+      ]
+    },
+    {
+      "lang": "hi",
+      "name": "हिन्दी",
+      "text": "ब्रेड की कीमत 25 कर दो और मेन्यू का कुल कॉफ़ी और ब्रेड का जोड़ हो",
+      "ms": 9836,
+      "valid": true,
+      "attempts": 1,
+      "exact": false,
+      "state": true,
+      "wordPathsMissing": [],
+      "pass": true,
+      "predicted": [
+        {
+          "op": "set",
+          "path": "menu.pan.precio",
+          "value": 25
+        },
+        {
+          "op": "define",
+          "path": "menu",
+          "name": "total",
+          "expr": "menu.cafe.precio + menu.pan.precio"
+        }
+      ]
+    },
+    {
+      "lang": "ko",
+      "name": "한국어",
+      "text": "빵 가격을 25로 바꾸고 메뉴 합계는 커피 더하기 빵로 해 줘",
+      "ms": 5873,
+      "valid": true,
+      "attempts": 1,
+      "exact": false,
+      "state": false,
+      "wordPathsMissing": [
+        "합계→menu.total"
+      ],
+      "pass": false,
+      "predicted": [
+        {
+          "op": "set",
+          "path": "menu.pan.precio",
+          "value": 25
+        },
+        {
+          "op": "define",
+          "path": "menu",
+          "name": "합계",
+          "expr": "cafe.precio + pan.precio"
+        }
+      ]
+    }
+  ]
+}
