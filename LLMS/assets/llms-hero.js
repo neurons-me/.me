@@ -128,9 +128,9 @@
     ".lh-langs{display:flex;flex-wrap:wrap;gap:4px}" +
     ".lh-pill{font:600 10px/1 " + MONO + ";letter-spacing:.04em;padding:4px 6px;border-radius:999px;border:1px solid " + GRID + ";background:transparent;color:" + FG2 + ";cursor:pointer}" +
     ".lh-lname{display:inline-block;color:" + ACC + "}" +
-    ".lh-top{margin:0 0 14px;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:16px 24px}.lh-top .lh-langs{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end}" +
+    ".lh-top{margin:10px 0 clamp(20px,3vw,30px);display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:16px 24px}.lh-top .lh-langs{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end}" +
     ".lh-top .lh-pill{font-size:13px;padding:8px 14px;letter-spacing:.06em}" +
-    ".lh-toplbl{margin:0;font-size:12px}.lh-p1{display:flex;align-items:center}" +
+    ".lh-top .lh-sub{margin:0}.lh-p1{display:flex;align-items:center}" +
     "@media (max-width:640px){.lh-top{flex-direction:column;align-items:flex-start}.lh-top .lh-langs{justify-content:flex-start}}" +
     ".lh-pill:hover{color:" + FG + "}.lh-pill.on{border-color:" + ACC + ";color:" + ACC + ";background:" + mix(ACC, 12, "transparent") + "}" +
     ".lh-say,.lh-fade{animation:lh-fade .45s ease both}@keyframes lh-fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}" +
@@ -194,8 +194,7 @@
     return h("section", { className: "lh-card", onMouseEnter: function () { setHold(true); }, onMouseLeave: function () { setHold(false); },
         onFocus: function () { setHold(true); }, onBlur: function () { setHold(false); } },
       h("h1", { className: "lh-title" }, "LLMS"),
-      h("p", { className: "lh-sub" }, "natural language ", h("span", { className: "lh-acc" }, "→"), " .me"),
-      h("div", { className: "lh-top" }, h("p", { className: "lh-h lh-toplbl" }, "You say it in ", h("span", { key: "n" + L.lang, className: "lh-lname lh-fade" }, L.name)), pills),
+      h("div", { className: "lh-top" }, h("p", { className: "lh-sub" }, h("span", { key: "n" + L.lang, className: "lh-lname lh-fade", lang: L.lang }, L.name), " ", h("span", { className: "lh-acc" }, "→"), " .me"), pills),
       h("div", { className: "lh", "aria-label": "e24: a sentence, the .me ops it becomes, and the state they produce" },
       h("div", { className: "lh-p lh-p1" }, h("p", { key: L.lang, className: "lh-say", lang: L.lang, dir: L.dir || "ltr" }, "“", words, "”")),
       h("div", { className: "lh-ar", "aria-hidden": true }, "→"),
