@@ -103,7 +103,10 @@
   var PATHC = SYN("path", "#79c0ff"), NUM = SYN("number", "#d29922"), DER = SYN("derived", "#a371f7");
   var mix = function (a, p, b) { return "color-mix(in srgb, " + a + " " + p + "%, " + b + ")"; };
   var MONO = "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace";
-  var CSS = ".lh{display:grid;grid-template-columns:1fr auto 1.15fr auto 1.15fr;gap:14px;align-items:stretch;color:" + FG + "}" +
+  var CSS = ".lh-card{border:1px solid " + GRID + ";border-radius:16px;padding:clamp(20px,4vw,44px);background:linear-gradient(135deg," + mix(ACC, 7, "transparent") + ",transparent 55%)}" +
+    ".lh-title{font-size:clamp(44px,7vw,76px);font-weight:800;letter-spacing:-.02em;line-height:1;margin:0;color:" + FG + "}" +
+    ".lh-sub{font-family:" + MONO + ";font-size:clamp(15px,1.8vw,20px);color:" + FG2 + ";margin:10px 0 clamp(20px,3vw,34px)}.lh-acc{color:" + ACC + "}" +
+    ".lh{display:grid;grid-template-columns:1fr auto 1.15fr auto 1.15fr;gap:14px;align-items:stretch;color:" + FG + "}" +
     ".lh-p{border:1px solid " + GRID + ";border-radius:12px;padding:16px 18px;background:" + PAPER + ";min-width:0}" +
     ".lh-h{font-family:" + MONO + ";font-size:11px;letter-spacing:.12em;color:" + FG2 + ";margin:0 0 14px;text-transform:uppercase}" +
     ".lh-ar{align-self:center;color:" + ACC + ";font-size:20px}" +
@@ -174,13 +177,16 @@
       N.map(function (n) { return h("g", { key: "n" + n.k }, node(n, n.kind === "root" ? 22 : 18, false),
         n.value != null && h("text", { className: "lh-el", x: n.x, y: n.y + 32, style: { fontSize: "11px", fill: DER } }, "= " + n.value)); }),
       VAL.map(function (v) { return node(v, 15, true); }));
-    return h("div", { className: "lh", "aria-label": "e24: a sentence, the .me ops it becomes, and the state they produce" },
+    return h("section", { className: "lh-card" },
+      h("h1", { className: "lh-title" }, "LLMS"),
+      h("p", { className: "lh-sub" }, "natural language ", h("span", { className: "lh-acc" }, "→"), " .me"),
+      h("div", { className: "lh", "aria-label": "e24: a sentence, the .me ops it becomes, and the state they produce" },
       h("div", { className: "lh-p" }, h("p", { className: "lh-h" }, "You say"), h("p", { className: "lh-say", lang: "es" }, "“", words, "”")),
       h("div", { className: "lh-ar", "aria-hidden": true }, "→"),
       h("div", { className: "lh-p" }, h("p", { className: "lh-h" }, ".me ops"), h("pre", { className: "lh-code me-code" }, h("span", { className: "ln lh-cm" }, "// validated · dry-run"), codeEls)),
       h("div", { className: "lh-ar", "aria-hidden": true }, "→"),
       h("div", { className: "lh-p" }, h("p", { className: "lh-h" }, "State"), svg),
-      h("p", { className: "lh-hint", "aria-live": "polite" }, a ? ["● ", h("b", { key: "b" }, desc(a))] : "hover, tap or tab through a word, a token or a node"));
+      h("p", { className: "lh-hint", "aria-live": "polite" }, a ? ["● ", h("b", { key: "b" }, desc(a))] : "hover, tap or tab through a word, a token or a node")));
   }
   root.LandingLive = Object.assign(root.LandingLive || {}, { LlmsHero: LlmsHero });
 })(typeof window !== "undefined" ? window : this);

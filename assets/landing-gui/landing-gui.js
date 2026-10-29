@@ -347,7 +347,7 @@
     N("LandingTopBar", {}),
     N("Box", { component: "main", sx: { maxWidth: 960, mx: "auto", px: 4, pt: 6, pb: 10, "@media (max-width:480px)": { px: 2.5, pt: 4 } } }, [
       page.kicker && T(page.kicker, { fontSize: ".75rem", fontWeight: 600, letterSpacing: ".18em", textTransform: "uppercase", color: "text.secondary", mb: 1.5 }, { component: "p" }),
-      T(page.h1, page.h1Hidden ? { position: "absolute", width: "1px", height: "1px", overflow: "hidden", clip: "rect(0 0 0 0)", whiteSpace: "nowrap" } : { fontSize: "2.75rem", fontWeight: 800, letterSpacing: "-.02em", lineHeight: 1.1, mb: 1.5 }, { component: "h1" }),
+      page.h1 && T(page.h1, page.h1Hidden ? { position: "absolute", width: "1px", height: "1px", overflow: "hidden", clip: "rect(0 0 0 0)", whiteSpace: "nowrap" } : { fontSize: "2.75rem", fontWeight: 800, letterSpacing: "-.02em", lineHeight: 1.1, mb: 1.5 }, { component: "h1" }),
       page.subtitle && T(page.subtitle, { fontSize: "1.05rem", color: "text.secondary", mb: 6, maxWidth: 560 }, { component: "p" }),
       page.hero && page.hero.live && N("Box", { sx: { mb: 6 } }, N(page.hero.live, page.hero.props)),
       page.hero && !page.hero.live && N("Box", { component: "figure", sx: { m: 0, mb: 6 } }, [
