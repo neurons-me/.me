@@ -128,6 +128,9 @@
     ".lh-langs{display:flex;flex-wrap:wrap;gap:4px}" +
     ".lh-pill{font:600 10px/1 " + MONO + ";letter-spacing:.04em;padding:4px 6px;border-radius:999px;border:1px solid " + GRID + ";background:transparent;color:" + FG2 + ";cursor:pointer}" +
     ".lh-lname{display:inline-block;color:" + ACC + "}" +
+    ".lh-top{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:16px 24px}.lh-top .lh-langs{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end}" +
+    ".lh-top .lh-pill{font-size:13px;padding:8px 14px;letter-spacing:.06em}" +
+    "@media (max-width:640px){.lh-top{flex-direction:column;align-items:flex-start}.lh-top .lh-langs{justify-content:flex-start}}" +
     ".lh-pill:hover{color:" + FG + "}.lh-pill.on{border-color:" + ACC + ";color:" + ACC + ";background:" + mix(ACC, 12, "transparent") + "}" +
     ".lh-say,.lh-fade{animation:lh-fade .45s ease both}@keyframes lh-fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}" +
     ".lh-say:lang(ja),.lh-say:lang(zh),.lh-say:lang(ko){font-family:'Noto Sans CJK JP','Noto Sans JP','Hiragino Sans','PingFang SC','Microsoft YaHei','Malgun Gothic',sans-serif;line-break:strict}" +
@@ -189,10 +192,10 @@
       VAL.map(function (v) { return node(v, 15, true); }));
     return h("section", { className: "lh-card", onMouseEnter: function () { setHold(true); }, onMouseLeave: function () { setHold(false); },
         onFocus: function () { setHold(true); }, onBlur: function () { setHold(false); } },
-      h("h1", { className: "lh-title" }, "LLMS"),
-      h("p", { className: "lh-sub" }, "natural language ", h("span", { className: "lh-acc" }, "→"), " .me"),
+      h("header", { className: "lh-top" }, h("div", null, h("h1", { className: "lh-title" }, "LLMS"),
+      h("p", { className: "lh-sub" }, "natural language ", h("span", { className: "lh-acc" }, "→"), " .me")), pills),
       h("div", { className: "lh", "aria-label": "e24: a sentence, the .me ops it becomes, and the state they produce" },
-      h("div", { className: "lh-p" }, h("div", { className: "lh-sayhd" }, h("p", { className: "lh-h" }, "You say it in ", h("span", { key: "n" + L.lang, className: "lh-lname lh-fade" }, L.name)), pills), h("p", { key: L.lang, className: "lh-say", lang: L.lang, dir: L.dir || "ltr" }, "“", words, "”")),
+      h("div", { className: "lh-p" }, h("div", { className: "lh-sayhd" }, h("p", { className: "lh-h" }, "You say it in ", h("span", { key: "n" + L.lang, className: "lh-lname lh-fade" }, L.name))), h("p", { key: L.lang, className: "lh-say", lang: L.lang, dir: L.dir || "ltr" }, "“", words, "”")),
       h("div", { className: "lh-ar", "aria-hidden": true }, "→"),
       h("div", { className: "lh-p" }, h("p", { className: "lh-h" }, ".me ops"), h("pre", { key: "c" + li, className: "lh-code me-code lh-fade" }, h("span", { className: "ln lh-cm" }, "// validated · dry-run"), codeEls)),
       h("div", { className: "lh-ar", "aria-hidden": true }, "→"),
