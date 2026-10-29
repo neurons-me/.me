@@ -1,0 +1,22 @@
+{
+  "name": "llms-me",
+  "version": "0.1.0",
+  "description": "Natural language -> validated .me ops (this.me). Model-agnostic core with Meta and OpenAI adapters.",
+  "type": "module",
+  "main": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./adapters/meta": "./src/adapters/meta.ts",
+    "./adapters/openai": "./src/adapters/openai.ts"
+  },
+  "files": ["src", "spec"],
+  "engines": { "node": ">=23.6" },
+  "scripts": {
+    "test": "node --test \"tests/*.test.ts\"",
+    "eval": "node eval/run.ts",
+    "prepack": "rm -rf spec && mkdir -p spec/prompt spec/eval && cp ../ops.schema.json ../grammar.md spec/ && cp ../prompt/* spec/prompt/ && cp ../eval/eval.jsonl spec/eval/"
+  },
+  "repository": { "type": "git", "url": "git+https://github.com/neurons-me/.me.git", "directory": "LLMS/typescript" },
+  "license": "MIT",
+  "dependencies": { "this.me": "^4.2.1" }
+}

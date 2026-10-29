@@ -1,0 +1,12 @@
+[
+  {"lang":"en","text":"Ana is 22 and lives in Madrid","state":{},"ops":[{"op":"set","path":"ana.age","value":22},{"op":"set","path":"ana.city","value":"Madrid"}]},
+  {"lang":"es","text":"el precio del café es 45 y el del pan 20","state":{"menu":{"cafe":{"precio":40}}},"ops":[{"op":"set","path":"menu.cafe.precio","value":45},{"op":"set","path":"menu.pan.precio","value":20}]},
+  {"lang":"en","text":"the order total is subtotal plus tax","state":{"order":{"subtotal":100,"tax":16}},"ops":[{"op":"define","path":"order","name":"total","expr":"subtotal + tax"}]},
+  {"lang":"es","text":"cada camión cuesta su combustible por el precio por litro","state":{"fleet":{"trucks":{"1":{"fuel":100},"2":{"fuel":200}}},"price_per_liter":2},"ops":[{"op":"define","path":"fleet.trucks[i]","name":"cost","expr":"fuel * price_per_liter"}]},
+  {"lang":"en","text":"make the dashboard card point to the inventory","state":{"inventory":{"stock":900}},"ops":[{"op":"pointer","path":"dashboard.card","target":"inventory"}]},
+  {"lang":"es","text":"borra el teléfono de Luis","state":{"luis":{"phone":"555-1234","name":"Luis"}},"ops":[{"op":"remove","path":"luis","key":"phone"}]},
+  {"lang":"en","text":"keep my wallet private, my balance is 500, the password is hunter2","state":{},"ops":[{"op":"secret","path":"wallet"},{"op":"set","path":"wallet.balance","value":500}]},
+  {"lang":"es","text":"soy @sui","state":{},"ops":[{"op":"identity","handle":"sui"}]},
+  {"lang":"en","text":"what is Ana's age?","state":{"ana":{"age":22}},"ops":[{"op":"query","paths":["ana.age"]}]},
+  {"lang":"es","text":"yo pagué 300 de la cena para los tres","state":{"split":{"members":["Sui","Ana","Luis"]}},"speaker":"Sui","ops":[{"op":"set","path":"split.expenses[1].title","value":"cena"},{"op":"set","path":"split.expenses[1].payer","value":"Sui"},{"op":"set","path":"split.expenses[1].amount","value":300},{"op":"set","path":"split.expenses[1].participants","value":["Sui","Ana","Luis"]}]}
+]

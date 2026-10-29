@@ -1,0 +1,899 @@
+{
+  "summary": {
+    "adapter": "meta",
+    "model": "muse-spark-1.3",
+    "date": "2026-10-29T02:40:06.161Z",
+    "items": 30,
+    "valid": "30/30 (100.0%)",
+    "exact": "22/30 (73.3%)",
+    "state": "24/30 (80.0%)",
+    "confirm": "30/30 (100.0%)",
+    "stateByLang": {
+      "es": "11/15",
+      "en": "13/15"
+    },
+    "usedRepair": 0,
+    "latencyMs": {
+      "median": 2965,
+      "max": 24962
+    }
+  },
+  "rows": [
+    {
+      "id": "e01",
+      "lang": "en",
+      "text": "Luis is 30 years old",
+      "ms": 1693,
+      "valid": true,
+      "attempts": 1,
+      "exact": true,
+      "state": true,
+      "confirm": true,
+      "predicted": [
+        {
+          "op": "set",
+          "path": "luis.age",
+          "value": 30
+        }
+      ],
+      "expected": [
+        {
+          "op": "set",
+          "path": "luis.age",
+          "value": 30
+        }
+      ]
+    },
+    {
+      "id": "e02",
+      "lang": "es",
+      "text": "Ana ahora vive en Monterrey",
+      "ms": 1443,
+      "valid": true,
+      "attempts": 1,
+      "exact": true,
+      "state": true,
+      "confirm": true,
+      "predicted": [
+        {
+          "op": "set",
+          "path": "ana.city",
+          "value": "Monterrey"
+        }
+      ],
+      "expected": [
+        {
+          "op": "set",
+          "path": "ana.city",
+          "value": "Monterrey"
+        }
+      ]
+    },
+    {
+      "id": "e03",
+      "lang": "en",
+      "text": "set the shop tax rate to 0.16",
+      "ms": 8779,
+      "valid": true,
+      "attempts": 1,
+      "exact": true,
+      "state": true,
+      "confirm": true,
+      "predicted": [
+        {
+          "op": "set",
+          "path": "shop.tax_rate",
+          "value": 0.16
+        }
+      ],
+      "expected": [
+        {
+          "op": "set",
+          "path": "shop.tax_rate",
+          "value": 0.16
+        }
+      ]
+    },
+    {
+      "id": "e04",
+      "lang": "es",
+      "text": "el stock del inventario es 900 unidades",
+      "ms": 3317,
+      "valid": true,
+      "attempts": 1,
+      "exact": false,
+      "state": false,
+      "confirm": true,
+      "predicted": [
+        {
+          "op": "set",
+          "path": "inventario.stock",
+          "value": 900
+        }
+      ],
+      "expected": [
+        {
+          "op": "set",
+          "path": "inventory.stock",
+          "value": 900
+        }
+      ]
+    },
+    {
+      "id": "e05",
+      "lang": "en",
+      "text": "the first product is a Keyboard that costs 80",
+      "ms": 7665,
+      "valid": true,
+      "attempts": 1,
+      "exact": true,
+      "state": true,
+      "confirm": true,
+      "predicted": [
+        {
+          "op": "set",
+          "path": "products[1].name",
+          "value": "Keyboard"
+        },
+        {
+          "op": "set",
+          "path": "products[1].price",
+          "value": 80
+        }
+      ],
+      "expected": [
+        {
+          "op": "set",
+          "path": "products[1].name",
+          "value": "Keyboard"
+        },
+        {
+          "op": "set",
+          "path": "products[1].price",
+          "value": 80
+        }
+      ]
+    },
+    {
+      "id": "e06",
+      "lang": "es",
+      "text": "el total de la orden es el subtotal más el impuesto",
+      "ms": 3268,
+      "valid": true,
+      "attempts": 1,
+      "exact": true,
+      "state": true,
+      "confirm": true,
+      "predicted": [
+        {
+          "op": "define",
+          "path": "orden",
+          "name": "total",
+          "expr": "subtotal + impuesto"
+        }
+      ],
+      "expected": [
+        {
+          "op": "define",
+          "path": "orden",
+          "name": "total",
+          "expr": "subtotal + impuesto"
+        }
+      ]
+    },
+    {
+      "id": "e07",
+      "lang": "en",
+      "text": "each item's total is price plus price times the shop tax rate",
+      "ms": 2771,
+      "valid": true,
+      "attempts": 1,
+      "exact": false,
+      "state": true,
+      "confirm": true,
+      "predicted": [
+        {
+          "op": "define",
+          "path": "shop.items[i]",
+          "name": "total",
+          "expr": "price + price * shop.tax_rate"
+        }
+      ],
+      "expected": [
+        {
+          "op": "define",
+          "path": "shop.items[i]",
+          "name": "total",
+          "expr": "price + (price * shop.tax_rate)"
+        }
+      ]
+    },
+    {
+      "id": "e08",
+      "lang": "es",
+      "text": "la ganancia es ventas menos costos",
+      "ms": 2965,
+      "valid": true,
+      "attempts": 1,
+      "exact": true,
+      "state": true,
+      "confirm": true,
+      "predicted": [
+        {
+          "op": "define",
+          "path": "negocio",
+          "name": "ganancia",
+          "expr": "ventas - costos"
+        }
+      ],
+      "expected": [
+        {
+          "op": "define",
+          "path": "negocio",
+          "name": "ganancia",
+          "expr": "ventas - costos"
+        }
+      ]
+    },
+    {
+      "id": "e09",
+      "lang": "en",
+      "text": "a user is an adult when age is at least 18",
+      "ms": 2200,
+      "valid": true,
+      "attempts": 1,
+      "exact": false,
+      "state": false,
+      "confirm": true,
+      "predicted": [
+        {
+          "op": "define",
+          "path": "user",
+          "name": "adult",
+          "expr": "age >= 18"
+        }
+      ],
+      "expected": [
+        {
+          "op": "define",
+          "path": "user",
+          "name": "isAdult",
+          "expr": "age >= 18"
+        }
+      ]
+    },
+    {
+      "id": "e10",
+      "lang": "es",
+      "text": "haz que el perfil público apunte a los datos de Ana",
+      "ms": 4752,
+      "valid": true,
+      "attempts": 1,
+      "exact": false,
+      "state": false,
+      "confirm": true,
+      "predicted": [
+        {
+          "op": "pointer",
+          "path": "perfil.publico",
+          "target": "ana"
+        }
+      ],
+      "expected": [
+        {
+          "op": "pointer",
+          "path": "profile.public",
+          "target": "ana"
+        }
+      ]
+    },
+    {
+      "id": "e11",
+      "lang": "en",
+      "text": "link my current car to the tesla",
+      "ms": 24962,
+      "valid": true,
+      "attempts": 1,
+      "exact": false,
+      "state": false,
+      "confirm": true,
+      "predicted": [
+        {
+          "op": "pointer",
+          "path": "current.car",
+          "target": "cars.tesla"
+        }
+      ],
+      "expected": [
+        {
+          "op": "pointer",
+          "path": "me.car",
+          "target": "cars.tesla"
+        }
+      ]
+    },
+    {
+      "id": "e12",
+      "lang": "es",
+      "text": "elimina la ciudad de Ana",
+      "ms": 2680,
+      "valid": true,
+      "attempts": 1,
+      "exact": true,
+      "state": true,
+      "confirm": true,
+      "predicted": [
+        {
+          "op": "remove",
+          "path": "ana",
+          "key": "city"
+        }
+      ],
+      "expected": [
+        {
+          "op": "remove",
+          "path": "ana",
+          "key": "city"
+        }
+      ]
+    },
+    {
+      "id": "e13",
+      "lang": "en",
+      "text": "delete the temp value",
+      "ms": 1723,
+      "valid": true,
+      "attempts": 1,
+      "exact": true,
+      "state": true,
+      "confirm": true,
+      "predicted": [
+        {
+          "op": "remove",
+          "path": "temp",
+          "key": "value"
+        }
+      ],
+      "expected": [
+        {
+          "op": "remove",
+          "path": "temp",
+          "key": "value"
+        }
+      ]
+    },
+    {
+      "id": "e14",
+      "lang": "es",
+      "text": "mi salud es privada, mi tipo de sangre es O+",
+      "ms": 16057,
+      "valid": true,
+      "attempts": 1,
+      "exact": false,
+      "state": false,
+      "confirm": true,
+      "predicted": [
+        {
+          "op": "secret",
+          "path": "salud"
+        },
+        {
+          "op": "set",
+          "path": "salud.sangre",
+          "value": "O+"
+        }
+      ],
+      "expected": [
+        {
+          "op": "secret",
+          "path": "salud"
+        },
+        {
+          "op": "set",
+          "path": "salud.tipo_sangre",
+          "value": "O+"
+        }
+      ]
+    },
+    {
+      "id": "e15",
+      "lang": "en",
+      "text": "make my wallet secret with the key abc123",
+      "ms": 2082,
+      "valid": true,
+      "attempts": 1,
+      "exact": true,
+      "state": true,
+      "confirm": true,
+      "predicted": [
+        {
+          "op": "secret",
+          "path": "wallet"
+        }
+      ],
+      "expected": [
+        {
+          "op": "secret",
+          "path": "wallet"
+        }
+      ]
+    },
+    {
+      "id": "e16",
+      "lang": "es",
+      "text": "reinicia el ruido de la billetera",
+      "ms": 2235,
+      "valid": true,
+      "attempts": 1,
+      "exact": true,
+      "state": true,
+      "confirm": true,
+      "predicted": [
+        {
+          "op": "noise",
+          "path": "billetera"
+        }
+      ],
+      "expected": [
+        {
+          "op": "noise",
+          "path": "billetera"
+        }
+      ]
+    },
+    {
+      "id": "e17",
+      "lang": "en",
+      "text": "I am @abella",
+      "ms": 2132,
+      "valid": true,
+      "attempts": 1,
+      "exact": true,
+      "state": true,
+      "confirm": true,
+      "predicted": [
+        {
+          "op": "identity",
+          "handle": "abella"
+        }
+      ],
+      "expected": [
+        {
+          "op": "identity",
+          "handle": "abella"
+        }
+      ]
+    },
+    {
+      "id": "e18",
+      "lang": "es",
+      "text": "¿cuántos años tiene Luis?",
+      "ms": 2872,
+      "valid": true,
+      "attempts": 1,
+      "exact": true,
+      "state": true,
+      "confirm": true,
+      "predicted": [
+        {
+          "op": "query",
+          "paths": [
+            "luis.age"
+          ]
+        }
+      ],
+      "expected": [
+        {
+          "op": "query",
+          "paths": [
+            "luis.age"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "e19",
+      "lang": "en",
+      "text": "show me the shop tax rate and name",
+      "ms": 1523,
+      "valid": true,
+      "attempts": 1,
+      "exact": true,
+      "state": true,
+      "confirm": true,
+      "predicted": [
+        {
+          "op": "query",
+          "paths": [
+            "shop.tax_rate",
+            "shop.name"
+          ]
+        }
+      ],
+      "expected": [
+        {
+          "op": "query",
+          "paths": [
+            "shop.tax_rate",
+            "shop.name"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "e20",
+      "lang": "es",
+      "text": "Ana pagó 450 del taxi para ella y Luis",
+      "ms": 3142,
+      "valid": true,
+      "attempts": 1,
+      "exact": true,
+      "state": true,
+      "confirm": true,
+      "predicted": [
+        {
+          "op": "set",
+          "path": "split.expenses[1].title",
+          "value": "taxi"
+        },
+        {
+          "op": "set",
+          "path": "split.expenses[1].payer",
+          "value": "Ana"
+        },
+        {
+          "op": "set",
+          "path": "split.expenses[1].amount",
+          "value": 450
+        },
+        {
+          "op": "set",
+          "path": "split.expenses[1].participants",
+          "value": [
+            "Ana",
+            "Luis"
+          ]
+        }
+      ],
+      "expected": [
+        {
+          "op": "set",
+          "path": "split.expenses[1].title",
+          "value": "taxi"
+        },
+        {
+          "op": "set",
+          "path": "split.expenses[1].payer",
+          "value": "Ana"
+        },
+        {
+          "op": "set",
+          "path": "split.expenses[1].amount",
+          "value": 450
+        },
+        {
+          "op": "set",
+          "path": "split.expenses[1].participants",
+          "value": [
+            "Ana",
+            "Luis"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "e21",
+      "lang": "en",
+      "text": "Luis paid 90 for coffee for everyone",
+      "ms": 2359,
+      "valid": true,
+      "attempts": 1,
+      "exact": true,
+      "state": true,
+      "confirm": true,
+      "predicted": [
+        {
+          "op": "set",
+          "path": "split.expenses[1].title",
+          "value": "coffee"
+        },
+        {
+          "op": "set",
+          "path": "split.expenses[1].payer",
+          "value": "Luis"
+        },
+        {
+          "op": "set",
+          "path": "split.expenses[1].amount",
+          "value": 90
+        },
+        {
+          "op": "set",
+          "path": "split.expenses[1].participants",
+          "value": [
+            "Sui",
+            "Ana",
+            "Luis"
+          ]
+        }
+      ],
+      "expected": [
+        {
+          "op": "set",
+          "path": "split.expenses[1].title",
+          "value": "coffee"
+        },
+        {
+          "op": "set",
+          "path": "split.expenses[1].payer",
+          "value": "Luis"
+        },
+        {
+          "op": "set",
+          "path": "split.expenses[1].amount",
+          "value": 90
+        },
+        {
+          "op": "set",
+          "path": "split.expenses[1].participants",
+          "value": [
+            "Sui",
+            "Ana",
+            "Luis"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "e22",
+      "lang": "es",
+      "text": "Luis tiene 30 y Ana tiene 22",
+      "ms": 8008,
+      "valid": true,
+      "attempts": 1,
+      "exact": true,
+      "state": true,
+      "confirm": true,
+      "predicted": [
+        {
+          "op": "set",
+          "path": "luis.age",
+          "value": 30
+        },
+        {
+          "op": "set",
+          "path": "ana.age",
+          "value": 22
+        }
+      ],
+      "expected": [
+        {
+          "op": "set",
+          "path": "luis.age",
+          "value": 30
+        },
+        {
+          "op": "set",
+          "path": "ana.age",
+          "value": 22
+        }
+      ]
+    },
+    {
+      "id": "e23",
+      "lang": "en",
+      "text": "rename the shop to Bean There and remove its tax rate",
+      "ms": 1910,
+      "valid": true,
+      "attempts": 1,
+      "exact": true,
+      "state": true,
+      "confirm": true,
+      "predicted": [
+        {
+          "op": "set",
+          "path": "shop.name",
+          "value": "Bean There"
+        },
+        {
+          "op": "remove",
+          "path": "shop",
+          "key": "tax_rate"
+        }
+      ],
+      "expected": [
+        {
+          "op": "set",
+          "path": "shop.name",
+          "value": "Bean There"
+        },
+        {
+          "op": "remove",
+          "path": "shop",
+          "key": "tax_rate"
+        }
+      ]
+    },
+    {
+      "id": "e24",
+      "lang": "es",
+      "text": "cambia el precio del pan a 25 y que el total del menú sea café más pan",
+      "ms": 3745,
+      "valid": true,
+      "attempts": 1,
+      "exact": true,
+      "state": true,
+      "confirm": true,
+      "predicted": [
+        {
+          "op": "set",
+          "path": "menu.pan.precio",
+          "value": 25
+        },
+        {
+          "op": "define",
+          "path": "menu",
+          "name": "total",
+          "expr": "cafe.precio + pan.precio"
+        }
+      ],
+      "expected": [
+        {
+          "op": "set",
+          "path": "menu.pan.precio",
+          "value": 25
+        },
+        {
+          "op": "define",
+          "path": "menu",
+          "name": "total",
+          "expr": "cafe.precio + pan.precio"
+        }
+      ]
+    },
+    {
+      "id": "e25",
+      "lang": "en",
+      "text": "Ana's email is ana@example.com",
+      "ms": 989,
+      "valid": true,
+      "attempts": 1,
+      "exact": true,
+      "state": true,
+      "confirm": true,
+      "predicted": [
+        {
+          "op": "set",
+          "path": "ana.email",
+          "value": "ana@example.com"
+        }
+      ],
+      "expected": [
+        {
+          "op": "set",
+          "path": "ana.email",
+          "value": "ana@example.com"
+        }
+      ]
+    },
+    {
+      "id": "e26",
+      "lang": "es",
+      "text": "el usuario está activo",
+      "ms": 8636,
+      "valid": true,
+      "attempts": 1,
+      "exact": true,
+      "state": true,
+      "confirm": true,
+      "predicted": [
+        {
+          "op": "set",
+          "path": "user.active",
+          "value": true
+        }
+      ],
+      "expected": [
+        {
+          "op": "set",
+          "path": "user.active",
+          "value": true
+        }
+      ]
+    },
+    {
+      "id": "e27",
+      "lang": "en",
+      "text": "Ana's friends are Luis and Sui",
+      "ms": 4898,
+      "valid": true,
+      "attempts": 1,
+      "exact": true,
+      "state": true,
+      "confirm": true,
+      "predicted": [
+        {
+          "op": "set",
+          "path": "ana.friends",
+          "value": [
+            "Luis",
+            "Sui"
+          ]
+        }
+      ],
+      "expected": [
+        {
+          "op": "set",
+          "path": "ana.friends",
+          "value": [
+            "Luis",
+            "Sui"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "e28",
+      "lang": "es",
+      "text": "mis contraseñas son privadas",
+      "ms": 5349,
+      "valid": true,
+      "attempts": 1,
+      "exact": false,
+      "state": false,
+      "confirm": true,
+      "predicted": [
+        {
+          "op": "secret",
+          "path": "contraseñas"
+        }
+      ],
+      "expected": [
+        {
+          "op": "secret",
+          "path": "contrasenas"
+        }
+      ]
+    },
+    {
+      "id": "e29",
+      "lang": "en",
+      "text": "what's the weather tomorrow in Paris?",
+      "ms": 3739,
+      "valid": true,
+      "attempts": 1,
+      "exact": true,
+      "state": true,
+      "confirm": true,
+      "predicted": [],
+      "expected": []
+    },
+    {
+      "id": "e30",
+      "lang": "es",
+      "text": "el descuento es el 10 por ciento del subtotal",
+      "ms": 2787,
+      "valid": true,
+      "attempts": 1,
+      "exact": false,
+      "state": true,
+      "confirm": true,
+      "predicted": [
+        {
+          "op": "define",
+          "path": "orden",
+          "name": "descuento",
+          "expr": "subtotal * 10 / 100"
+        }
+      ],
+      "expected": [
+        {
+          "op": "define",
+          "path": "orden",
+          "name": "descuento",
+          "expr": "subtotal * 0.1"
+        }
+      ]
+    }
+  ]
+}

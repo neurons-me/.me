@@ -1,0 +1,5 @@
+node_modules/
+spec/
+package-lock.json
+.env
+eval/results/*.raw.json

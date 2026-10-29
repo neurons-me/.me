@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://neurons-me.github.io/.me/LLMS/ops.schema.json",
+  "title": ".me ops",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["ops"],
+  "properties": {
+    "ops": { "type": "array", "maxItems": 64, "items": { "oneOf": [
+      { "type": "object", "additionalProperties": false, "required": ["op", "path", "value"], "properties": { "op": { "const": "set" }, "path": { "type": "string" }, "value": {} } },
+      { "type": "object", "additionalProperties": false, "required": ["op", "path", "name", "expr"], "properties": { "op": { "const": "define" }, "path": { "type": "string" }, "name": { "type": "string" }, "expr": { "type": "string" } } },
+      { "type": "object", "additionalProperties": false, "required": ["op", "path", "target"], "properties": { "op": { "const": "pointer" }, "path": { "type": "string" }, "target": { "type": "string" } } },
+      { "type": "object", "additionalProperties": false, "required": ["op", "path", "key"], "properties": { "op": { "const": "remove" }, "path": { "type": "string" }, "key": { "type": "string" } } },
+      { "type": "object", "additionalProperties": false, "required": ["op", "path"], "properties": { "op": { "const": "secret" }, "path": { "type": "string" } } },
+      { "type": "object", "additionalProperties": false, "required": ["op", "path"], "properties": { "op": { "const": "noise" }, "path": { "type": "string" } } },
+      { "type": "object", "additionalProperties": false, "required": ["op", "handle"], "properties": { "op": { "const": "identity" }, "handle": { "type": "string" } } },
+      { "type": "object", "additionalProperties": false, "required": ["op", "paths"], "properties": { "op": { "const": "query" }, "paths": { "type": "array", "minItems": 1, "items": { "type": "string" } } } }
+    ] } }
+  }
+}

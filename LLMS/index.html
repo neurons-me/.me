@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>.me — LLMS</title>
+  <meta name="description" content="Natural language to .me operations: spec, validator, dry-run and model adapters." />
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content=".me — LLMS" />
+  <meta property="og:description" content="Natural language to .me operations: spec, validator, dry-run and model adapters." />
+  <meta property="og:url" content="https://neurons-me.github.io/.me/LLMS/" />
+  <meta property="og:image" content="https://neurons-me.github.io/.me/LLMS/assets/llms-og.png" />
+  <meta property="og:image:secure_url" content="https://neurons-me.github.io/.me/LLMS/assets/llms-og.png" />
+  <meta property="og:image:type" content="image/png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="LLMS: a plain sentence, the .me ops it became, and the resulting state graph" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content=".me — LLMS" />
+  <meta name="twitter:description" content="Natural language to .me operations: spec, validator, dry-run and model adapters." />
+  <meta name="twitter:image" content="https://neurons-me.github.io/.me/LLMS/assets/llms-og.png" />
+  <link rel="canonical" href="https://neurons-me.github.io/.me/LLMS/" />
+  <link rel="icon" type="image/png" href="https://res.cloudinary.com/dkwnxf6gm/image/upload/v1760629064/neurons.me_b50f6a.png?v=brain">
+  <!-- .GUI (this.gui@4.2.0) renders this page from the static markup below (/.me/assets/landing-gui/landing-gui.js); the static page stays as the no-JS / CDN-failure fallback.
+       Page-scoped theme keys, neurons.me, dark by default. -->
+  <script>
+    window.__thisGuiThemeScope = { scopeId: "me-llms", themeModeKey: "me-llms.themeMode", themeIdKey: "me-llms.themeId", defaultMode: "dark" };
+    try {
+      if (!localStorage.getItem("me-llms.themeMode")) localStorage.setItem("me-llms.themeMode", "dark");
+      if (!localStorage.getItem("me-llms.themeId")) localStorage.setItem("me-llms.themeId", "neurons.me");
+    } catch (e) {}
+    document.documentElement.classList.add("gui-boot");
+  </script>
+  <!-- No icon font: every icon is inline SVG; hide any icon-font span so its name never shows as text. -->
+  <style>.material-symbols-rounded,.material-symbols-outlined,.material-icons{display:none!important} body{margin:0} .gui-boot #static-landing{display:none}</style>
+  <!-- Pinned dependencies (jsDelivr, exact versions, Subresource Integrity), same as the Robots / Smart Cities landings and ContextLab. -->
+  <script src="https://cdn.jsdelivr.net/npm/react@18.3.1/umd/react.production.min.js" integrity="sha384-DGyLxAyjq0f9SPpVevD6IgztCFlnMF6oW/XQGmfe+IsZ8TqEiDrcHkMLKI6fiB/Z" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/react-dom@18.3.1/umd/react-dom.production.min.js" integrity="sha384-gTGxhz21lVGYNMcdJOyq01Edg0jhn/c22nsx0kyqP0TxaV5WVdsSH1fSDUf5YJj1" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/this.gui@4.2.0/dist/this.gui.umd.js" integrity="sha384-tAyskhiyJweQ9xXPVOSEJ0OQDE+lFsqRJvGRb8LVoqLbdNxYmJEhW21+fxcAYG0d" crossorigin="anonymous"></script>
+  <!-- Static page styles, off once .GUI has rendered (html.gui-on). -->
+  <style>
+    html:not(.gui-on) *, html:not(.gui-on) *::before, html:not(.gui-on) *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html:not(.gui-on) body { font-family: "Inter", "Helvetica Neue", Helvetica, Arial, sans-serif; background: #f4f7f8; color: #0f1720; min-height: 100vh; -webkit-font-smoothing: antialiased; }
+    html:not(.gui-on) .page { max-width: 960px; margin: 0 auto; padding: 72px 32px 80px; }
+    html:not(.gui-on) .breadcrumb { font-size: 0.8rem; color: #51606d; margin-bottom: 24px; }
+    html:not(.gui-on) .breadcrumb a { color: #0f6a78; text-decoration: none; }
+    html:not(.gui-on) .breadcrumb a:hover { text-decoration: underline; }
+    html:not(.gui-on) .kicker a, html:not(.gui-on) .page-subtitle a { color: #0f6a78; text-decoration: none; }
+    html:not(.gui-on) .kicker a:hover, html:not(.gui-on) .page-subtitle a:hover { text-decoration: underline; }
+    @media (prefers-color-scheme: dark) { html:not(.gui-on) .kicker a, html:not(.gui-on) .page-subtitle a { color: #4fd1c5; } }
+    html:not(.gui-on) .kicker { font-size: 0.75rem; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; color: #51606d; margin-bottom: 12px; }
+    html:not(.gui-on) .page-title { font-size: 2.75rem; font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; margin-bottom: 12px; }
+    html:not(.gui-on) .page-subtitle { font-size: 1.05rem; color: #51606d; margin-bottom: 48px; max-width: 560px; }
+    html:not(.gui-on) .page-subtitle a.strong { color: #0d1117; font-weight: 700; }
+    @media (prefers-color-scheme: dark) { html:not(.gui-on) .page-subtitle a.strong { color: #e6edf3; } }
+    html:not(.gui-on) .grid { display: grid; grid-template-columns: 1fr; gap: 16px; }
+    @media (min-width: 720px) { html:not(.gui-on) .grid { grid-template-columns: 1fr 1fr; } }
+    html:not(.gui-on) .card { display: flex; flex-direction: row; padding: 0; gap: 0; min-height: 140px; overflow: hidden; align-items: stretch; border-radius: 12px; border: 1px solid rgba(15,23,32,0.10); background: #fff; text-decoration: none; color: inherit; transition: box-shadow 140ms, border-color 140ms, transform 140ms; }
+    html:not(.gui-on) .card:hover { box-shadow: 0 4px 20px rgba(15,23,32,0.10); border-color: #0f6a78; transform: translateY(-1px); }
+    html:not(.gui-on) .card-icon { width: clamp(140px, 45%, 240px); min-height: 140px; flex-shrink: 0; background: transparent; }
+    html:not(.gui-on) .card-icon img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    html:not(.gui-on) .card-emoji { display:flex; align-items:center; justify-content:center; width:100%; height:100%; min-height:140px; font-size:3.5rem; background:linear-gradient(135deg,#e6f2f3,#f4f7f8); }
+    @media (prefers-color-scheme: dark) { html:not(.gui-on) .card-emoji { background:linear-gradient(135deg,#13262b,#0b1114); } }
+    html:not(.gui-on) .card-content { display: flex; flex-direction: column; justify-content: center; padding: 16px 20px; flex: 1; min-width: 0; gap: 6px; }
+    html:not(.gui-on) .card-title { font-size: 1.1rem; font-weight: 800; line-height: 1.2; }
+    html:not(.gui-on) .card-desc { font-size: 0.875rem; color: #51606d; line-height: 1.5; }
+    html:not(.gui-on) .card-path { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.75rem; color: #0f6a78; }
+    @media (prefers-color-scheme: dark) {
+      html:not(.gui-on) body { background: #0b1114; color: #e8eded; }
+      html:not(.gui-on) .kicker, html:not(.gui-on) .page-subtitle, html:not(.gui-on) .breadcrumb, html:not(.gui-on) .card-desc { color: #98a7b3; }
+      html:not(.gui-on) .breadcrumb a, html:not(.gui-on) .card-path { color: #4fd1c5; }
+      html:not(.gui-on) .card { background: #111a1f; border-color: rgba(232,237,237,0.10); }
+      html:not(.gui-on) .card:hover { border-color: #4fd1c5; box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
+    }
+    html:not(.gui-on) .topnav { position:fixed; top:0; left:0; right:0; z-index:100; display:flex; align-items:center; gap:4px; padding:8px 20px; background:rgba(244,247,248,0.92); backdrop-filter:blur(8px); border-bottom:1px solid rgba(15,23,32,0.08); font-size:0.82rem; font-weight:600; }
+    @media (prefers-color-scheme: dark) { html:not(.gui-on) .topnav { background:rgba(11,17,20,0.92); border-bottom-color:rgba(232,237,237,0.08); } }
+    html:not(.gui-on) .topnav a { text-decoration:none; color:inherit; padding:4px 10px; border-radius:6px; }
+    html:not(.gui-on) .topnav a:hover { background:rgba(15,106,120,0.1); }
+    @media (prefers-color-scheme: dark) { html:not(.gui-on) .topnav a:hover { background:rgba(79,209,197,0.1); } }
+    html:not(.gui-on) .topnav .spacer { flex:1; }
+    html:not(.gui-on) .topnav a.logo { display:inline-flex; padding:2px 4px; line-height:0; }
+    html:not(.gui-on) .topnav a.logo img { display:block; object-fit:contain; }
+      html:not(.gui-on) .topnav .mepath { font-family: ui-monospace, Menlo, monospace; font-weight:500; opacity:.8; }
+    html:not(.gui-on) .topnav a.gh { display:inline-flex; align-items:center; gap:6px; }
+  </style>
+</head>
+<body>
+<div id="static-landing">
+  <nav class="topnav">
+    <a class="logo" href="https://neurons-me.github.io/" title="neurons.me"><img src="https://res.cloudinary.com/dkwnxf6gm/image/upload/v1760629064/neurons.me_b50f6a.png" alt="neurons.me" width="24" height="24" /></a>
+    <span class="mepath">me://.me/LLMS</span>
+    <span class="spacer"></span>
+    <a class="act" href="/.me/docs/">Docs</a>
+    <a class="gh" href="https://github.com/neurons-me/.me/tree/main/LLMS" title="GitHub"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg></a>
+  </nav>
+  <div class="page">
+    <p class="kicker"><a href="https://neurons-me.github.io/.me/" title=".me">me://</a>LLMS</p>
+    <h1 class="page-title">LLMS</h1>
+    <p class="page-subtitle">Say it in plain words; a model turns it into checked, dry-run <a class="strong" href="https://neurons-me.github.io/.me/">.me</a> operations.</p>
+
+    <div class="grid">
+      <a class="card" href="https://github.com/neurons-me/.me/blob/main/LLMS/typescript/src/adapters/meta.ts">
+        <div class="card-icon"><div class="card-emoji">∞</div></div>
+        <div class="card-content">
+          <div class="card-title">Meta · muse-spark-1.3</div>
+          <div class="card-desc">Built · unit-tested with mocks · eval measured: 24/30 final state, 22/30 exact ops, 30/30 valid (own 30-item ES/EN set, 2026-10-28).</div>
+          <div class="card-path">me://LLMS/adapters/meta</div>
+        </div>
+      </a>
+      <a class="card" href="https://github.com/neurons-me/.me/blob/main/LLMS/typescript/src/adapters/openai.ts">
+        <div class="card-icon"><div class="card-emoji">◎</div></div>
+        <div class="card-content">
+          <div class="card-title">OpenAI / Codex</div>
+          <div class="card-desc">Built · unit-tested with mocks · eval not run yet (no API key).</div>
+          <div class="card-path">me://LLMS/adapters/openai</div>
+        </div>
+      </a>
+    </div>
+  </div>
+</div>
+<div id="root"></div>
+<script src="/.me/assets/landing-gui/landing-gui.js?v=34" onerror="document.documentElement.classList.remove('gui-boot')"></script>
+</body>
+</html>
