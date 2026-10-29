@@ -119,7 +119,7 @@ me("friends[isAdult == true].name")
 
 Trust isn't stored, it's computed fresh from whatever's true right now — which is exactly what lets the same graph decide who's on tonight's guest list and, a page later, who owes rent. **<a href="https://neurons-me.github.io/.me/docs/Social-Graph.html" target="_blank" rel="noopener noreferrer">See the full Social Graph demo.</a>**
 
-### <a href="https://neurons-me.github.io/.me/docs/Splitting-your-Bill.html" target="_blank" rel="noopener noreferrer">💳 ⇄ 👥 ⌬ ⚖️ ∴ Splitting your Bill</a> — 💸 Shared expenses, ➗ split automatically, ✅ settled.
+### <a href="https://neurons-me.github.io/.wallet/paypal/split/" target="_blank" rel="noopener noreferrer">💳 ⇄ 👥 ⌬ ⚖️ ∴ .wallet Split</a> — 💸 Split bills with others using PayPal .me
 
 ```ts
 me.wallets.vancouver["="]("per_person", "total / members.count")
