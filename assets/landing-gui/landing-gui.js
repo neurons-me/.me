@@ -339,9 +339,11 @@
       c.path && T(c.path, { fontFamily: MONO, fontSize: ".75rem", color: "primary.main", overflowWrap: "anywhere" }),
     ].filter(Boolean)),
   ]);
-  const plainCard = (c) => N("Card", { variant: "outlined", sx: { ...cardSx, borderRadius: "12px", p: 2.25, display: "flex", flexDirection: "column", gap: .75 } }, [
+  // a plain card with an href (<a class="card card-plain">) links to it; its .card-path shows as a small mono line
+  const plainCard = (c) => N("Card", { variant: "outlined", ...(c.href ? { component: "a", href: c.href } : {}), sx: { ...cardSx, borderRadius: "12px", p: 2.25, display: "flex", flexDirection: "column", gap: .75, textDecoration: "none", ...(c.href ? { "&:hover": { borderColor: "primary.main" } } : {}) } }, [
     T(c.title, { fontSize: "1rem", fontWeight: 800, color: "text.primary" }),
     c.desc && T(c.desc, { fontSize: ".85rem", color: "text.secondary", lineHeight: 1.5 }),
+    c.path && T(c.path, { fontFamily: MONO, fontSize: ".72rem", color: "text.secondary", mt: "auto" }),
   ].filter(Boolean));
   const indexSpec = () => N("Box", { sx: { minHeight: "100vh", bgcolor: "background.default", color: "text.primary" } }, [
     N("LandingTopBar", {}),
