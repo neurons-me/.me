@@ -18,19 +18,29 @@
   var clone = function (o) { return JSON.parse(JSON.stringify(o)); };
   var ID = /[\p{L}_$][\p{L}\p{N}_$.-]*/gu;
 
+  // the real .me kernel (this.me, loaded from jsDelivr by index.html): one kernel per language, its starting state written
+  // in, the ops applied through the public API, and the derived value + its explain() read back from the kernel.
+  var MeK = root.Me && (root.Me.default || root.Me.ME);
+  var walk = function (me, p) { return p.split(".").reduce(function (a, k) { return a[k]; }, me); };
   function build(L) {
-    var state = clone(L.state), derived = {}, setOp = null, defOp = null;
+    var state = clone(L.state), derived = {}, setOp = null, defOp = null, me = null, err = null;
+    try { if (!MeK) throw new Error("this.me kernel not loaded"); me = new MeK();
+      (function w(o, pre) { Object.keys(o).forEach(function (k) { var p = pre ? pre + "." + k : k; if (o[k] && typeof o[k] === "object") w(o[k], p); else walk(me, p)(o[k]); }); })(L.state, "");
+    } catch (e) { err = String(e && e.message || e); me = null; }
     L.ops.forEach(function (o) {
-      if (o.op === "set") { setOp = o; var ks = o.path.split("."), last = ks.pop(), t = ks.reduce(function (a, k) { return a[k] = a[k] || {}; }, state); t[last] = o.value; }
-      if (o.op === "define") {
-        defOp = o;
-        var deps = (o.expr.match(ID) || []).map(function (r) { return r.indexOf(o.path + ".") === 0 ? r : o.path + "." + r; });
-        var val = deps.reduce(function (s, d) { return s + Number(get(state, d)); }, 0); // a sum of two paths (checked by the eval)
-        get(state, o.path)[o.name] = val; derived[o.path + "." + o.name] = { deps: deps, base: o.path, value: val };
-      }
+      if (o.op === "set") { setOp = o; if (me) try { walk(me, o.path)(o.value); } catch (e) { err = String(e.message || e); } }
+      if (o.op === "define") { defOp = o; if (me) try { walk(me, o.path)["="](o.name, o.expr); } catch (e) { err = String(e.message || e); } }
     });
+    var tk = defOp.path + "." + defOp.name, ex = null, val = null;
+    if (me) try { ex = me.explain(tk); val = me(tk); } catch (e) { err = String(e.message || e); }
+    var deps = ex && ex.meta && ex.meta.dependsOn || [];
+    // the state the graph draws is read back from the kernel, not recomputed here
+    if (me) (function r(o, pre) { Object.keys(o).forEach(function (k) { var p = pre ? pre + "." + k : k; if (o[k] && typeof o[k] === "object") r(o[k], p); else o[k] = me(p); }); })(state, "");
+    if (me) { var sk = setOp.path.split("."), sl = sk.pop(), so = sk.reduce(function (a, k) { return a[k] = a[k] || {}; }, state); so[sl] = me(setOp.path); }
+    get(state, defOp.path)[defOp.name] = val;
+    derived[tk] = { deps: deps, base: defOp.path, value: val, explain: ex, err: err };
     var rootKey = defOp.path, t = rootKey + "." + defOp.name, pr = setOp.path, p = pr.split(".").slice(0, -1).join(".");
-    var other = derived[t].deps.filter(function (d) { return d !== pr; })[0], c = other.split(".").slice(0, -1).join(".");
+    var other = derived[t].deps.filter(function (d) { return d !== pr; })[0] || (defOp.path + "." + Object.keys(get(L.state, defOp.path)).filter(function (k) { return pr.indexOf(defOp.path + "." + k + ".") !== 0; })[0] + "."), c = other.split(".").slice(0, -1).join(".");
     var ROLE = { m: rootKey, c: c, p: p, pr: pr, v: pr + "=", t: t };
     var segs = [], re = /\[([^|\]]+)\|([^\]]+)\]/g, i = 0, mm;
     while ((mm = re.exec(L.text))) { if (mm.index > i) segs.push({ t: L.text.slice(i, mm.index) }); segs.push({ t: mm[1], k: ROLE[mm[2]] }); i = re.lastIndex; }
@@ -141,6 +151,11 @@
     "@media (prefers-reduced-motion:reduce){.lh-say,.lh-fade,.lh-pulse,.lh-same.go{animation:none}}" +
     "@media (max-width:860px){.lh{grid-template-columns:1fr}.lh-ar{transform:rotate(90deg);justify-self:center;line-height:1}}";
 
+  function exLine(d) {
+    if (!d) return "";
+    if (!d.explain) return "me.explain → " + (d.err || "no explanation");
+    var x = d.explain; return "me.explain(\"" + x.path + "\") → " + x.expr + " = " + (x.derivation && x.derivation.inputs || []).map(function (i) { return i.path + ":" + i.value; }).join(" + ") + " → " + JSON.stringify(x.value);
+  }
   function LlmsHero() {
     var st = useState(null), hov = st[0], setHov = st[1];
     var sp = useState(null), pin = sp[0], setPin = sp[1];
@@ -198,10 +213,10 @@
       h("div", { className: "lh", "aria-label": "e24: a sentence, the .me ops it becomes, and the state they produce" },
       h("div", { className: "lh-p lh-p1" }, h("p", { key: L.lang, className: "lh-say", lang: L.lang, dir: L.dir || "ltr" }, "“", words, "”")),
       h("div", { className: "lh-ar", "aria-hidden": true }, "→"),
-      h("div", { className: "lh-p" }, h("p", { className: "lh-h" }, ".me ops"), h("pre", { key: "c" + li, className: "lh-code me-code lh-fade" }, h("span", { className: "ln lh-cm" }, "// validated · dry-run"), codeEls)),
+      h("div", { className: "lh-p" }, h("p", { className: "lh-h" }, ".me ops"), h("pre", { key: "c" + li, className: "lh-code me-code lh-fade" }, h("span", { className: "ln lh-cm" }, "// validated · dry-run · computed by this.me@4.2.1"), codeEls)),
       h("div", { className: "lh-ar", "aria-hidden": true }, "→"),
-      h("div", { className: "lh-p" }, h("div", { className: "lh-sayhd" }, h("p", { className: "lh-h" }, "State"), h("span", { key: "s" + li, className: "lh-same" + (li ? " go" : "") }, "same structure · = " + G.derived[G.q].value)), h("div", { key: "g" + li, className: li ? "lh-pulse" : "" }, svg)),
-      h("p", { className: "lh-hint", "aria-live": "polite" }, a ? ["● ", h("b", { key: "b" }, desc(a))] : "hover, tap or tab through a word, a token or a node")));
+      h("div", { className: "lh-p" }, h("div", { className: "lh-sayhd" }, h("p", { className: "lh-h" }, "State"), h("span", { key: "s" + li, className: "lh-same" + (li ? " go" : "") }, "same structure · = " + G.derived[G.q].value)), h("div", { key: "g" + li, className: li ? "lh-pulse" : "" }, svg), h("p", { key: "x" + li, className: "lh-el lh-fade", title: G.derived[G.q].explain ? JSON.stringify(G.derived[G.q].explain, null, 1) : "", style: { textAnchor: "start", margin: "6px 0 0", fontFamily: MONO, fontSize: "10.5px", color: FG2, wordBreak: "break-word" } }, exLine(G.derived[G.q]))),
+      h("p", { className: "lh-hint", "aria-live": "polite" }, a ? ["● ", h("b", { key: "b" }, desc(a)), derived[bare(a)] ? h("span", { key: "x", style: { display: "block", marginTop: "4px" } }, exLine(derived[bare(a)])) : null] : "hover, tap or tab through a word, a token or a node")));
   }
   root.LandingLive = Object.assign(root.LandingLive || {}, { LlmsHero: LlmsHero });
 })(typeof window !== "undefined" ? window : this);
