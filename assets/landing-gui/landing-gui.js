@@ -77,6 +77,9 @@
           img: img && { src: img.getAttribute("src"), alt: img.getAttribute("alt") || "" }, emoji: emoji && txt(emoji) };
       }), plain: g.classList.contains("grid-plain") };
     }),
+    // optional closing quote (<figure class="page-quote"><blockquote>text</blockquote><figcaption><a>who</a></figcaption></figure>)
+    quote: (() => { const q = SRC.querySelector(".page .page-quote"); if (!q) return null; const a = q.querySelector("figcaption a");
+      return { text: txt(q.querySelector("blockquote")), who: txt(q.querySelector("figcaption")).replace(/^[—–-]\s*/, ""), href: a && a.getAttribute("href") }; })(),
   } : {
     path, docs: SRC.querySelector(".topnav .act")?.getAttribute("href"), github: SRC.querySelector(".topnav .gh")?.getAttribute("href"),
     h1: txt(header.querySelector("h1")), lede: header.querySelector(".lede") && inline(header.querySelector(".lede")), ledes2: [...header.querySelectorAll(".lede")].slice(1).map(inline),
@@ -360,6 +363,10 @@
         g.title && T(g.title, { fontSize: "1.25rem", fontWeight: 800, mb: 2 }, { component: "h2" }),
         N("Box", { sx: g.plain ? { display: "grid", gap: 2, mb: 6, gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))" } : { display: "grid", gridTemplateColumns: "1fr", gap: 2, mb: 6, "@media (min-width:720px)": { gridTemplateColumns: "1fr 1fr" } } }, g.cards.map((c) => c.plain ? plainCard(c) : indexCard(c))),
       ].filter(Boolean)),
+      page.quote && N("Box", { component: "figure", sx: { m: 0, mt: 4, pt: 5, borderTop: 1, borderColor: "divider", textAlign: "center" } }, [
+        T("\u201c" + page.quote.text + "\u201d", { fontFamily: MONO, fontSize: ".95rem", lineHeight: 1.7, color: "text.secondary", maxWidth: 640, mx: "auto", mb: 1.5 }, { component: "blockquote" }),
+        N("Typography", { component: "figcaption", sx: { fontFamily: MONO, fontSize: ".8rem", color: "text.disabled" } }, ["\u2014 ", page.quote.href ? N("Box", { component: "a", href: page.quote.href, sx: { color: "inherit", textDecoration: "none", "&:hover": { color: "primary.main" } } }, [page.quote.who]) : page.quote.who]),
+      ]),
     ].filter(Boolean)),
   ]);
   // /.me/docs/ index: cover image on top of every card (140px, cropped), title, text; 3 / 2 / 1 columns as the static page
