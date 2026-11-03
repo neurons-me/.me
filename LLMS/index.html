@@ -90,6 +90,17 @@
     html:not(.gui-on) .grid.grid-plain { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); margin-bottom:48px; }
     html:not(.gui-on) .card.card-plain { min-height:0; } html:not(.gui-on) .card.card-plain:hover { transform:none; box-shadow:none; }
     html:not(.gui-on) .section-title { font-size:1.25rem; font-weight:800; margin-bottom:16px; }
+    html:not(.gui-on) .core-flow { display:flex; align-items:stretch; gap:10px; margin-bottom:48px; }
+    html:not(.gui-on) .core-card { flex:1 1 0; position:relative; min-width:0; }
+    html:not(.gui-on) .core-card .card-content { padding:16px; gap:6px; justify-content:flex-start; }
+    html:not(.gui-on) .core-ico { color:#0f6a78; margin-bottom:4px; }
+    html:not(.gui-on) .core-num { position:absolute; top:10px; right:12px; font:700 .75rem ui-monospace,Menlo,monospace; color:#0f6a78; opacity:.7; }
+    html:not(.gui-on) .core-card .card-path a { color:inherit; text-decoration:none; } html:not(.gui-on) .core-card .card-path a:hover { text-decoration:underline; }
+    html:not(.gui-on) .core-arrow { align-self:center; color:#0f6a78; opacity:.55; font-size:1.1rem; flex:0 0 auto; }
+    html:not(.gui-on) .core-sep { flex:0 0 1px; background:rgba(15,23,32,0.15); margin:0 8px; }
+    html:not(.gui-on) .card.core-adapters { border-style:dashed; }
+    @media (prefers-color-scheme: dark) { html:not(.gui-on) .core-ico, html:not(.gui-on) .core-num, html:not(.gui-on) .core-arrow { color:#4fd1c5; } html:not(.gui-on) .core-sep { background:rgba(232,237,237,0.15); } }
+    @media (max-width: 900px) { html:not(.gui-on) .core-flow { flex-direction:column; } html:not(.gui-on) .core-arrow { transform:rotate(90deg); line-height:1; } html:not(.gui-on) .core-sep { flex:0 0 1px; height:1px; margin:8px 0; } }
     .visually-hidden { position:absolute!important; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
   </style>
 </head>
@@ -108,12 +119,16 @@
       <img src="assets/llms-hero.png" alt="LLMS, natural language → .me: a plain sentence, the .me ops it became, and the resulting state graph" width="1200" height="630" />
     </figure>
 
-    <div class="grid grid-plain">
-      <a class="card card-plain" href="https://github.com/neurons-me/.me/blob/main/LLMS/ops.schema.json"><div class="card-content"><div class="card-title">Spec</div><div class="card-desc">Grammar and ops JSON schema, language-neutral. Prompt, examples and eval live beside them.</div><div class="card-path">ops.schema.json · grammar.md</div></div></a>
-      <a class="card card-plain" href="https://github.com/neurons-me/.me/blob/main/LLMS/typescript/src/validate.ts"><div class="card-content"><div class="card-title">Validate</div><div class="card-desc">Every op is checked against the schema and the path rules before anything runs. Errors go back to the model for up to 2 repairs.</div><div class="card-path">validate.ts · paths.ts</div></div></a>
-      <a class="card card-plain" href="https://github.com/neurons-me/.me/blob/main/LLMS/typescript/src/kernel.ts"><div class="card-content"><div class="card-title">Dry-run</div><div class="card-desc">Ops are applied to a throwaway .me first; you see the diff of what would change.</div><div class="card-path">kernel.ts · dryRun()</div></div></a>
-      <a class="card card-plain" href="https://github.com/neurons-me/.me/blob/main/LLMS/typescript/src/kernel.ts"><div class="card-content"><div class="card-title">Confirm</div><div class="card-desc">Secrets, noise, deletes and identity need confirmation to apply. Secret keys are typed by the user; the validator rejects ops that carry them.</div><div class="card-path">kernel.ts · applyOps() · types.ts</div></div></a>
-      <a class="card card-plain" href="https://github.com/neurons-me/.me/tree/main/LLMS/typescript/src/adapters"><div class="card-content"><div class="card-title">Adapters</div><div class="card-desc">One thin adapter per model, all behind the same interface: messages in, reply text out.</div><div class="card-path">adapters/ · types.ts ChatModel</div></div></a>
+    <div class="core-flow">
+      <div class="card card-plain core-card"><div class="card-content"><span class="core-num">1</span><svg class="core-ico" viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8z"/><path d="M14 3v5h5M8 13h8M8 17h5"/></svg><div class="card-title">Spec</div><div class="card-desc">What the model is allowed to propose.</div><div class="card-path"><a href="https://github.com/neurons-me/.me/blob/main/LLMS/ops.schema.json">ops.schema.json</a> · <a href="https://github.com/neurons-me/.me/blob/main/LLMS/grammar.md">grammar.md</a></div></div></div>
+      <span class="core-arrow" aria-hidden="true">→</span>
+      <div class="card card-plain core-card"><div class="card-content"><span class="core-num">2</span><svg class="core-ico" viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/><path d="M9 12l2 2 4-4"/></svg><div class="card-title">Validate</div><div class="card-desc">Checked against schema and path rules. Up to 2 repairs.</div><div class="card-path"><a href="https://github.com/neurons-me/.me/blob/main/LLMS/typescript/src/validate.ts">validate.ts</a> · <a href="https://github.com/neurons-me/.me/blob/main/LLMS/typescript/src/paths.ts">paths.ts</a></div></div></div>
+      <span class="core-arrow" aria-hidden="true">→</span>
+      <div class="card card-plain core-card"><div class="card-content"><span class="core-num">3</span><svg class="core-ico" viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M4 12h10M4 17h7"/><path d="M17 15v6M14 18h6"/></svg><div class="card-title">Dry-run</div><div class="card-desc">Applied to a throwaway .me. You see the diff.</div><div class="card-path"><a href="https://github.com/neurons-me/.me/blob/main/LLMS/typescript/src/kernel.ts">kernel.ts · dryRun()</a></div></div></div>
+      <span class="core-arrow" aria-hidden="true">→</span>
+      <div class="card card-plain core-card"><div class="card-content"><span class="core-num">4</span><svg class="core-ico" viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/><path d="M10 16l1.5 1.5L14 15"/></svg><div class="card-title">Confirm</div><div class="card-desc">Secrets, deletes and identity need your OK.</div><div class="card-path"><a href="https://github.com/neurons-me/.me/blob/main/LLMS/typescript/src/kernel.ts">kernel.ts · applyOps()</a> · <a href="https://github.com/neurons-me/.me/blob/main/LLMS/typescript/src/types.ts">types.ts</a></div></div></div>
+      <span class="core-sep" aria-hidden="true"></span>
+      <div class="card card-plain core-card core-adapters"><div class="card-content"><svg class="core-ico" viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3v5M15 3v5M7 8h10v4a5 5 0 0 1-10 0z"/><path d="M12 17v4"/></svg><div class="card-title">Adapters</div><div class="card-desc">One thin adapter per model, same interface.</div><div class="card-path"><a href="https://github.com/neurons-me/.me/tree/main/LLMS/typescript/src/adapters">adapters/</a> · <a href="https://github.com/neurons-me/.me/blob/main/LLMS/typescript/src/types.ts">types.ts · ChatModel</a></div></div></div>
     </div>
 
     <h2 class="section-title">Adapters</h2>
