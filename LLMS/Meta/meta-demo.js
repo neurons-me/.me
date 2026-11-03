@@ -336,7 +336,7 @@
           S.batches.push({ ops: v.ops, keys: sk });
           var me = build();
           d.diff.forEach(function (x) { if (x.after !== undefined) S.paths.add(x.path); });
-          v.ops.forEach(function (o) { if (o.op === "remove") { var p = canon(o.path + "." + o.key); Array.from(S.paths).forEach(function (q) { if (q === p || q.indexOf(p + ".") === 0 || q.indexOf(p + "[") === 0) S.paths.delete(q); }); delete S.derived[p]; }
+          v.ops.forEach(function (o) { if (o.op === "remove") { var p = canon(o.path + "." + o.key); Array.from(S.paths).forEach(function (q) { if (q === p || q.indexOf(p + ".") === 0 || q.indexOf(p + "[") === 0) S.paths.delete(q); }); delete S.derived[p]; try { var so = keys(canon(o.path)).reduce(function (x, k) { return x[k]; }, S.seed); if (so) delete so[o.key]; } catch (e) {} }
             if (o.op === "define") touched([o], d.known).forEach(function (p) { S.derived[p] = 1; S.paths.delete(p); }); });
           S.changed = {}; d.diff.forEach(function (x) { S.changed[x.path] = 1; });
           render(me); done("Applied.", "mc-ok");
