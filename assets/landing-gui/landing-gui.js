@@ -76,7 +76,7 @@
       return { title: prev && prev.classList.contains("section-title") ? txt(prev) : null, cards: [...g.querySelectorAll(":scope > .card")].map((a) => {
         const img = a.querySelector(".card-icon img"), emoji = a.querySelector(".card-emoji");
         return { href: a.getAttribute("href"), plain: a.classList.contains("card-plain"), title: txt(a.querySelector(".card-title")), desc: txt(a.querySelector(".card-desc")), path: txt(a.querySelector(".card-path")),
-          img: img && { src: img.getAttribute("src"), alt: img.getAttribute("alt") || "" }, emoji: emoji && txt(emoji), logo: a.querySelector("svg.card-logo")?.outerHTML || null };
+          img: img && { src: img.getAttribute("src"), alt: img.getAttribute("alt") || "" }, emoji: emoji && txt(emoji), mark: emoji?.querySelector("svg")?.outerHTML || null, logo: a.querySelector("svg.card-logo")?.outerHTML || null };
       }), plain: g.classList.contains("grid-plain") };
     }),
     // optional closing quote (<figure class="page-quote"><blockquote>text</blockquote><figcaption><a>who</a></figcaption></figure>)
@@ -336,6 +336,7 @@
       "&:hover": { borderColor: "primary.main", boxShadow: 3, transform: "translateY(-1px)", textDecoration: "none" } } }, [
     N("Box", { sx: { width: "clamp(140px, 45%, 240px)", minHeight: 140, flexShrink: 0, display: "flex" } }, [
       c.img ? N("Box", { component: "img", src: c.img.src, alt: c.img.alt, sx: { width: "100%", height: "100%", objectFit: "cover", display: "block" } })
+        : c.mark ? N("ModeHtml", { html: c.mark, sx: { display: "flex", alignItems: "center", justifyContent: "center", width: "100%", minHeight: 140, bgcolor: "action.hover", color: "text.primary", "& svg": { display: "block", width: 64, height: 64 } } })
         : N("Box", { component: "span", "aria-hidden": "true", sx: { display: "flex", alignItems: "center", justifyContent: "center", width: "100%", minHeight: 140, fontSize: "3.5rem", bgcolor: "action.hover" } }, [c.emoji || ""]),
     ]),
     N("Box", { sx: { display: "flex", flexDirection: "column", justifyContent: "center", gap: .75, px: 2.5, py: 2, flex: 1, minWidth: 0 } }, [
