@@ -179,7 +179,7 @@
     ".mc-side h4{margin:0;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:" + FG2 + ";font-weight:600}.mc-side summary{cursor:pointer;list-style:none}.mc-side summary::-webkit-details-marker{display:none}" +
     "@media(min-width:861px){.mc-side summary{pointer-events:none}}" +
     ".mc-g{margin-top:10px}.mc-g svg{display:block;width:100%;height:auto}.mc-g svg text{font-family:" + MONO + ";font-size:11px;fill:currentColor}" +
-    ".mc-hl{animation:mchl 2.4s ease}@keyframes mchl{0%,40%{r:9;opacity:1}100%{r:4}}" +
+    ".mc-hl{animation:mchl 2.4s ease}@keyframes mchl{0%,40%{r:11;opacity:1}100%{r:7}}" +
     ".mc-ex{margin-top:10px;padding:9px 11px;border-radius:10px;border:1px dashed " + mix(DER, 50) + ";background:" + mix(DER, 6) + "}.mc-ex pre{font-size:11.5px;white-space:pre;overflow-x:auto}" +
     ".mc a{color:" + ACC + "}.mc code{font-family:" + MONO + ";font-size:.92em}";
 
@@ -209,7 +209,9 @@
     (function lay(n, d, pre) { n.order.forEach(function (s) { var c = n.c[s], p = pre ? pre + "." + s : s;
       if (c.order.length) { var y0 = y; lay(c, d + 1, p); c.y = (y0 + y - 1) / 2; } else { c.y = y++; }
       c.d = d; c.p = canon(p); rows.push(c); P[c.p] = c; }); })(T, 0, "");
-    var CW = 78, RH = 24, CH = 6.7, X = function (d) { return 10 + d * CW; }, Y = function (r) { return 14 + r * RH; }, s = "";
+    var RH = 24, CH = 6.7, XS = [10]; rows.forEach(function (r) { if (r.order.length) XS[r.d + 1] = Math.max(XS[r.d + 1] || 0, r.k.length); });
+    for (var q = 1; q < XS.length; q++) XS[q] = XS[q - 1] + 40 + CH * (XS[q] || 0);
+    var X = function (d) { return XS[d]; }, Y = function (r) { return 14 + r * RH; }, s = "";
     var val = function (r) { return String(r.leaf.value === undefined ? "∅" : J(r.leaf.value)).slice(0, 22); };
     var tx = function (r) { return X(r.d) + 12 + CH * (r.k.length + (r.leaf ? 1 + val(r).length : 0)); };
     var parentOf = function (p) { var i = Math.max(p.lastIndexOf("."), p.lastIndexOf("[")); return i < 0 ? null : p.slice(0, i); };
@@ -219,7 +221,7 @@
     deps.forEach(function (e) { var a = P[canon(e.from)], b = P[canon(e.to)]; if (!a || !b) return; var ax = tx(a), bx = tx(b), cx = Math.max(ax, bx) + 24; W = Math.max(W, cx + 6);
       s += '<path d="M' + ax + " " + Y(a.y) + " C" + cx + " " + Y(a.y) + " " + cx + " " + Y(b.y) + " " + bx + " " + Y(b.y) + '" fill="none" stroke="' + DER + '" stroke-dasharray="3 3" stroke-width="1.2" opacity=".8"/>'; });
     rows.forEach(function (r) { var der = r.leaf && derivedSet[r.p], ch = changed[r.p], col = der ? DER : r.leaf ? NUM : ACC;
-      if (ch) s += '<circle class="mc-hl" cx="' + X(r.d) + '" cy="' + Y(r.y) + '" r="4" fill="none" stroke="' + ACC + '" stroke-width="2"/>';
+      if (ch) s += '<circle class="mc-hl" cx="' + X(r.d) + '" cy="' + Y(r.y) + '" r="7" fill="none" stroke="' + ACC + '" stroke-width="1.5"/>';
       s += '<circle cx="' + X(r.d) + '" cy="' + Y(r.y) + '" r="' + (r.d ? 4 : 5) + '" fill="' + col + '"/>';
       s += '<text x="' + (X(r.d) + 9) + '" y="' + (Y(r.y) + 4) + '"' + (ch ? ' font-weight="700"' : "") + ">" + esc(r.k) + (r.leaf ? ' <tspan fill="' + col + '">' + esc(val(r)) + "</tspan>" : "") + "</text>"; });
     var H = Math.max(1, y) * RH + 10;
@@ -333,7 +335,7 @@
           flatten(S.seed).forEach(function (x) { S.paths.add(x[0]); });
           S.batches.push({ ops: v.ops, keys: sk });
           var me = build();
-          d.diff.forEach(function (x) { S.paths.add(x.path); });
+          d.diff.forEach(function (x) { if (x.after !== undefined) S.paths.add(x.path); });
           v.ops.forEach(function (o) { if (o.op === "remove") { var p = canon(o.path + "." + o.key); Array.from(S.paths).forEach(function (q) { if (q === p || q.indexOf(p + ".") === 0 || q.indexOf(p + "[") === 0) S.paths.delete(q); }); delete S.derived[p]; }
             if (o.op === "define") touched([o], d.known).forEach(function (p) { S.derived[p] = 1; S.paths.delete(p); }); });
           S.changed = {}; d.diff.forEach(function (x) { S.changed[x.path] = 1; });
