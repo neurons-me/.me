@@ -32,6 +32,7 @@
     document.documentElement.classList.add("gui-boot");
   </script>
   <!-- No icon font: every icon is inline SVG; hide any icon-font span so its name never shows as text. -->
+  <style>/* LLMS only: wider main so the 3-panel hero breathes (desktop only) */ @media (min-width:900px){ body main{width:min(1400px, calc(100% - 40px))!important;max-width:none!important} }</style>
   <style>.material-symbols-rounded,.material-symbols-outlined,.material-icons{display:none!important} body{margin:0} .gui-boot #static-landing{display:none}    .lh-hint a.lh-explain { color: #0f6a78; text-decoration: none; border-bottom: 1px solid currentColor; }
     .lh-hint a.lh-explain:hover { opacity: .8; }
     @media (prefers-color-scheme: dark) { .lh-hint a.lh-explain { color: #4fd1c5; } }
