@@ -610,6 +610,8 @@
         ? N("Box", { sx: { mt: "auto", pt: .25, textAlign: "right", fontSize: ".86rem", fontWeight: 700, "& a": { fontWeight: 700 } } }, inl(c))
         : blocks({ children: [c] })[0]).filter(Boolean));
     if (b.classList.contains("social-graph-live") && window.SocialGraphLive) return N("SocialGraphLive", {});
+    // a <div data-live="Name"> in a doc page: a component a page script put on window.LandingLive (e.g. LLMS/Meta/meta-demo.js)
+    if (b.dataset && b.dataset.live && window.LandingLive && window.LandingLive[b.dataset.live]) return N(b.dataset.live, { ...b.dataset });
     if (b.classList.contains("fanout-viz") && window.FanoutViz) return N("FanoutViz", { n: b.getAttribute("data-n"), caption: b.getAttribute("data-caption") });
     // live demonstrations (assets/axioms-live, loaded by the page): the snippet is the placeholder's own code text
     if (b.classList.contains("axiom-proof") && window.AxiomsLive) return N("AxiomProof", { axiom: b.getAttribute("data-axiom"), code: b.textContent.replace(/^\n+|\s+$/g, "") });
