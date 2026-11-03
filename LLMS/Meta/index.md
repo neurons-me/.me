@@ -11,24 +11,17 @@ crumb: Meta
 github_url: https://github.com/neurons-me/.me/tree/main/LLMS/Meta
 scripts:
   - https://cdn.jsdelivr.net/npm/this.me@4.2.1/dist/me.umd.js
-  - /LLMS/Meta/demo-data.js
-  - /LLMS/Meta/meta-demo.js
+  - /LLMS/Meta/demo-data.js?v=2
+  - /LLMS/Meta/meta-demo.js?v=2
 ---
 
 # Meta demo
 
-A sentence goes in. Meta Muse Spark proposes .me ops. The ops are validated, dry-run on a throwaway this.me, and applied only when you confirm. The model never computes values; the kernel does.
+Chat with Meta Muse Spark. When a message holds something worth keeping (a fact, a value, a rule), it proposes the change; you see it checked and dry-run, and nothing is written until you confirm. Values are computed by this.me, not by the model.
 
 <div data-live="MetaDemo"><p>This demo needs JavaScript.</p></div>
 
-**Recorded** (default) replays real responses from `muse-spark-1.3`, captured in the eval run of 2026-10-29 ([results file](https://github.com/neurons-me/.me/blob/main/LLMS/eval/results/meta-muse-spark-1.3-2026-10-29.json): 30/30 valid, 24/30 same final state). No network call to Meta. **Live** sends your sentence to the Meta Model API with your own key, from your browser.
-
-Run it locally instead (key from your environment, never in the page):
-
-```sh
-cd .me/LLMS/typescript && npm install
-META_API_KEY=... node demo-cli.ts "Luis is 30 years old"
-```
+The examples replay real responses from `muse-spark-1.3`, recorded in the eval run of 2026-10-29 ([results](https://github.com/neurons-me/.me/blob/main/LLMS/eval/results/meta-muse-spark-1.3-2026-10-29.json): 30/30 valid, 24/30 same final state), with no call to Meta. **Live** uses your own key, from your browser.
 
 ## How it works / docs
 

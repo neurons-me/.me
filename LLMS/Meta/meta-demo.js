@@ -129,6 +129,23 @@
       msgs.push({ role: "assistant", content: reply }); msgs.push({ role: "user", content: "Your reply was rejected:\n- " + errs.join("\n- ") + '\nReply again with ONLY the corrected JSON object {"ops":[...]}.' }); }
     return last; }
 
+  // ── chat mode (live): the model decides. State in the message -> {"ops":[...]} (same schema); otherwise plain text. ──
+  var CHAT = "\n\nCHAT MODE: you are also a normal assistant in a chat. If the user's message contains state to record (facts, values, rules, links, deletions) or asks to read recorded values, reply with ONLY the JSON object {\"ops\":[...]} as above. If it has nothing to record (a greeting, a general question, a request for an opinion), reply in plain conversational text, no JSON. Never mix the two.";
+  var FORCE = "\n\nThis message MUST be answered with ONLY the JSON object {\"ops\":[...]}.";
+  function chatMessages(i, hist, force) { var m = [{ role: "system", content: D.system + CHAT + (force ? FORCE : "") }];
+    D.examples.forEach(function (ex) { m.push({ role: "user", content: userMessage(ex) }); m.push({ role: "assistant", content: JSON.stringify({ ops: ex.ops }) }); });
+    hist.slice(-6).forEach(function (t) { m.push({ role: t.role, content: t.content }); });
+    m.push({ role: "user", content: userMessage(i) }); return m; }
+  var looksJson = function (t) { t = String(t).trim(); return /^(```(json)?\s*)?\{/.test(t); };
+  async function liveChat(key, input, hist, force, onTry, check) { var msgs = chatMessages(input, hist, force), last = null;
+    for (var a = 1; a <= 3; a++) { var reply = await callMeta(key, msgs);
+      if (!looksJson(reply) && !force) return { text: reply, attempts: a };
+      var errs = [], obj = null;
+      try { obj = extractJson(reply); var v = validateOps(obj); errs = v.errors; if (!errs.length) errs = check(v.ops); } catch (e) { errs = [e.message]; }
+      last = { reply: reply, obj: obj, attempts: a, errors: errs }; onTry && onTry(last); if (!errs.length) return last;
+      msgs.push({ role: "assistant", content: reply }); msgs.push({ role: "user", content: "Your reply was rejected:\n- " + errs.join("\n- ") + '\nReply again with ONLY the corrected JSON object {"ops":[...]}.' }); }
+    return last; }
+
   // ── view ──
   var V = function (n, fb) { return "var(--mui-palette-" + n + ", " + fb + ")"; };
   var FG2 = V("text-secondary", "#8b949e"), GRID = V("divider", "rgba(127,127,127,.3)"), ACC = V("primary-main", "#4fd1c5");
@@ -137,165 +154,211 @@
   var PATHC = SYN("path", "#79c0ff"), NUM = SYN("number", "#d29922"), DER = SYN("derived", "#a371f7");
   var mix = function (a, p, b) { return "color-mix(in srgb, " + a + " " + p + "%, " + (b || "transparent") + ")"; };
   var MONO = "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace";
-  var CSS = ".md{font-size:15px;line-height:1.5;margin:0 0 32px}.md *{box-sizing:border-box}" +
-    ".md-card{border:1px solid " + GRID + ";border-radius:14px;padding:clamp(14px,3vw,24px);background:linear-gradient(135deg," + mix(ACC, 7) + ",transparent 55%)}" +
-    ".md-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.md-in{flex:1 1 260px;min-width:0;font:inherit;padding:10px 12px;border-radius:10px;border:1px solid " + GRID + ";background:transparent;color:inherit}" +
-    ".md-btn{font-family:inherit;font-size:14px;font-weight:600;line-height:1;padding:10px 14px;border-radius:10px;border:1px solid " + ACC + ";background:" + mix(ACC, 18) + ";color:inherit;cursor:pointer}.md-btn:disabled{opacity:.45;cursor:default}" +
-    ".md-btn.ghost{background:transparent;border-color:" + GRID + "}.md-chips{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0 0}" +
-    ".md-chip{font-family:inherit;font-size:13px;line-height:1.25;padding:6px 10px;border-radius:999px;border:1px solid " + GRID + ";background:transparent;color:inherit;cursor:pointer;text-align:left}.md-chip.on{border-color:" + ACC + ";background:" + mix(ACC, 14) + "}" +
-    ".md-mode{display:inline-flex;border:1px solid " + GRID + ";border-radius:10px;overflow:hidden;margin:0 0 12px}.md-mode button{font-family:inherit;font-size:13px;font-weight:600;line-height:1;padding:8px 12px;border:0;background:transparent;color:inherit;cursor:pointer}.md-mode button.on{background:" + mix(ACC, 20) + "}" +
-    ".md-steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:12px;margin-top:14px}" +
-    ".md-step{border:1px solid " + GRID + ";border-radius:12px;padding:12px 14px;min-width:0}.md-step h4{margin:0 0 8px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:" + FG2 + "}" +
-    ".md-step h4 b{display:inline-block;width:20px;height:20px;line-height:20px;text-align:center;border-radius:50%;margin-right:6px;background:" + mix(ACC, 25) + ";color:inherit}" +
-    ".md pre{margin:0;font:12.5px/1.55 " + MONO + ";white-space:pre-wrap;word-break:break-word;overflow-x:auto}.md code{font-family:" + MONO + ";font-size:.92em}" +
-    ".md-note{font-size:13px;color:" + FG2 + ";margin:8px 0 0}.md-src{font:12px/1.4 " + MONO + ";color:" + FG2 + ";margin:0 0 8px}" +
-    ".md-op{display:flex;gap:8px;align-items:flex-start;font:12.5px/1.5 " + MONO + ";padding:3px 0}.md-ok{color:" + OK + "}.md-bad{color:" + BAD + "}.md-warn{color:" + WARN + "}" +
-    ".md-p{color:" + PATHC + "}.md-n{color:" + NUM + "}.md-d{color:" + DER + "}.md-del{text-decoration:line-through;opacity:.7}" +
-    ".md-ex{margin-top:10px;padding:10px 12px;border-radius:10px;border:1px dashed " + mix(DER, 50) + ";background:" + mix(DER, 6) + "}" +
-    ".md-key{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}.md svg text{font-family:" + MONO + ";font-size:11px;fill:currentColor}" +
-    ".md details{margin-top:10px;font-size:13px}.md summary{cursor:pointer;color:" + FG2 + "}.md a{color:" + ACC + "}";
+  var CSS = ".mc{font-size:15px;line-height:1.5;margin:0 0 28px;display:grid;grid-template-columns:minmax(0,55fr) minmax(0,45fr);gap:18px;align-items:start}.mc *{box-sizing:border-box}" +
+    "@media(max-width:860px){.mc{grid-template-columns:minmax(0,1fr)}}" +
+    ".mc-chat{border:1px solid " + GRID + ";border-radius:16px;display:flex;flex-direction:column;min-height:520px;max-height:78vh;position:relative}" +
+    ".mc-top{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid " + GRID + ";font-size:13px;color:" + FG2 + "}.mc-top b{color:inherit;font-weight:600}.mc-sp{flex:1}" +
+    ".mc-ib{font:inherit;font-size:13px;background:transparent;color:inherit;border:1px solid " + GRID + ";border-radius:999px;padding:4px 10px;cursor:pointer}.mc-ib.on{border-color:" + ACC + ";color:" + ACC + "}" +
+    ".mc-pop{position:absolute;top:46px;right:10px;z-index:5;width:min(340px,calc(100% - 20px));padding:14px;border-radius:12px;border:1px solid " + GRID + ";background:" + V("background-paper", "#161b22") + ";box-shadow:0 8px 30px rgba(0,0,0,.25);font-size:13px}" +
+    ".mc-log{flex:1;overflow-y:auto;padding:16px 14px;display:flex;flex-direction:column;gap:12px}" +
+    ".mc-m{max-width:88%;padding:9px 13px;border-radius:16px;white-space:pre-wrap;word-break:break-word}.mc-u{align-self:flex-end;background:" + mix(ACC, 18) + ";border-bottom-right-radius:5px}" +
+    ".mc-a{align-self:flex-start;max-width:100%;width:100%;padding:2px 2px}.mc-a .mc-tx{white-space:pre-wrap}" +
+    ".mc-src{font:11px/1.4 " + MONO + ";color:" + FG2 + ";opacity:.8;margin:2px 0 6px}" +
+    ".mc pre{margin:0;font:12.5px/1.6 " + MONO + ";white-space:pre-wrap;word-break:break-word}" +
+    ".mc-code{padding:10px 12px;border-radius:10px;background:" + mix(FG2, 9) + "}" +
+    ".mc-v{font-size:12.5px;margin:6px 0 0}.mc-ok{color:" + OK + "}.mc-bad{color:" + BAD + "}.mc-warn{color:" + WARN + "}.mc-note{font-size:12.5px;color:" + FG2 + ";margin:6px 0 0}" +
+    ".mc-diff{font:12px/1.55 " + MONO + ";margin:6px 0 0;color:" + FG2 + "}.mc-p{color:" + PATHC + "}.mc-n{color:" + NUM + "}.mc-d{color:" + DER + "}.mc-del{text-decoration:line-through;opacity:.7}" +
+    ".mc-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px}" +
+    ".mc-btn{font:600 13px/1 inherit;font-family:inherit;padding:8px 14px;border-radius:999px;border:1px solid " + ACC + ";background:" + mix(ACC, 20) + ";color:inherit;cursor:pointer}.mc-btn.ghost{background:transparent;border-color:" + GRID + "}.mc-btn:disabled{opacity:.45;cursor:default}" +
+    ".mc-in{flex:1 1 200px;min-width:0;font:inherit;padding:8px 12px;border-radius:10px;border:1px solid " + GRID + ";background:transparent;color:inherit}" +
+    ".mc-foot{padding:10px 12px 12px;border-top:1px solid " + GRID + "}.mc-chips{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 8px}" +
+    ".mc-chip{font:inherit;font-size:12.5px;line-height:1.3;padding:5px 10px;border-radius:999px;border:1px solid " + GRID + ";background:transparent;color:inherit;cursor:pointer;text-align:left}.mc-chip:hover{border-color:" + ACC + "}" +
+    ".mc-send{display:flex;gap:8px;align-items:flex-end}.mc-send textarea{flex:1;min-width:0;resize:none;font:inherit;padding:10px 14px;border-radius:20px;border:1px solid " + GRID + ";background:transparent;color:inherit;max-height:120px}" +
+    ".mc-hint{font-size:11.5px;color:" + FG2 + ";margin:6px 4px 0;opacity:.85}.mc-hint code{font-family:" + MONO + "}" +
+    ".mc-side{border:1px solid " + GRID + ";border-radius:16px;padding:12px 14px;position:sticky;top:76px;min-width:0}" +
+    ".mc-side h4{margin:0;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:" + FG2 + ";font-weight:600}.mc-side summary{cursor:pointer;list-style:none}.mc-side summary::-webkit-details-marker{display:none}" +
+    "@media(min-width:861px){.mc-side summary{pointer-events:none}}" +
+    ".mc-g{margin-top:10px}.mc-g svg{display:block;width:100%;height:auto}.mc-g svg text{font-family:" + MONO + ";font-size:11px;fill:currentColor}" +
+    ".mc-hl{animation:mchl 2.4s ease}@keyframes mchl{0%,40%{r:9;opacity:1}100%{r:4}}" +
+    ".mc-ex{margin-top:10px;padding:9px 11px;border-radius:10px;border:1px dashed " + mix(DER, 50) + ";background:" + mix(DER, 6) + "}.mc-ex pre{font-size:11.5px;white-space:pre;overflow-x:auto}" +
+    ".mc a{color:" + ACC + "}.mc code{font-family:" + MONO + ";font-size:.92em}";
 
   var esc = function (s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); };
   var J = function (v) { return v === undefined ? "∅" : JSON.stringify(v); };
-  function opLine(o) { var p = function (x) { return '<span class="md-p">' + esc(x) + "</span>"; };
+  // ops -> .me code (what the kernel runs), coloured by the shared .me highlighter
+  function opCode(o) { var P = function (p) { return "me." + canon(p); }, Q = JSON.stringify;
     switch (o && o.op) {
-      case "set": return "set " + p(o.path) + " = " + '<span class="md-n">' + esc(J(o.value)) + "</span>";
-      case "define": return "define " + p(o.path + "." + o.name) + ' <span class="md-d">= ' + esc(o.expr) + "</span>";
-      case "pointer": return "pointer " + p(o.path) + " → " + p(o.target);
-      case "remove": return "remove " + p(o.path + "." + o.key);
-      case "secret": case "noise": return o.op + " " + p(o.path);
-      case "identity": return "identity @" + esc(o.handle);
-      case "query": return "query " + (o.paths || []).map(p).join(", ");
-      default: return esc(JSON.stringify(o)); } }
+      case "set": return P(o.path) + "(" + Q(o.value) + ")";
+      case "define": return P(o.path) + '["="](' + Q(o.name) + ", " + Q(o.expr) + ")";
+      case "pointer": return P(o.path) + '["->"](' + Q(canon(o.target)) + ")";
+      case "remove": return P(o.path) + '["-"](' + Q(String(o.key)) + ")";
+      case "secret": return P(o.path) + '["_"](/* your key */)';
+      case "noise": return P(o.path) + '["~"](/* your key */)';
+      case "identity": return 'me["@"](' + Q(o.handle) + ")";
+      case "query": return (o.paths || []).map(function (p) { return "me(" + Q(canon(p)) + ")"; }).join("\n");
+      default: return "// " + JSON.stringify(o); } }
+  var hl = function (code) { try { return root.MeSyntax ? root.MeSyntax.toHTML(code) : esc(code); } catch (e) { return esc(code); } };
 
-  // graph of the applied state: leaf paths read back from the kernel, laid out as a tree; derived leaves in the derived colour,
-  // dashed edges from each input (explain().meta.dependsOn) to the value it feeds
-  function graph(leaves, derivedSet, deps) {
-    var T = { k: "", c: {}, order: [] };
-    leaves.forEach(function (lf) { var segs = keys(lf.path), n = T, acc = [];
-      segs.forEach(function (s, i) { acc.push(s); if (!n.c[s]) { n.c[s] = { k: s, c: {}, order: [], path: lf.path, depth: i + 1 }; n.order.push(s); } n = n.c[s]; });
+  // state graph: tree of leaf paths; index segments labelled by their path (items[1]); fits its box (viewBox, width 100%)
+  function graph(leaves, derivedSet, deps, changed) {
+    var T = { c: {}, order: [] };
+    leaves.forEach(function (lf) { var segs = keys(lf.path), n = T;
+      segs.forEach(function (s, i) { if (!n.c[s]) { n.c[s] = { k: /^\d+$/.test(s) ? (segs[i - 1] || "") + "[" + s + "]" : s, c: {}, order: [] }; n.order.push(s); } n = n.c[s]; });
       n.leaf = lf; });
     var rows = [], y = 0, P = {};
     (function lay(n, d, pre) { n.order.forEach(function (s) { var c = n.c[s], p = pre ? pre + "." + s : s;
       if (c.order.length) { var y0 = y; lay(c, d + 1, p); c.y = (y0 + y - 1) / 2; } else { c.y = y++; }
-      c.d = d; c.p = p; rows.push(c); }); })(T, 0, "");
-    var maxD = rows.reduce(function (m, r) { return Math.max(m, r.d); }, 0), CW = 96, RH = 26, W = (maxD + 1) * CW + 150, H = Math.max(1, y) * RH + 16;
-    var X = function (d) { return 10 + d * CW; }, Y = function (r) { return 14 + r * RH; }, s = "";
-    rows.forEach(function (r) { P[canon(r.p)] = r; });
-    var parentOf = function (p) { var i = p.lastIndexOf("."); return i < 0 ? null : p.slice(0, i); };
-    rows.forEach(function (r) { var pp = parentOf(r.p); var par = pp && rows.filter(function (q) { return q.p === pp; })[0];
-      if (par) s += '<path d="M' + (X(par.d) + 6) + " " + Y(par.y) + " C" + (X(r.d) - 30) + " " + Y(par.y) + " " + (X(r.d) - 30) + " " + Y(r.y) + " " + (X(r.d) - 4) + " " + Y(r.y) + '" fill="none" stroke="' + GRID + '" stroke-width="1.3"/>'; });
-    var tx = function (r) { return X(r.d) + 12 + 6.7 * (r.k.length + (r.leaf ? 1 + Math.min(28, String(J(r.leaf.value)).length) : 0)); };
-    deps.forEach(function (e) { var a = P[canon(e.from)], b = P[canon(e.to)]; if (!a || !b) return; var ax = tx(a), bx = tx(b), cx = Math.max(ax, bx) + 30;
+      c.d = d; c.p = canon(p); rows.push(c); P[c.p] = c; }); })(T, 0, "");
+    var CW = 78, RH = 24, CH = 6.7, X = function (d) { return 10 + d * CW; }, Y = function (r) { return 14 + r * RH; }, s = "";
+    var val = function (r) { return String(r.leaf.value === undefined ? "∅" : J(r.leaf.value)).slice(0, 22); };
+    var tx = function (r) { return X(r.d) + 12 + CH * (r.k.length + (r.leaf ? 1 + val(r).length : 0)); };
+    var parentOf = function (p) { var i = Math.max(p.lastIndexOf("."), p.lastIndexOf("[")); return i < 0 ? null : p.slice(0, i); };
+    rows.forEach(function (r) { var par = P[parentOf(r.p)];
+      if (par) s += '<path d="M' + (X(par.d) + 6) + " " + Y(par.y) + " C" + (X(r.d) - 26) + " " + Y(par.y) + " " + (X(r.d) - 26) + " " + Y(r.y) + " " + (X(r.d) - 4) + " " + Y(r.y) + '" fill="none" stroke="' + GRID + '" stroke-width="1.3"/>'; });
+    var W = rows.reduce(function (m, r) { return Math.max(m, tx(r) + 10); }, 200);
+    deps.forEach(function (e) { var a = P[canon(e.from)], b = P[canon(e.to)]; if (!a || !b) return; var ax = tx(a), bx = tx(b), cx = Math.max(ax, bx) + 24; W = Math.max(W, cx + 6);
       s += '<path d="M' + ax + " " + Y(a.y) + " C" + cx + " " + Y(a.y) + " " + cx + " " + Y(b.y) + " " + bx + " " + Y(b.y) + '" fill="none" stroke="' + DER + '" stroke-dasharray="3 3" stroke-width="1.2" opacity=".8"/>'; });
-    W = Math.max(W, rows.reduce(function (m, r) { return Math.max(m, tx(r) + 40); }, 0));
-    rows.forEach(function (r) { var der = r.leaf && derivedSet[canon(r.p)];
-      s += '<circle cx="' + X(r.d) + '" cy="' + Y(r.y) + '" r="' + (r.d ? 4 : 5) + '" fill="' + (der ? DER : r.leaf ? NUM : ACC) + '"/>';
-      s += '<text x="' + (X(r.d) + 9) + '" y="' + (Y(r.y) + 4) + '">' + esc(r.k) + (r.leaf ? ' <tspan fill="' + (der ? DER : NUM) + '">' + esc(String(r.leaf.value === undefined ? "∅" : J(r.leaf.value)).slice(0, 28)) + "</tspan>" : "") + "</text>"; });
-    return '<svg viewBox="0 0 ' + W + " " + H + '" width="' + W + '" height="' + H + '" style="display:block;max-width:none" role="img" aria-label="state graph">' + s + "</svg>";
+    rows.forEach(function (r) { var der = r.leaf && derivedSet[r.p], ch = changed[r.p], col = der ? DER : r.leaf ? NUM : ACC;
+      if (ch) s += '<circle class="mc-hl" cx="' + X(r.d) + '" cy="' + Y(r.y) + '" r="4" fill="none" stroke="' + ACC + '" stroke-width="2"/>';
+      s += '<circle cx="' + X(r.d) + '" cy="' + Y(r.y) + '" r="' + (r.d ? 4 : 5) + '" fill="' + col + '"/>';
+      s += '<text x="' + (X(r.d) + 9) + '" y="' + (Y(r.y) + 4) + '"' + (ch ? ' font-weight="700"' : "") + ">" + esc(r.k) + (r.leaf ? ' <tspan fill="' + col + '">' + esc(val(r)) + "</tspan>" : "") + "</text>"; });
+    var H = Math.max(1, y) * RH + 10;
+    return '<svg viewBox="0 0 ' + Math.ceil(W) + " " + H + '" style="max-width:' + Math.ceil(W * 1.15) + 'px" role="img" aria-label="state graph">' + s + "</svg>";
   }
   function exBlock(x) { if (!x) return ""; var ins = (x.derivation && x.derivation.inputs) || [];
     var w = ins.reduce(function (m, i) { return Math.max(m, String(i.path).length); }, 0);
-    return '<div class="md-ex"><pre><span class="md-p">' + esc(x.path) + '</span> = <span class="md-d">' + esc(J(x.value)) + "</span>\n  ← " + esc(x.expr || "") +
-      ins.map(function (i) { return "\n      " + '<span class="md-p">' + esc(i.path) + "</span>" + " ".repeat(Math.max(1, w - String(i.path).length + 2)) + '<span class="md-n">' + esc(J(i.value)) + "</span>"; }).join("") + "</pre></div>"; }
+    return '<div class="mc-ex"><pre><span class="mc-p">' + esc(x.path) + '</span> = <span class="mc-d">' + esc(J(x.value)) + "</span>\n  ← " + esc(x.expr || "") +
+      ins.map(function (i) { return "\n      " + '<span class="mc-p">' + esc(i.path) + "</span>" + " ".repeat(Math.max(1, w - String(i.path).length + 2)) + '<span class="mc-n">' + esc(J(i.value)) + "</span>"; }).join("") + "</pre></div>"; }
+
+  // deep-merge b into a, keeping what a already has (eval starting states seed the shared conversation state)
+  function seedMerge(a, b) { Object.keys(b || {}).forEach(function (k) { if (isPlain(b[k])) { if (!isPlain(a[k])) { if (a[k] !== undefined) return; a[k] = {}; } seedMerge(a[k], b[k]); } else if (a[k] === undefined) a[k] = b[k]; }); return a; }
+  var clone = function (o) { return JSON.parse(JSON.stringify(o)); };
 
   function mount(el) {
     var ss = function (k, v) { try { if (v === undefined) return sessionStorage.getItem(k); if (v === null) sessionStorage.removeItem(k); else sessionStorage.setItem(k, v); } catch (e) {} };
-    var S = { mode: "recorded", cur: null, key: ss("llms-meta-key") || "" };
+    var S = { live: false, key: ss("llms-meta-key") || "", seed: {}, batches: [], paths: new Set(), derived: {}, hist: [], busy: false, changed: {}, focus: [] };
     var rec = {}; D.recorded.forEach(function (r) { rec[r.id] = r; });
     var byText = function (t) { t = t.trim().toLowerCase(); return D.recorded.filter(function (r) { return r.text.toLowerCase() === t; })[0]; };
-    el.className = "md";
-    el.innerHTML = '<div class="md-card">' +
-      '<div class="md-mode" role="tablist"><button data-m="recorded" class="on">Recorded</button><button data-m="live">Live (your key)</button></div>' +
-      '<div class="md-live" hidden><div class="md-row"><input class="md-in md-k" type="password" autocomplete="off" placeholder="Meta API key (kept in this tab only)"><button class="md-btn ghost md-kc">Forget key</button></div>' +
-      '<p class="md-note">Get a key at <a href="https://dev.meta.ai/" target="_blank" rel="noopener">dev.meta.ai</a> (<a href="https://dev.meta.ai/docs/overview" target="_blank" rel="noopener">docs</a>). The key stays in this tab (sessionStorage) and is sent only to <code>api.meta.ai</code>. Each run is a real, billed call to <code>' + MODEL + "</code> (1 to 3 requests, with repairs).</p></div>" +
-      '<div class="md-row"><input class="md-in md-t" placeholder="Type a sentence, or pick an example"><button class="md-btn md-go">Run</button></div>' +
-      '<div class="md-chips"></div><p class="md-note md-msg"></p>' +
-      '<div class="md-steps">' +
-      '<section class="md-step"><h4><b>1</b>Meta Muse Spark proposes</h4><div class="md-s1"><p class="md-note">Pick an example.</p></div></section>' +
-      '<section class="md-step"><h4><b>2</b>Validated</h4><div class="md-s2"></div></section>' +
-      '<section class="md-step"><h4><b>3</b>Dry-run</h4><div class="md-s3"></div></section>' +
-      '<section class="md-step"><h4><b>4</b>Confirm</h4><div class="md-s4"></div></section></div></div>';
-    var $ = function (s) { return el.querySelector(s); };
-    var chips = $(".md-chips");
-    CHIPS.forEach(function (id) { var r = rec[id]; if (!r) return; var b = document.createElement("button"); b.className = "md-chip"; b.textContent = r.text; b.dataset.id = id;
-      b.onclick = function () { $(".md-t").value = r.text; run(); }; chips.appendChild(b); });
-    el.querySelectorAll(".md-mode button").forEach(function (b) { b.onclick = function () { S.mode = b.dataset.m;
-      el.querySelectorAll(".md-mode button").forEach(function (x) { x.classList.toggle("on", x === b); }); $(".md-live").hidden = S.mode !== "live"; $(".md-msg").textContent = ""; }; });
-    $(".md-k").value = S.key; $(".md-k").oninput = function (e) { S.key = e.target.value.trim(); ss("llms-meta-key", S.key || null); };
-    $(".md-kc").onclick = function () { S.key = ""; $(".md-k").value = ""; ss("llms-meta-key", null); };
-    $(".md-t").onkeydown = function (e) { if (e.key === "Enter") run(); };
-    $(".md-go").onclick = run;
-    var clear = function () { [".md-s2", ".md-s3", ".md-s4"].forEach(function (s) { $(s).innerHTML = ""; }); };
+    el.className = "mc";
+    el.innerHTML = '<div class="mc-chat"><div class="mc-top"><b>Muse Spark</b><span class="mc-mode">recorded</span><span class="mc-sp"></span>' +
+      '<button class="mc-ib mc-lv" title="Use your own Meta API key">Live</button><button class="mc-ib mc-gear" aria-label="settings" title="Settings">⚙</button></div>' +
+      '<div class="mc-pop" hidden><div style="font-weight:600;margin-bottom:6px">Live mode · your Meta API key</div><div class="mc-row" style="margin:0"><input class="mc-in mc-k" type="password" autocomplete="off" placeholder="Meta API key"><button class="mc-btn ghost mc-kc">Forget key</button></div>' +
+      '<p class="mc-note">Get one at <a href="https://dev.meta.ai/" target="_blank" rel="noopener">dev.meta.ai</a> (<a href="https://dev.meta.ai/docs/overview" target="_blank" rel="noopener">docs</a>). Kept in this tab only (sessionStorage), sent only to <code>api.meta.ai</code>. Each message is a real, billed call to <code>' + MODEL + "</code> (1 to 3 requests).</p></div>" +
+      '<div class="mc-log" aria-live="polite"></div>' +
+      '<div class="mc-foot"><div class="mc-chips"></div><div class="mc-send"><textarea class="mc-t" rows="1" placeholder="Message Muse Spark"></textarea><button class="mc-btn mc-go">Send</button></div>' +
+      '<p class="mc-hint">Tell it facts, values or rules and it proposes changes for you to confirm. Start with <code>me:</code> to force that.</p></div></div>' +
+      '<details class="mc-side" open><summary><h4>State · live graph</h4></summary><div class="mc-g"></div><div class="mc-exs"></div></details>';
+    var $ = function (s) { return el.querySelector(s); }, log = $(".mc-log");
+    if (root.matchMedia && root.matchMedia("(max-width:860px)").matches) $(".mc-side").open = false;
+    function setLive(on) { S.live = on; $(".mc-lv").classList.toggle("on", on); $(".mc-mode").textContent = on ? "live · " + MODEL : "recorded"; $(".mc-t").placeholder = on ? "Message Muse Spark" : "Pick an example, or add your key for live"; }
+    $(".mc-gear").onclick = function () { $(".mc-pop").hidden = !$(".mc-pop").hidden; };
+    $(".mc-lv").onclick = function () { if (S.live) return setLive(false); if (!S.key) { $(".mc-pop").hidden = false; $(".mc-k").focus(); return; } setLive(true); };
+    $(".mc-k").value = S.key; $(".mc-k").oninput = function (e) { S.key = e.target.value.trim(); ss("llms-meta-key", S.key || null); setLive(!!S.key); };
+    $(".mc-kc").onclick = function () { S.key = ""; $(".mc-k").value = ""; ss("llms-meta-key", null); setLive(false); };
+    CHIPS.forEach(function (id) { var r = rec[id]; if (!r) return; var b = document.createElement("button"); b.className = "mc-chip"; b.textContent = r.text;
+      b.onclick = function () { send(r.text, r); }; $(".mc-chips").appendChild(b); });
+    var ta = $(".mc-t");
+    ta.oninput = function () { ta.style.height = "auto"; ta.style.height = Math.min(120, ta.scrollHeight) + "px"; };
+    ta.onkeydown = function (e) { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(ta.value); } };
+    $(".mc-go").onclick = function () { send(ta.value); };
+    setLive(false);
 
-    function run() {
-      var text = $(".md-t").value.trim(); $(".md-msg").textContent = ""; if (!text) return;
-      var r = byText(text);
-      chips.querySelectorAll(".md-chip").forEach(function (c) { c.classList.toggle("on", !!r && c.dataset.id === r.id && S.mode === "recorded"); });
-      if (S.mode === "recorded") {
-        if (!r) { clear(); $(".md-s1").innerHTML = '<p class="md-note">No recorded response for this sentence. Recorded mode only replays real outputs from the eval run. Switch to <b>Live (your key)</b> to ask the model.</p>'; return; }
-        show({ text: r.text, state: r.state, speaker: r.speaker }, { obj: { ops: r.ops }, src: "recorded response from " + MODEL + ", 2026-10-29 · eval item " + r.id + " · " + r.ms + " ms" + (r.attempts > 1 ? " · " + r.attempts + " attempts" : "") });
-        return;
+    // the conversation's this.me: seed state + every confirmed batch, replayed on a real kernel
+    function build(extraSeed, extraOps) { var seed = extraSeed ? seedMerge(clone(S.seed), extraSeed) : S.seed, me = newME(seed);
+      S.batches.forEach(function (b) { applyOps(me, b.ops, { confirm: true, secretKeys: b.keys }); }); if (extraOps) applyOps(me, extraOps, { dryRun: true }); return me; }
+    function known(extraSeed) { var k = new Set(S.paths); if (extraSeed) flatten(extraSeed).forEach(function (x) { k.add(x[0]); }); Object.keys(S.derived).forEach(function (p) { k.add(p); }); return Array.from(k); }
+    // kernel.ts dryRun, against the cumulative state
+    function dry(ops, seed) { var kn = known(seed), before = build(seed), after, errors = [], reads = {};
+      try { after = build(seed); reads = applyOps(after, ops, { dryRun: true }); } catch (e) { errors.push("kernel rejected the ops: " + e.message); }
+      var diff = touched(ops, kn).map(function (p) { return { path: p, before: read(before, p), after: after ? read(after, p) : undefined }; });
+      ops.forEach(function (o, i) { if (o.op !== "define") return; var ps = touched([o], kn);
+        if (!ps.length) errors.push("ops[" + i + "]: define on " + o.path + " matches no existing members");
+        ps.forEach(function (p) { if (after && read(after, p) === undefined) errors.push("ops[" + i + "]: " + p + ' = "' + o.expr + '" evaluates to undefined (unknown name in expr?)'); }); });
+      return { diff: diff, reads: reads, errors: errors, known: kn }; }
+
+    function bubble(cls, html) { var d = document.createElement("div"); d.className = "mc-m " + cls; d.innerHTML = html; log.appendChild(d); log.scrollTop = log.scrollHeight; return d; }
+    function send(text, r) {
+      text = String(text || "").trim(); if (!text || S.busy) return; ta.value = ""; ta.oninput();
+      var force = /^me:/i.test(text), body = force ? text.replace(/^me:\s*/i, "") : text;
+      r = r || byText(body);
+      bubble("mc-u", esc(text));
+      if (!S.live) {
+        if (!r) { bubble("mc-a", '<div class="mc-note">Recorded mode only replays real responses from the eval run, so there is no answer for this message. <a href="#" class="mc-addkey">Add your Meta API key</a> to talk to ' + MODEL + " live, or pick an example above.</div>")
+          .querySelector(".mc-addkey").onclick = function (e) { e.preventDefault(); $(".mc-pop").hidden = false; $(".mc-k").focus(); }; return; }
+        return proposal(bubble("mc-a", ""), { ops: r.ops }, "recorded · " + MODEL + " · 2026-10-29", r.state, { text: r.text });
       }
-      if (!S.key) { $(".md-msg").textContent = "Paste your Meta API key first."; return; }
-      var state = r ? r.state : {}, input = { text: text, state: state, speaker: r && r.speaker };
-      clear(); $(".md-s1").innerHTML = '<p class="md-note">Asking ' + MODEL + "…</p>"; $(".md-go").disabled = true;
-      var t0 = performance.now();
-      liveParse(S.key, input, function (t) { $(".md-s1").innerHTML = '<p class="md-note">attempt ' + t.attempts + (t.errors.length ? " rejected, sending the errors back…" : "") + "</p>"; })
-        .then(function (t) { show(input, { obj: t.obj, raw: t.reply, src: "live response from " + MODEL + " · " + Math.round(performance.now() - t0) + " ms · " + t.attempts + " attempt(s)" + (r ? " · state from eval item " + r.id : " · empty starting state") }); })
-        .catch(function (e) { $(".md-s1").innerHTML = '<p class="md-bad">' + esc(e.message) + "</p>"; })
-        .then(function () { $(".md-go").disabled = false; });
+      var seed = r ? r.state : null, a = bubble("mc-a", '<div class="mc-note">…</div>'), t0 = performance.now();
+      var input = { text: body, state: (function () { var me = build(seed), st = {}; known(seed).forEach(function (p) { st[p] = read(me, p); }); return st; })(), speaker: r && r.speaker };
+      // userMessage() flattens nested objects; here state is already flat path -> value
+      S.busy = true; $(".mc-go").disabled = true;
+      liveChat(S.key, input, S.hist, force, function (t) { if (t.errors.length) a.innerHTML = '<div class="mc-note">attempt ' + t.attempts + " rejected, sending the errors back…</div>"; },
+        function (ops) { return dry(ops, seed).errors; })
+        .then(function (t) { var src = "live · " + MODEL + " · " + Math.round(performance.now() - t0) + " ms" + (t.attempts > 1 ? " · " + t.attempts + " attempts" : "");
+          S.hist.push({ role: "user", content: body });
+          if (t.text !== undefined) { S.hist.push({ role: "assistant", content: t.text }); a.innerHTML = '<div class="mc-tx">' + esc(t.text) + '</div><div class="mc-src">' + esc(src) + "</div>"; return; }
+          S.hist.push({ role: "assistant", content: t.reply });
+          if (t.obj == null) { a.innerHTML = '<div class="mc-src">' + esc(src) + '</div><pre class="mc-code">' + esc(t.reply) + '</pre><div class="mc-v mc-bad">✗ model reply is not a JSON object</div>'; return; }
+          proposal(a, t.obj, src, seed, { text: body }); })
+        .catch(function (e) { a.innerHTML = '<div class="mc-v mc-bad">' + esc(e.message) + "</div>"; })
+        .then(function () { S.busy = false; $(".mc-go").disabled = false; log.scrollTop = log.scrollHeight; });
     }
 
-    function show(input, resp) {
-      clear(); S.cur = { input: input, applied: false };
-      var json = resp.obj && Array.isArray(resp.obj.ops) && Object.keys(resp.obj).length === 1 ? '{"ops": [' + resp.obj.ops.map(function (o) { return "\n" + JSON.stringify(o); }).join(",") + "\n]}" : resp.obj != null ? JSON.stringify(resp.obj, null, 1) : resp.raw;
-      $(".md-s1").innerHTML = '<p class="md-src">' + esc(resp.src) + '</p><pre>' + esc(json) + "</pre>" +
-        '<details><summary>starting state</summary><pre>' + esc(JSON.stringify(input.state, null, 1)) + "</pre></details>";
-      var v = resp.obj === null || resp.obj === undefined ? { ops: [], errors: ["model reply is not a JSON object"], per: [] } : validateOps(resp.obj), list = (resp.obj && Array.isArray(resp.obj.ops)) ? resp.obj.ops : [];
-      var h2 = list.map(function (o, i) { var e = v.per[i] || [];
-        return '<div class="md-op"><span class="' + (e.length ? "md-bad" : "md-ok") + '">' + (e.length ? "✗" : "✓") + "</span><span>" + opLine(o) + (CONFIRM.indexOf(o && o.op) >= 0 ? ' <span class="md-warn">· needs confirm</span>' : "") +
-          (e.length ? '<br><span class="md-bad">' + e.map(esc).join("<br>") + "</span>" : "") + "</span></div>"; }).join("");
-      if (!list.length && !v.errors.length) h2 = '<p class="md-note">No ops: the model found nothing to write. Nothing will change.</p>';
-      if (v.per.length === 0 && v.errors.length) h2 += '<p class="md-bad">' + v.errors.map(esc).join("<br>") + "</p>";
-      $(".md-s2").innerHTML = h2 + '<p class="md-note">' + (v.errors.length ? "Rejected by" : "Passed") + ' schema + path rules (<a href="https://github.com/neurons-me/.me/blob/main/LLMS/typescript/src/validate.ts">validate.ts</a>, ported to the browser).</p>';
-      if (v.errors.length) { $(".md-s3").innerHTML = '<p class="md-note">Skipped: invalid ops never reach the kernel.</p>'; return; }
-      var d; try { d = dryRun(input.state, v.ops); } catch (e) { $(".md-s3").innerHTML = '<p class="md-bad">' + esc(e.message) + "</p>"; return; }
-      var h3 = d.diff.map(function (x) { return '<div class="md-op"><span class="md-p">' + esc(x.path) + '</span>&nbsp; <span class="' + (x.before === undefined ? "" : "md-del") + '">' + esc(J(x.before)) + '</span> → <span class="md-n">' + esc(J(x.after)) + "</span></div>"; }).join("");
-      Object.keys(d.reads).forEach(function (p) { h3 += '<div class="md-op">? <span class="md-p">' + esc(p) + '</span> = <span class="md-n">' + esc(J(d.reads[p])) + "</span></div>"; });
-      if (!h3) h3 = '<p class="md-note">No changes.</p>';
-      h3 += d.errors.length ? '<p class="md-bad">' + d.errors.map(esc).join("<br>") + "</p>" : '<p class="md-note">Applied to a throwaway this.me ' + esc((root.Me && root.Me.version) || "4.2.1") + '. Your state is not touched yet.</p>';
-      $(".md-s3").innerHTML = h3;
-      if (d.errors.length) return;
-      var need = v.ops.filter(function (o) { return CONFIRM.indexOf(o.op) >= 0; }), sec = v.ops.filter(function (o) { return o.op === "secret" || o.op === "noise"; });
-      $(".md-s4").innerHTML = (need.length ? '<p class="md-note md-warn">' + need.length + " op(s) need your OK: " + need.map(function (o) { return o.op; }).join(", ") + ".</p>" : "") +
-        sec.map(function (o, i) { return '<div class="md-key"><input class="md-in md-sk" data-p="' + esc(o.path) + '" type="password" placeholder="type the key for ' + esc(o.path) + ' (the model never sees it)"></div>'; }).join("") +
-        '<div class="md-row" style="margin-top:8px"><button class="md-btn md-ok-btn">Confirm and apply</button></div><div class="md-out"></div>';
-      $(".md-ok-btn").onclick = function () {
-        var sk = {}; el.querySelectorAll(".md-sk").forEach(function (i) { if (i.value) sk[i.dataset.p] = i.value; });
-        var out = $(".md-out");
-        try { var me = newME(input.state), reads = applyOps(me, v.ops, { confirm: true, secretKeys: sk });
-          var paths = new Set(d.known.concat(d.diff.map(function (x) { return x.path; })));
-          v.ops.forEach(function (o) { if (o.op === "remove") paths.delete(canon(o.path + "." + o.key)); });
-          var derived = {}, deps = [], exs = [];
-          v.ops.filter(function (o) { return o.op === "define"; }).forEach(function (o) { touched([o], d.known).forEach(function (p) { derived[p] = 1; try { var x = me.explain(p); exs.push(x);
-            ((x.meta && x.meta.dependsOn) || []).forEach(function (f) { deps.push({ from: f, to: p }); }); } catch (e) {} }); });
-          var leaves = Array.from(paths).map(function (p) { return { path: p, value: read(me, p) }; });
-          var qs = Object.keys(reads).map(function (p) { return '<div class="md-op">? <span class="md-p">' + esc(p) + '</span> = <span class="md-n">' + esc(J(reads[p])) + "</span></div>"; }).join("");
-          out.innerHTML = '<p class="md-note md-ok">Applied to a real this.me in this page.</p>' + (leaves.length ? '<div style="overflow-x:auto;margin:6px 0">' + graph(leaves, derived, deps) + "</div>" : '<p class="md-note">(empty state)</p>') + qs +
-            exs.map(exBlock).join("") + (exs.length ? '<p class="md-note">The model only named the formula. The kernel computes the value; <a href="https://neurons-me.github.io/.me/docs/Explain.html">me.explain()</a> shows where it came from.</p>' : "");
-          $(".md-ok-btn").disabled = true;
-        } catch (e) { out.innerHTML = '<p class="md-bad">' + esc(e.message) + "</p>"; }
+    function proposal(a, obj, src, seed) {
+      var list = obj && Array.isArray(obj.ops) ? obj.ops : [], v = validateOps(obj);
+      var h = '<div class="mc-src">' + esc(src) + "</div>";
+      if (list.length) h += '<pre class="mc-code me-code">' + hl(list.map(opCode).join("\n")) + "</pre>";
+      else if (!v.errors.length) { a.innerHTML = h + '<div class="mc-note">Nothing to record in that message.</div>'; return; }
+      if (v.errors.length) { a.innerHTML = h + '<div class="mc-v mc-bad">✗ ' + v.errors.map(esc).join("<br>✗ ") + '</div><div class="mc-note">Rejected by the validator; nothing reaches the kernel.</div>'; return; }
+      var d = dry(v.ops, seed);
+      h += '<div class="mc-v ' + (d.errors.length ? "mc-bad" : "mc-ok") + '">' + (d.errors.length ? "✗ " + d.errors.map(esc).join("<br>✗ ") : '✓ <span style="color:' + FG2 + '">validated · dry-run ok</span>') + "</div>";
+      var df = d.diff.map(function (x) { return '<span class="mc-p">' + esc(x.path) + "</span> " + (x.before === undefined ? "" : '<span class="mc-del">' + esc(J(x.before)) + "</span> ") + '→ <span class="mc-n">' + esc(J(x.after)) + "</span>"; })
+        .concat(Object.keys(d.reads).map(function (p) { return '<span class="mc-p">' + esc(p) + '</span> = <span class="mc-n">' + esc(J(d.reads[p])) + "</span>"; }));
+      if (df.length) h += '<div class="mc-diff">' + df.join("<br>") + "</div>";
+      var onlyQuery = v.ops.every(function (o) { return o.op === "query"; });
+      if (!d.errors.length && !onlyQuery) {
+        var sec = v.ops.filter(function (o) { return o.op === "secret" || o.op === "noise"; }), need = v.ops.filter(function (o) { return CONFIRM.indexOf(o.op) >= 0; });
+        if (need.length) h += '<div class="mc-note mc-warn">Needs your OK: ' + need.map(function (o) { return o.op; }).join(", ") + ".</div>";
+        h += sec.map(function (o) { return '<div class="mc-row"><input class="mc-in mc-sk" data-p="' + esc(o.path) + '" type="password" placeholder="key for ' + esc(o.path) + ' (never sent to the model)"></div>'; }).join("");
+        h += '<div class="mc-row"><button class="mc-btn mc-yes">Confirm</button><button class="mc-btn ghost mc-no">Discard</button><span class="mc-out mc-note" style="margin:0"></span></div>';
+      }
+      a.innerHTML = h; log.scrollTop = log.scrollHeight;
+      var yes = a.querySelector(".mc-yes"); if (!yes) return;
+      var done = function (msg, cls) { a.querySelectorAll(".mc-yes,.mc-no").forEach(function (b) { b.remove(); }); var o = a.querySelector(".mc-out"); o.className = "mc-out mc-note " + (cls || ""); o.textContent = msg; };
+      a.querySelector(".mc-no").onclick = function () { done("Discarded. Nothing changed."); };
+      yes.onclick = function () {
+        var sk = {}; a.querySelectorAll(".mc-sk").forEach(function (i) { if (i.value) sk[i.dataset.p] = i.value; });
+        var prevSeed = S.seed, prevPaths = new Set(S.paths), prevDer = Object.assign({}, S.derived);
+        try {
+          if (seed) S.seed = seedMerge(clone(S.seed), seed);
+          flatten(S.seed).forEach(function (x) { S.paths.add(x[0]); });
+          S.batches.push({ ops: v.ops, keys: sk });
+          var me = build();
+          d.diff.forEach(function (x) { S.paths.add(x.path); });
+          v.ops.forEach(function (o) { if (o.op === "remove") { var p = canon(o.path + "." + o.key); Array.from(S.paths).forEach(function (q) { if (q === p || q.indexOf(p + ".") === 0 || q.indexOf(p + "[") === 0) S.paths.delete(q); }); delete S.derived[p]; }
+            if (o.op === "define") touched([o], d.known).forEach(function (p) { S.derived[p] = 1; S.paths.delete(p); }); });
+          S.changed = {}; d.diff.forEach(function (x) { S.changed[x.path] = 1; });
+          render(me); done("Applied.", "mc-ok");
+        } catch (e) { S.batches.pop(); S.seed = prevSeed; S.paths = prevPaths; S.derived = prevDer; done(e.message, "mc-bad"); }
       };
     }
-    // start on the first chip
-    var first = rec[CHIPS[0]]; if (first) { $(".md-t").value = first.text; run(); }
+
+    function render(me) {
+      var deps = [], exs = [], dpaths = Object.keys(S.derived);
+      dpaths.forEach(function (p) { try { var x = me.explain(p); var on = ((x.meta && x.meta.dependsOn) || []);
+        on.forEach(function (f) { deps.push({ from: f, to: p }); });
+        if (S.changed[p] || on.some(function (f) { return S.changed[canon(f)]; })) exs.push(x); } catch (e) {} });
+      var leaves = Array.from(S.paths).concat(dpaths).map(function (p) { return { path: p, value: read(me, p) }; });
+      $(".mc-g").innerHTML = leaves.length ? graph(leaves, S.derived, deps, S.changed) : "";
+      $(".mc-exs").innerHTML = exs.length ? exs.map(exBlock).join("") + '<p class="mc-note">The model only named the formula; the kernel computed the value. <a href="https://neurons-me.github.io/.me/docs/Explain.html">explain()</a> shows where it came from.</p>' : "";
+      if (root.matchMedia && root.matchMedia("(max-width:860px)").matches) $(".mc-side").open = true;
+    }
+    $(".mc-g").innerHTML = '<p class="mc-note">Empty. Confirmed changes from the chat build up here.</p>';
   }
 
   function MetaDemo() {
     var ref = React.useRef(null);
     React.useEffect(function () {
-      if (!document.getElementById("md-css")) { var s = document.createElement("style"); s.id = "md-css"; s.textContent = CSS; document.head.appendChild(s); }
+      if (!document.getElementById("mc-css")) { var s = document.createElement("style"); s.id = "mc-css"; s.textContent = CSS; document.head.appendChild(s); }
       if (ref.current && !ref.current.dataset.on) { ref.current.dataset.on = "1"; mount(ref.current); }
     }, []);
     return React.createElement("div", { ref: ref });
