@@ -58,7 +58,7 @@
     });
     var pos = {}; N.concat(VAL).forEach(function (n) { pos[n.k] = n; });
     var DEP = []; Object.keys(derived).forEach(function (x) { derived[x].deps.forEach(function (d) { DEP.push({ from: d + "=", to: x, dep: d }); }); });
-    return { L: L, state: state, derived: derived, rootKey: rootKey, q: t, segs: segs, lines: lines, N: N, E: E, VAL: VAL, pos: pos, DEP: DEP, code: null };
+    return { L: L, state: state, derived: derived, rootKey: rootKey, q: t, set: setOp.path, segs: segs, lines: lines, N: N, E: E, VAL: VAL, pos: pos, DEP: DEP, code: null };
   }
   var MODELS = LANGS.map(build);
 
@@ -149,12 +149,24 @@
     ".lh-same{font:600 10px/1 " + MONO + ";color:" + ACC + ";opacity:.75}.lh-same.go{animation:lh-same 1.6s ease both}@keyframes lh-same{0%{opacity:0}20%{opacity:1}100%{opacity:.75}}" +
     ".lh-pulse{animation:lh-pulse 1.1s ease}@keyframes lh-pulse{0%{filter:drop-shadow(0 0 0 transparent)}35%{filter:drop-shadow(0 0 6px " + mix(ACC, 70, "transparent") + ")}100%{filter:drop-shadow(0 0 0 transparent)}}" +
     "@media (prefers-reduced-motion:reduce){.lh-say,.lh-fade,.lh-pulse,.lh-same.go{animation:none}}" +
+    ".lh-ex{margin:8px 0 0}.lh-ex pre{margin:0;font:11px/1.55 " + MONO + ";color:" + FG2 + ";white-space:pre;overflow-x:auto}.lh-exp{color:" + PATHC + "}.lh-exv{color:" + NUM + "}.lh-exd{color:" + DER + ";font-weight:600}" +
+    ".lh-exr.on .lh-exp,.lh-exr.on .lh-exv{color:" + ACC + ";font-weight:600}.lh-exa{color:" + ACC + "}.lh-exn{margin:6px 0 0;font-size:12px;color:" + FG2 + "}.lh-exn code{font-family:" + MONO + ";color:" + PATHC + "}" +
+    "@media (max-width:480px){.lh-ex pre{font-size:10px}}" +
     "@media (max-width:860px){.lh{grid-template-columns:1fr}.lh-ar{transform:rotate(90deg);justify-self:center;line-height:1}}";
 
-  function exLine(d) {
-    if (!d) return "";
-    if (!d.explain) return "me.explain → " + (d.err || "no explanation");
-    var x = d.explain; return "me.explain(\"" + x.path + "\") → " + x.expr + " = " + (x.derivation && x.derivation.inputs || []).map(function (i) { return i.path + ":" + i.value; }).join(" + ") + " → " + JSON.stringify(x.value);
+  // explain() as a small block: target = value, ← expr, then each input (relative to the define path) with its value
+  function exBlock(d, setPath) {
+    if (!d) return null;
+    if (!d.explain) return h("div", { className: "lh-ex" }, "me.explain → " + (d.err || "no explanation"));
+    var x = d.explain, ins = x.derivation && x.derivation.inputs || [], b = d.base + ".";
+    var rl = function (p) { return p.indexOf(b) === 0 ? p.slice(b.length) : p; };
+    var w = ins.reduce(function (m, i) { return Math.max(m, rl(i.path).length); }, 0), ch = null;
+    var rows = ins.map(function (i, n) { var r = rl(i.path), on = i.path === setPath; if (on) ch = r;
+      return h("span", { key: n, className: "lh-exr" + (on ? " on" : "") }, "      ", h("span", { className: "lh-exp" }, r), " ".repeat(w - r.length + 2), h("span", { className: "lh-exv" }, String(i.value)), on ? h("span", { className: "lh-exa" }, "   ← you just changed this") : null); });
+    var tn = rl(x.path || "");
+    return h("div", { className: "lh-ex lh-fade", title: JSON.stringify(x, null, 1) },
+      h("pre", null, h("span", { className: "lh-exp" }, x.path), " = ", h("span", { className: "lh-exd" }, JSON.stringify(x.value)), "\n  ← ", h("span", { className: "lh-exp" }, x.expr), "\n", rows.reduce(function (a, r, n) { return n ? a.concat(["\n", r]) : [r]; }, [])),
+      ch ? h("p", { className: "lh-exn" }, "You changed ", h("code", null, ch), ", so ", h("code", null, tn), " recomputed on its own.") : null);
   }
   function LlmsHero() {
     var st = useState(null), hov = st[0], setHov = st[1];
@@ -215,8 +227,8 @@
       h("div", { className: "lh-ar", "aria-hidden": true }, "→"),
       h("div", { className: "lh-p" }, h("p", { className: "lh-h" }, ".me ops"), h("pre", { key: "c" + li, className: "lh-code me-code lh-fade" }, h("span", { className: "ln lh-cm" }, "// validated · dry-run · computed by this.me@4.2.1"), codeEls)),
       h("div", { className: "lh-ar", "aria-hidden": true }, "→"),
-      h("div", { className: "lh-p" }, h("div", { className: "lh-sayhd" }, h("p", { className: "lh-h" }, "State"), h("span", { key: "s" + li, className: "lh-same" + (li ? " go" : "") }, "same structure · = " + G.derived[G.q].value)), h("div", { key: "g" + li, className: li ? "lh-pulse" : "" }, svg), h("p", { key: "x" + li, className: "lh-el lh-fade", title: G.derived[G.q].explain ? JSON.stringify(G.derived[G.q].explain, null, 1) : "", style: { textAnchor: "start", margin: "6px 0 0", fontFamily: MONO, fontSize: "10.5px", color: FG2, wordBreak: "break-word" } }, exLine(G.derived[G.q]))),
-      h("p", { className: "lh-hint", "aria-live": "polite" }, a ? ["● ", h("b", { key: "b" }, desc(a)), derived[bare(a)] ? h("span", { key: "x", style: { display: "block", marginTop: "4px" } }, exLine(derived[bare(a)])) : null] : "hover, tap or tab through a word, a token or a node")));
+      h("div", { className: "lh-p" }, h("div", { className: "lh-sayhd" }, h("p", { className: "lh-h" }, "State"), h("span", { key: "s" + li, className: "lh-same" + (li ? " go" : "") }, "same structure · = " + G.derived[G.q].value)), h("div", { key: "g" + li, className: li ? "lh-pulse" : "" }, svg), h("div", { key: "x" + li }, exBlock(G.derived[G.q], G.set))),
+      h("p", { className: "lh-hint", "aria-live": "polite" }, a ? ["● ", h("b", { key: "b" }, desc(a)), ] : "hover, tap or tab through a word, a token or a node")));
   }
   root.LandingLive = Object.assign(root.LandingLive || {}, { LlmsHero: LlmsHero });
 })(typeof window !== "undefined" ? window : this);
