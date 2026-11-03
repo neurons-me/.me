@@ -228,7 +228,7 @@
       h("div", { className: "lh-p" }, h("p", { className: "lh-h" }, ".me ops"), h("pre", { key: "c" + li, className: "lh-code me-code lh-fade" }, h("span", { className: "ln lh-cm" }, "// validated · dry-run · computed by this.me@4.2.1"), codeEls)),
       h("div", { className: "lh-ar", "aria-hidden": true }, "→"),
       h("div", { className: "lh-p" }, h("div", { className: "lh-sayhd" }, h("p", { className: "lh-h" }, "State"), h("span", { key: "s" + li, className: "lh-same" + (li ? " go" : "") }, "same structure · = " + G.derived[G.q].value)), h("div", { key: "g" + li, className: li ? "lh-pulse" : "" }, svg), h("div", { key: "x" + li }, exBlock(G.derived[G.q], G.set))),
-      h("p", { className: "lh-hint", "aria-live": "polite" }, a ? ["● ", h("b", { key: "b" }, desc(a)), ] : "hover, tap or tab through a word, a token or a node")));
+      h("p", { className: "lh-hint", "aria-live": "polite" }, a ? ["● ", h("b", { key: "b" }, desc(a)), ] : ["hover, tap or tab through a word, a token or a node · the trace below is ", h("a", { key: "x", className: "lh-explain", href: "https://neurons-me.github.io/.me/docs/Explain.html" }, "me.explain()")])));
   }
   root.LandingLive = Object.assign(root.LandingLive || {}, { LlmsHero: LlmsHero });
 })(typeof window !== "undefined" ? window : this);
