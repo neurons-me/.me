@@ -69,8 +69,10 @@
     subtitle: SRC.querySelector(".page-subtitle") && inline(SRC.querySelector(".page-subtitle")),
     // optional hero (.page-hero img + .page-hero-caption) and several titled grids (.section-title before a .grid); a page with one plain grid renders as before
     hero: (() => { const f = SRC.querySelector(".page-hero"), lv = f && f.dataset.live; if (lv && window.LandingLive && window.LandingLive[lv]) return { live: lv, props: { ...f.dataset } }; const im = SRC.querySelector(".page-hero img"); return im && { src: im.getAttribute("src"), alt: im.getAttribute("alt") || "", caption: txt(SRC.querySelector(".page-hero-caption")) }; })(),
-    groups: [...SRC.querySelectorAll(".page .grid")].map((g) => {
+    groups: [...SRC.querySelectorAll(".page .grid, .page .core-flow")].map((g) => {
       const prev = g.previousElementSibling;
+      // a .core-flow (numbered step cards with inline SVG icons and file links) keeps its markup; styled by flowSx
+      if (g.classList.contains("core-flow")) return { title: prev && prev.classList.contains("section-title") ? txt(prev) : null, flow: g.innerHTML, cards: [] };
       return { title: prev && prev.classList.contains("section-title") ? txt(prev) : null, cards: [...g.querySelectorAll(":scope > .card")].map((a) => {
         const img = a.querySelector(".card-icon img"), emoji = a.querySelector(".card-emoji");
         return { href: a.getAttribute("href"), plain: a.classList.contains("card-plain"), title: txt(a.querySelector(".card-title")), desc: txt(a.querySelector(".card-desc")), path: txt(a.querySelector(".card-path")),
@@ -348,6 +350,20 @@
     c.desc && T(c.desc, { fontSize: ".85rem", color: "text.secondary", lineHeight: 1.5 }),
     c.path && T(c.path, { fontFamily: MONO, fontSize: ".72rem", color: "text.secondary", mt: "auto" }),
   ].filter(Boolean));
+  // .core-flow: steps 1-4 with arrows, then a divider and a dashed card; column on narrow screens (arrows turn down)
+  const flowSx = { display: "flex", alignItems: "stretch", gap: 1.25, mb: 6,
+    "& .card": { flex: "1 1 0", minWidth: 0, position: "relative", border: 1, borderColor: "divider", borderRadius: "12px", bgcolor: "background.paper", p: 2, display: "flex", flexDirection: "column", gap: .75, transition: "border-color .14s", "&:hover": { borderColor: "primary.main" } },
+    "& .core-adapters": { borderStyle: "dashed" },
+    "& .card-content": { display: "flex", flexDirection: "column", gap: .75 },
+    "& .core-ico": { color: "primary.main", display: "block", mb: .5 },
+    "& .core-num": { position: "absolute", top: 10, right: 12, fontFamily: MONO, fontSize: ".75rem", fontWeight: 700, color: "primary.main", opacity: .7 },
+    "& .card-title": { fontSize: "1rem", fontWeight: 800, color: "text.primary" },
+    "& .card-desc": { fontSize: ".85rem", color: "text.secondary", lineHeight: 1.45 },
+    "& .card-path": { fontFamily: MONO, fontSize: ".72rem", color: "text.secondary", mt: "auto", pt: .5, overflowWrap: "anywhere" },
+    "& .card-path a": { color: "primary.main", textDecoration: "none", "&:hover": { textDecoration: "underline" } },
+    "& .core-arrow": { alignSelf: "center", color: "primary.main", opacity: .55, flex: "0 0 auto", fontSize: "1.1rem" },
+    "& .core-sep": { flex: "0 0 1px", bgcolor: "divider", mx: 1 },
+    "@media (max-width:900px)": { flexDirection: "column", "& .core-arrow": { transform: "rotate(90deg)", lineHeight: 1 }, "& .core-sep": { height: "1px", mx: 0, my: 1 } } };
   const indexSpec = () => N("Box", { sx: { minHeight: "100vh", bgcolor: "background.default", color: "text.primary" } }, [
     N("LandingTopBar", {}),
     N("Box", { component: "main", sx: { maxWidth: 960, mx: "auto", px: 4, pt: 6, pb: 10, "@media (max-width:480px)": { px: 2.5, pt: 4 } } }, [
@@ -361,7 +377,7 @@
       ].filter(Boolean)),
       ...page.groups.flatMap((g) => [
         g.title && T(g.title, { fontSize: "1.25rem", fontWeight: 800, mb: 2 }, { component: "h2" }),
-        N("Box", { sx: g.plain ? { display: "grid", gap: 2, mb: 6, gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))" } : { display: "grid", gridTemplateColumns: "1fr", gap: 2, mb: 6, "@media (min-width:720px)": { gridTemplateColumns: "1fr 1fr" } } }, g.cards.map((c) => c.plain ? plainCard(c) : indexCard(c))),
+        g.flow ? N("ModeHtml", { html: g.flow, sx: flowSx }) : N("Box", { sx: g.plain ? { display: "grid", gap: 2, mb: 6, gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))" } : { display: "grid", gridTemplateColumns: "1fr", gap: 2, mb: 6, "@media (min-width:720px)": { gridTemplateColumns: "1fr 1fr" } } }, g.cards.map((c) => c.plain ? plainCard(c) : indexCard(c))),
       ].filter(Boolean)),
       page.quote && N("Box", { component: "figure", sx: { m: 0, mt: 4, pt: 5, borderTop: 1, borderColor: "divider", textAlign: "center" } }, [
         T("\u201c" + page.quote.text + "\u201d", { fontFamily: MONO, fontSize: ".95rem", lineHeight: 1.7, color: "text.secondary", maxWidth: 640, mx: "auto", mb: 1.5 }, { component: "blockquote" }),
