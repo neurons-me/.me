@@ -1,3 +1,16 @@
+---
+layout: gui-doc
+title: ".me — LLMS · Grammar"
+description: "The .me grammar for language models: the ops a model may propose, each mapping to exactly one kernel call."
+image: https://neurons-me.github.io/.me/LLMS/assets/llms-og.png
+canonical: https://neurons-me.github.io/.me/LLMS/grammar.html
+mepath:
+  - text: LLMS
+    url: /.me/LLMS/
+crumb: Grammar
+github_url: https://github.com/neurons-me/.me/blob/main/LLMS/grammar.md
+---
+
 # .me grammar for language models (this.me 4.2.x)
 
 Taken from [docs/Operators.md](../docs/Operators.md) and [docs/Syntax.md](../docs/Syntax.md). A model never writes code; it writes a list of **ops** (see `ops.schema.json`). Each op maps to exactly one kernel call.
