@@ -2,6 +2,8 @@
  * Mounted by landing-gui.js from <div data-live="MetaDemo"> (window.LandingLive.MetaDemo). validate/paths/kernel below are a
  * line-by-line port of LLMS/typescript/src/{paths,validate,kernel}.ts to browser JS; the kernel is this.me@4.2.1 (jsDelivr UMD).
  * Recorded mode replays the ops muse-spark-1.3 returned in eval run 2026-10-29 (demo-data.js, generated from LLMS/eval/results).
+ * With .GUI's LLMS component (this.gui >= 4.3.0, window.GUI.LLMS) each proposal's code, graph and explain() render through it;
+ * older this.gui builds keep the built-in renderer below.
  * Live mode calls https://api.meta.ai/v1/chat/completions from the browser with a key the visitor types (kept in localStorage, Service keys).
  */
 (function (root) {
@@ -194,7 +196,7 @@
     ".mc-xpr{display:flex;gap:10px;align-items:center;padding:4px 10px;font-family:" + MONO + ";border-radius:6px;cursor:pointer}.mc-xpr.on{background:" + mix(ACC, 18) + ";box-shadow:inset 0 0 0 1px " + ACC + "}" +
     ".mc-xpe{padding:0 10px 4px 22px;color:" + FG2 + ";font-family:" + MONO + "}.mc-xpe code{color:" + DER + "}.mc-xpi{border-top:1px dashed " + GRID + ";padding:3px 0}.mc-xpi .mc-xpr{padding-left:22px}" +
     ".mc-xps{font:600 10px/1 " + MONO + ";padding:3px 6px;border:1px solid;border-radius:999px;text-transform:uppercase;letter-spacing:.04em}" +
-    ".mc-mx{padding:0 8px}.mc-mx:empty{display:none}.mc-mx .lh-ex{margin:0 0 8px}" +
+    ".mc-mx{padding:0 8px}.mc-mx:empty{display:none}.mc-mx .lh-ex{margin:0 0 8px}.mc-llms-code{margin:0}.mc-llms-g{margin:8px 0 0}.mc-llms-g .llms-xp{margin:8px 0 0}" +
     // marking copied from the LLMS hero (llms-hero.js): words .lh-w, op tokens .lh-t, nodes, explain .lh-ex
     ".lh-w{cursor:pointer;border-radius:4px;padding:0 2px;margin:0 -2px;text-decoration:underline dotted " + mix(ACC, 55) + ";text-underline-offset:4px;transition:background .12s,color .12s}" +
     ".lh-w.on{background:" + mix(ACC, 22) + ";color:" + FG + ";text-decoration-color:" + ACC + "}.lh-w.rel{background:" + mix(ACC, 10) + "}" +
@@ -389,15 +391,17 @@
       return (HB.deps[A] || []).indexOf(B) >= 0 || (HB.deps[B] || []).indexOf(A) >= 0 ? 1 : 0; }
     function paint() { var a = HB.hov || HB.pin, A = a ? a.split(" ") : [];
       HB.views = HB.views.filter(function (v) { return v.box.isConnected; }); HB.views.forEach(function (v) { v.fn(A); });
+      HB.roots = (HB.roots || []).filter(function (r) { return r.box.isConnected || (r.root.unmount(), false); }); HB.roots.forEach(drawLLMS);
       el.querySelectorAll("[data-k]").forEach(function (n) { var r = 0; if (A.length) n.dataset.k.split(" ").forEach(function (b) { A.forEach(function (x) { r = Math.max(r, relK(b, x)); }); });
         n.classList.toggle("on", r === 2); n.classList.toggle("rel", r === 1); }); }
     var hit = function (e) { return e && e.closest ? e.closest("[data-k]") : null; };
+    var hitAny = function (e) { return e && e.closest ? e.closest("[data-k],[data-llms-k]") : null; };
     el.addEventListener("pointerdown", function (e) { HB.touch = e.pointerType === "touch"; }, true);
     el.addEventListener("mouseover", function (e) { if (HB.touch) return; var t = hit(e.target); if (t && t.dataset.k !== HB.hov) { HB.hov = t.dataset.k; paint(); } });
-    el.addEventListener("mouseout", function (e) { if (HB.hov && !hit(e.relatedTarget)) { HB.hov = null; paint(); } });
+    el.addEventListener("mouseout", function (e) { if (HB.hov && !hitAny(e.relatedTarget)) { HB.hov = null; paint(); } });
     el.addEventListener("click", function (e) { var gv = e.target.closest && e.target.closest(".mc-gv"), t = hit(e.target) || (gv && gv._down);
       if (gv && gv._moved) return; if (!t) return; HB.pin = HB.pin === t.dataset.k ? null : t.dataset.k; if (HB.touch) HB.hov = null; paint(); });
-    document.addEventListener("pointerdown", function (e) { if (HB.pin && !hit(e.target) && !(e.target.closest && e.target.closest(".mc-gv"))) { HB.pin = null; paint(); } });
+    document.addEventListener("pointerdown", function (e) { if (HB.pin && !hitAny(e.target) && !(e.target.closest && e.target.closest(".mc-gv,.llms-gv,.llms-gb"))) { HB.pin = null; paint(); } });
     function exInline(me, p, ch) { var x = null; try { x = me.explain(p); } catch (e) {} return xpCard(x, p, read(me, p), ch || {}); }
     // navigable mini graph: wheel/pinch zoom, drag pan, reset, expand to the full graph, click a node for explain()
     // start zoomed out: fit with padding, and center the root node when that still leaves the labels readable
@@ -436,6 +440,18 @@
       card.redraw = function () { draw(); sig = null; paint(); };
       draw(); addDeps(M.deps); show([]); }
 
+    // .GUI LLMS (this.gui >= 4.3.0): the proposal's code / graph / explain() as React roots, driven by the page's one active path (HB)
+    var LL = function () { return root.GUI && root.GUI.LLMS && root.ReactDOM && root.ReactDOM.createRoot ? root.GUI.LLMS : null; };
+    function drawLLMS(r) { r.root.render(React.createElement(LL(), Object.assign({}, r.props(), { activePath: HB.hov || HB.pin || null, colors: "css",
+      onHoverPath: function (k) { if (HB.hov !== k) { HB.hov = k; paint(); } },
+      onPinPath: function (k) { HB.pin = HB.pin === k ? null : k; if (HB.touch) HB.hov = null; paint(); } }))); }
+    function mountLLMS(box, props) { var r = { box: box, root: root.ReactDOM.createRoot(box), props: props }; (HB.roots = HB.roots || []).push(r); drawLLMS(r); return r; }
+    // graph + explain() props from the mini model (or the full state when expanded), on the dry-run kernel until confirmed
+    function llmsProps(M, d, card) { var me = card.applied ? build() : d.after, F = fullModel(M, me);
+      var G = function (g) { return { nodes: g.nodes.map(function (p) { return { path: p, value: read(me, p), derived: !!g.der[p] }; }), edges: g.deps.map(function (e) { return { from: canon(e.from), to: canon(e.to) }; }) }; };
+      var ex = Object.keys(F.der).filter(function (p) { return M.der[p] || F.nodes.indexOf(p) >= 0; }).sort(function (a, b) { return (M.der[b] ? 1 : 0) - (M.der[a] ? 1 : 0); })
+        .map(function (p) { try { var x = me.explain(p); return x && x.expr ? JSON.parse(JSON.stringify(x)) : null; } catch (e) { return null; } }).filter(Boolean);
+      return { graph: G(M), expandedGraph: G(F), explain: ex, changed: Object.keys(M.ch), graphHeight: 150 }; }
     function bubble(cls, html) { var d = document.createElement("div"); d.className = "mc-m " + cls; d.innerHTML = html; log.appendChild(d); scr.scrollTop = scr.scrollHeight; return d; }
     function send(text, r) {
       text = String(text || "").trim(); if (!text || S.busy) return; ta.value = ""; ta.oninput();
@@ -467,7 +483,8 @@
     function proposal(a, obj, src, seed) {
       var list = obj && Array.isArray(obj.ops) ? obj.ops : [], v = validateOps(obj);
       var h = '<div class="mc-src">' + esc(src) + "</div>";
-      if (list.length) h += '<pre class="mc-code me-code">' + hl(list.map(opCode).join("\n")) + "</pre>";
+      var useL = !!LL() && !v.errors.length;
+      if (list.length) h += useL ? '<div class="mc-llms-code"></div>' : '<pre class="mc-code me-code">' + hl(list.map(opCode).join("\n")) + "</pre>";
       else if (!v.errors.length) { a.innerHTML = h + '<div class="mc-note">Nothing to record in that message.</div>'; return; }
       if (v.errors.length) { a.innerHTML = h + '<div class="mc-v mc-bad">✗ ' + v.errors.map(esc).join("<br>✗ ") + '</div><div class="mc-note">Rejected by the validator; nothing reaches the kernel.</div>'; return; }
       var d = dry(v.ops, seed);
@@ -476,7 +493,8 @@
         .concat(Object.keys(d.reads).map(function (p) { return '<span class="mc-p">' + esc(p) + '</span> = <span class="mc-n">' + esc(J(d.reads[p])) + "</span>"; }));
       if (df.length) h += '<div class="mc-diff">' + df.join("<br>") + "</div>";
       var M = miniModel(v.ops, d);
-      if (M) h += '<div class="mc-mini"><div class="mc-gv"></div><div class="mc-gb"><button class="mc-gbt mc-gx" title="Full graph">⤢</button><button class="mc-gbt mc-gr" title="Reset view">⟲</button></div><div class="mc-mx"></div></div>';
+      if (M && useL) h += '<div class="mc-llms-g"></div>';
+      else if (M) h += '<div class="mc-mini"><div class="mc-gv"></div><div class="mc-gb"><button class="mc-gbt mc-gx" title="Full graph">⤢</button><button class="mc-gbt mc-gr" title="Reset view">⟲</button></div><div class="mc-mx"></div></div>';
       var onlyQuery = v.ops.every(function (o) { return o.op === "query"; });
       if (!d.errors.length && !onlyQuery) {
         var sec = v.ops.filter(function (o) { return o.op === "secret" || o.op === "noise"; }), need = v.ops.filter(function (o) { return CONFIRM.indexOf(o.op) >= 0; });
@@ -486,7 +504,15 @@
       }
       a.innerHTML = h; scr.scrollTop = scr.scrollHeight;
       var card = {}, ub = a.previousElementSibling, scope = [a].concat(ub && ub.classList.contains("mc-u") ? [ub] : []);
-      if (M) { var idx = linkIndex(M, d.after); a.querySelectorAll(".mc-code").forEach(function (c) { linkText(c, idx, "lh-t"); }); linkText(a.querySelector(".mc-diff"), idx, "lh-t");
+      if (useL) { var lc = a.querySelector(".mc-llms-code"), lg = a.querySelector(".mc-llms-g");
+        mountLLMS(lc, function () { return { ops: v.ops, graph: M ? llmsProps(M, d, card).graph : undefined, parts: ["syntax"] }; });
+        if (!M) { var idx0 = linkIndex({ nodes: Array.from(known(seed)) }, d.after); linkText(a.querySelector(".mc-diff"), idx0, "lh-t"); paint(); }
+      }
+      if (M && useL) { var idx = linkIndex(M, d.after); linkText(a.querySelector(".mc-diff"), idx, "lh-t");
+        if (ub && ub.classList.contains("mc-u")) linkText(ub, idx, "lh-w");
+        var gr = mountLLMS(lg, function () { return Object.assign(llmsProps(M, d, card), { parts: ["graph", "explain"] }); });
+        addDeps(M.deps); card.redraw = function () { drawLLMS(gr); paint(); }; paint(); }
+      else if (M) { var idx = linkIndex(M, d.after); a.querySelectorAll(".mc-code").forEach(function (c) { linkText(c, idx, "lh-t"); }); linkText(a.querySelector(".mc-diff"), idx, "lh-t");
         if (ub && ub.classList.contains("mc-u")) linkText(ub, idx, "lh-w"); wireMini(a.querySelector(".mc-mini"), M, d, card); paint(); }
       var yes = a.querySelector(".mc-yes"); if (!yes) return;
       var done = function (msg, cls) { a.querySelectorAll(".mc-yes,.mc-no").forEach(function (b) { b.remove(); }); var o = a.querySelector(".mc-out"); o.className = "mc-out mc-note " + (cls || ""); o.textContent = msg; };
