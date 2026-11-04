@@ -433,6 +433,8 @@
     // recorded conversation (D.thread, from record-demo.ts): one chat, each message builds on the confirmed state of the previous ones,
     // so only the next message is offered (after the previous one is confirmed). Fully manual: nothing sends or confirms by itself. Older data: the 5 separate examples.
     var TH0 = D.thread && D.thread.length ? D.thread : null, TH = TH0, TM = null;
+    var TH_DATE = "2026-11-04"; // recording date of LLMS/Meta/recorded-en.json (the thread)
+    if (TH0) { delete TESTS.drift; delete TESTS.reject; } // real recorded d1 (drift) and r1 (reject) are in the thread; drop the scripted stand-ins
     function startTest(name) { var T = TESTS[name]; if (!T || S.busy) return; save(); fresh(); TM = name; TH = T.turns; S.turn = 0; S.waiting = false; chips(); setLive(S.live); }
     function chips() { var box = $(".mc-chips"); box.innerHTML = "";
       var tc = function () { if (TM && S.waiting) return; Object.keys(TESTS).forEach(function (n) { if (n === TM) return; var b = document.createElement("button"); b.className = "mc-chip mc-test"; b.textContent = TESTS[n].chip; b.title = "Kernel-only test: hand-written ops, no model call"; b.onclick = function () { startTest(n); }; box.appendChild(b); }); };
@@ -674,11 +676,11 @@
       r = r || byText(body);
       title(text); bubble("mc-u", esc(text));
       if (r && r.test) { if (r.reply != null) textReply(bubble("mc-a", ""), r.reply, r.src || SCRIPT_SRC, r.claims, true); else proposal(bubble("mc-a", ""), { ops: r.ops }, r.src || TEST_SRC, null, { text: r.text, thread: true }); return save(); }
-      if (r && r.thread && r.reply != null && !S.live) { textReply(bubble("mc-a", ""), r.reply, "recorded · " + MODEL + " · " + String((D.run && D.run.date) || "").slice(0, 10) + (r.context === "stale" ? " · stale context (earlier messages only, no State)" : ""), r.claims, true); return save(); }
+      if (r && r.thread && r.reply != null && !S.live) { textReply(bubble("mc-a", ""), r.reply, "recorded · " + MODEL + " · " + (r.thread ? TH_DATE : String((D.run && D.run.date) || "").slice(0, 10)) + (r.context === "stale" ? " · stale context (earlier messages only, no State)" : ""), r.claims, true); return save(); }
       if (!S.live) {
         if (!r) { bubble("mc-a", '<div class="mc-note">Recorded mode only replays real responses from the eval run, so there is no answer for this message. <a href="#" class="mc-addkey">Add your Meta API key</a> to talk to ' + MODEL + " live, or pick an example above.</div>")
           .querySelector(".mc-addkey").onclick = function (e) { e.preventDefault(); openKeys(); }; save(); return; }
-        proposal(bubble("mc-a", ""), { ops: r.ops }, "recorded · " + MODEL + " · " + String((D.run && D.run.date) || "").slice(0, 10), r.state, { text: r.text, thread: r.thread }); return save();
+        proposal(bubble("mc-a", ""), { ops: r.ops }, "recorded · " + MODEL + " · " + (r.thread ? TH_DATE : String((D.run && D.run.date) || "").slice(0, 10)), r.state, { text: r.text, thread: r.thread }); return save();
       }
       var seed = r ? r.state : null, a = bubble("mc-a", '<div class="mc-note">…</div>'), t0 = performance.now();
       var input = { text: body, state: (function () { var me = build(seed), st = {}; known(seed).forEach(function (p) { st[p] = read(me, p); }); return st; })(), speaker: r && r.speaker };
