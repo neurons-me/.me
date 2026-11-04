@@ -297,7 +297,7 @@
     ".mc-bd{display:none}" +
     "@media(max-width:860px){.mc-sb{position:absolute;top:0;bottom:0;left:0;z-index:25;width:86vw;max-width:320px;margin-left:0!important;transform:translateX(-102%);transition:transform .2s;background:" + PAPER + "}.mc.drw .mc-sb{transform:none}.mc.drw .mc-bd{display:block;position:absolute;inset:0;z-index:24;background:rgba(0,0,0,.4)}}" +
     ".mc-gh{display:flex;align-items:center;justify-content:space-between;gap:6px}.mc-gh h4{margin:0 0 6px}.mc-gxo{font:inherit;font-size:13px;line-height:1;width:24px;height:24px;margin:-4px 0 2px;border-radius:6px;border:1px solid " + GRID + ";background:transparent;color:inherit;cursor:pointer;opacity:.75}.mc-gxo:hover{opacity:1;border-color:" + ACC + "}" +
-    ".mc-gm{position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.55);backdrop-filter:blur(2px)}.mc-gm[hidden]{display:none}" +
+    ".mc-gm{position:fixed;inset:0;z-index:2147483000;font-size:15px;line-height:1.5;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.55);backdrop-filter:blur(2px)}.mc-gm[hidden]{display:none}" +
     ".mc-gmp{position:relative;width:min(1200px,94vw);height:90vh;display:flex;flex-direction:column;border-radius:14px;border:1px solid " + GRID + ";background:" + PAPER + ";box-shadow:0 20px 60px rgba(0,0,0,.4);overflow:hidden}" +
     ".mc-gmh{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid " + GRID + "}.mc-gmh b{font-size:13px;letter-spacing:.06em;text-transform:uppercase}.mc-gmh span{flex:1;font-size:12px;color:" + FG2 + "}" +
     ".mc-gmx{font:inherit;font-size:16px;width:32px;height:32px;border-radius:8px;border:1px solid " + GRID + ";background:transparent;color:inherit;cursor:pointer}.mc-gmx:hover{border-color:" + ACC + "}" +
@@ -793,7 +793,7 @@
     // expanded live graph: a modal with the same props as the sidebar graph, redrawn on every render (Confirm)
     var gm = document.createElement("div"); gm.className = "mc-gm"; gm.hidden = true; gm.setAttribute("role", "dialog"); gm.setAttribute("aria-modal", "true"); gm.setAttribute("aria-label", "State · live graph");
     gm.innerHTML = '<div class="mc-gmp"><div class="mc-gmh"><b>State · live graph</b><span>wheel / pinch to zoom · drag to pan · click a node to open the message that wrote it</span><button class="mc-gmx" title="Close (Esc)" aria-label="Close">✕</button></div><div class="mc-gmb"></div></div>';
-    el.appendChild(gm); var gmB = gm.querySelector(".mc-gmb");
+    document.body.appendChild(gm); var gmB = gm.querySelector(".mc-gmb");
     function gmProps() { return Object.assign({}, sideP || { graph: { nodes: [], edges: [] }, changed: [], parts: ["graph"] }, { graphHeight: Math.max(240, gmB.clientHeight - 16) }); }
     function gmDraw() { if (gm.hidden) return; if (!LL() || !sideP || !sideP.graph.nodes.length) { gmClose(); gm.hidden = false; document.body.style.overflow = "hidden"; gmB.innerHTML = EMPTY; return; }
       if (gmR && gmR.box.isConnected) drawLLMS(gmR); else { gmB.innerHTML = '<div class="mc-llms-side mc-gmg"></div>'; gmR = mountLLMS(gmB.firstChild, gmProps); }
