@@ -797,8 +797,34 @@
     function gmProps() { return Object.assign({}, sideP || { graph: { nodes: [], edges: [] }, changed: [], parts: ["graph"] }, { graphHeight: Math.max(240, gmB.clientHeight - 16) }); }
     function gmDraw() { if (gm.hidden) return; if (!LL() || !sideP || !sideP.graph.nodes.length) { gmClose(); gm.hidden = false; document.body.style.overflow = "hidden"; gmB.innerHTML = EMPTY; return; }
       if (gmR && gmR.box.isConnected) drawLLMS(gmR); else { gmB.innerHTML = '<div class="mc-llms-side mc-gmg"></div>'; gmR = mountLLMS(gmB.firstChild, gmProps); }
-      if (gmMe) watchOps(gmB.firstChild, gmMe, gmDeps, false); }
-    function gmOpen() { gm.hidden = false; document.body.style.overflow = "hidden"; gmDraw(); gm.querySelector(".mc-gmx").focus(); }
+      if (gmMe) watchOps(gmB.firstChild, gmMe, gmDeps, false); gmFitSoon(); }
+    // modal view: fit the whole drawing (nodes, op pills, "= ..." labels) with padding, a bit smaller, centered on its bbox, zoom capped;
+    // the modal owns zoom/pan/reset (capture phase) so the library's root-centered view never takes over
+    var gmVB = null, gmVB0 = null, gmT = 0;
+    function gmSvg() { return gmB.querySelector(".llms-gv svg"); }
+    function gmSet() { var sv = gmSvg(); if (sv && gmVB) sv.setAttribute("viewBox", gmVB.map(function (n) { return n.toFixed(1); }).join(" ")); }
+    function gmFit() { var sv = gmSvg(); if (!sv || gm.hidden) return; var bb; try { bb = sv.getBBox(); } catch (e) { return; } if (!bb.width) return;
+      var cw = sv.clientWidth || 600, ch = sv.clientHeight || 400, narrow = cw < 500, PAD = narrow ? 1.2 : 1.28, CALM = narrow ? 1.04 : 1.15, MAXZ = 1.5;
+      var sc = Math.min(MAXZ, Math.min(cw / (bb.width * PAD), ch / (bb.height * PAD)) / CALM), w = cw / sc, h = ch / sc;
+      gmVB0 = [bb.x + bb.width / 2 - w / 2, bb.y + bb.height / 2 - h / 2, w, h]; gmVB = gmVB0.slice(); gmSet(); }
+    function gmFitSoon() { clearTimeout(gmT); requestAnimationFrame(function () { requestAnimationFrame(gmFit); }); gmT = setTimeout(gmFit, 120); }
+    function gmZoom(f, cx, cy) { var sv = gmSvg(); if (!sv || !gmVB) return; var r = sv.getBoundingClientRect(), k0 = Math.max(gmVB[2] / r.width, gmVB[3] / r.height);
+      var ox = gmVB[0] + gmVB[2] / 2 - r.width * k0 / 2, oy = gmVB[1] + gmVB[3] / 2 - r.height * k0 / 2;
+      var px = cx === undefined ? gmVB[0] + gmVB[2] / 2 : ox + (cx - r.left) * k0, py = cy === undefined ? gmVB[1] + gmVB[3] / 2 : oy + (cy - r.top) * k0;
+      var w = Math.max(gmVB0[2] / 8, Math.min(gmVB0[2] * 4, gmVB[2] * f)), k = w / gmVB[2]; gmVB = [px - (px - gmVB[0]) * k, py - (py - gmVB[1]) * k, w, gmVB[3] * k]; gmSet(); }
+    (function () { var pts = {}, moved = 0, dist = 0;
+      gmB.addEventListener("wheel", function (e) { if (!gmSvg()) return; e.preventDefault(); e.stopPropagation(); gmZoom(Math.exp(e.deltaY * 0.0015), e.clientX, e.clientY); }, { capture: true, passive: false });
+      gmB.addEventListener("pointerdown", function (e) { if (e.target.closest && e.target.closest(".llms-gb")) return; pts[e.pointerId] = [e.clientX, e.clientY]; moved = 0; dist = 0; }, true);
+      gmB.addEventListener("pointermove", function (e) { var prev = pts[e.pointerId], sv = gmSvg(); if (!prev || !sv || !gmVB) return; e.stopPropagation(); pts[e.pointerId] = [e.clientX, e.clientY]; var ids = Object.keys(pts);
+        if (ids.length === 2) { var a = pts[ids[0]], b = pts[ids[1]], nd = Math.hypot(a[0] - b[0], a[1] - b[1]); if (dist) gmZoom(dist / nd, (a[0] + b[0]) / 2, (a[1] + b[1]) / 2); dist = nd; moved += 10; return; }
+        var dx = e.clientX - prev[0], dy = e.clientY - prev[1]; moved += Math.abs(dx) + Math.abs(dy); if (moved < 5) return;
+        var r = sv.getBoundingClientRect(), k = Math.max(gmVB[2] / r.width, gmVB[3] / r.height); gmVB[0] -= dx * k; gmVB[1] -= dy * k; gmSet(); }, true);
+      var up = function (e) { delete pts[e.pointerId]; dist = 0; }; gmB.addEventListener("pointerup", up, true); gmB.addEventListener("pointercancel", up, true);
+      gmB.addEventListener("click", function (e) { var bt = e.target.closest && e.target.closest(".llms-gbt");
+        if (!bt) { if (moved >= 5) { e.stopPropagation(); e.preventDefault(); moved = 0; } return; }
+        var t = bt.textContent; if (t === "+" || t === "\u2212" || t === "\u27f2") { e.stopPropagation(); e.preventDefault(); if (t === "\u27f2") { gmFit(); } else gmZoom(t === "+" ? 1 / 1.35 : 1.35); } else gmFitSoon(); }, true);
+      root.addEventListener("resize", function () { if (!gm.hidden) gmFitSoon(); }); })();
+    function gmOpen() { gm.hidden = false; document.body.style.overflow = "hidden"; gmDraw(); gm.querySelector(".mc-gmx").focus(); gmFitSoon(); setTimeout(gmFit, 400); }
     function gmClose() { if (gm.hidden) return; gm.hidden = true; document.body.style.overflow = ""; if (gmR) { var r0 = gmR; HB.roots = HB.roots.filter(function (r) { return r !== r0; }); r0.root.unmount(); gmR = null; } gmB.innerHTML = ""; }
     $(".mc-gxo").onclick = gmOpen; gm.querySelector(".mc-gmx").onclick = gmClose;
     gm.addEventListener("click", function (e) { if (e.target === gm) gmClose(); });
