@@ -520,6 +520,58 @@
     // "move the QR to the top right": a local proposal (no model call), through the same validate / dry-run / Confirm
     function qrIntent(t) { var m = /\b(?:move|put|place|send)\b.*\bqr\b.*?\b(top|bottom|upper|lower)[\s-]*(left|right)\b/i.exec(t); if (!m) return null;
       var v = (/top|upper/i.test(m[1]) ? "top" : "bottom") + "-" + m[2].toLowerCase(); return { ops: [{ op: "set", path: "GUI.window.layout.qr.corner", value: v }] }; }
+    // operator nodes: each derived ("=") path gets a small pill (+ − × ÷, ×1.16, or the expression) where its dotted inputs meet,
+    // one line from the pill to the result, and a muted "= 45 + 25" under the result (values from the box's current state)
+    var PRETTY = { "+": "+", "-": "−", "*": "×", "/": "÷" };
+    var pretty = function (s) { return String(s).replace(/\s*([+\-*/])\s*/g, function (m, o, i) { return i ? " " + PRETTY[o] + " " : PRETTY[o]; }).replace(/\s+/g, " ").trim(); };
+    var clip = function (s, n) { s = String(s); return s.length > n ? s.slice(0, n - 1) + "…" : s; };
+    function opInfo(x) { if (!x || !x.expr) return null; var expr = String(x.expr).trim(), t = canon(x.path || ""), i0 = Math.max(t.lastIndexOf("."), t.lastIndexOf("[")), b = i0 < 0 ? "" : t.slice(0, i0);
+      var ins = ((x.derivation && x.derivation.inputs) || []).map(function (i) { var k = canon(String(i.path)); return { k: k, r: b && k.indexOf(b + ".") === 0 ? k.slice(b.length + 1) : k, v: i.value }; });
+      var tok = expr.match(/[A-Za-z_$\u00C0-\uFFFF][\w$.\[\]\u00C0-\uFFFF]*|\d+(?:\.\d+)?%?|\*\*|[+\-*/()]|\S/g) || [];
+      var isRef = function (s) { return /^[A-Za-z_$\u00C0-\uFFFF]/.test(s); }, isNum = function (s) { return /^\d/.test(s); };
+      var val = function (s) { var c = canon(s), hit = ins.filter(function (i) { return i.k === c || i.r === c || i.k.slice(-c.length - 1) === "." + c; })[0];
+        return hit ? (typeof hit.v === "number" ? String(Math.round(hit.v * 1e4) / 1e4) : J(hit.v)) : s; };
+      var opers = tok.filter(function (s) { return PRETTY[s]; }), operands = tok.filter(function (s) { return !PRETTY[s]; });
+      var simple = tok.length >= 3 && tok.length % 2 === 1 && tok.every(function (s, i) { return i % 2 ? !!PRETTY[s] : isRef(s) || isNum(s); });
+      var label;
+      if (simple && opers.every(function (o) { return o === opers[0]; })) { var nums = operands.filter(isNum);
+        label = !nums.length ? PRETTY[opers[0]] : nums.length === 1 && operands.length === 2 && isNum(operands[1]) ? PRETTY[opers[0]] + nums[0] : clip(pretty(expr), 18); }
+      else label = clip(pretty(expr), 18);
+      var f = "= " + tok.map(function (s) { return PRETTY[s] ? " " + PRETTY[s] + " " : isRef(s) ? val(s) : s; }).join("").replace(/\s+/g, " ").replace(/\( /g, "(").replace(/ \)/g, ")").trim();
+      return { label: label, formula: clip(f, 30), title: t + " = " + expr }; }
+    var SVGNS = "http://www.w3.org/2000/svg";
+    function svgEl(tag, at, txt) { var e = document.createElementNS(SVGNS, tag); for (var k in at) e.setAttribute(k, at[k]); if (txt != null) e.textContent = txt; return e; }
+    function decorate(box) { var svg = box && box.querySelector(".llms-gv svg"); if (!svg || !box._me) return;
+      var old = svg.querySelector("g.mc-ops"); if (old) old.remove();
+      var dp = svg.querySelectorAll(':scope > path[stroke="var(--llms-der)"]'); dp.forEach(function (p) { p.style.display = "none"; });
+      var pos = {}; svg.querySelectorAll(".llms-gn[data-llms-k]").forEach(function (g) { var c = g.querySelector(".llms-c"), t = g.querySelector("text"); if (!c) return;
+        var bb = null; try { bb = t.getBBox(); } catch (e) {} pos[g.getAttribute("data-llms-k")] = { y: +c.getAttribute("cy"), x: bb && bb.width ? bb.x + bb.width + 4 : +c.getAttribute("cx") + 8, g: g }; });
+      var by = {}; (box._deps || []).forEach(function (e) { var t = canon(e.to), f = canon(e.from); if (pos[t] && pos[f]) (by[t] = by[t] || []).indexOf(f) < 0 && by[t].push(f); });
+      var keys0 = Object.keys(by); if (!keys0.length) return;
+      var G = svgEl("g", { "class": "mc-ops" }), first = svg.querySelector(".llms-gn"); svg.insertBefore(G, first);
+      keys0.forEach(function (t) { var x = null; try { x = box._me.explain(t); } catch (e) {} var oi = opInfo(x) || { label: "ƒ", formula: "", title: t };
+        var b = pos[t], ins = by[t].map(function (f) { return pos[f]; }), xs = ins.concat([b]).map(function (p) { return p.x; });
+        var w = Math.max(14, oi.label.length * 6.1 + 8), ox = Math.max.apply(null, xs) + 16 + w / 2, R = ox + w / 2;
+        var ys = ins.map(function (p) { return p.y; }), oy = ins.length > 1 ? (Math.min.apply(null, ys) + Math.max.apply(null, ys)) / 2 : (ins[0].y + b.y) / 2;
+        // inputs bend in from the right (as the old dotted curves did), the pill's left side feeds the result
+        ins.forEach(function (a) { G.appendChild(svgEl("path", { d: "M" + a.x + " " + a.y + " C" + (R + 14) + " " + a.y + " " + (R + 14) + " " + oy + " " + R + " " + oy,
+          fill: "none", stroke: "var(--llms-der)", "stroke-dasharray": "3 3", "stroke-width": "1.1", opacity: ".75" })); });
+        var L0 = ox - w / 2, mx = Math.max(b.x + 6, L0 - 14);
+        G.appendChild(svgEl("path", { d: "M" + L0 + " " + oy + " C" + mx + " " + oy + " " + mx + " " + b.y + " " + (b.x + 2) + " " + b.y,
+          fill: "none", stroke: "var(--llms-der)", "stroke-width": "1.2", opacity: ".85" }));
+        var pg = svgEl("g", { "class": "mc-opn", "data-k": t }); pg.appendChild(svgEl("title", {}, oi.title));
+        pg.appendChild(svgEl("rect", { x: ox - w / 2, y: oy - 7, width: w, height: 14, rx: 7, fill: "var(--llms-paper, " + PAPER + ")", stroke: "var(--llms-der)", "stroke-width": "1" }));
+        pg.appendChild(svgEl("text", { x: ox, y: oy + 3.4, "text-anchor": "middle", style: "font-size:9.5px;font-weight:500;fill:var(--llms-der);stroke-width:0" }, oi.label)); G.appendChild(pg);
+        if (oi.formula && !box._pending) { var tt = b.g.querySelector("text"), tx = tt ? +tt.getAttribute("x") : b.x;
+          G.appendChild(svgEl("text", { x: tx, y: b.y + 13, "class": "mc-opf", style: "font-size:8.5px;font-weight:400;fill:var(--llms-fg2, " + FG2 + ");opacity:.9;stroke-width:0" }, oi.formula)); } });
+      // the result's pill and formula sit to the right / below: grow the viewBox only if they fall outside it
+      try { var bb = G.getBBox(), vb = svg.viewBox.baseVal, x1 = Math.max(vb.x + vb.width, bb.x + bb.width + 18), y1 = Math.max(vb.y + vb.height, bb.y + bb.height + 4);
+        if (x1 > vb.x + vb.width || y1 > vb.y + vb.height) svg.setAttribute("viewBox", [vb.x, vb.y, x1 - vb.x, y1 - vb.y].map(function (n) { return n.toFixed(1); }).join(" ")); } catch (e) {} }
+    function watchOps(box, me, deps, pending) { if (!box) return; box._me = me; box._deps = deps; box._pending = !!pending;
+      if (!box._mo) { var busy = false; box._mo = new MutationObserver(function (ms) { if (busy) return; if (ms.every(function (m) { return m.target.closest && m.target.closest("g.mc-ops"); })) return;
+          busy = true; box._mo.disconnect(); try { decorate(box); } finally { box._mo.observe(box, { childList: true, subtree: true, characterData: true }); busy = false; } });
+        box._mo.observe(box, { childList: true, subtree: true, characterData: true }); }
+      requestAnimationFrame(function () { box._mo.disconnect(); decorate(box); box._mo.observe(box, { childList: true, subtree: true, characterData: true }); }); }
     function mountLLMS(box, props) { var r = { box: box, root: root.ReactDOM.createRoot(box), props: props }; (HB.roots = HB.roots || []).push(r); drawLLMS(r); return r; }
     // graph + explain() props from the mini model (or the full state when expanded), on the dry-run kernel until confirmed
     function llmsProps(M, d, card) { var me = card.applied ? build() : d.after, F = fullModel(M, me);
@@ -592,7 +644,7 @@
       if (M && useL) { var idx = linkIndex(M, d.after); linkText(a.querySelector(".mc-diff"), idx, "lh-t");
         if (ub && ub.classList.contains("mc-u")) linkText(ub, idx, "lh-w");
         var gr = mountLLMS(lg, function () { return Object.assign(llmsProps(M, d, card), { parts: ["graph", "explain"], pending: !card.applied }); });
-        addDeps(M.deps); card.redraw = function () { drawLLMS(gr); paint(); }; paint(); }
+        addDeps(M.deps); watchOps(lg, d.after, M.deps, true); card.redraw = function () { drawLLMS(gr); watchOps(lg, card.applied ? build() : d.after, M.deps, !card.applied); paint(); }; paint(); }
       else if (M) { var idx = linkIndex(M, d.after); a.querySelectorAll(".mc-code").forEach(function (c) { linkText(c, idx, "lh-t"); }); linkText(a.querySelector(".mc-diff"), idx, "lh-t");
         if (ub && ub.classList.contains("mc-u")) linkText(ub, idx, "lh-w"); wireMini(a.querySelector(".mc-mini"), M, d, card); paint(); }
       var yes = a.querySelector(".mc-yes"); if (!yes) return;
@@ -635,7 +687,8 @@
           changed: Object.keys(S.changed), parts: ["graph"], graphHeight: 300 };
         if (!leaves.length) $(".mc-g").innerHTML = "";
         else if (sideR && sideR.box.isConnected) drawLLMS(sideR);
-        else { $(".mc-g").innerHTML = '<div class="mc-llms-side"></div>'; sideR = mountLLMS($(".mc-llms-side"), function () { return sideP; }); } }
+        else { $(".mc-g").innerHTML = '<div class="mc-llms-side"></div>'; sideR = mountLLMS($(".mc-llms-side"), function () { return sideP; }); }
+        if (leaves.length) watchOps($(".mc-llms-side"), me, deps, false); }
       else $(".mc-g").innerHTML = leaves.length ? graph(leaves, S.derived, deps, S.changed) : "";
       sideDef = exs.length ? exs.map(function (x) { return xpCard(x, x.path, x.value, S.changed); }).join("") + '<p class="mc-note">The model only named the formula; the kernel computed the value. <a href="https://neurons-me.github.io/.me/docs/Explain.html">explain()</a> shows where it came from.</p>' : "";
       addDeps(deps); sideSig = null; paint(); drawQR(me);
