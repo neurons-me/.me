@@ -308,7 +308,17 @@
     ".mc a{color:" + ACC + "}.mc code{font-family:" + MONO + ";font-size:.92em}";
 
   var esc = function (s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); };
-  var J = function (v) { return v === undefined ? "∅" : JSON.stringify(v); };
+  // display-only number formatter: max 2 decimals, trailing zeros stripped (81.19999999999999 → 81.2); state values are untouched
+  var NUM = function (v) { if (typeof v !== "number" || !isFinite(v) || Number.isInteger(v)) return String(v); var r = Math.round(v * 100) / 100; return String(Object.is(r, -0) ? 0 : r); };
+  var J = function (v) { return v === undefined ? "∅" : typeof v === "number" ? NUM(v) : JSON.stringify(v, function (k, x) { return typeof x === "number" && !Number.isInteger(x) ? Math.round(x * 100) / 100 : x; }); };
+  // post-process rendered text (incl. GUI.LLMS SVG) so float tails never show; the raw value goes into a title tooltip
+  var TAIL = /-?\d+\.\d{3,}/g;
+  function scrubNums(rootN) { if (!rootN || !document.createTreeWalker) return; var w = document.createTreeWalker(rootN, 4), n, hit = [];
+    while ((n = w.nextNode())) { var pe = n.parentNode; if (pe && /^(SCRIPT|STYLE|TEXTAREA|TITLE|title)$/.test(pe.nodeName)) continue; TAIL.lastIndex = 0; if (TAIL.test(n.nodeValue)) hit.push(n); }
+    hit.forEach(function (n) { var raw = n.nodeValue, pe = n.parentNode, nums = raw.match(TAIL); n.nodeValue = raw.replace(TAIL, function (m) { return NUM(+m); });
+      var tip = nums.join(", "); if (pe.namespaceURI === "http://www.w3.org/2000/svg") { if (!pe.querySelector(":scope > title")) { var t = document.createElementNS("http://www.w3.org/2000/svg", "title"); t.textContent = tip; pe.insertBefore(t, pe.firstChild); } }
+      else if (!pe.title) pe.title = tip; }); }
+  function watchNums(rootN) { if (!rootN || typeof MutationObserver === "undefined") return; scrubNums(rootN); new MutationObserver(function () { scrubNums(rootN); }).observe(rootN, { childList: true, subtree: true, characterData: true }); }
   // ops -> .me code (what the kernel runs), coloured by the shared .me highlighter
   function opCode(o) { var P = function (p) { return "me." + canon(p); }, Q = JSON.stringify;
     switch (o && o.op) {
@@ -618,7 +628,7 @@
       var tok = expr.match(/[A-Za-z_$\u00C0-\uFFFF][\w$.\[\]\u00C0-\uFFFF]*|\d+(?:\.\d+)?%?|\*\*|[+\-*/()]|\S/g) || [];
       var isRef = function (s) { return /^[A-Za-z_$\u00C0-\uFFFF]/.test(s); }, isNum = function (s) { return /^\d/.test(s); };
       var val = function (s) { var c = canon(s), hit = ins.filter(function (i) { return i.k === c || i.r === c || i.k.slice(-c.length - 1) === "." + c; })[0];
-        return hit ? (typeof hit.v === "number" ? String(Math.round(hit.v * 1e4) / 1e4) : J(hit.v)) : s; };
+        return hit ? (typeof hit.v === "number" ? NUM(hit.v) : J(hit.v)) : s; };
       var opers = tok.filter(function (s) { return PRETTY[s]; }), operands = tok.filter(function (s) { return !PRETTY[s]; });
       var simple = tok.length >= 3 && tok.length % 2 === 1 && tok.every(function (s, i) { return i % 2 ? !!PRETTY[s] : isRef(s) || isNum(s); });
       var label;
@@ -795,7 +805,7 @@
     // expanded live graph: a modal with the same props as the sidebar graph, redrawn on every render (Confirm)
     var gm = document.createElement("div"); gm.className = "mc-gm"; gm.hidden = true; gm.setAttribute("role", "dialog"); gm.setAttribute("aria-modal", "true"); gm.setAttribute("aria-label", "State · live graph");
     gm.innerHTML = '<div class="mc-gmp"><div class="mc-gmh"><b>State · live graph</b><span>wheel / pinch to zoom · drag to pan · click a node to open the message that wrote it</span><button class="mc-gmx" title="Close (Esc)" aria-label="Close">✕</button></div><div class="mc-gmb"></div></div>';
-    document.body.appendChild(gm); var gmB = gm.querySelector(".mc-gmb");
+    document.body.appendChild(gm); var gmB = gm.querySelector(".mc-gmb"); watchNums(gm); watchNums(el);
     function gmProps() { return Object.assign({}, sideP || { graph: { nodes: [], edges: [] }, changed: [], parts: ["graph"] }, { graphHeight: Math.max(240, gmB.clientHeight - 16) }); }
     function gmDraw() { if (gm.hidden) return; if (!LL() || !sideP || !sideP.graph.nodes.length) { gmClose(); gm.hidden = false; document.body.style.overflow = "hidden"; gmB.innerHTML = EMPTY; return; }
       if (gmR && gmR.box.isConnected) drawLLMS(gmR); else { gmB.innerHTML = '<div class="mc-llms-side mc-gmg"></div>'; gmR = mountLLMS(gmB.firstChild, gmProps); }
@@ -847,8 +857,8 @@
       sideDef = exs.length ? exs.map(function (x) { return xpCard(x, x.path, x.value, S.changed); }).join("") + '<p class="mc-note">The model only named the formula; the kernel computed the value. <a href="https://neurons-me.github.io/.me/docs/Explain.html">explain()</a> shows where it came from.</p>' : "";
       var hp = null; exs.forEach(function (x) { if (S.changed[canon(x.path)]) hp = canon(x.path); }); if (!hp && exs.length) hp = canon(exs[exs.length - 1].path); if (!hp && dpaths.length) hp = canon(dpaths[dpaths.length - 1]);
       var up = function (p) { var q = null; deps.forEach(function (e) { if (!q && canon(e.to) === p && S.derived[canon(e.from)]) q = canon(e.from); }); return q; }, top = hp, g = 0; while (top && up(top) && g++ < 8) top = up(top);
-      var fv = function (v) { return typeof v === "number" ? String(+v.toFixed(10)) : J(v); }, hv = top ? read(me, top) : undefined;
-      $(".mc-hero").innerHTML = top && hv !== undefined ? '<span class="mc-hp">' + esc(top) + ' =</span><span class="mc-hv">' + esc(fv(hv)) + '</span>' + (hp !== top ? '<span class="mc-hk">' + esc(hp) + " = " + esc(fv(read(me, hp))) + '</span>' : "") + '<span class="mc-hk">computed by this.me · derived</span>' : "";
+      var fv = function (v) { return J(v); }, hv = top ? read(me, top) : undefined;
+      $(".mc-hero").innerHTML = top && hv !== undefined ? '<span class="mc-hp">' + esc(top) + ' =</span><span class="mc-hv" title="' + esc(typeof hv === "number" ? String(hv) : "") + '">' + esc(fv(hv)) + '</span>' + (hp !== top ? '<span class="mc-hk">' + esc(hp) + " = " + esc(fv(read(me, hp))) + '</span>' : "") + '<span class="mc-hk">computed by this.me · derived</span>' : "";
       addDeps(deps); sideSig = null; paint(); drawQR(me); sideFitSoon();
     }
     // sidebar graph: fit the whole drawing (nodes, pills, "= ..." labels) into its box, no clipping
