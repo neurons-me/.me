@@ -309,7 +309,7 @@
       '<div><h4>Chats</h4><div class="mc-cv"></div></div>' +
       '<div><h4>State · live graph</h4><div class="mc-g"></div><div class="mc-exs"></div></div>' +
       '<div><h4>Service keys</h4><button class="mc-kc" title="Meta API key">' + KEYI + '<span>Meta · Muse Spark</span></button></div>' +
-      '<div><h4>About</h4><p class="mc-info">The model proposes .me ops; this.me validates, dry-runs and computes. Nothing is written until you confirm.</p>' +
+      '<div><h4>About</h4><p class="mc-info" style="margin-bottom:6px"><span style="color:inherit;font-weight:600">Coherence is a relationship between statements.</span><br>Correctness is a relationship between a statement and the state it describes.<br>A model can be coherent. Only the state can make it correct.</p><p class="mc-info">The model proposes .me ops; this.me validates, dry-runs and computes. Nothing is written until you confirm.</p>' +
       '<p class="mc-info" style="margin-top:4px"><a href="/.me/LLMS/">LLMS</a> · <a href="docs.html">Meta adapter docs</a> · <a href="https://github.com/neurons-me/.me/tree/main/LLMS/Meta" target="_blank" rel="noopener">source</a></p></div>' +
       '</div></aside><div class="mc-bd"></div>' +
       '<div class="mc-main"><div class="mc-top"><button class="mc-ib mc-tg" aria-label="sidebar" title="Sidebar">☰</button><b>Muse Spark</b><span class="mc-mode">recorded</span><span class="mc-sp"></span>' +
