@@ -381,7 +381,7 @@
     function title(text) { if (S.cur) return; S.cur = ++S.n; S.convs.push(Object.assign({ id: S.cur, title: text.length > 42 ? text.slice(0, 40) + "…" : text }, snap())); listUI(); }
     $(".mc-new").onclick = function () { if (S.busy) return; save(); fresh(); setLive(S.live); el.classList.remove("drw"); ta.focus(); };
     // recorded conversation (D.thread, from record-demo.ts): one chat, each message builds on the confirmed state of the previous ones,
-    // so only the next message is offered (after the previous one is confirmed); ▶ plays the rest. Older data: the 5 separate examples.
+    // so only the next message is offered (after the previous one is confirmed). Fully manual: nothing sends or confirms by itself. Older data: the 5 separate examples.
     var TH0 = D.thread && D.thread.length ? D.thread : null, TH = TH0, TM = null;
     function startTest(name) { var T = TESTS[name]; if (!T || S.busy) return; save(); fresh(); TM = name; TH = T.turns; S.turn = 0; S.waiting = false; chips(); setLive(S.live); }
     function chips() { var box = $(".mc-chips"); box.innerHTML = "";
@@ -390,10 +390,9 @@
         b.onclick = function () { send(r.text, r); }; box.appendChild(b); }); tc(); return; }
       var i = S.turn || 0; if (i >= TH.length || S.waiting) return tc();
       var b = document.createElement("button"); b.className = "mc-chip"; b.textContent = TH[i].text; b.onclick = function () { turn(); }; box.appendChild(b);
-      var p = document.createElement("button"); p.className = "mc-chip"; p.textContent = i ? "▶ play the rest" : "▶ play the conversation"; p.onclick = function () { play(); }; box.appendChild(p); }
+      if (i) b.textContent = "Next \u2192 " + TH[i].text; b.title = "Step " + (i + 1) + " of " + TH.length + ": click to send, then Confirm"; }
     function turn() { var r = TH[S.turn || 0]; if (!r || S.busy) return; if (S.live && !TM) return send(r.text);
       S.waiting = true; chips(); send(r.text, { id: r.id, text: r.text, ops: r.ops, state: null, thread: true, test: !!TM }); }
-    function play() { var go = function () { if ((S.turn || 0) >= TH.length) return; turn(); setTimeout(function () { var y = log.querySelector(".mc-a:last-child .mc-yes"); if (y) { y.click(); setTimeout(go, 900); } }, 900); }; go(); }
     chips();
     ta.oninput = function () { ta.style.height = "auto"; ta.style.height = Math.min(180, ta.scrollHeight) + "px"; };
     ta.onkeydown = function (e) { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(ta.value); } };
@@ -732,7 +731,7 @@
       addDeps(deps); sideSig = null; paint(); drawQR(me);
     }
     $(".mc-g").innerHTML = EMPTY; drawQR();
-    try { var qt = new URLSearchParams(location.search).get("test"); if (qt && TESTS[qt]) setTimeout(function () { startTest(qt); if (/^(1|play|all)$/.test(new URLSearchParams(location.search).get("play") || "")) play(); }, 400); } catch (e) {}
+    try { var qt = new URLSearchParams(location.search).get("test"); if (qt && TESTS[qt]) setTimeout(function () { startTest(qt); }, 400); } catch (e) {}
   }
 
   function MetaDemo() {
