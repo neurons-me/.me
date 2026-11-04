@@ -17,6 +17,20 @@ export function extractJson(text: unknown): unknown {
   try { return JSON.parse(fence ? fence[1] : t); } catch { throw new Error("model reply is not a JSON object"); }
 }
 
+/** GUI.* paths drive the page's own chrome: only these paths, only these values (set / query). */
+export const GUI_ALLOW: Record<string, string[]> = { "GUI.window.layout.qr.corner": ["top-left", "top-right", "bottom-left", "bottom-right"] };
+function guiError(o: any): string | null {
+  const ps = [o.path, o.target, ...(Array.isArray(o.paths) ? o.paths : [])].filter((p): p is string => typeof p === "string");
+  for (const p of ps) {
+    if (!/^GUI(\.|\[|$)/.test(p)) continue;
+    const c = p.replace(/\[(\d+)\]/g, ".$1");
+    if (!GUI_ALLOW[c]) return `"${p}" is not a writable GUI path (allowed: ${Object.keys(GUI_ALLOW).join(", ")})`;
+    if (o.op === "set" && !GUI_ALLOW[c].includes(o.value)) return `${p} must be one of ${GUI_ALLOW[c].join(", ")}`;
+    if (o.op !== "set" && o.op !== "query") return `${p} only accepts set / query`;
+  }
+  return null;
+}
+
 export function validateOps(obj: unknown): { ops: Op[]; errors: string[] } {
   const errors: string[] = [];
   if (!obj || typeof obj !== "object" || Array.isArray(obj)) return { ops: [], errors: ["reply must be an object {\"ops\":[...]}"] };
@@ -54,6 +68,7 @@ export function validateOps(obj: unknown): { ops: Op[]; errors: string[] } {
         else o.paths.forEach((p: unknown, j: number) => pe(p, `paths[${j}]`));
         break;
     }
+    { const ge = guiError(o); if (ge) errors.push(`${w}: ${ge}`); }
   });
   if (errors.length) return { ops: [], errors };
   return { ops: list.map((o: any) => (o.op === "identity" ? { ...o, handle: o.handle.replace(/^@/, "").toLowerCase() } : o)), errors };

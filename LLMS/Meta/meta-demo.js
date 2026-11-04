@@ -32,6 +32,14 @@
 
   // ── validate.ts ── (returns per-op errors too, for the pass/fail list)
   var FIELDS = { set: ["path", "value"], define: ["path", "name", "expr"], pointer: ["path", "target"], remove: ["path", "key"], secret: ["path"], noise: ["path"], identity: ["handle"], query: ["paths"] };
+  // GUI.* paths drive this page's own chrome; only these, only these values (set / query)
+  var GUI_ALLOW = { "GUI.window.layout.qr.corner": ["top-left", "top-right", "bottom-left", "bottom-right"] };
+  function guiError(o) { var ps = [o.path, o.target].concat(o.paths || []).filter(function (p) { return typeof p === "string"; }), bad = null;
+    ps.forEach(function (p) { if (bad || !/^GUI(\.|\[|$)/.test(p)) return; var c = canon(p);
+      if (!GUI_ALLOW[c]) bad = '"' + p + '" is not a writable GUI path (allowed: ' + Object.keys(GUI_ALLOW).join(", ") + ")";
+      else if (o.op === "set" && GUI_ALLOW[c].indexOf(o.value) < 0) bad = p + " must be one of " + GUI_ALLOW[c].join(", ");
+      else if (o.op !== "set" && o.op !== "query") bad = p + " only accepts set / query"; });
+    return bad; }
   var SECRETISH = /(pass(word)?|contrase(ñ|n)a|clave|secret|seed|semilla|pin|token|api[_-]?key|private[_-]?key|^key$)/i;
   var EXPR = /^[\p{L}\p{N}_$.\[\]\s+\-*/%()<>=!&|?:,'"]+$/u;
   var CONFIRM = ["secret", "noise", "identity", "remove"];
@@ -62,6 +70,7 @@
         case "identity": if (typeof o.handle !== "string" || !/^[a-z0-9][a-z0-9._-]{0,62}$/i.test(o.handle.replace(/^@/, ""))) push(w + ".handle must be a username"); break;
         case "query": if (!Array.isArray(o.paths) || !o.paths.length) push(w + ".paths must be a non-empty array"); else o.paths.forEach(function (p, j) { pe(p, "paths[" + j + "]"); }); break;
       }
+      var ge = guiError(o); if (ge) push(w + ": " + ge);
       return e;
     });
     if (errors.length) return { ops: [], errors: errors, per: per };
@@ -133,6 +142,7 @@
 
   // ── chat mode (live): the model decides. State in the message -> {"ops":[...]} (same schema); otherwise plain text. ──
   var CHAT = "\n\nCHAT MODE: you are also a normal assistant in a chat. If the user's message contains state to record (facts, values, rules, links, deletions) or asks to read recorded values, reply with ONLY the JSON object {\"ops\":[...]} as above. If it has nothing to record (a greeting, a general question, a request for an opinion), reply in plain conversational text, no JSON. Never mix the two.";
+  CHAT += "\n\nThis page's own layout is .me state too: GUI.window.layout.qr.corner (one of \"top-left\", \"top-right\", \"bottom-left\", \"bottom-right\") places the corner QR; \"move the QR to the top right\" is {\"ops\":[{\"op\":\"set\",\"path\":\"GUI.window.layout.qr.corner\",\"value\":\"top-right\"}]}. No other GUI.* path is writable.";
   var FORCE = "\n\nThis message MUST be answered with ONLY the JSON object {\"ops\":[...]}.";
   function chatMessages(i, hist, force) { var m = [{ role: "system", content: D.system + CHAT + (force ? FORCE : "") }];
     D.examples.forEach(function (ex) { m.push({ role: "user", content: userMessage(ex) }); m.push({ role: "assistant", content: JSON.stringify({ ops: ex.ops }) }); });
@@ -163,6 +173,10 @@
     ".mc-sb{width:300px;flex:0 0 300px;border-right:1px solid " + GRID + ";display:flex;flex-direction:column;min-height:0;background:" + mix(FG2, 4, BG) + ";transition:margin .2s}" +
     ".mc.shut .mc-sb{margin-left:-300px}" +
     ".mc-sbx{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:14px}" +
+    ".mc-qr{display:flex;align-items:center;justify-content:center;width:56px;height:48px;min-width:56px;flex:0 0 auto;margin:0;padding:0;color:inherit;text-decoration:none;cursor:pointer;border-radius:0}.mc-qr:hover{background:" + mix(FG2, 12, "transparent") + "}.mc-qr:focus-visible{outline:2px solid " + ACC + ";outline-offset:-2px}" +
+    ".mc-qrb{display:flex;transform-origin:center}.mc-qrf{font:700 12px/1 " + MONO + ";color:" + ACC + ";border:1.5px solid " + ACC + ";border-radius:50%;width:34px;height:34px;display:grid;place-items:center}" +
+    ".mc-qrc{position:absolute;z-index:22}.mc-qrc.tr{top:0;right:0}.mc-qrc.br{bottom:0;right:0}.mc-qrc.bl{bottom:0;left:0}.mc-qrsb{display:flex}" +
+    ".mc.qr-tr .mc-top{padding-right:62px}.mc.qr-br .mc-hint{padding-right:58px}" +
     ".mc-sb h4{margin:0 0 6px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:" + FG2 + ";font-weight:600}" +
     ".mc-cv{display:flex;flex-direction:column;gap:2px}.mc-cv button{font:inherit;font-size:13px;text-align:left;background:transparent;color:inherit;border:0;border-radius:8px;padding:6px 9px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.mc-cv button:hover{background:" + mix(FG2, 10) + "}.mc-cv button.cur{background:" + mix(ACC, 16) + "}" +
     ".mc-wide{width:100%;text-align:left;border-radius:10px!important;padding:7px 12px!important}" +
@@ -290,7 +304,7 @@
     var byText = function (t) { t = t.trim().toLowerCase(); return D.recorded.filter(function (r) { return r.text.toLowerCase() === t; })[0]; };
     var mobile = function () { return !!(root.matchMedia && root.matchMedia("(max-width:860px)").matches); };
     el.className = "mc"; document.body.classList.add("mc-on");
-    el.innerHTML = '<aside class="mc-sb"><div class="mc-sbx">' +
+    el.innerHTML = '<aside class="mc-sb"><div class="mc-qrsb"></div><div class="mc-sbx">' +
       '<button class="mc-ib mc-new mc-wide" title="Clear the chat and the state">+ New chat</button>' +
       '<div><h4>Chats</h4><div class="mc-cv"></div></div>' +
       '<div><h4>State · live graph</h4><div class="mc-g"></div><div class="mc-exs"></div></div>' +
@@ -327,7 +341,7 @@
     $(".mc-lv").onclick = function () { if (S.live) return setLive(false); if (!S.key) return openKeys(); setLive(true); };
     // conversations (this session, in memory)
     function snap() { return { seed: S.seed, batches: S.batches, paths: S.paths, derived: S.derived, hist: S.hist, changed: S.changed, turn: S.turn || 0, html: log.innerHTML, ex: $(".mc-exs").innerHTML, g: $(".mc-g").innerHTML }; }
-    function load(c) { S.seed = c.seed; S.batches = c.batches; S.paths = c.paths; S.derived = c.derived; S.hist = c.hist; S.changed = c.changed; S.turn = c.turn || 0; S.waiting = false; chips(); log.innerHTML = c.html; $(".mc-exs").innerHTML = sideDef = c.ex; sideSig = null; $(".mc-g").innerHTML = c.g;
+    function load(c) { S.seed = c.seed; S.batches = c.batches; S.paths = c.paths; S.derived = c.derived; S.hist = c.hist; S.changed = c.changed; S.turn = c.turn || 0; S.waiting = false; chips(); if (qrEl) drawQR(); log.innerHTML = c.html; $(".mc-exs").innerHTML = sideDef = c.ex; sideSig = null; $(".mc-g").innerHTML = c.g;
       log.querySelectorAll(".mc-yes,.mc-no,.mc-addkey").forEach(function (b) { b.remove(); }); if (LL() && S.batches.length) try { render(build()); } catch (e) {} }
     function conv() { return S.convs.filter(function (c) { return c.id === S.cur; })[0]; }
     function save() { var c = conv(); if (c) Object.assign(c, snap()); }
@@ -336,7 +350,7 @@
         b.onclick = function () { if (S.busy || c.id === S.cur) return; save(); S.cur = c.id; load(c); listUI(); el.classList.remove("drw"); scr.scrollTop = scr.scrollHeight; }; box.appendChild(b); });
       if (!S.convs.length) box.innerHTML = '<p class="mc-info">No chats yet.</p>'; }
     function fresh() { S.turn = 0; S.waiting = false; if (typeof chips === "function") chips(); S.seed = {}; S.batches = []; S.paths = new Set(); S.derived = {}; S.hist = []; S.changed = {}; S.focus = [];
-      log.innerHTML = ""; $(".mc-exs").innerHTML = ""; $(".mc-g").innerHTML = EMPTY; ta.value = ""; ta.oninput(); S.cur = 0; listUI(); }
+      log.innerHTML = ""; $(".mc-exs").innerHTML = ""; $(".mc-g").innerHTML = EMPTY; ta.value = ""; ta.oninput(); S.cur = 0; listUI(); if (typeof drawQR === "function" && qrEl) drawQR(); }
     function title(text) { if (S.cur) return; S.cur = ++S.n; S.convs.push(Object.assign({ id: S.cur, title: text.length > 42 ? text.slice(0, 40) + "…" : text }, snap())); listUI(); }
     $(".mc-new").onclick = function () { if (S.busy) return; save(); fresh(); el.classList.remove("drw"); ta.focus(); };
     // recorded conversation (D.thread, from record-demo.ts): one chat, each message builds on the confirmed state of the previous ones,
@@ -467,6 +481,39 @@
     function editOp(op, v) { var o = Object.assign({}, op, { value: v });
       bubble("mc-u mc-edit", '✎ <span style="color:' + FG2 + '">edit</span> <span class="mc-p">' + esc(canon(o.path)) + '</span> ' + '<span class="mc-del">' + esc(J(op.value)) + '</span> → <span class="mc-n">' + esc(J(v)) + "</span>");
       proposal(bubble("mc-a", ""), { ops: [o] }, "your edit · local, no model call", null, {}); save(); }
+    // the corner QR: .GUI's QRme naming this page's in-browser .me (the same linkQrValue the GUI corner encodes); its corner is .me state
+    var QRC = { "top-left": "tl", "top-right": "tr", "bottom-left": "bl", "bottom-right": "br" }, qrR = null, qrEl = null, qrCorner = null;
+    function meHandle() { var h = null; S.batches.forEach(function (b) { b.ops.forEach(function (o) { if (o.op === "identity") h = o.handle; }); }); return h; }
+    function qrInfo() { var host = location.host || "localhost", h = meHandle(), ep = location.origin, G = root.GUI || {}, v;
+      try { v = G.linkQrValue ? G.linkQrValue({ endpoint: ep, namespace: host, handle: h }) : ep + (h ? "/@" + h : ""); } catch (e) { v = ep; }
+      // without a handle the address must stay this page's own (the cleaker parser reads a 3-label host like a.github.io as prefix.host)
+      try { if (!h && new URL(v).host !== host) v = ep; } catch (e) { v = ep; }
+      return { value: v, handle: h, host: host, label: (h ? "@" + h + " · " : "") + host }; }
+    function drawQR(me) {
+      var c = null; try { c = read(me || build(), "GUI.window.layout.qr.corner"); } catch (e) {}
+      if (!QRC[c]) c = "top-left";
+      if (!qrEl) { qrEl = document.createElement("a"); qrEl.className = "mc-qr"; qrEl.href = "/.me/"; qrEl.setAttribute("data-gui-node-id", "GUI.window.layout.qr");
+        qrEl.innerHTML = '<span class="mc-qrb"></span>'; }
+      var q = qrInfo(); qrEl.setAttribute("aria-label", "Open .me — " + q.label); qrEl.title = q.label + " — in-browser .me · GUI.window.layout.qr.corner = " + c;
+      qrEl.dataset.qrValue = q.value; qrEl.dataset.corner = c;
+      if (c !== qrCorner) { qrCorner = c; Object.keys(QRC).forEach(function (k) { el.classList.remove("qr-" + QRC[k]); }); el.classList.add("qr-" + QRC[c]);
+        if (c === "top-left") { qrEl.className = "mc-qr"; $(".mc-qrsb").appendChild(qrEl); }
+        else if (c === "bottom-left") { qrEl.className = "mc-qr"; $(".mc-sb").appendChild(qrEl); }
+        else { qrEl.className = "mc-qr mc-qrc " + QRC[c]; el.appendChild(qrEl); } }
+      var box = qrEl.querySelector(".mc-qrb"), G = root.GUI || {};
+      if (G.QRme && root.ReactDOM && root.ReactDOM.createRoot) {
+        var sz = 34; try { sz = G.resolveTopbarQrSize ? G.resolveTopbarQrSize(q.value) : 34; } catch (e) {}
+        box.style.transform = "scale(" + (34 / sz) + ")";
+        if (!qrR) qrR = root.ReactDOM.createRoot(box);
+        var qr = React.createElement(G.QRme, { variant: "topbar", value: q.value, username: q.handle || undefined, status: "confirmed", statusLabel: "in-browser .me",
+          perimeterLabel: q.label, perimeterRootLabel: q.host, clickFlip: false, hoverFlip: false, cursor: "pointer", "data-gui-node-id": "GUI.window.layout.qr.badge" });
+        // QRme reads the GUI palette: give it the GUI theme (same mode as the page)
+        qrR.render(G.Theme ? React.createElement(G.Theme, { initialMode: root.matchMedia && root.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light" }, qr) : qr);
+      } else if (!box.firstChild) box.innerHTML = '<span class="mc-qrf">.me</span>'; // fallback without this.gui's QRme
+    }
+    // "move the QR to the top right": a local proposal (no model call), through the same validate / dry-run / Confirm
+    function qrIntent(t) { var m = /\b(?:move|put|place|send)\b.*\bqr\b.*?\b(top|bottom|upper|lower)[\s-]*(left|right)\b/i.exec(t); if (!m) return null;
+      var v = (/top|upper/i.test(m[1]) ? "top" : "bottom") + "-" + m[2].toLowerCase(); return { ops: [{ op: "set", path: "GUI.window.layout.qr.corner", value: v }] }; }
     function mountLLMS(box, props) { var r = { box: box, root: root.ReactDOM.createRoot(box), props: props }; (HB.roots = HB.roots || []).push(r); drawLLMS(r); return r; }
     // graph + explain() props from the mini model (or the full state when expanded), on the dry-run kernel until confirmed
     function llmsProps(M, d, card) { var me = card.applied ? build() : d.after, F = fullModel(M, me);
@@ -478,6 +525,7 @@
     function bubble(cls, html) { var d = document.createElement("div"); d.className = "mc-m " + cls; d.innerHTML = html; log.appendChild(d); scr.scrollTop = scr.scrollHeight; return d; }
     function send(text, r) {
       text = String(text || "").trim(); if (!text || S.busy) return; ta.value = ""; ta.oninput();
+      var qi = qrIntent(text); if (qi) { title(text); bubble("mc-u", esc(text)); proposal(bubble("mc-a", ""), qi, "local · no model call", null, {}); return save(); }
       var force = /^me:/i.test(text), body = force ? text.replace(/^me:\s*/i, "") : text;
       r = r || byText(body);
       title(text); bubble("mc-u", esc(text));
@@ -584,9 +632,9 @@
         else { $(".mc-g").innerHTML = '<div class="mc-llms-side"></div>'; sideR = mountLLMS($(".mc-llms-side"), function () { return sideP; }); } }
       else $(".mc-g").innerHTML = leaves.length ? graph(leaves, S.derived, deps, S.changed) : "";
       sideDef = exs.length ? exs.map(function (x) { return xpCard(x, x.path, x.value, S.changed); }).join("") + '<p class="mc-note">The model only named the formula; the kernel computed the value. <a href="https://neurons-me.github.io/.me/docs/Explain.html">explain()</a> shows where it came from.</p>' : "";
-      addDeps(deps); sideSig = null; paint();
+      addDeps(deps); sideSig = null; paint(); drawQR(me);
     }
-    $(".mc-g").innerHTML = EMPTY;
+    $(".mc-g").innerHTML = EMPTY; drawQR();
   }
 
   function MetaDemo() {
