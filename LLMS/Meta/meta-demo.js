@@ -716,7 +716,6 @@
       if (!v.errors.length) { var re = refErrors(v.ops, known(seed)); if (re.length) v = { ops: [], errors: re, per: [], refs: true }; }
       var h = '<div class="mc-src">' + esc(src) + "</div>";
       var useL = !!LL() && !v.errors.length;
-      if (v.errors.length && list.length) h += '<pre class="mc-code me-code">' + hl(list.map(opCode).join("\n")) + "</pre>";
       if (list.length) h += useL ? '<div class="mc-llms-code"></div>' : '<pre class="mc-code me-code">' + hl(list.map(opCode).join("\n")) + "</pre>";
       else if (!v.errors.length) { a.innerHTML = h + '<div class="mc-note">Nothing to record in that message.</div>'; return; }
       if (v.errors.length) { a.innerHTML = h + '<div class="mc-v mc-bad"><b>✗ rejected at validated</b><br>✗ ' + v.errors.map(esc).join("<br>✗ ") + '</div><div class="mc-note">Nothing was written and there is nothing to confirm: the model proposes, only the state decides. The graph is unchanged.</div>';
