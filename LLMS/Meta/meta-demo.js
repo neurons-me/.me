@@ -296,6 +296,13 @@
     ".mc-ex{margin-top:10px;padding:9px 11px;border-radius:10px;border:1px dashed " + mix(DER, 50) + ";background:" + mix(DER, 6) + "}.mc-ex pre{font-size:11.5px;white-space:pre;overflow-x:auto}" +
     ".mc-bd{display:none}" +
     "@media(max-width:860px){.mc-sb{position:absolute;top:0;bottom:0;left:0;z-index:25;width:86vw;max-width:320px;margin-left:0!important;transform:translateX(-102%);transition:transform .2s;background:" + PAPER + "}.mc.drw .mc-sb{transform:none}.mc.drw .mc-bd{display:block;position:absolute;inset:0;z-index:24;background:rgba(0,0,0,.4)}}" +
+    ".mc-gh{display:flex;align-items:center;justify-content:space-between;gap:6px}.mc-gh h4{margin:0 0 6px}.mc-gxo{font:inherit;font-size:13px;line-height:1;width:24px;height:24px;margin:-4px 0 2px;border-radius:6px;border:1px solid " + GRID + ";background:transparent;color:inherit;cursor:pointer;opacity:.75}.mc-gxo:hover{opacity:1;border-color:" + ACC + "}" +
+    ".mc-gm{position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.55);backdrop-filter:blur(2px)}.mc-gm[hidden]{display:none}" +
+    ".mc-gmp{position:relative;width:min(1200px,94vw);height:90vh;display:flex;flex-direction:column;border-radius:14px;border:1px solid " + GRID + ";background:" + PAPER + ";box-shadow:0 20px 60px rgba(0,0,0,.4);overflow:hidden}" +
+    ".mc-gmh{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid " + GRID + "}.mc-gmh b{font-size:13px;letter-spacing:.06em;text-transform:uppercase}.mc-gmh span{flex:1;font-size:12px;color:" + FG2 + "}" +
+    ".mc-gmx{font:inherit;font-size:16px;width:32px;height:32px;border-radius:8px;border:1px solid " + GRID + ";background:transparent;color:inherit;cursor:pointer}.mc-gmx:hover{border-color:" + ACC + "}" +
+    ".mc-gmb{flex:1;min-height:0;padding:8px;overflow:hidden}.mc-gmb svg text{font-size:13px}" +
+    "@media(max-width:860px){.mc-gm{background:" + PAPER + "}.mc-gmp{width:100vw;height:100dvh;border-radius:0;border:0;box-shadow:none}}" +
     ".mc a{color:" + ACC + "}.mc code{font-family:" + MONO + ";font-size:.92em}";
 
   var esc = function (s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); };
@@ -378,7 +385,7 @@
     el.innerHTML = '<aside class="mc-sb"><div class="mc-qrsb"></div><div class="mc-sbx">' +
       '<button class="mc-ib mc-new mc-wide" title="Clear the chat and the state">+ New chat</button>' +
       '<div><h4>Chats</h4><div class="mc-cv"></div></div>' +
-      '<div><h4>State · live graph</h4><div class="mc-g"></div><div class="mc-exs"></div></div>' +
+      '<div><div class="mc-gh"><h4>State · live graph</h4><button class="mc-gxo" title="Expand graph" aria-label="Expand graph">⤢</button></div><div class="mc-g"></div><div class="mc-exs"></div></div>' +
       '<div><h4>Service keys</h4><button class="mc-kc" title="Meta API key">' + KEYI + '<span>Meta · Muse Spark</span></button></div>' +
       '<div><h4>About</h4><p class="mc-info" style="margin-bottom:6px"><span style="color:inherit;font-weight:600">Coherence is a relationship between statements.</span><br>Correctness is a relationship between a statement and the state it describes.<br>A model can be coherent. Only the state can make it correct.</p><p class="mc-info">The model proposes .me ops; this.me validates, dry-runs and computes. Nothing is written until you confirm.</p>' +
       '<p class="mc-info" style="margin-top:4px"><a href="/.me/LLMS/">LLMS</a> · <a href="docs.html">Meta adapter docs</a> · <a href="https://github.com/neurons-me/.me/tree/main/LLMS/Meta" target="_blank" rel="noopener">source</a></p></div>' +
@@ -555,7 +562,7 @@
     var CARDS = [], wrote = function (o) { var p = canon(o.path || ""); return o.op === "define" ? canon(p + "." + o.name) : o.op === "remove" ? canon(p + "." + o.key) : o.op === "query" || o.op === "identity" ? null : p; };
     function focusWriter(p) { p = canon(p); CARDS = CARDS.filter(function (c) { return c.a.isConnected; });
       var hitc = null; for (var i = CARDS.length - 1; i >= 0 && !hitc; i--) if (CARDS[i].card.applied && CARDS[i].ops.some(function (o) { return wrote(o) === p; })) hitc = CARDS[i];
-      if (!hitc) return; CARDS.forEach(function (c) { if (c.card.focus) { c.card.focus = null; c.card.code && c.card.code(); } });
+      if (!hitc) return; if (typeof gmClose === "function") gmClose(); CARDS.forEach(function (c) { if (c.card.focus) { c.card.focus = null; c.card.code && c.card.code(); } });
       hitc.card.focus = p; hitc.card.code(); setTimeout(function () { var ln = hitc.a.querySelector(".llms-ln.focus") || hitc.a; ln.scrollIntoView({ block: "center", behavior: "smooth" }); }, 60); }
     // an inline value edit becomes a local proposal (no model call): same validate / dry-run / pending graph / Confirm
     function editOp(op, v) { var o = Object.assign({}, op, { value: v });
@@ -782,7 +789,20 @@
       var sg = t || ""; if (sg === sideSig) return; sideSig = sg; var me = build(), x = null;
       if (t) { try { x = me.explain(t); } catch (e) {} }
       $(".mc-exs").innerHTML = t ? xpCard(x, t, read(me, t), S.changed) : sideDef; } });
-    var sideR = null, sideP = null;
+    var sideR = null, sideP = null, gmR = null, gmMe = null, gmDeps = [];
+    // expanded live graph: a modal with the same props as the sidebar graph, redrawn on every render (Confirm)
+    var gm = document.createElement("div"); gm.className = "mc-gm"; gm.hidden = true; gm.setAttribute("role", "dialog"); gm.setAttribute("aria-modal", "true"); gm.setAttribute("aria-label", "State · live graph");
+    gm.innerHTML = '<div class="mc-gmp"><div class="mc-gmh"><b>State · live graph</b><span>wheel / pinch to zoom · drag to pan · click a node to open the message that wrote it</span><button class="mc-gmx" title="Close (Esc)" aria-label="Close">✕</button></div><div class="mc-gmb"></div></div>';
+    el.appendChild(gm); var gmB = gm.querySelector(".mc-gmb");
+    function gmProps() { return Object.assign({}, sideP || { graph: { nodes: [], edges: [] }, changed: [], parts: ["graph"] }, { graphHeight: Math.max(240, gmB.clientHeight - 16) }); }
+    function gmDraw() { if (gm.hidden) return; if (!LL() || !sideP || !sideP.graph.nodes.length) { gmClose(); gm.hidden = false; document.body.style.overflow = "hidden"; gmB.innerHTML = EMPTY; return; }
+      if (gmR && gmR.box.isConnected) drawLLMS(gmR); else { gmB.innerHTML = '<div class="mc-llms-side mc-gmg"></div>'; gmR = mountLLMS(gmB.firstChild, gmProps); }
+      if (gmMe) watchOps(gmB.firstChild, gmMe, gmDeps, false); }
+    function gmOpen() { gm.hidden = false; document.body.style.overflow = "hidden"; gmDraw(); gm.querySelector(".mc-gmx").focus(); }
+    function gmClose() { if (gm.hidden) return; gm.hidden = true; document.body.style.overflow = ""; if (gmR) { var r0 = gmR; HB.roots = HB.roots.filter(function (r) { return r !== r0; }); r0.root.unmount(); gmR = null; } gmB.innerHTML = ""; }
+    $(".mc-gxo").onclick = gmOpen; gm.querySelector(".mc-gmx").onclick = gmClose;
+    gm.addEventListener("click", function (e) { if (e.target === gm) gmClose(); });
+    document.addEventListener("keydown", function (e) { if (e.key === "Escape" && !gm.hidden) gmClose(); });
     function render(me) {
       var deps = [], exs = [], dpaths = Object.keys(S.derived);
       dpaths.forEach(function (p) { try { var x = me.explain(p); var on = ((x.meta && x.meta.dependsOn) || []);
@@ -794,7 +814,7 @@
         if (!leaves.length) $(".mc-g").innerHTML = "";
         else if (sideR && sideR.box.isConnected) drawLLMS(sideR);
         else { $(".mc-g").innerHTML = '<div class="mc-llms-side"></div>'; sideR = mountLLMS($(".mc-llms-side"), function () { return sideP; }); }
-        if (leaves.length) watchOps($(".mc-llms-side"), me, deps, false); }
+        if (leaves.length) watchOps($(".mc-g .mc-llms-side"), me, deps, false); gmMe = me; gmDeps = deps; gmDraw(); }
       else $(".mc-g").innerHTML = leaves.length ? graph(leaves, S.derived, deps, S.changed) : "";
       sideDef = exs.length ? exs.map(function (x) { return xpCard(x, x.path, x.value, S.changed); }).join("") + '<p class="mc-note">The model only named the formula; the kernel computed the value. <a href="https://neurons-me.github.io/.me/docs/Explain.html">explain()</a> shows where it came from.</p>' : "";
       addDeps(deps); sideSig = null; paint(); drawQR(me);
