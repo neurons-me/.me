@@ -1,4 +1,4 @@
-// Port of Veracruz: .GUI interface (this.gui@4.2.0 from npm via jsDelivr, SRI-pinned in the HTML and sha256-checked in
+// Port of Veracruz: .GUI interface (this.gui@4.3.0 from npm via jsDelivr, SRI-pinned in the HTML and sha256-checked in
 // the browser below). The map is GUI.OpenStreetMap with its own
 // themed Legend, Chips, Overlays, Controls and MarkerList: it follows the page theme (no page map CSS, no pinned ink).
 // over the real, unmodified this.me@4.1.0 kernel (sha256-checked here before import).
@@ -25,13 +25,13 @@ const KERNEL = {
   sha256: "47cc8f9a9b5ee2921a59023d400e694d6c9b9f80a0782db850b06156cbb46afa",
   urls: ["https://cdn.jsdelivr.net/npm/this.me@4.1.0/dist/me.es.js", "https://unpkg.com/this.me@4.1.0/dist/me.es.js"],
 };
-// .GUI build: this.gui@4.2.0 as published on npm (built from neurons-me/GUI main @4d43cab), loaded from jsDelivr.
+// .GUI build: this.gui@4.3.0 as published on npm (built from neurons-me/GUI main @4d43cab), loaded from jsDelivr.
 // The same file the <script> in index.html loads (SRI there); re-hashed here (sha256) before anything runs.
 // The previous self-hosted vendor/this.gui-ed06869.umd.js stays in the repo, unused.
-const GUI_PIN = { label: "this.gui@4.2.0", version: "4.2.0", branch: "main", commit: "4d43cab", short: "4.2.0",
-  repo: "https://github.com/neurons-me/GUI", npm: "https://www.npmjs.com/package/this.gui/v/4.2.0",
-  url: "https://cdn.jsdelivr.net/npm/this.gui@4.2.0/dist/this.gui.umd.js", cdn: "https://cdn.jsdelivr.net/npm/this.gui@4.2.0/dist/this.gui.umd.js",
-  sha256: "2c53b0daf531337073e681d3d47accba35658f77ea2923bad55c9a4b970b4f7a", sri: "sha384-tAyskhiyJweQ9xXPVOSEJ0OQDE+lFsqRJvGRb8LVoqLbdNxYmJEhW21+fxcAYG0d" };
+const GUI_PIN = { label: "this.gui@4.3.0", version: "4.3.0", branch: "main", commit: "4d43cab", short: "4.3.0",
+  repo: "https://github.com/neurons-me/GUI", npm: "https://www.npmjs.com/package/this.gui/v/4.3.0",
+  url: "https://cdn.jsdelivr.net/npm/this.gui@4.3.0/dist/this.gui.umd.js", cdn: "https://cdn.jsdelivr.net/npm/this.gui@4.3.0/dist/this.gui.umd.js",
+  sha256: "4a81beb5673c8df2db449051b87404b37b9627e82b0e6a3d441f8d38fe5fec68", sri: "sha384-wZSWqOgarpDah0hINi5E+RSp2g3vUY0dacuRgUDextlT833ovzKYSzsBDCTMYSWV" };
 
 const G = window.GUI, h = React.createElement;
 const { Box, Button, Typography, Chip, Progress, Paper, Link, TextField } = G.Atoms;
@@ -393,7 +393,7 @@ function GuiBuildInfo(p) {
   const a = (href, text, title) => h(Link, { href, target: "_blank", rel: "noopener", underline: "hover", title }, text);
   const check = gui?.state === "ok" ? h("b", { key: "v" }, "verified") : gui?.state === "error" ? h(Box, { component: "span", sx: { color: "error.main" } }, "check failed") : "checking…";
   return h(Box, { component: "span", ...nodeAttrs(p) },
-    a(GUI_PIN.npm, GUI_PIN.label, "npm: this.gui@4.2.0"), " · ", a(GUI_PIN.repo, "neurons-me/GUI", "neurons-me/GUI"), ` @${GUI_PIN.commit} · jsDelivr, SRI + sha256 · `,
+    a(GUI_PIN.npm, GUI_PIN.label, "npm: this.gui@4.3.0"), " · ", a(GUI_PIN.repo, "neurons-me/GUI", "neurons-me/GUI"), ` @${GUI_PIN.commit} · jsDelivr, SRI + sha256 · `,
     a(GUI_PIN.url, "this.gui.umd.js", `sha256 ${GUI_PIN.sha256}`), " sha256 ", GUI_PIN.sha256.slice(0, 12), "… ", check,
     " · docs: ", ...GUI_DOCS.flatMap(([t, u], i) => [i ? " · " : "", a(u, t)]));
 }

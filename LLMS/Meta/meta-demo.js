@@ -2,6 +2,8 @@
  * Mounted by landing-gui.js from <div data-live="MetaDemo"> (window.LandingLive.MetaDemo). validate/paths/kernel below are a
  * line-by-line port of LLMS/typescript/src/{paths,validate,kernel}.ts to browser JS; the kernel is this.me@4.2.1 (jsDelivr UMD).
  * Recorded mode replays the ops muse-spark-1.3 returned in eval run 2026-10-29 (demo-data.js, generated from LLMS/eval/results).
+ * With .GUI's LLMS component (this.gui >= 4.3.0, window.GUI.LLMS) each proposal's code, graph and explain() render through it;
+ * older this.gui builds keep the built-in renderer below.
  * Live mode calls https://api.meta.ai/v1/chat/completions from the browser with a key the visitor types (kept in localStorage, Service keys).
  */
 (function (root) {
@@ -30,6 +32,14 @@
 
   // ── validate.ts ── (returns per-op errors too, for the pass/fail list)
   var FIELDS = { set: ["path", "value"], define: ["path", "name", "expr"], pointer: ["path", "target"], remove: ["path", "key"], secret: ["path"], noise: ["path"], identity: ["handle"], query: ["paths"] };
+  // GUI.* paths drive this page's own chrome; only these, only these values (set / query)
+  var GUI_ALLOW = { "GUI.window.layout.qr.corner": ["top-left", "top-right", "bottom-left", "bottom-right"] };
+  function guiError(o) { var ps = [o.path, o.target].concat(o.paths || []).filter(function (p) { return typeof p === "string"; }), bad = null;
+    ps.forEach(function (p) { if (bad || !/^GUI(\.|\[|$)/.test(p)) return; var c = canon(p);
+      if (!GUI_ALLOW[c]) bad = '"' + p + '" is not a writable GUI path (allowed: ' + Object.keys(GUI_ALLOW).join(", ") + ")";
+      else if (o.op === "set" && GUI_ALLOW[c].indexOf(o.value) < 0) bad = p + " must be one of " + GUI_ALLOW[c].join(", ");
+      else if (o.op !== "set" && o.op !== "query") bad = p + " only accepts set / query"; });
+    return bad; }
   var SECRETISH = /(pass(word)?|contrase(ñ|n)a|clave|secret|seed|semilla|pin|token|api[_-]?key|private[_-]?key|^key$)/i;
   var EXPR = /^[\p{L}\p{N}_$.\[\]\s+\-*/%()<>=!&|?:,'"]+$/u;
   var CONFIRM = ["secret", "noise", "identity", "remove"];
@@ -60,6 +70,7 @@
         case "identity": if (typeof o.handle !== "string" || !/^[a-z0-9][a-z0-9._-]{0,62}$/i.test(o.handle.replace(/^@/, ""))) push(w + ".handle must be a username"); break;
         case "query": if (!Array.isArray(o.paths) || !o.paths.length) push(w + ".paths must be a non-empty array"); else o.paths.forEach(function (p, j) { pe(p, "paths[" + j + "]"); }); break;
       }
+      var ge = guiError(o); if (ge) push(w + ": " + ge);
       return e;
     });
     if (errors.length) return { ops: [], errors: errors, per: per };
@@ -131,6 +142,7 @@
 
   // ── chat mode (live): the model decides. State in the message -> {"ops":[...]} (same schema); otherwise plain text. ──
   var CHAT = "\n\nCHAT MODE: you are also a normal assistant in a chat. If the user's message contains state to record (facts, values, rules, links, deletions) or asks to read recorded values, reply with ONLY the JSON object {\"ops\":[...]} as above. If it has nothing to record (a greeting, a general question, a request for an opinion), reply in plain conversational text, no JSON. Never mix the two.";
+  CHAT += "\n\nThis page's own layout is .me state too: GUI.window.layout.qr.corner (one of \"top-left\", \"top-right\", \"bottom-left\", \"bottom-right\") places the corner QR; \"move the QR to the top right\" is {\"ops\":[{\"op\":\"set\",\"path\":\"GUI.window.layout.qr.corner\",\"value\":\"top-right\"}]}. No other GUI.* path is writable.";
   var FORCE = "\n\nThis message MUST be answered with ONLY the JSON object {\"ops\":[...]}.";
   function chatMessages(i, hist, force) { var m = [{ role: "system", content: D.system + CHAT + (force ? FORCE : "") }];
     D.examples.forEach(function (ex) { m.push({ role: "user", content: userMessage(ex) }); m.push({ role: "assistant", content: JSON.stringify({ ops: ex.ops }) }); });
@@ -161,6 +173,10 @@
     ".mc-sb{width:300px;flex:0 0 300px;border-right:1px solid " + GRID + ";display:flex;flex-direction:column;min-height:0;background:" + mix(FG2, 4, BG) + ";transition:margin .2s}" +
     ".mc.shut .mc-sb{margin-left:-300px}" +
     ".mc-sbx{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:14px}" +
+    ".mc-qr{display:flex;align-items:center;justify-content:center;width:56px;height:48px;min-width:56px;flex:0 0 auto;margin:0;padding:0;color:inherit;text-decoration:none;cursor:pointer;border-radius:0}.mc-qr:hover{background:" + mix(FG2, 12, "transparent") + "}.mc-qr:focus-visible{outline:2px solid " + ACC + ";outline-offset:-2px}" +
+    ".mc-qrb{display:flex;transform-origin:center}.mc-qrf{font:700 12px/1 " + MONO + ";color:" + ACC + ";border:1.5px solid " + ACC + ";border-radius:50%;width:34px;height:34px;display:grid;place-items:center}" +
+    ".mc-qrc{position:absolute;z-index:22}.mc-qrc.tr{top:0;right:0}.mc-qrc.br{bottom:0;right:0}.mc-qrc.bl{bottom:0;left:0}.mc-qrsb{display:flex}" +
+    ".mc.qr-tr .mc-top{padding-right:62px}.mc.qr-br .mc-hint{padding-right:58px}" +
     ".mc-sb h4{margin:0 0 6px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:" + FG2 + ";font-weight:600}" +
     ".mc-cv{display:flex;flex-direction:column;gap:2px}.mc-cv button{font:inherit;font-size:13px;text-align:left;background:transparent;color:inherit;border:0;border-radius:8px;padding:6px 9px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.mc-cv button:hover{background:" + mix(FG2, 10) + "}.mc-cv button.cur{background:" + mix(ACC, 16) + "}" +
     ".mc-wide{width:100%;text-align:left;border-radius:10px!important;padding:7px 12px!important}" +
@@ -194,7 +210,7 @@
     ".mc-xpr{display:flex;gap:10px;align-items:center;padding:4px 10px;font-family:" + MONO + ";border-radius:6px;cursor:pointer}.mc-xpr.on{background:" + mix(ACC, 18) + ";box-shadow:inset 0 0 0 1px " + ACC + "}" +
     ".mc-xpe{padding:0 10px 4px 22px;color:" + FG2 + ";font-family:" + MONO + "}.mc-xpe code{color:" + DER + "}.mc-xpi{border-top:1px dashed " + GRID + ";padding:3px 0}.mc-xpi .mc-xpr{padding-left:22px}" +
     ".mc-xps{font:600 10px/1 " + MONO + ";padding:3px 6px;border:1px solid;border-radius:999px;text-transform:uppercase;letter-spacing:.04em}" +
-    ".mc-mx{padding:0 8px}.mc-mx:empty{display:none}.mc-mx .lh-ex{margin:0 0 8px}" +
+    ".mc-mx{padding:0 8px}.mc-mx:empty{display:none}.mc-mx .lh-ex{margin:0 0 8px}.mc-llms-code{margin:0}.mc-chk{color:" + OK + ";font-size:13px;cursor:help;margin:0 2px}.mc-llms-g{margin:8px 0 0}.mc-llms-g .llms-xp{margin:8px 0 0}" +
     // marking copied from the LLMS hero (llms-hero.js): words .lh-w, op tokens .lh-t, nodes, explain .lh-ex
     ".lh-w{cursor:pointer;border-radius:4px;padding:0 2px;margin:0 -2px;text-decoration:underline dotted " + mix(ACC, 55) + ";text-underline-offset:4px;transition:background .12s,color .12s}" +
     ".lh-w.on{background:" + mix(ACC, 22) + ";color:" + FG + ";text-decoration-color:" + ACC + "}.lh-w.rel{background:" + mix(ACC, 10) + "}" +
@@ -288,12 +304,12 @@
     var byText = function (t) { t = t.trim().toLowerCase(); return D.recorded.filter(function (r) { return r.text.toLowerCase() === t; })[0]; };
     var mobile = function () { return !!(root.matchMedia && root.matchMedia("(max-width:860px)").matches); };
     el.className = "mc"; document.body.classList.add("mc-on");
-    el.innerHTML = '<aside class="mc-sb"><div class="mc-sbx">' +
+    el.innerHTML = '<aside class="mc-sb"><div class="mc-qrsb"></div><div class="mc-sbx">' +
       '<button class="mc-ib mc-new mc-wide" title="Clear the chat and the state">+ New chat</button>' +
       '<div><h4>Chats</h4><div class="mc-cv"></div></div>' +
       '<div><h4>State · live graph</h4><div class="mc-g"></div><div class="mc-exs"></div></div>' +
       '<div><h4>Service keys</h4><button class="mc-kc" title="Meta API key">' + KEYI + '<span>Meta · Muse Spark</span></button></div>' +
-      '<div><h4>About</h4><p class="mc-info">The model proposes .me ops; this.me validates, dry-runs and computes. Nothing is written until you confirm.</p>' +
+      '<div><h4>About</h4><p class="mc-info" style="margin-bottom:6px"><span style="color:inherit;font-weight:600">Coherence is a relationship between statements.</span><br>Correctness is a relationship between a statement and the state it describes.<br>A model can be coherent. Only the state can make it correct.</p><p class="mc-info">The model proposes .me ops; this.me validates, dry-runs and computes. Nothing is written until you confirm.</p>' +
       '<p class="mc-info" style="margin-top:4px"><a href="/.me/LLMS/">LLMS</a> · <a href="docs.html">Meta adapter docs</a> · <a href="https://github.com/neurons-me/.me/tree/main/LLMS/Meta" target="_blank" rel="noopener">source</a></p></div>' +
       '</div></aside><div class="mc-bd"></div>' +
       '<div class="mc-main"><div class="mc-top"><button class="mc-ib mc-tg" aria-label="sidebar" title="Sidebar">☰</button><b>Muse Spark</b><span class="mc-mode">recorded</span><span class="mc-sp"></span>' +
@@ -324,21 +340,32 @@
     function setLive(on) { S.live = on; $(".mc-lv").classList.toggle("on", on); $(".mc-mode").textContent = on ? "live · " + MODEL : "recorded"; $(".mc-t").placeholder = on ? "Message Muse Spark" : "Pick an example, or add your key for live"; }
     $(".mc-lv").onclick = function () { if (S.live) return setLive(false); if (!S.key) return openKeys(); setLive(true); };
     // conversations (this session, in memory)
-    function snap() { return { seed: S.seed, batches: S.batches, paths: S.paths, derived: S.derived, hist: S.hist, changed: S.changed, html: log.innerHTML, ex: $(".mc-exs").innerHTML, g: $(".mc-g").innerHTML }; }
-    function load(c) { S.seed = c.seed; S.batches = c.batches; S.paths = c.paths; S.derived = c.derived; S.hist = c.hist; S.changed = c.changed; log.innerHTML = c.html; $(".mc-exs").innerHTML = sideDef = c.ex; sideSig = null; $(".mc-g").innerHTML = c.g;
-      log.querySelectorAll(".mc-yes,.mc-no,.mc-addkey").forEach(function (b) { b.remove(); }); }
+    function snap() { return { seed: S.seed, batches: S.batches, paths: S.paths, derived: S.derived, hist: S.hist, changed: S.changed, turn: S.turn || 0, html: log.innerHTML, ex: $(".mc-exs").innerHTML, g: $(".mc-g").innerHTML }; }
+    function load(c) { S.seed = c.seed; S.batches = c.batches; S.paths = c.paths; S.derived = c.derived; S.hist = c.hist; S.changed = c.changed; S.turn = c.turn || 0; S.waiting = false; chips(); if (qrEl) drawQR(); log.innerHTML = c.html; $(".mc-exs").innerHTML = sideDef = c.ex; sideSig = null; $(".mc-g").innerHTML = c.g;
+      log.querySelectorAll(".mc-yes,.mc-no,.mc-addkey").forEach(function (b) { b.remove(); }); if (LL() && S.batches.length) try { render(build()); } catch (e) {} }
     function conv() { return S.convs.filter(function (c) { return c.id === S.cur; })[0]; }
     function save() { var c = conv(); if (c) Object.assign(c, snap()); }
     function listUI() { var box = $(".mc-cv"); box.innerHTML = "";
       S.convs.slice().reverse().forEach(function (c) { var b = document.createElement("button"); b.textContent = c.title; b.title = c.title; if (c.id === S.cur) b.className = "cur";
         b.onclick = function () { if (S.busy || c.id === S.cur) return; save(); S.cur = c.id; load(c); listUI(); el.classList.remove("drw"); scr.scrollTop = scr.scrollHeight; }; box.appendChild(b); });
       if (!S.convs.length) box.innerHTML = '<p class="mc-info">No chats yet.</p>'; }
-    function fresh() { S.seed = {}; S.batches = []; S.paths = new Set(); S.derived = {}; S.hist = []; S.changed = {}; S.focus = [];
-      log.innerHTML = ""; $(".mc-exs").innerHTML = ""; $(".mc-g").innerHTML = EMPTY; ta.value = ""; ta.oninput(); S.cur = 0; listUI(); }
+    function fresh() { S.turn = 0; S.waiting = false; if (typeof chips === "function") chips(); S.seed = {}; S.batches = []; S.paths = new Set(); S.derived = {}; S.hist = []; S.changed = {}; S.focus = [];
+      log.innerHTML = ""; $(".mc-exs").innerHTML = ""; $(".mc-g").innerHTML = EMPTY; ta.value = ""; ta.oninput(); S.cur = 0; listUI(); if (typeof drawQR === "function" && qrEl) drawQR(); }
     function title(text) { if (S.cur) return; S.cur = ++S.n; S.convs.push(Object.assign({ id: S.cur, title: text.length > 42 ? text.slice(0, 40) + "…" : text }, snap())); listUI(); }
     $(".mc-new").onclick = function () { if (S.busy) return; save(); fresh(); el.classList.remove("drw"); ta.focus(); };
-    CHIPS.forEach(function (id) { var r = rec[id]; if (!r) return; var b = document.createElement("button"); b.className = "mc-chip"; b.textContent = r.text;
-      b.onclick = function () { send(r.text, r); }; $(".mc-chips").appendChild(b); });
+    // recorded conversation (D.thread, from record-demo.ts): one chat, each message builds on the confirmed state of the previous ones,
+    // so only the next message is offered (after the previous one is confirmed); ▶ plays the rest. Older data: the 5 separate examples.
+    var TH = D.thread && D.thread.length ? D.thread : null;
+    function chips() { var box = $(".mc-chips"); box.innerHTML = "";
+      if (!TH) { CHIPS.forEach(function (id) { var r = rec[id]; if (!r) return; var b = document.createElement("button"); b.className = "mc-chip"; b.textContent = r.text;
+        b.onclick = function () { send(r.text, r); }; box.appendChild(b); }); return; }
+      var i = S.turn || 0; if (i >= TH.length || S.waiting) return;
+      var b = document.createElement("button"); b.className = "mc-chip"; b.textContent = TH[i].text; b.onclick = function () { turn(); }; box.appendChild(b);
+      var p = document.createElement("button"); p.className = "mc-chip"; p.textContent = i ? "▶ play the rest" : "▶ play the conversation"; p.onclick = function () { play(); }; box.appendChild(p); }
+    function turn() { var r = TH[S.turn || 0]; if (!r || S.busy) return; if (S.live) return send(r.text);
+      S.waiting = true; chips(); send(r.text, { id: r.id, text: r.text, ops: r.ops, state: null, thread: true }); }
+    function play() { var go = function () { if ((S.turn || 0) >= TH.length) return; turn(); setTimeout(function () { var y = log.querySelector(".mc-a:last-child .mc-yes"); if (y) { y.click(); setTimeout(go, 900); } }, 900); }; go(); }
+    chips();
     ta.oninput = function () { ta.style.height = "auto"; ta.style.height = Math.min(180, ta.scrollHeight) + "px"; };
     ta.onkeydown = function (e) { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(ta.value); } };
     $(".mc-go").onclick = function () { send(ta.value); };
@@ -389,15 +416,17 @@
       return (HB.deps[A] || []).indexOf(B) >= 0 || (HB.deps[B] || []).indexOf(A) >= 0 ? 1 : 0; }
     function paint() { var a = HB.hov || HB.pin, A = a ? a.split(" ") : [];
       HB.views = HB.views.filter(function (v) { return v.box.isConnected; }); HB.views.forEach(function (v) { v.fn(A); });
+      HB.roots = (HB.roots || []).filter(function (r) { return r.box.isConnected || (r.root.unmount(), false); }); HB.roots.forEach(drawLLMS);
       el.querySelectorAll("[data-k]").forEach(function (n) { var r = 0; if (A.length) n.dataset.k.split(" ").forEach(function (b) { A.forEach(function (x) { r = Math.max(r, relK(b, x)); }); });
         n.classList.toggle("on", r === 2); n.classList.toggle("rel", r === 1); }); }
     var hit = function (e) { return e && e.closest ? e.closest("[data-k]") : null; };
+    var hitAny = function (e) { return e && e.closest ? e.closest("[data-k],[data-llms-k]") : null; };
     el.addEventListener("pointerdown", function (e) { HB.touch = e.pointerType === "touch"; }, true);
     el.addEventListener("mouseover", function (e) { if (HB.touch) return; var t = hit(e.target); if (t && t.dataset.k !== HB.hov) { HB.hov = t.dataset.k; paint(); } });
-    el.addEventListener("mouseout", function (e) { if (HB.hov && !hit(e.relatedTarget)) { HB.hov = null; paint(); } });
+    el.addEventListener("mouseout", function (e) { if (HB.hov && !hitAny(e.relatedTarget)) { HB.hov = null; paint(); } });
     el.addEventListener("click", function (e) { var gv = e.target.closest && e.target.closest(".mc-gv"), t = hit(e.target) || (gv && gv._down);
       if (gv && gv._moved) return; if (!t) return; HB.pin = HB.pin === t.dataset.k ? null : t.dataset.k; if (HB.touch) HB.hov = null; paint(); });
-    document.addEventListener("pointerdown", function (e) { if (HB.pin && !hit(e.target) && !(e.target.closest && e.target.closest(".mc-gv"))) { HB.pin = null; paint(); } });
+    document.addEventListener("pointerdown", function (e) { if (HB.pin && !hitAny(e.target) && !(e.target.closest && e.target.closest(".mc-gv,.llms-gv,.llms-gb"))) { HB.pin = null; paint(); } });
     function exInline(me, p, ch) { var x = null; try { x = me.explain(p); } catch (e) {} return xpCard(x, p, read(me, p), ch || {}); }
     // navigable mini graph: wheel/pinch zoom, drag pan, reset, expand to the full graph, click a node for explain()
     // start zoomed out: fit with padding, and center the root node when that still leaves the labels readable
@@ -436,16 +465,74 @@
       card.redraw = function () { draw(); sig = null; paint(); };
       draw(); addDeps(M.deps); show([]); }
 
+    // .GUI LLMS (this.gui >= 4.3.0): the proposal's code / graph / explain() as React roots, driven by the page's one active path (HB)
+    var LL = function () { return root.GUI && root.GUI.LLMS && root.ReactDOM && root.ReactDOM.createRoot ? root.GUI.LLMS : null; };
+    function drawLLMS(r) { r.root.render(React.createElement(LL(), Object.assign({}, r.props(), { activePath: HB.hov || HB.pin || null, pinnedPath: HB.pin || null, colors: "css",
+      onHoverPath: function (k) { if (HB.hov !== k) { HB.hov = k; paint(); } },
+      onPinPath: function (k) { HB.pin = HB.pin === k ? null : k; if (HB.touch) HB.hov = null; paint(); },
+      onNodeClick: function (p) { if (p) focusWriter(p); } }))); }
+    // a graph node click (sidebar or mini) scrolls to the confirmed message whose op wrote that path, opens it and highlights the line
+    var CARDS = [], wrote = function (o) { var p = canon(o.path || ""); return o.op === "define" ? canon(p + "." + o.name) : o.op === "remove" ? canon(p + "." + o.key) : o.op === "query" || o.op === "identity" ? null : p; };
+    function focusWriter(p) { p = canon(p); CARDS = CARDS.filter(function (c) { return c.a.isConnected; });
+      var hitc = null; for (var i = CARDS.length - 1; i >= 0 && !hitc; i--) if (CARDS[i].card.applied && CARDS[i].ops.some(function (o) { return wrote(o) === p; })) hitc = CARDS[i];
+      if (!hitc) return; CARDS.forEach(function (c) { if (c.card.focus) { c.card.focus = null; c.card.code && c.card.code(); } });
+      hitc.card.focus = p; hitc.card.code(); setTimeout(function () { var ln = hitc.a.querySelector(".llms-ln.focus") || hitc.a; ln.scrollIntoView({ block: "center", behavior: "smooth" }); }, 60); }
+    // an inline value edit becomes a local proposal (no model call): same validate / dry-run / pending graph / Confirm
+    function editOp(op, v) { var o = Object.assign({}, op, { value: v });
+      bubble("mc-u mc-edit", '✎ <span style="color:' + FG2 + '">edit</span> <span class="mc-p">' + esc(canon(o.path)) + '</span> ' + '<span class="mc-del">' + esc(J(op.value)) + '</span> → <span class="mc-n">' + esc(J(v)) + "</span>");
+      proposal(bubble("mc-a", ""), { ops: [o] }, "your edit · local, no model call", null, {}); save(); }
+    // the corner QR: .GUI's QRme naming this page's in-browser .me (the same linkQrValue the GUI corner encodes); its corner is .me state
+    var QRC = { "top-left": "tl", "top-right": "tr", "bottom-left": "bl", "bottom-right": "br" }, qrR = null, qrEl = null, qrCorner = null;
+    function meHandle() { var h = null; S.batches.forEach(function (b) { b.ops.forEach(function (o) { if (o.op === "identity") h = o.handle; }); }); return h; }
+    function qrInfo() { var host = location.host || "localhost", h = meHandle(), ep = location.origin, G = root.GUI || {}, v;
+      try { v = G.linkQrValue ? G.linkQrValue({ endpoint: ep, namespace: host, handle: h }) : ep + (h ? "/@" + h : ""); } catch (e) { v = ep; }
+      // without a handle the address must stay this page's own (the cleaker parser reads a 3-label host like a.github.io as prefix.host)
+      try { if (!h && new URL(v).host !== host) v = ep; } catch (e) { v = ep; }
+      return { value: v, handle: h, host: host, label: (h ? "@" + h + " · " : "") + host }; }
+    function drawQR(me) {
+      var c = null; try { c = read(me || build(), "GUI.window.layout.qr.corner"); } catch (e) {}
+      if (!QRC[c]) c = "top-left";
+      if (!qrEl) { qrEl = document.createElement("a"); qrEl.className = "mc-qr"; qrEl.href = "/.me/"; qrEl.setAttribute("data-gui-node-id", "GUI.window.layout.qr");
+        qrEl.innerHTML = '<span class="mc-qrb"></span>'; }
+      var q = qrInfo(); qrEl.setAttribute("aria-label", "Open .me — " + q.label); qrEl.title = q.label + " — in-browser .me · GUI.window.layout.qr.corner = " + c;
+      qrEl.dataset.qrValue = q.value; qrEl.dataset.corner = c;
+      if (c !== qrCorner) { qrCorner = c; Object.keys(QRC).forEach(function (k) { el.classList.remove("qr-" + QRC[k]); }); el.classList.add("qr-" + QRC[c]);
+        if (c === "top-left") { qrEl.className = "mc-qr"; $(".mc-qrsb").appendChild(qrEl); }
+        else if (c === "bottom-left") { qrEl.className = "mc-qr"; $(".mc-sb").appendChild(qrEl); }
+        else { qrEl.className = "mc-qr mc-qrc " + QRC[c]; el.appendChild(qrEl); } }
+      var box = qrEl.querySelector(".mc-qrb"), G = root.GUI || {};
+      if (G.QRme && root.ReactDOM && root.ReactDOM.createRoot) {
+        var sz = 34; try { sz = G.resolveTopbarQrSize ? G.resolveTopbarQrSize(q.value) : 34; } catch (e) {}
+        box.style.transform = "scale(" + (34 / sz) + ")";
+        if (!qrR) qrR = root.ReactDOM.createRoot(box);
+        var qr = React.createElement(G.QRme, { variant: "topbar", value: q.value, username: q.handle || undefined, status: "confirmed", statusLabel: "in-browser .me",
+          perimeterLabel: q.label, perimeterRootLabel: q.host, clickFlip: false, hoverFlip: false, cursor: "pointer", "data-gui-node-id": "GUI.window.layout.qr.badge" });
+        // QRme reads the GUI palette: give it the GUI theme (same mode as the page)
+        qrR.render(G.Theme ? React.createElement(G.Theme, { initialMode: root.matchMedia && root.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light" }, qr) : qr);
+      } else if (!box.firstChild) box.innerHTML = '<span class="mc-qrf">.me</span>'; // fallback without this.gui's QRme
+    }
+    // "move the QR to the top right": a local proposal (no model call), through the same validate / dry-run / Confirm
+    function qrIntent(t) { var m = /\b(?:move|put|place|send)\b.*\bqr\b.*?\b(top|bottom|upper|lower)[\s-]*(left|right)\b/i.exec(t); if (!m) return null;
+      var v = (/top|upper/i.test(m[1]) ? "top" : "bottom") + "-" + m[2].toLowerCase(); return { ops: [{ op: "set", path: "GUI.window.layout.qr.corner", value: v }] }; }
+    function mountLLMS(box, props) { var r = { box: box, root: root.ReactDOM.createRoot(box), props: props }; (HB.roots = HB.roots || []).push(r); drawLLMS(r); return r; }
+    // graph + explain() props from the mini model (or the full state when expanded), on the dry-run kernel until confirmed
+    function llmsProps(M, d, card) { var me = card.applied ? build() : d.after, F = fullModel(M, me);
+      var bf = {}; d.diff.forEach(function (x) { if (x.before !== undefined) bf[canon(x.path)] = x.before; });
+      var G = function (g) { return { nodes: g.nodes.map(function (p) { var n = { path: p, value: read(me, p), derived: !!g.der[p] }; if (p in bf) n.before = bf[p]; return n; }), edges: g.deps.map(function (e) { return { from: canon(e.from), to: canon(e.to) }; }) }; };
+      var ex = Object.keys(F.der).filter(function (p) { return M.der[p] || F.nodes.indexOf(p) >= 0; }).sort(function (a, b) { return (M.der[b] ? 1 : 0) - (M.der[a] ? 1 : 0); })
+        .map(function (p) { try { var x = me.explain(p); return x && x.expr ? JSON.parse(JSON.stringify(x)) : null; } catch (e) { return null; } }).filter(Boolean);
+      return { graph: G(M), explain: ex, changed: Object.keys(M.ch), graphHeight: 150, graphMode: "static", explainOnSelect: true }; }
     function bubble(cls, html) { var d = document.createElement("div"); d.className = "mc-m " + cls; d.innerHTML = html; log.appendChild(d); scr.scrollTop = scr.scrollHeight; return d; }
     function send(text, r) {
       text = String(text || "").trim(); if (!text || S.busy) return; ta.value = ""; ta.oninput();
+      var qi = qrIntent(text); if (qi) { title(text); bubble("mc-u", esc(text)); proposal(bubble("mc-a", ""), qi, "local · no model call", null, {}); return save(); }
       var force = /^me:/i.test(text), body = force ? text.replace(/^me:\s*/i, "") : text;
       r = r || byText(body);
       title(text); bubble("mc-u", esc(text));
       if (!S.live) {
         if (!r) { bubble("mc-a", '<div class="mc-note">Recorded mode only replays real responses from the eval run, so there is no answer for this message. <a href="#" class="mc-addkey">Add your Meta API key</a> to talk to ' + MODEL + " live, or pick an example above.</div>")
           .querySelector(".mc-addkey").onclick = function (e) { e.preventDefault(); openKeys(); }; save(); return; }
-        proposal(bubble("mc-a", ""), { ops: r.ops }, "recorded · " + MODEL + " · " + String((D.run && D.run.date) || "").slice(0, 10), r.state, { text: r.text }); return save();
+        proposal(bubble("mc-a", ""), { ops: r.ops }, "recorded · " + MODEL + " · " + String((D.run && D.run.date) || "").slice(0, 10), r.state, { text: r.text, thread: r.thread }); return save();
       }
       var seed = r ? r.state : null, a = bubble("mc-a", '<div class="mc-note">…</div>'), t0 = performance.now();
       var input = { text: body, state: (function () { var me = build(seed), st = {}; known(seed).forEach(function (p) { st[p] = read(me, p); }); return st; })(), speaker: r && r.speaker };
@@ -464,33 +551,47 @@
         .then(function () { S.busy = false; $(".mc-go").disabled = false; scr.scrollTop = scr.scrollHeight; save(); });
     }
 
-    function proposal(a, obj, src, seed) {
+    function proposal(a, obj, src, seed, opt) {
       var list = obj && Array.isArray(obj.ops) ? obj.ops : [], v = validateOps(obj);
       var h = '<div class="mc-src">' + esc(src) + "</div>";
-      if (list.length) h += '<pre class="mc-code me-code">' + hl(list.map(opCode).join("\n")) + "</pre>";
+      var useL = !!LL() && !v.errors.length;
+      if (list.length) h += useL ? '<div class="mc-llms-code"></div>' : '<pre class="mc-code me-code">' + hl(list.map(opCode).join("\n")) + "</pre>";
       else if (!v.errors.length) { a.innerHTML = h + '<div class="mc-note">Nothing to record in that message.</div>'; return; }
       if (v.errors.length) { a.innerHTML = h + '<div class="mc-v mc-bad">✗ ' + v.errors.map(esc).join("<br>✗ ") + '</div><div class="mc-note">Rejected by the validator; nothing reaches the kernel.</div>'; return; }
       var d = dry(v.ops, seed);
-      h += '<div class="mc-v ' + (d.errors.length ? "mc-bad" : "mc-ok") + '">' + (d.errors.length ? "✗ " + d.errors.map(esc).join("<br>✗ ") : '✓ <span style="color:' + FG2 + '">validated · dry-run ok</span>') + "</div>";
-      var df = d.diff.map(function (x) { return '<span class="mc-p">' + esc(x.path) + "</span> " + (x.before === undefined ? "" : '<span class="mc-del">' + esc(J(x.before)) + "</span> ") + '→ <span class="mc-n">' + esc(J(x.after)) + "</span>"; })
-        .concat(Object.keys(d.reads).map(function (p) { return '<span class="mc-p">' + esc(p) + '</span> = <span class="mc-n">' + esc(J(d.reads[p])) + "</span>"; }));
+      if (!useL || d.errors.length) h += '<div class="mc-v ' + (d.errors.length ? "mc-bad" : "mc-ok") + '">' + (d.errors.length ? "✗ " + d.errors.map(esc).join("<br>✗ ") : '✓ <span style="color:' + FG2 + '">validated · dry-run ok</span>') + "</div>";
+      var onlyQ = v.ops.every(function (o) { return o.op === "query"; });
+      var df = (useL ? [] : d.diff).map(function (x) { return '<span class="mc-p">' + esc(x.path) + "</span> " + (x.before === undefined ? "" : '<span class="mc-del">' + esc(J(x.before)) + "</span> ") + '→ <span class="mc-n">' + esc(J(x.after)) + "</span>"; })
+        .concat((useL && !onlyQ ? [] : Object.keys(d.reads)).map(function (p) { return '<span class="mc-p">' + esc(p) + '</span> = <span class="mc-n">' + esc(J(d.reads[p])) + "</span>"; }));
       if (df.length) h += '<div class="mc-diff">' + df.join("<br>") + "</div>";
       var M = miniModel(v.ops, d);
-      if (M) h += '<div class="mc-mini"><div class="mc-gv"></div><div class="mc-gb"><button class="mc-gbt mc-gx" title="Full graph">⤢</button><button class="mc-gbt mc-gr" title="Reset view">⟲</button></div><div class="mc-mx"></div></div>';
+      if (M && useL) h += '<div class="mc-llms-g"></div>';
+      else if (M) h += '<div class="mc-mini"><div class="mc-gv"></div><div class="mc-gb"><button class="mc-gbt mc-gx" title="Full graph">⤢</button><button class="mc-gbt mc-gr" title="Reset view">⟲</button></div><div class="mc-mx"></div></div>';
       var onlyQuery = v.ops.every(function (o) { return o.op === "query"; });
       if (!d.errors.length && !onlyQuery) {
         var sec = v.ops.filter(function (o) { return o.op === "secret" || o.op === "noise"; }), need = v.ops.filter(function (o) { return CONFIRM.indexOf(o.op) >= 0; });
         if (need.length) h += '<div class="mc-note mc-warn">Needs your OK: ' + need.map(function (o) { return o.op; }).join(", ") + ".</div>";
         h += sec.map(function (o) { return '<div class="mc-row"><input class="mc-in mc-sk" data-p="' + esc(o.path) + '" type="password" placeholder="key for ' + esc(o.path) + ' (never sent to the model)"></div>'; }).join("");
-        h += '<div class="mc-row"><button class="mc-btn mc-yes">Confirm</button><button class="mc-btn ghost mc-no">Discard</button><span class="mc-out mc-note" style="margin:0"></span></div>';
+        h += '<div class="mc-row"><button class="mc-btn mc-yes">Confirm</button>' + (useL ? '<span class="mc-chk" title="validated · dry-run ok" aria-label="validated · dry-run ok">✓</span>' : '') + '<button class="mc-btn ghost mc-no">Discard</button><span class="mc-out mc-note" style="margin:0"></span></div>';
       }
       a.innerHTML = h; scr.scrollTop = scr.scrollHeight;
       var card = {}, ub = a.previousElementSibling, scope = [a].concat(ub && ub.classList.contains("mc-u") ? [ub] : []);
-      if (M) { var idx = linkIndex(M, d.after); a.querySelectorAll(".mc-code").forEach(function (c) { linkText(c, idx, "lh-t"); }); linkText(a.querySelector(".mc-diff"), idx, "lh-t");
+      if (useL) { var lc = a.querySelector(".mc-llms-code"), lg = a.querySelector(".mc-llms-g");
+        var cr = mountLLMS(lc, function () { return { ops: v.ops, graph: M ? llmsProps(M, d, card).graph : undefined, parts: ["syntax"], pending: !card.applied, collapsed: !!card.applied, output: card.applied ? "Applied." : undefined, focusPath: card.focus || null,
+          onEditValue: card.focus ? function (i, x) { card.focus = null; card.code(); editOp(v.ops[i], x); } : undefined }; });
+        CARDS.push({ a: a, ops: v.ops, card: card });
+        card.code = function () { drawLLMS(cr); paint(); };
+        card.code = card.code || function () {}; if (!M) { var idx0 = linkIndex({ nodes: Array.from(known(seed)) }, d.after); linkText(a.querySelector(".mc-diff"), idx0, "lh-t"); paint(); }
+      }
+      if (M && useL) { var idx = linkIndex(M, d.after); linkText(a.querySelector(".mc-diff"), idx, "lh-t");
+        if (ub && ub.classList.contains("mc-u")) linkText(ub, idx, "lh-w");
+        var gr = mountLLMS(lg, function () { return Object.assign(llmsProps(M, d, card), { parts: ["graph", "explain"], pending: !card.applied }); });
+        addDeps(M.deps); card.redraw = function () { drawLLMS(gr); paint(); }; paint(); }
+      else if (M) { var idx = linkIndex(M, d.after); a.querySelectorAll(".mc-code").forEach(function (c) { linkText(c, idx, "lh-t"); }); linkText(a.querySelector(".mc-diff"), idx, "lh-t");
         if (ub && ub.classList.contains("mc-u")) linkText(ub, idx, "lh-w"); wireMini(a.querySelector(".mc-mini"), M, d, card); paint(); }
       var yes = a.querySelector(".mc-yes"); if (!yes) return;
       var done = function (msg, cls) { a.querySelectorAll(".mc-yes,.mc-no").forEach(function (b) { b.remove(); }); var o = a.querySelector(".mc-out"); o.className = "mc-out mc-note " + (cls || ""); o.textContent = msg; };
-      a.querySelector(".mc-no").onclick = function () { done("Discarded. Nothing changed."); save(); };
+      a.querySelector(".mc-no").onclick = function () { done("Discarded. Nothing changed."); if (opt && opt.thread) { S.waiting = false; chips(); } save(); };
       yes.onclick = function () {
         var sk = {}; a.querySelectorAll(".mc-sk").forEach(function (i) { if (i.value) sk[i.dataset.p] = i.value; });
         var prevSeed = S.seed, prevPaths = new Set(S.paths), prevDer = Object.assign({}, S.derived);
@@ -503,7 +604,9 @@
           v.ops.forEach(function (o) { if (o.op === "remove") { var p = canon(o.path + "." + o.key); Array.from(S.paths).forEach(function (q) { if (q === p || q.indexOf(p + ".") === 0 || q.indexOf(p + "[") === 0) S.paths.delete(q); }); delete S.derived[p]; try { var so = keys(canon(o.path)).reduce(function (x, k) { return x[k]; }, S.seed); if (so) delete so[o.key]; } catch (e) {} }
             if (o.op === "define") touched([o], d.known).forEach(function (p) { S.derived[p] = 1; S.paths.delete(p); }); });
           S.changed = {}; d.diff.forEach(function (x) { S.changed[x.path] = 1; });
-          render(me); card.applied = true; card.redraw && card.redraw(); done("Applied.", "mc-ok"); save();
+          render(me); card.applied = true; card.redraw && card.redraw();
+          if (card.code) { var row = yes.closest(".mc-row"); a.querySelectorAll(".mc-sk").forEach(function (i) { var r = i.closest(".mc-row"); if (r) r.remove(); }); a.querySelectorAll(".mc-warn").forEach(function (w) { w.remove(); }); if (row) row.remove(); card.code(); } else done("Applied.", "mc-ok");
+          if (opt && opt.thread) { S.turn = (S.turn || 0) + 1; S.waiting = false; chips(); } save();
         } catch (e) { S.batches.pop(); S.seed = prevSeed; S.paths = prevPaths; S.derived = prevDer; done(e.message, "mc-bad"); }
       };
     }
@@ -515,17 +618,23 @@
       var sg = t || ""; if (sg === sideSig) return; sideSig = sg; var me = build(), x = null;
       if (t) { try { x = me.explain(t); } catch (e) {} }
       $(".mc-exs").innerHTML = t ? xpCard(x, t, read(me, t), S.changed) : sideDef; } });
+    var sideR = null, sideP = null;
     function render(me) {
       var deps = [], exs = [], dpaths = Object.keys(S.derived);
       dpaths.forEach(function (p) { try { var x = me.explain(p); var on = ((x.meta && x.meta.dependsOn) || []);
         on.forEach(function (f) { deps.push({ from: f, to: p }); });
         if (S.changed[p] || on.some(function (f) { return S.changed[canon(f)]; })) exs.push(x); } catch (e) {} });
       var leaves = Array.from(S.paths).concat(dpaths).map(function (p) { return { path: p, value: read(me, p) }; });
-      $(".mc-g").innerHTML = leaves.length ? graph(leaves, S.derived, deps, S.changed) : "";
+      if (LL()) { sideP = { graph: { nodes: leaves.map(function (l) { return { path: l.path, value: l.value, derived: !!S.derived[l.path] }; }), edges: deps.map(function (e) { return { from: canon(e.from), to: canon(e.to) }; }) },
+          changed: Object.keys(S.changed), parts: ["graph"], graphHeight: 300 };
+        if (!leaves.length) $(".mc-g").innerHTML = "";
+        else if (sideR && sideR.box.isConnected) drawLLMS(sideR);
+        else { $(".mc-g").innerHTML = '<div class="mc-llms-side"></div>'; sideR = mountLLMS($(".mc-llms-side"), function () { return sideP; }); } }
+      else $(".mc-g").innerHTML = leaves.length ? graph(leaves, S.derived, deps, S.changed) : "";
       sideDef = exs.length ? exs.map(function (x) { return xpCard(x, x.path, x.value, S.changed); }).join("") + '<p class="mc-note">The model only named the formula; the kernel computed the value. <a href="https://neurons-me.github.io/.me/docs/Explain.html">explain()</a> shows where it came from.</p>' : "";
-      addDeps(deps); sideSig = null; paint();
+      addDeps(deps); sideSig = null; paint(); drawQR(me);
     }
-    $(".mc-g").innerHTML = EMPTY;
+    $(".mc-g").innerHTML = EMPTY; drawQR();
   }
 
   function MetaDemo() {

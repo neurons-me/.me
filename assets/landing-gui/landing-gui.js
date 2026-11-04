@@ -1,4 +1,4 @@
-// .GUI (this.gui@4.2.0) for hand-written .me landings. Copy of neurons-me.github.io docs/assets/landing-gui.js
+// .GUI (this.gui@4.3.0) for hand-written .me landings. Copy of neurons-me.github.io docs/assets/landing-gui.js
 // (the /robots/ and /smart-cities/ landings), kept here so .me pages don't depend on the site repo's paths, plus
 // the /.me/Demos/ index layout (kicker, h1, one line, image-left demo cards) and the /.me/docs/ index layout
 // (#static-landing[data-layout=docs-index]: kicker, h1 with the .me mark, language chips, cover-top cards, footer).

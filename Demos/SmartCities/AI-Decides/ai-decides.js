@@ -5,7 +5,7 @@
  * (CDN, SRI-checked); the page gets the wave's real recompute order as indices and replays it at the measured duration.
  * explain() on any node walks node → the write that last recomputed it → the decision behind that write → its wave →
  * the change (before is read from the kernel just before the write).
- * .GUI (this.gui 4.2.0): the figure, its centre, one part per route, the selected node, the panel and its sections are
+ * .GUI (this.gui 4.3.0): the figure, its centre, one part per route, the selected node, the panel and its sections are
  * registered parts (Grid Layout, Inspector); the Inspector's Explain is answered by the worker kernel.
  */
 (function () {

@@ -1,5 +1,9 @@
 # LLMS — natural language → .me operations
 
+> Coherence is a relationship between statements.  
+> Correctness is a relationship between a statement and the state it describes.  
+> A model can be coherent. Only the state can make it correct.
+
 Page: https://neurons-me.github.io/.me/LLMS/ (`me://LLMS/`)
 
 A model turns plain text (ES/EN) into a JSON list of `.me` ops. The ops are then

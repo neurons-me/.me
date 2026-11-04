@@ -66,7 +66,7 @@
   <!-- Pinned dependencies (jsDelivr, exact versions, Subresource Integrity), same as /.me/docs/ and /.me/Demos/. -->
   <script src="https://cdn.jsdelivr.net/npm/react@18.3.1/umd/react.production.min.js" integrity="sha384-DGyLxAyjq0f9SPpVevD6IgztCFlnMF6oW/XQGmfe+IsZ8TqEiDrcHkMLKI6fiB/Z" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/react-dom@18.3.1/umd/react-dom.production.min.js" integrity="sha384-gTGxhz21lVGYNMcdJOyq01Edg0jhn/c22nsx0kyqP0TxaV5WVdsSH1fSDUf5YJj1" crossorigin="anonymous"></script>
-  <script src="https://cdn.jsdelivr.net/npm/this.gui@4.2.0/dist/this.gui.umd.js" integrity="sha384-tAyskhiyJweQ9xXPVOSEJ0OQDE+lFsqRJvGRb8LVoqLbdNxYmJEhW21+fxcAYG0d" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/this.gui@4.3.0/dist/this.gui.umd.js" integrity="sha384-wZSWqOgarpDah0hINi5E+RSp2g3vUY0dacuRgUDextlT833ovzKYSzsBDCTMYSWV" crossorigin="anonymous"></script>
 <link rel="stylesheet" href="{{ '/assets/hiero.css' | relative_url }}">
 </head>
 <body>
@@ -98,6 +98,6 @@
 </div>
 <script type="application/json" id="doc-card-index">{{ site.data.doc_cards | jsonify }}</script>
 {% for s in page.scripts %}<script src="{{ s | relative_url }}"></script>
-{% endfor %}<script src="{{ '/assets/landing-gui/landing-gui.js' | relative_url }}?v=34" onerror="document.documentElement.classList.remove('gui-boot')"></script>
+{% endfor %}<script src="{{ '/assets/landing-gui/landing-gui.js' | relative_url }}?v=35" onerror="document.documentElement.classList.remove('gui-boot')"></script>
 </body>
 </html>
