@@ -435,7 +435,7 @@
     var TH0 = D.thread && D.thread.length ? D.thread : null, TH = TH0, TM = null;
     function startTest(name) { var T = TESTS[name]; if (!T || S.busy) return; save(); fresh(); TM = name; TH = T.turns; S.turn = 0; S.waiting = false; chips(); setLive(S.live); }
     function chips() { var box = $(".mc-chips"); box.innerHTML = "";
-      var tc = function () { if (TM) return; Object.keys(TESTS).forEach(function (n) { var b = document.createElement("button"); b.className = "mc-chip mc-test"; b.textContent = TESTS[n].chip; b.title = "Kernel-only test: hand-written ops, no model call"; b.onclick = function () { startTest(n); }; box.appendChild(b); }); };
+      var tc = function () { if (TM && S.waiting) return; Object.keys(TESTS).forEach(function (n) { if (n === TM) return; var b = document.createElement("button"); b.className = "mc-chip mc-test"; b.textContent = TESTS[n].chip; b.title = "Kernel-only test: hand-written ops, no model call"; b.onclick = function () { startTest(n); }; box.appendChild(b); }); };
       if (!TH) { CHIPS.forEach(function (id) { var r = rec[id]; if (!r) return; var b = document.createElement("button"); b.className = "mc-chip"; b.textContent = r.text;
         b.onclick = function () { send(r.text, r); }; box.appendChild(b); }); tc(); return; }
       var i = S.turn || 0; if (i >= TH.length || S.waiting) return tc();
