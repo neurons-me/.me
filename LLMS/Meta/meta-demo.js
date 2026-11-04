@@ -176,7 +176,8 @@
     ".mc-qr{display:flex;align-items:center;justify-content:center;width:56px;height:48px;min-width:56px;flex:0 0 auto;margin:0;padding:0;color:inherit;text-decoration:none;cursor:pointer;border-radius:0}.mc-qr:hover{background:" + mix(FG2, 12, "transparent") + "}.mc-qr:focus-visible{outline:2px solid " + ACC + ";outline-offset:-2px}" +
     ".mc-qrb{display:flex;transform-origin:center}.mc-qrf{font:700 12px/1 " + MONO + ";color:" + ACC + ";border:1.5px solid " + ACC + ";border-radius:50%;width:34px;height:34px;display:grid;place-items:center}" +
     ".mc-qrc{position:absolute;z-index:22}.mc-qrc.tr{top:0;right:0}.mc-qrc.br{bottom:0;right:0}.mc-qrc.bl{bottom:0;left:0}.mc-qrsb{display:flex}" +
-    ".mc.qr-tr .mc-top{padding-right:62px}.mc.qr-br .mc-hint{padding-right:58px}" +
+    ".mc-qr.mc-qrt{width:34px;height:34px;min-width:34px;margin:0 0 0 6px;border-radius:50%;align-self:center}.mc-qr.mc-qrt:hover{background:transparent}" +
+    ".mc.qr-tr .mc-top{padding-right:0}.mc.qr-br .mc-hint{padding-right:58px}" +
     ".mc-sb h4{margin:0 0 6px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:" + FG2 + ";font-weight:600}" +
     ".mc-cv{display:flex;flex-direction:column;gap:2px}.mc-cv button{font:inherit;font-size:13px;text-align:left;background:transparent;color:inherit;border:0;border-radius:8px;padding:6px 9px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.mc-cv button:hover{background:" + mix(FG2, 10) + "}.mc-cv button.cur{background:" + mix(ACC, 16) + "}" +
     ".mc-wide{width:100%;text-align:left;border-radius:10px!important;padding:7px 12px!important}" +
@@ -489,9 +490,13 @@
       // without a handle the address must stay this page's own (the cleaker parser reads a 3-label host like a.github.io as prefix.host)
       try { if (!h && new URL(v).host !== host) v = ep; } catch (e) { v = ep; }
       return { value: v, handle: h, host: host, label: (h ? "@" + h + " · " : "") + host }; }
+    // the shared topbar's right-hand group (search · Docs · GitHub · theme…): the top-right QR goes last, at the screen's far right
+    function topRight() { var n = document.querySelector(".topbar") || document.querySelector("header") || document.querySelector("nav"); return n && n.lastElementChild || null; }
+    // keep it there if the topbar re-renders
+    setInterval(function () { if (qrEl && qrCorner === "top-right") { var t = topRight(); if (t && (qrEl.parentNode !== t || t.lastElementChild !== qrEl)) { qrEl.className = "mc-qr mc-qrt"; t.appendChild(qrEl); } } }, 1000);
     function drawQR(me) {
       var c = null; try { c = read(me || build(), "GUI.window.layout.qr.corner"); } catch (e) {}
-      if (!QRC[c]) c = "top-left";
+      if (!QRC[c]) c = "top-right";
       if (!qrEl) { qrEl = document.createElement("a"); qrEl.className = "mc-qr"; qrEl.href = "/.me/"; qrEl.setAttribute("data-gui-node-id", "GUI.window.layout.qr");
         qrEl.innerHTML = '<span class="mc-qrb"></span>'; }
       var q = qrInfo(); qrEl.setAttribute("aria-label", "Open .me — " + q.label); qrEl.title = q.label + " — in-browser .me · GUI.window.layout.qr.corner = " + c;
@@ -499,6 +504,7 @@
       if (c !== qrCorner) { qrCorner = c; Object.keys(QRC).forEach(function (k) { el.classList.remove("qr-" + QRC[k]); }); el.classList.add("qr-" + QRC[c]);
         if (c === "top-left") { qrEl.className = "mc-qr"; $(".mc-qrsb").appendChild(qrEl); }
         else if (c === "bottom-left") { qrEl.className = "mc-qr"; $(".mc-sb").appendChild(qrEl); }
+        else if (c === "top-right" && topRight()) { qrEl.className = "mc-qr mc-qrt"; topRight().appendChild(qrEl); }
         else { qrEl.className = "mc-qr mc-qrc " + QRC[c]; el.appendChild(qrEl); } }
       var box = qrEl.querySelector(".mc-qrb"), G = root.GUI || {};
       if (G.QRme && root.ReactDOM && root.ReactDOM.createRoot) {
