@@ -7,6 +7,8 @@
 
 </div>
 
+> **Meta Hackathon demo:** [Live demo: Muse proposes. .me decides.](https://neurons-me.github.io/.me/LLMS/Meta/) · [3-min video](https://youtu.be/OqCf6rOIiAA) · source in [`LLMS/Meta/`](./LLMS/Meta/)
+
 <div class="static-hero">
 <table border="0" cellspacing="0" cellpadding="0" style="border:none; margin:0;">
   <tr>
