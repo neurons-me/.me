@@ -8,7 +8,7 @@
   var React = root.React; if (!React) return;
   var D = root.MetaDemoData || { recorded: [], examples: [], system: "" };
   var API = "https://api.meta.ai/v1/chat/completions", MODEL = "muse-spark-1.3";
-  var CHIPS = ["e24", "e07", "e05", "e23", "e20"];
+  var CHIPS = ["e24", "e05", "e20", "e07", "e23"]; // removals last, so no chip undoes an earlier chip's result
 
   // ── paths.ts ──
   var NAME = /^[\p{L}_$][\p{L}\p{N}_$-]*$/u, SEG = /^([\p{L}_$][\p{L}\p{N}_$-]*)(\[(\d+|i)\])?$/u;
@@ -158,7 +158,7 @@
     "@media(max-width:860px){.mc{grid-template-columns:minmax(0,1fr)}}" +
     ".mc-chat{border:1px solid " + GRID + ";border-radius:16px;display:flex;flex-direction:column;min-height:520px;max-height:78vh;position:relative}" +
     ".mc-top{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid " + GRID + ";font-size:13px;color:" + FG2 + "}.mc-top b{color:inherit;font-weight:600}.mc-sp{flex:1}" +
-    ".mc-ib{font:inherit;font-size:13px;background:transparent;color:inherit;border:1px solid " + GRID + ";border-radius:999px;padding:4px 10px;cursor:pointer}.mc-ib.on{border-color:" + ACC + ";color:" + ACC + "}" +
+    ".mc-ib{font:inherit;font-size:13px;background:transparent;color:inherit;border:1px solid " + GRID + ";border-radius:999px;padding:4px 10px;cursor:pointer}.mc-new{opacity:.7;font-size:12px;padding:3px 9px}.mc-new:hover{opacity:1}.mc-ib.on{border-color:" + ACC + ";color:" + ACC + "}" +
     ".mc-pop{position:absolute;top:46px;right:10px;z-index:5;width:min(340px,calc(100% - 20px));padding:14px;border-radius:12px;border:1px solid " + GRID + ";background:" + V("background-paper", "#161b22") + ";box-shadow:0 8px 30px rgba(0,0,0,.25);font-size:13px}" +
     ".mc-log{flex:1;overflow-y:auto;padding:16px 14px;display:flex;flex-direction:column;gap:12px}" +
     ".mc-m{max-width:88%;padding:9px 13px;border-radius:16px;white-space:pre-wrap;word-break:break-word}.mc-u{align-self:flex-end;background:" + mix(ACC, 18) + ";border-bottom-right-radius:5px}" +
@@ -243,23 +243,24 @@
     var byText = function (t) { t = t.trim().toLowerCase(); return D.recorded.filter(function (r) { return r.text.toLowerCase() === t; })[0]; };
     el.className = "mc";
     el.innerHTML = '<div class="mc-chat"><div class="mc-top"><b>Muse Spark</b><span class="mc-mode">recorded</span><span class="mc-sp"></span>' +
-      '<button class="mc-ib mc-lv" title="Use your own Meta API key">Live</button><button class="mc-ib mc-gear" aria-label="settings" title="Settings">⚙</button></div>' +
+      '<button class="mc-ib mc-new" title="Clear the chat and the state">New chat</button><button class="mc-ib mc-lv" title="Use your own Meta API key">Live</button><button class="mc-ib mc-gear" aria-label="settings" title="Settings">⚙</button></div>' +
       '<div class="mc-pop" hidden><div style="font-weight:600;margin-bottom:6px">Live mode · your Meta API key</div><div class="mc-row" style="margin:0"><input class="mc-in mc-k" type="password" autocomplete="off" placeholder="Meta API key"><button class="mc-btn ghost mc-kc">Forget key</button></div>' +
       '<p class="mc-note">Get one at <a href="https://dev.meta.ai/" target="_blank" rel="noopener">dev.meta.ai</a> (<a href="https://dev.meta.ai/docs/overview" target="_blank" rel="noopener">docs</a>). Kept in this tab only (sessionStorage), sent only to <code>api.meta.ai</code>. Each message is a real, billed call to <code>' + MODEL + "</code> (1 to 3 requests).</p></div>" +
       '<div class="mc-log" aria-live="polite"></div>' +
       '<div class="mc-foot"><div class="mc-chips"></div><div class="mc-send"><textarea class="mc-t" rows="1" placeholder="Message Muse Spark"></textarea><button class="mc-btn mc-go">Send</button></div>' +
       '<p class="mc-hint">Tell it facts, values or rules and it proposes changes for you to confirm. Start with <code>me:</code> to force that.</p></div></div>' +
       '<details class="mc-side" open><summary><h4>State · live graph</h4></summary><div class="mc-g"></div><div class="mc-exs"></div></details>';
-    var $ = function (s) { return el.querySelector(s); }, log = $(".mc-log");
+    var $ = function (s) { return el.querySelector(s); }, log = $(".mc-log"), EMPTY = '<p class="mc-note">Empty. Confirmed changes from the chat build up here.</p>', ta = $(".mc-t");
     if (root.matchMedia && root.matchMedia("(max-width:860px)").matches) $(".mc-side").open = false;
     function setLive(on) { S.live = on; $(".mc-lv").classList.toggle("on", on); $(".mc-mode").textContent = on ? "live · " + MODEL : "recorded"; $(".mc-t").placeholder = on ? "Message Muse Spark" : "Pick an example, or add your key for live"; }
+    $(".mc-new").onclick = function () { if (S.busy) return; S.seed = {}; S.batches = []; S.paths = new Set(); S.derived = {}; S.hist = []; S.changed = {}; S.focus = [];
+      log.innerHTML = ""; $(".mc-exs").innerHTML = ""; $(".mc-g").innerHTML = EMPTY; ta.value = ""; ta.oninput(); };
     $(".mc-gear").onclick = function () { $(".mc-pop").hidden = !$(".mc-pop").hidden; };
     $(".mc-lv").onclick = function () { if (S.live) return setLive(false); if (!S.key) { $(".mc-pop").hidden = false; $(".mc-k").focus(); return; } setLive(true); };
     $(".mc-k").value = S.key; $(".mc-k").oninput = function (e) { S.key = e.target.value.trim(); ss("llms-meta-key", S.key || null); setLive(!!S.key); };
     $(".mc-kc").onclick = function () { S.key = ""; $(".mc-k").value = ""; ss("llms-meta-key", null); setLive(false); };
     CHIPS.forEach(function (id) { var r = rec[id]; if (!r) return; var b = document.createElement("button"); b.className = "mc-chip"; b.textContent = r.text;
       b.onclick = function () { send(r.text, r); }; $(".mc-chips").appendChild(b); });
-    var ta = $(".mc-t");
     ta.oninput = function () { ta.style.height = "auto"; ta.style.height = Math.min(120, ta.scrollHeight) + "px"; };
     ta.onkeydown = function (e) { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(ta.value); } };
     $(".mc-go").onclick = function () { send(ta.value); };
@@ -354,7 +355,7 @@
       $(".mc-exs").innerHTML = exs.length ? exs.map(exBlock).join("") + '<p class="mc-note">The model only named the formula; the kernel computed the value. <a href="https://neurons-me.github.io/.me/docs/Explain.html">explain()</a> shows where it came from.</p>' : "";
       if (root.matchMedia && root.matchMedia("(max-width:860px)").matches) $(".mc-side").open = true;
     }
-    $(".mc-g").innerHTML = '<p class="mc-note">Empty. Confirmed changes from the chat build up here.</p>';
+    $(".mc-g").innerHTML = EMPTY;
   }
 
   function MetaDemo() {
