@@ -322,6 +322,12 @@
       '<div class="mc-row"><button class="mc-btn mc-ksave">Save</button><button class="mc-btn ghost mc-kdel">Remove</button><button class="mc-btn ghost mc-kx">Close</button></div>' +
       '<p class="mc-note">Get one at <a href="https://dev.meta.ai/" target="_blank" rel="noopener">dev.meta.ai</a>. Stored only in this browser (localStorage), sent only to <code>api.meta.ai</code>. Each live message is a billed call to <code>' + MODEL + "</code>.</p></div>";
     var $ = function (s) { return el.querySelector(s); }, scr = $(".mc-log"), log = $(".mc-col"), EMPTY = '<p class="mc-note">Empty. Confirmed changes from the chat build up here.</p>', ta = $(".mc-t");
+    // auto-scroll: follow new messages / proposals / Confirm results while the reader is near the bottom; their own send always follows
+    var stick = true, autoY = -1, toBottom = function (force) { if (force) stick = true; if (!stick) return; var y = scr.scrollHeight - scr.clientHeight; if (y - scr.scrollTop < 2) return; autoY = y;
+      try { scr.scrollTo({ top: y, behavior: "smooth" }); } catch (e) { scr.scrollTop = y; } };
+    scr.addEventListener("scroll", function () { var gap = scr.scrollHeight - scr.clientHeight - scr.scrollTop; if (gap < 2) autoY = -1; if (autoY < 0) stick = gap < 80; }, { passive: true });
+    ["wheel", "touchmove", "keydown"].forEach(function (ev) { scr.addEventListener(ev, function () { autoY = -1; }, { passive: true }); });
+    if (typeof ResizeObserver !== "undefined") new ResizeObserver(function () { toBottom(); }).observe(log);
     // full height under the shared topbar
     function fit() { var tb = document.querySelector(".topbar") || document.querySelector("header"); var t = tb ? Math.max(0, tb.getBoundingClientRect().bottom) : 56; el.style.setProperty("--mc-top", t + "px"); }
     fit(); root.addEventListener("resize", fit); setTimeout(fit, 300); setTimeout(fit, 1500);
@@ -580,7 +586,7 @@
       var ex = Object.keys(F.der).filter(function (p) { return M.der[p] || F.nodes.indexOf(p) >= 0; }).sort(function (a, b) { return (M.der[b] ? 1 : 0) - (M.der[a] ? 1 : 0); })
         .map(function (p) { try { var x = me.explain(p); return x && x.expr ? JSON.parse(JSON.stringify(x)) : null; } catch (e) { return null; } }).filter(Boolean);
       return { graph: G(M), explain: ex, changed: Object.keys(M.ch), graphHeight: 150, graphMode: "static", explainOnSelect: true }; }
-    function bubble(cls, html) { var d = document.createElement("div"); d.className = "mc-m " + cls; d.innerHTML = html; log.appendChild(d); scr.scrollTop = scr.scrollHeight; return d; }
+    function bubble(cls, html) { var d = document.createElement("div"); d.className = "mc-m " + cls; d.innerHTML = html; log.appendChild(d); toBottom(cls === "mc-u"); return d; }
     function send(text, r) {
       text = String(text || "").trim(); if (!text || S.busy) return; ta.value = ""; ta.oninput();
       var qi = qrIntent(text); if (qi) { title(text); bubble("mc-u", esc(text)); proposal(bubble("mc-a", ""), qi, "local · no model call", null, {}); return save(); }
@@ -606,7 +612,7 @@
           if (t.obj == null) { a.innerHTML = '<div class="mc-src">' + esc(src) + '</div><pre class="mc-code">' + esc(t.reply) + '</pre><div class="mc-v mc-bad">✗ model reply is not a JSON object</div>'; return; }
           proposal(a, t.obj, src, seed, { text: body }); })
         .catch(function (e) { a.innerHTML = '<div class="mc-v mc-bad">' + esc(e.message) + "</div>"; })
-        .then(function () { S.busy = false; $(".mc-go").disabled = false; scr.scrollTop = scr.scrollHeight; save(); });
+        .then(function () { S.busy = false; $(".mc-go").disabled = false; toBottom(); save(); });
     }
 
     function proposal(a, obj, src, seed, opt) {
@@ -632,7 +638,7 @@
         h += sec.map(function (o) { return '<div class="mc-row"><input class="mc-in mc-sk" data-p="' + esc(o.path) + '" type="password" placeholder="key for ' + esc(o.path) + ' (never sent to the model)"></div>'; }).join("");
         h += '<div class="mc-row"><button class="mc-btn mc-yes">Confirm</button>' + (useL ? '<span class="mc-chk" title="validated · dry-run ok" aria-label="validated · dry-run ok">✓</span>' : '') + '<button class="mc-btn ghost mc-no">Discard</button><span class="mc-out mc-note" style="margin:0"></span></div>';
       }
-      a.innerHTML = h; scr.scrollTop = scr.scrollHeight;
+      a.innerHTML = h; toBottom();
       var card = {}, ub = a.previousElementSibling, scope = [a].concat(ub && ub.classList.contains("mc-u") ? [ub] : []);
       if (useL) { var lc = a.querySelector(".mc-llms-code"), lg = a.querySelector(".mc-llms-g");
         var cr = mountLLMS(lc, function () { return { ops: v.ops, graph: M ? llmsProps(M, d, card).graph : undefined, parts: ["syntax"], pending: !card.applied, collapsed: !!card.applied, output: card.applied ? "Applied." : undefined, focusPath: card.focus || null,
