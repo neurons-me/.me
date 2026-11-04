@@ -295,6 +295,8 @@
     ".mc-hl{animation:mchl 2.4s ease}@keyframes mchl{0%,40%{r:9;opacity:1}100%{r:6.5}}" +
     ".mc-ex{margin-top:10px;padding:9px 11px;border-radius:10px;border:1px dashed " + mix(DER, 50) + ";background:" + mix(DER, 6) + "}.mc-ex pre{font-size:11.5px;white-space:pre;overflow-x:auto}" +
     ".mc-bd{display:none}" +
+    ".mc-sbx>*{min-width:0;max-width:100%}.mc-sb .mc-info,.mc-sb .mc-note,.mc-sb .lh-exn{white-space:normal;overflow-wrap:anywhere}.mc-sb pre,.mc-sb .lh-ex pre,.mc-sb .mc-ex pre{white-space:pre-wrap!important;overflow-wrap:anywhere;word-break:break-word;overflow-x:visible}.mc-sb .mc-xpr,.mc-sb .mc-xph{flex-wrap:wrap;min-width:0}.mc-sb .mc-xpr>*,.mc-sb .mc-xpe{min-width:0;overflow-wrap:anywhere;white-space:normal}.mc-sb .mc-xp{overflow:visible}" +
+    ".mc-hero{margin:0 0 8px;padding:10px 12px;border-radius:12px;border:1px solid " + mix(DER, 55) + ";background:" + mix(DER, 8) + ";font-family:" + MONO + ";overflow-wrap:anywhere}.mc-hero:empty{display:none}.mc-hero .mc-hp{font-size:13px;color:" + PATHC + "}.mc-hero .mc-hv{display:block;font-size:30px;line-height:1.15;font-weight:700;color:" + DER + "}.mc-hero .mc-hk{display:block;font-size:10.5px;color:" + FG2 + ";margin-top:2px}" +
     "@media(max-width:860px){.mc-sb{position:absolute;top:0;bottom:0;left:0;z-index:25;width:86vw;max-width:320px;margin-left:0!important;transform:translateX(-102%);transition:transform .2s;background:" + PAPER + "}.mc.drw .mc-sb{transform:none}.mc.drw .mc-bd{display:block;position:absolute;inset:0;z-index:24;background:rgba(0,0,0,.4)}}" +
     ".mc-gh{display:flex;align-items:center;justify-content:space-between;gap:6px}.mc-gh h4{margin:0 0 6px}.mc-gxo{font:inherit;font-size:13px;line-height:1;width:24px;height:24px;margin:-4px 0 2px;border-radius:6px;border:1px solid " + GRID + ";background:transparent;color:inherit;cursor:pointer;opacity:.75}.mc-gxo:hover{opacity:1;border-color:" + ACC + "}" +
     ".mc-gm{position:fixed;inset:0;z-index:2147483000;font-size:15px;line-height:1.5;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.55);backdrop-filter:blur(2px)}.mc-gm[hidden]{display:none}" +
@@ -385,7 +387,7 @@
     el.innerHTML = '<aside class="mc-sb"><div class="mc-qrsb"></div><div class="mc-sbx">' +
       '<button class="mc-ib mc-new mc-wide" title="Clear the chat and the state">+ New chat</button>' +
       '<div><h4>Chats</h4><div class="mc-cv"></div></div>' +
-      '<div><div class="mc-gh"><h4>State · live graph</h4><button class="mc-gxo" title="Expand graph" aria-label="Expand graph">⤢</button></div><div class="mc-g"></div><div class="mc-exs"></div></div>' +
+      '<div><div class="mc-gh"><h4>State · live graph</h4><button class="mc-gxo" title="Expand graph" aria-label="Expand graph">⤢</button></div><div class="mc-hero" aria-live="polite"></div><div class="mc-g"></div><div class="mc-exs"></div></div>' +
       '<div><h4>Service keys</h4><button class="mc-kc" title="Meta API key">' + KEYI + '<span>Meta · Muse Spark</span></button></div>' +
       '<div><h4>About</h4><p class="mc-info" style="margin-bottom:6px"><span style="color:inherit;font-weight:600">Coherence is a relationship between statements.</span><br>Correctness is a relationship between a statement and the state it describes.<br>A model can be coherent. Only the state can make it correct.</p><p class="mc-info">The model proposes .me ops; this.me validates, dry-runs and computes. Nothing is written until you confirm.</p>' +
       '<p class="mc-info" style="margin-top:4px"><a href="/.me/LLMS/">LLMS</a> · <a href="docs.html">Meta adapter docs</a> · <a href="https://github.com/neurons-me/.me/tree/main/LLMS/Meta" target="_blank" rel="noopener">source</a></p></div>' +
@@ -425,7 +427,7 @@
     $(".mc-lv").onclick = function () { if (S.live) return setLive(false); if (!S.key) return openKeys(); setLive(true); };
     // conversations (this session, in memory)
     function snap() { return { seed: S.seed, batches: S.batches, paths: S.paths, derived: S.derived, hist: S.hist, changed: S.changed, turn: S.turn || 0, tm: TM, html: log.innerHTML, ex: $(".mc-exs").innerHTML, g: $(".mc-g").innerHTML }; }
-    function load(c) { S.seed = c.seed; S.batches = c.batches; S.paths = c.paths; S.derived = c.derived; S.hist = c.hist; S.changed = c.changed; S.turn = c.turn || 0; TM = c.tm || null; TH = TM ? TESTS[TM].turns : TH0; S.waiting = false; chips(); setLive(S.live); if (qrEl) drawQR(); log.innerHTML = c.html; $(".mc-exs").innerHTML = sideDef = c.ex; sideSig = null; $(".mc-g").innerHTML = c.g;
+    function load(c) { $(".mc-hero").innerHTML = ""; S.seed = c.seed; S.batches = c.batches; S.paths = c.paths; S.derived = c.derived; S.hist = c.hist; S.changed = c.changed; S.turn = c.turn || 0; TM = c.tm || null; TH = TM ? TESTS[TM].turns : TH0; S.waiting = false; chips(); setLive(S.live); if (qrEl) drawQR(); log.innerHTML = c.html; $(".mc-exs").innerHTML = sideDef = c.ex; sideSig = null; $(".mc-g").innerHTML = c.g;
       log.querySelectorAll(".mc-yes,.mc-no,.mc-addkey").forEach(function (b) { b.remove(); }); if (LL() && S.batches.length) try { render(build()); } catch (e) {} }
     function conv() { return S.convs.filter(function (c) { return c.id === S.cur; })[0]; }
     function save() { var c = conv(); if (c) Object.assign(c, snap()); }
@@ -434,7 +436,7 @@
         b.onclick = function () { if (S.busy || c.id === S.cur) return; save(); S.cur = c.id; load(c); listUI(); el.classList.remove("drw"); scr.scrollTop = scr.scrollHeight; }; box.appendChild(b); });
       if (!S.convs.length) box.innerHTML = '<p class="mc-info">No chats yet.</p>'; }
     function fresh() { TM = null; TH = TH0; S.turn = 0; S.waiting = false; if (typeof chips === "function") chips(); S.seed = {}; S.batches = []; S.paths = new Set(); S.derived = {}; S.hist = []; S.changed = {}; S.focus = [];
-      log.innerHTML = ""; $(".mc-exs").innerHTML = ""; $(".mc-g").innerHTML = EMPTY; ta.value = ""; ta.oninput(); S.cur = 0; listUI(); if (typeof drawQR === "function" && qrEl) drawQR(); }
+      log.innerHTML = ""; $(".mc-exs").innerHTML = ""; $(".mc-hero").innerHTML = ""; $(".mc-g").innerHTML = EMPTY; ta.value = ""; ta.oninput(); S.cur = 0; listUI(); if (typeof drawQR === "function" && qrEl) drawQR(); }
     function title(text) { if (S.cur) return; S.cur = ++S.n; S.convs.push(Object.assign({ id: S.cur, title: text.length > 42 ? text.slice(0, 40) + "…" : text }, snap())); listUI(); }
     $(".mc-new").onclick = function () { if (S.busy) return; save(); fresh(); setLive(S.live); el.classList.remove("drw"); ta.focus(); };
     // recorded conversation (D.thread, from record-demo.ts): one chat, each message builds on the confirmed state of the previous ones,
@@ -843,8 +845,17 @@
         if (leaves.length) watchOps($(".mc-g .mc-llms-side"), me, deps, false); gmMe = me; gmDeps = deps; gmDraw(); }
       else $(".mc-g").innerHTML = leaves.length ? graph(leaves, S.derived, deps, S.changed) : "";
       sideDef = exs.length ? exs.map(function (x) { return xpCard(x, x.path, x.value, S.changed); }).join("") + '<p class="mc-note">The model only named the formula; the kernel computed the value. <a href="https://neurons-me.github.io/.me/docs/Explain.html">explain()</a> shows where it came from.</p>' : "";
-      addDeps(deps); sideSig = null; paint(); drawQR(me);
+      var hp = null; exs.forEach(function (x) { if (S.changed[canon(x.path)]) hp = canon(x.path); }); if (!hp && exs.length) hp = canon(exs[exs.length - 1].path); if (!hp && dpaths.length) hp = canon(dpaths[dpaths.length - 1]);
+      var up = function (p) { var q = null; deps.forEach(function (e) { if (!q && canon(e.to) === p && S.derived[canon(e.from)]) q = canon(e.from); }); return q; }, top = hp, g = 0; while (top && up(top) && g++ < 8) top = up(top);
+      var fv = function (v) { return typeof v === "number" ? String(+v.toFixed(10)) : J(v); }, hv = top ? read(me, top) : undefined;
+      $(".mc-hero").innerHTML = top && hv !== undefined ? '<span class="mc-hp">' + esc(top) + ' =</span><span class="mc-hv">' + esc(fv(hv)) + '</span>' + (hp !== top ? '<span class="mc-hk">' + esc(hp) + " = " + esc(fv(read(me, hp))) + '</span>' : "") + '<span class="mc-hk">computed by this.me · derived</span>' : "";
+      addDeps(deps); sideSig = null; paint(); drawQR(me); sideFitSoon();
     }
+    // sidebar graph: fit the whole drawing (nodes, pills, "= ..." labels) into its box, no clipping
+    var sfT = 0; function sideFit() { var sv = el.querySelector(".mc-g .llms-gv svg") || el.querySelector(".mc-g svg"); if (!sv) return; var bb; try { bb = sv.getBBox(); } catch (e) { return; } if (!bb.width) return;
+      var p = 10; sv.setAttribute("viewBox", [bb.x - p, bb.y - p, bb.width + 2 * p, bb.height + 2 * p].map(function (n) { return n.toFixed(1); }).join(" ")); sv.setAttribute("preserveAspectRatio", "xMidYMid meet"); }
+    function sideFitSoon() { clearTimeout(sfT); requestAnimationFrame(function () { requestAnimationFrame(sideFit); }); sfT = setTimeout(sideFit, 150); setTimeout(sideFit, 600); }
+    root.addEventListener("resize", sideFitSoon);
     $(".mc-g").innerHTML = EMPTY; drawQR();
     try { var qt = new URLSearchParams(location.search).get("test"); if (qt && TESTS[qt]) setTimeout(function () { startTest(qt); }, 400); } catch (e) {}
   }

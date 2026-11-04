@@ -15,7 +15,7 @@ github_url: https://github.com/neurons-me/.me/tree/main/LLMS/Meta
 scripts:
   - https://cdn.jsdelivr.net/npm/this.me@4.2.1/dist/me.umd.js
   - /LLMS/Meta/demo-data.js?v=4
-  - /LLMS/Meta/meta-demo.js?v=30
+  - /LLMS/Meta/meta-demo.js?v=31
 ---
 
 <div data-live="MetaDemo"><p>This demo needs JavaScript.</p></div>
