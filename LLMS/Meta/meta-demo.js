@@ -10,6 +10,26 @@
   var React = root.React; if (!React) return;
   var D = root.MetaDemoData || { recorded: [], examples: [], system: "" };
   var API = "https://api.meta.ai/v1/chat/completions", MODEL = "muse-spark-1.3";
+  // kernel-only test conversation (no model): hand-written ops, run through the same validate -> dry-run -> Confirm as model replies.
+  // Kept in sync with LLMS/typescript/tests/logic.test.ts, which asserts the values on this.me.
+  var TEST_SRC = "test · kernel only, no model";
+  var TESTS = { logic: { chip: "Test: full bill logic", turns: [
+    { text: "Back at the café, Ana and Luis order 2 coffees at 45 each and 2 breads at 25 each.", ops: [
+      { op: "set", path: "cafe.order.coffee.price", value: 45 }, { op: "set", path: "cafe.order.coffee.qty", value: 2 },
+      { op: "set", path: "cafe.order.bread.price", value: 25 }, { op: "set", path: "cafe.order.bread.qty", value: 2 },
+      { op: "set", path: "cafe.order.guests", value: ["Ana", "Luis"] }, { op: "set", path: "cafe.order.diners", value: 2 }] },
+    { text: "The subtotal is coffee price times its quantity plus bread price times its quantity.", ops: [
+      { op: "define", path: "cafe.order", name: "subtotal", expr: "coffee.price * coffee.qty + bread.price * bread.qty" }] },
+    { text: "They get a 10% discount on the subtotal, and 16% tax applies to what's left.", ops: [
+      { op: "define", path: "cafe.order", name: "discount", expr: "subtotal * 0.10" },
+      { op: "define", path: "cafe.order", name: "taxed", expr: "(subtotal - discount) * 1.16" }] },
+    { text: "Leave a 15% tip on the taxed amount; the total is taxed plus tip.", ops: [
+      { op: "define", path: "cafe.order", name: "tip", expr: "taxed * 0.15" },
+      { op: "define", path: "cafe.order", name: "total", expr: "taxed + tip" }] },
+    { text: "Ana and Luis split the total evenly.", ops: [
+      { op: "define", path: "cafe.order", name: "per_person", expr: "total / diners" }] },
+    { text: "The bread price just went up to 30.", ops: [{ op: "set", path: "cafe.order.bread.price", value: 30 }] },
+    { text: "What's the total now, and how much does each of them pay?", ops: [{ op: "query", paths: ["cafe.order.subtotal", "cafe.order.total", "cafe.order.per_person"] }] }] } };
   var CHIPS = ["e24", "e05", "e20", "e07", "e23"]; // removals last, so no chip undoes an earlier chip's result
 
   // ── paths.ts ──
@@ -344,11 +364,11 @@
     $(".mc-ksave").onclick = function () { var k = $(".mc-k").value.trim(); if (!k) return; S.key = k; ls(KS, k); $(".mc-k").value = ""; keyUI(); setLive(true); pop.hidden = true; };
     $(".mc-k").onkeydown = function (e) { if (e.key === "Enter") $(".mc-ksave").onclick(); };
     $(".mc-kdel").onclick = function () { S.key = ""; ls(KS, null); keyUI(); setLive(false); pop.hidden = true; };
-    function setLive(on) { S.live = on; $(".mc-lv").classList.toggle("on", on); $(".mc-mode").textContent = on ? "live · " + MODEL : "recorded"; $(".mc-t").placeholder = on ? "Message Muse Spark" : "Pick an example, or add your key for live"; }
+    function setLive(on) { S.live = on; $(".mc-lv").classList.toggle("on", on); $(".mc-mode").textContent = TM ? TEST_SRC : on ? "live · " + MODEL : "recorded"; $(".mc-t").placeholder = on ? "Message Muse Spark" : "Pick an example, or add your key for live"; }
     $(".mc-lv").onclick = function () { if (S.live) return setLive(false); if (!S.key) return openKeys(); setLive(true); };
     // conversations (this session, in memory)
-    function snap() { return { seed: S.seed, batches: S.batches, paths: S.paths, derived: S.derived, hist: S.hist, changed: S.changed, turn: S.turn || 0, html: log.innerHTML, ex: $(".mc-exs").innerHTML, g: $(".mc-g").innerHTML }; }
-    function load(c) { S.seed = c.seed; S.batches = c.batches; S.paths = c.paths; S.derived = c.derived; S.hist = c.hist; S.changed = c.changed; S.turn = c.turn || 0; S.waiting = false; chips(); if (qrEl) drawQR(); log.innerHTML = c.html; $(".mc-exs").innerHTML = sideDef = c.ex; sideSig = null; $(".mc-g").innerHTML = c.g;
+    function snap() { return { seed: S.seed, batches: S.batches, paths: S.paths, derived: S.derived, hist: S.hist, changed: S.changed, turn: S.turn || 0, tm: TM, html: log.innerHTML, ex: $(".mc-exs").innerHTML, g: $(".mc-g").innerHTML }; }
+    function load(c) { S.seed = c.seed; S.batches = c.batches; S.paths = c.paths; S.derived = c.derived; S.hist = c.hist; S.changed = c.changed; S.turn = c.turn || 0; TM = c.tm || null; TH = TM ? TESTS[TM].turns : TH0; S.waiting = false; chips(); setLive(S.live); if (qrEl) drawQR(); log.innerHTML = c.html; $(".mc-exs").innerHTML = sideDef = c.ex; sideSig = null; $(".mc-g").innerHTML = c.g;
       log.querySelectorAll(".mc-yes,.mc-no,.mc-addkey").forEach(function (b) { b.remove(); }); if (LL() && S.batches.length) try { render(build()); } catch (e) {} }
     function conv() { return S.convs.filter(function (c) { return c.id === S.cur; })[0]; }
     function save() { var c = conv(); if (c) Object.assign(c, snap()); }
@@ -356,21 +376,23 @@
       S.convs.slice().reverse().forEach(function (c) { var b = document.createElement("button"); b.textContent = c.title; b.title = c.title; if (c.id === S.cur) b.className = "cur";
         b.onclick = function () { if (S.busy || c.id === S.cur) return; save(); S.cur = c.id; load(c); listUI(); el.classList.remove("drw"); scr.scrollTop = scr.scrollHeight; }; box.appendChild(b); });
       if (!S.convs.length) box.innerHTML = '<p class="mc-info">No chats yet.</p>'; }
-    function fresh() { S.turn = 0; S.waiting = false; if (typeof chips === "function") chips(); S.seed = {}; S.batches = []; S.paths = new Set(); S.derived = {}; S.hist = []; S.changed = {}; S.focus = [];
+    function fresh() { TM = null; TH = TH0; S.turn = 0; S.waiting = false; if (typeof chips === "function") chips(); S.seed = {}; S.batches = []; S.paths = new Set(); S.derived = {}; S.hist = []; S.changed = {}; S.focus = [];
       log.innerHTML = ""; $(".mc-exs").innerHTML = ""; $(".mc-g").innerHTML = EMPTY; ta.value = ""; ta.oninput(); S.cur = 0; listUI(); if (typeof drawQR === "function" && qrEl) drawQR(); }
     function title(text) { if (S.cur) return; S.cur = ++S.n; S.convs.push(Object.assign({ id: S.cur, title: text.length > 42 ? text.slice(0, 40) + "…" : text }, snap())); listUI(); }
-    $(".mc-new").onclick = function () { if (S.busy) return; save(); fresh(); el.classList.remove("drw"); ta.focus(); };
+    $(".mc-new").onclick = function () { if (S.busy) return; save(); fresh(); setLive(S.live); el.classList.remove("drw"); ta.focus(); };
     // recorded conversation (D.thread, from record-demo.ts): one chat, each message builds on the confirmed state of the previous ones,
     // so only the next message is offered (after the previous one is confirmed); ▶ plays the rest. Older data: the 5 separate examples.
-    var TH = D.thread && D.thread.length ? D.thread : null;
+    var TH0 = D.thread && D.thread.length ? D.thread : null, TH = TH0, TM = null;
+    function startTest(name) { var T = TESTS[name]; if (!T || S.busy) return; save(); fresh(); TM = name; TH = T.turns; S.turn = 0; S.waiting = false; chips(); setLive(S.live); }
     function chips() { var box = $(".mc-chips"); box.innerHTML = "";
+      var tc = function () { if (TM) return; Object.keys(TESTS).forEach(function (n) { var b = document.createElement("button"); b.className = "mc-chip mc-test"; b.textContent = TESTS[n].chip; b.title = "Kernel-only test: hand-written ops, no model call"; b.onclick = function () { startTest(n); }; box.appendChild(b); }); };
       if (!TH) { CHIPS.forEach(function (id) { var r = rec[id]; if (!r) return; var b = document.createElement("button"); b.className = "mc-chip"; b.textContent = r.text;
-        b.onclick = function () { send(r.text, r); }; box.appendChild(b); }); return; }
-      var i = S.turn || 0; if (i >= TH.length || S.waiting) return;
+        b.onclick = function () { send(r.text, r); }; box.appendChild(b); }); tc(); return; }
+      var i = S.turn || 0; if (i >= TH.length || S.waiting) return tc();
       var b = document.createElement("button"); b.className = "mc-chip"; b.textContent = TH[i].text; b.onclick = function () { turn(); }; box.appendChild(b);
       var p = document.createElement("button"); p.className = "mc-chip"; p.textContent = i ? "▶ play the rest" : "▶ play the conversation"; p.onclick = function () { play(); }; box.appendChild(p); }
-    function turn() { var r = TH[S.turn || 0]; if (!r || S.busy) return; if (S.live) return send(r.text);
-      S.waiting = true; chips(); send(r.text, { id: r.id, text: r.text, ops: r.ops, state: null, thread: true }); }
+    function turn() { var r = TH[S.turn || 0]; if (!r || S.busy) return; if (S.live && !TM) return send(r.text);
+      S.waiting = true; chips(); send(r.text, { id: r.id, text: r.text, ops: r.ops, state: null, thread: true, test: !!TM }); }
     function play() { var go = function () { if ((S.turn || 0) >= TH.length) return; turn(); setTimeout(function () { var y = log.querySelector(".mc-a:last-child .mc-yes"); if (y) { y.click(); setTimeout(go, 900); } }, 900); }; go(); }
     chips();
     ta.oninput = function () { ta.style.height = "auto"; ta.style.height = Math.min(180, ta.scrollHeight) + "px"; };
@@ -555,10 +577,17 @@
       var by = {}; (box._deps || []).forEach(function (e) { var t = canon(e.to), f = canon(e.from); if (pos[t] && pos[f]) (by[t] = by[t] || []).indexOf(f) < 0 && by[t].push(f); });
       var keys0 = Object.keys(by); if (!keys0.length) return;
       var G = svgEl("g", { "class": "mc-ops" }), first = svg.querySelector(".llms-gn"); svg.insertBefore(G, first);
+      // deep chains: place pills in dependency order and nudge right past any pill / formula already there, so none overlap
+      var placed = [], FT = [], hitR = function (a, b) { return a.x < b.x + b.w + 4 && b.x < a.x + a.w + 4 && a.y < b.y + b.h + 2 && b.y < a.y + a.h + 2; };
+      var lvl = {}, depth = function (t, k) { if (lvl[t] != null) return lvl[t]; if ((k || 0) > 50) return 0; lvl[t] = 0; var m = 0; (by[t] || []).forEach(function (f) { if (by[f]) m = Math.max(m, depth(f, (k || 0) + 1) + 1); }); return lvl[t] = m; };
+      keys0.forEach(function (t) { depth(t); }); keys0.sort(function (a, b) { return lvl[a] - lvl[b] || pos[a].y - pos[b].y; });
+      keys0.forEach(function (t) { var tt0 = pos[t].g.querySelector("text"), fx = tt0 ? +tt0.getAttribute("x") : pos[t].x; var x0 = null; try { x0 = box._me.explain(t); } catch (e) {} var o0 = opInfo(x0); if (o0 && o0.formula && !box._pending) placed.push({ x: fx - 2, y: pos[t].y + 5, w: o0.formula.length * 5.2 + 4, h: 10 }); });
       keys0.forEach(function (t) { var x = null; try { x = box._me.explain(t); } catch (e) {} var oi = opInfo(x) || { label: "ƒ", formula: "", title: t };
         var b = pos[t], ins = by[t].map(function (f) { return pos[f]; }), xs = ins.concat([b]).map(function (p) { return p.x; });
-        var w = Math.max(14, oi.label.length * 6.1 + 8), ox = Math.max.apply(null, xs) + 16 + w / 2, R = ox + w / 2;
+        var w = Math.max(14, oi.label.length * 6.1 + 8), ox = Math.max.apply(null, xs) + 16 + w / 2;
         var ys = ins.map(function (p) { return p.y; }), oy = ins.length > 1 ? (Math.min.apply(null, ys) + Math.max.apply(null, ys)) / 2 : (ins[0].y + b.y) / 2;
+        for (var g0 = 0; g0 < 40 && placed.some(function (q) { return hitR({ x: ox - w / 2, y: oy - 7, w: w, h: 14 }, q); }); g0++) ox += 10;
+        placed.push({ x: ox - w / 2, y: oy - 7, w: w, h: 14 }); var R = ox + w / 2;
         // inputs bend in from the right (as the old dotted curves did), the pill's left side feeds the result
         ins.forEach(function (a) { G.appendChild(svgEl("path", { d: "M" + a.x + " " + a.y + " C" + (R + 14) + " " + a.y + " " + (R + 14) + " " + oy + " " + R + " " + oy,
           fill: "none", stroke: "var(--llms-der)", "stroke-dasharray": "3 3", "stroke-width": "1.1", opacity: ".75" })); });
@@ -569,9 +598,11 @@
         pg.appendChild(svgEl("rect", { x: ox - w / 2, y: oy - 7, width: w, height: 14, rx: 7, fill: "var(--llms-paper, " + PAPER + ")", stroke: "var(--llms-der)", "stroke-width": "1" }));
         pg.appendChild(svgEl("text", { x: ox, y: oy + 3.4, "text-anchor": "middle", style: "font-size:9.5px;font-weight:500;fill:var(--llms-der);stroke-width:0" }, oi.label)); G.appendChild(pg);
         if (oi.formula && !box._pending) { var tt = b.g.querySelector("text"), tx = tt ? +tt.getAttribute("x") : b.x;
-          G.appendChild(svgEl("text", { x: tx, y: b.y + 13, "class": "mc-opf", style: "font-size:8.5px;font-weight:400;fill:var(--llms-fg2, " + FG2 + ");opacity:.9;stroke-width:0" }, oi.formula)); } });
+          FT.push(svgEl("text", { x: tx, y: b.y + 13, "class": "mc-opf", style: "font-size:8.5px;font-weight:400;fill:var(--llms-fg2, " + FG2 + ");stroke:var(--llms-paper, " + PAPER + ");stroke-width:3px;stroke-linejoin:round;paint-order:stroke" }, oi.formula)); } });
+      // formulas on top of every line, with a paper halo so dotted lines pass behind the text
+      FT.forEach(function (n) { G.appendChild(n); });
       // the result's pill and formula sit to the right / below: grow the viewBox only if they fall outside it
-      try { var bb = G.getBBox(), vb = svg.viewBox.baseVal, x1 = Math.max(vb.x + vb.width, bb.x + bb.width + 18), y1 = Math.max(vb.y + vb.height, bb.y + bb.height + 4);
+      try { var bb = G.getBBox(), vb = svg.viewBox.baseVal, x1 = Math.max(vb.x + vb.width, bb.x + bb.width + 30), y1 = Math.max(vb.y + vb.height, bb.y + bb.height + 4);
         if (x1 > vb.x + vb.width || y1 > vb.y + vb.height) svg.setAttribute("viewBox", [vb.x, vb.y, x1 - vb.x, y1 - vb.y].map(function (n) { return n.toFixed(1); }).join(" ")); } catch (e) {} }
     function watchOps(box, me, deps, pending) { if (!box) return; box._me = me; box._deps = deps; box._pending = !!pending;
       if (!box._mo) { var busy = false; box._mo = new MutationObserver(function (ms) { if (busy) return; if (ms.every(function (m) { return m.target.closest && m.target.closest("g.mc-ops"); })) return;
@@ -593,6 +624,7 @@
       var force = /^me:/i.test(text), body = force ? text.replace(/^me:\s*/i, "") : text;
       r = r || byText(body);
       title(text); bubble("mc-u", esc(text));
+      if (r && r.test) { proposal(bubble("mc-a", ""), { ops: r.ops }, TEST_SRC, null, { text: r.text, thread: true }); return save(); }
       if (!S.live) {
         if (!r) { bubble("mc-a", '<div class="mc-note">Recorded mode only replays real responses from the eval run, so there is no answer for this message. <a href="#" class="mc-addkey">Add your Meta API key</a> to talk to ' + MODEL + " live, or pick an example above.</div>")
           .querySelector(".mc-addkey").onclick = function (e) { e.preventDefault(); openKeys(); }; save(); return; }
@@ -653,7 +685,7 @@
         addDeps(M.deps); watchOps(lg, d.after, M.deps, true); card.redraw = function () { drawLLMS(gr); watchOps(lg, card.applied ? build() : d.after, M.deps, !card.applied); paint(); }; paint(); }
       else if (M) { var idx = linkIndex(M, d.after); a.querySelectorAll(".mc-code").forEach(function (c) { linkText(c, idx, "lh-t"); }); linkText(a.querySelector(".mc-diff"), idx, "lh-t");
         if (ub && ub.classList.contains("mc-u")) linkText(ub, idx, "lh-w"); wireMini(a.querySelector(".mc-mini"), M, d, card); paint(); }
-      var yes = a.querySelector(".mc-yes"); if (!yes) return;
+      var yes = a.querySelector(".mc-yes"); if (!yes) { if (opt && opt.thread && onlyQuery && !d.errors.length) { S.turn = (S.turn || 0) + 1; S.waiting = false; chips(); } return; }
       var done = function (msg, cls) { a.querySelectorAll(".mc-yes,.mc-no").forEach(function (b) { b.remove(); }); var o = a.querySelector(".mc-out"); o.className = "mc-out mc-note " + (cls || ""); o.textContent = msg; };
       a.querySelector(".mc-no").onclick = function () { done("Discarded. Nothing changed."); if (opt && opt.thread) { S.waiting = false; chips(); } save(); };
       yes.onclick = function () {
@@ -700,6 +732,7 @@
       addDeps(deps); sideSig = null; paint(); drawQR(me);
     }
     $(".mc-g").innerHTML = EMPTY; drawQR();
+    try { var qt = new URLSearchParams(location.search).get("test"); if (qt && TESTS[qt]) setTimeout(function () { startTest(qt); if (/^(1|play|all)$/.test(new URLSearchParams(location.search).get("play") || "")) play(); }, 400); } catch (e) {}
   }
 
   function MetaDemo() {
@@ -711,5 +744,5 @@
     return React.createElement("div", { ref: ref });
   }
   root.LandingLive = Object.assign(root.LandingLive || {}, { MetaDemo: MetaDemo });
-  root.MetaDemoMount = mount;
+  root.MetaDemoMount = mount; root.MetaDemoTests = TESTS;
 })(typeof window !== "undefined" ? window : this);
