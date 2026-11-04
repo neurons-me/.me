@@ -658,8 +658,9 @@
         var ys = ins.map(function (p) { return p.y; }), oy = ins.length > 1 ? (Math.min.apply(null, ys) + Math.max.apply(null, ys)) / 2 : (ins[0].y + b.y) / 2;
         for (var g0 = 0; g0 < 40 && placed.some(function (q) { return hitR({ x: ox - w / 2, y: oy - 7, w: w, h: 14 }, q); }); g0++) ox += 10;
         placed.push({ x: ox - w / 2, y: oy - 7, w: w, h: 14 }); var R = ox + w / 2;
-        // inputs bend in from the right (as the old dotted curves did), the pill's left side feeds the result
-        ins.forEach(function (a) { G.appendChild(svgEl("path", { d: "M" + a.x + " " + a.y + " C" + (R + 14) + " " + a.y + " " + (R + 14) + " " + oy + " " + R + " " + oy,
+        // inputs run right, then turn into the pill's top / bottom edge, so every curve ends visibly on the pill (none loop past it)
+        ins.forEach(function (a) { var ey = a.y < oy - 1 ? oy - 7 : a.y > oy + 1 ? oy + 7 : oy, ex = ey === oy ? ox - w / 2 : ox;
+          G.appendChild(svgEl("path", { d: ey === oy ? "M" + a.x + " " + a.y + " L" + ex + " " + ey : "M" + a.x + " " + a.y + " C" + ex + " " + a.y + " " + ex + " " + a.y + " " + ex + " " + ey,
           fill: "none", stroke: "var(--llms-der)", "stroke-dasharray": "3 3", "stroke-width": "1.1", opacity: ".75" })); });
         var L0 = ox - w / 2, mx = Math.max(b.x + 6, L0 - 14);
         G.appendChild(svgEl("path", { d: "M" + L0 + " " + oy + " C" + mx + " " + oy + " " + mx + " " + b.y + " " + (b.x + 2) + " " + b.y,
