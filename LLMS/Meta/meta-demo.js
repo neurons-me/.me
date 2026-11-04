@@ -185,6 +185,7 @@
     ".mc-send{display:flex;gap:8px;align-items:flex-end;padding:6px;border:1px solid " + GRID + ";border-radius:24px;background:" + PAPER + "}.mc-send textarea{flex:1;min-width:0;resize:none;font:inherit;padding:8px 12px;border:0;outline:0;background:transparent;color:inherit;max-height:180px}" +
     ".mc-hint{font-size:11.5px;color:" + FG2 + ";margin-top:6px!important;padding:0 4px;opacity:.85}.mc-hint code{font-family:" + MONO + "}" +
     ".mc-g{margin-top:4px}.mc-g svg{display:block;width:100%;height:auto}.mc-g svg text{font-family:" + MONO + ";font-size:11px;fill:currentColor}" +
+    ".mc-mini{margin:8px 0 0;padding:6px 8px;border-radius:10px;border:1px solid " + GRID + ";overflow-x:auto}.mc-mini svg{display:block;max-height:150px;width:auto;max-width:100%;height:auto}.mc-mini svg text{font-family:" + MONO + ";font-size:11px;fill:currentColor}" +
     ".mc-hl{animation:mchl 2.4s ease}@keyframes mchl{0%,40%{r:11;opacity:1}100%{r:7}}" +
     ".mc-ex{margin-top:10px;padding:9px 11px;border-radius:10px;border:1px dashed " + mix(DER, 50) + ";background:" + mix(DER, 6) + "}.mc-ex pre{font-size:11.5px;white-space:pre;overflow-x:auto}" +
     ".mc-bd{display:none}" +
@@ -320,7 +321,15 @@
       ops.forEach(function (o, i) { if (o.op !== "define") return; var ps = touched([o], kn);
         if (!ps.length) errors.push("ops[" + i + "]: define on " + o.path + " matches no existing members");
         ps.forEach(function (p) { if (after && read(after, p) === undefined) errors.push("ops[" + i + "]: " + p + ' = "' + o.expr + '" evaluates to undefined (unknown name in expr?)'); }); });
-      return { diff: diff, reads: reads, errors: errors, known: kn }; }
+      return { diff: diff, reads: reads, errors: errors, known: kn, after: after }; }
+    // only what the proposal touches: written paths, derived nodes that recompute, and their direct inputs
+    function mini(ops, d) { if (!d.after || d.errors.length) return ""; var ch = {}, der = {}, deps = [], nodes = new Set();
+      d.diff.forEach(function (x) { ch[x.path] = 1; nodes.add(x.path); });
+      ops.forEach(function (o) { if (o.op === "define") touched([o], d.known).forEach(function (p) { der[p] = 1; }); });
+      Object.keys(S.derived).concat(Object.keys(der)).forEach(function (p) { try { var on = ((d.after.explain(p).meta || {}).dependsOn || []).map(canon);
+        if (der[p] || on.some(function (f) { return ch[f]; })) { der[p] = 1; ch[p] = 1; nodes.add(p); on.forEach(function (f) { nodes.add(f); deps.push({ from: f, to: p }); }); } } catch (e) {} });
+      if (!nodes.size) return "";
+      return '<div class="mc-mini">' + graph(Array.from(nodes).map(function (p) { return { path: p, value: read(d.after, p) }; }), der, deps, ch) + "</div>"; }
 
     function bubble(cls, html) { var d = document.createElement("div"); d.className = "mc-m " + cls; d.innerHTML = html; log.appendChild(d); scr.scrollTop = scr.scrollHeight; return d; }
     function send(text, r) {
@@ -360,6 +369,7 @@
       var df = d.diff.map(function (x) { return '<span class="mc-p">' + esc(x.path) + "</span> " + (x.before === undefined ? "" : '<span class="mc-del">' + esc(J(x.before)) + "</span> ") + '→ <span class="mc-n">' + esc(J(x.after)) + "</span>"; })
         .concat(Object.keys(d.reads).map(function (p) { return '<span class="mc-p">' + esc(p) + '</span> = <span class="mc-n">' + esc(J(d.reads[p])) + "</span>"; }));
       if (df.length) h += '<div class="mc-diff">' + df.join("<br>") + "</div>";
+      h += mini(v.ops, d);
       var onlyQuery = v.ops.every(function (o) { return o.op === "query"; });
       if (!d.errors.length && !onlyQuery) {
         var sec = v.ops.filter(function (o) { return o.op === "secret" || o.op === "noise"; }), need = v.ops.filter(function (o) { return CONFIRM.indexOf(o.op) >= 0; });
