@@ -326,8 +326,8 @@
     function setLive(on) { S.live = on; $(".mc-lv").classList.toggle("on", on); $(".mc-mode").textContent = on ? "live · " + MODEL : "recorded"; $(".mc-t").placeholder = on ? "Message Muse Spark" : "Pick an example, or add your key for live"; }
     $(".mc-lv").onclick = function () { if (S.live) return setLive(false); if (!S.key) return openKeys(); setLive(true); };
     // conversations (this session, in memory)
-    function snap() { return { seed: S.seed, batches: S.batches, paths: S.paths, derived: S.derived, hist: S.hist, changed: S.changed, html: log.innerHTML, ex: $(".mc-exs").innerHTML, g: $(".mc-g").innerHTML }; }
-    function load(c) { S.seed = c.seed; S.batches = c.batches; S.paths = c.paths; S.derived = c.derived; S.hist = c.hist; S.changed = c.changed; log.innerHTML = c.html; $(".mc-exs").innerHTML = sideDef = c.ex; sideSig = null; $(".mc-g").innerHTML = c.g;
+    function snap() { return { seed: S.seed, batches: S.batches, paths: S.paths, derived: S.derived, hist: S.hist, changed: S.changed, turn: S.turn || 0, html: log.innerHTML, ex: $(".mc-exs").innerHTML, g: $(".mc-g").innerHTML }; }
+    function load(c) { S.seed = c.seed; S.batches = c.batches; S.paths = c.paths; S.derived = c.derived; S.hist = c.hist; S.changed = c.changed; S.turn = c.turn || 0; S.waiting = false; chips(); log.innerHTML = c.html; $(".mc-exs").innerHTML = sideDef = c.ex; sideSig = null; $(".mc-g").innerHTML = c.g;
       log.querySelectorAll(".mc-yes,.mc-no,.mc-addkey").forEach(function (b) { b.remove(); }); if (LL() && S.batches.length) try { render(build()); } catch (e) {} }
     function conv() { return S.convs.filter(function (c) { return c.id === S.cur; })[0]; }
     function save() { var c = conv(); if (c) Object.assign(c, snap()); }
@@ -335,12 +335,23 @@
       S.convs.slice().reverse().forEach(function (c) { var b = document.createElement("button"); b.textContent = c.title; b.title = c.title; if (c.id === S.cur) b.className = "cur";
         b.onclick = function () { if (S.busy || c.id === S.cur) return; save(); S.cur = c.id; load(c); listUI(); el.classList.remove("drw"); scr.scrollTop = scr.scrollHeight; }; box.appendChild(b); });
       if (!S.convs.length) box.innerHTML = '<p class="mc-info">No chats yet.</p>'; }
-    function fresh() { S.seed = {}; S.batches = []; S.paths = new Set(); S.derived = {}; S.hist = []; S.changed = {}; S.focus = [];
+    function fresh() { S.turn = 0; S.waiting = false; if (typeof chips === "function") chips(); S.seed = {}; S.batches = []; S.paths = new Set(); S.derived = {}; S.hist = []; S.changed = {}; S.focus = [];
       log.innerHTML = ""; $(".mc-exs").innerHTML = ""; $(".mc-g").innerHTML = EMPTY; ta.value = ""; ta.oninput(); S.cur = 0; listUI(); }
     function title(text) { if (S.cur) return; S.cur = ++S.n; S.convs.push(Object.assign({ id: S.cur, title: text.length > 42 ? text.slice(0, 40) + "…" : text }, snap())); listUI(); }
     $(".mc-new").onclick = function () { if (S.busy) return; save(); fresh(); el.classList.remove("drw"); ta.focus(); };
-    CHIPS.forEach(function (id) { var r = rec[id]; if (!r) return; var b = document.createElement("button"); b.className = "mc-chip"; b.textContent = r.text;
-      b.onclick = function () { send(r.text, r); }; $(".mc-chips").appendChild(b); });
+    // recorded conversation (D.thread, from record-demo.ts): one chat, each message builds on the confirmed state of the previous ones,
+    // so only the next message is offered (after the previous one is confirmed); ▶ plays the rest. Older data: the 5 separate examples.
+    var TH = D.thread && D.thread.length ? D.thread : null;
+    function chips() { var box = $(".mc-chips"); box.innerHTML = "";
+      if (!TH) { CHIPS.forEach(function (id) { var r = rec[id]; if (!r) return; var b = document.createElement("button"); b.className = "mc-chip"; b.textContent = r.text;
+        b.onclick = function () { send(r.text, r); }; box.appendChild(b); }); return; }
+      var i = S.turn || 0; if (i >= TH.length || S.waiting) return;
+      var b = document.createElement("button"); b.className = "mc-chip"; b.textContent = TH[i].text; b.onclick = function () { turn(); }; box.appendChild(b);
+      var p = document.createElement("button"); p.className = "mc-chip"; p.textContent = i ? "▶ play the rest" : "▶ play the conversation"; p.onclick = function () { play(); }; box.appendChild(p); }
+    function turn() { var r = TH[S.turn || 0]; if (!r || S.busy) return; if (S.live) return send(r.text);
+      S.waiting = true; chips(); send(r.text, { id: r.id, text: r.text, ops: r.ops, state: null, thread: true }); }
+    function play() { var go = function () { if ((S.turn || 0) >= TH.length) return; turn(); setTimeout(function () { var y = log.querySelector(".mc-a:last-child .mc-yes"); if (y) { y.click(); setTimeout(go, 900); } }, 900); }; go(); }
+    chips();
     ta.oninput = function () { ta.style.height = "auto"; ta.style.height = Math.min(180, ta.scrollHeight) + "px"; };
     ta.onkeydown = function (e) { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(ta.value); } };
     $(".mc-go").onclick = function () { send(ta.value); };
@@ -462,7 +473,7 @@
       if (!S.live) {
         if (!r) { bubble("mc-a", '<div class="mc-note">Recorded mode only replays real responses from the eval run, so there is no answer for this message. <a href="#" class="mc-addkey">Add your Meta API key</a> to talk to ' + MODEL + " live, or pick an example above.</div>")
           .querySelector(".mc-addkey").onclick = function (e) { e.preventDefault(); openKeys(); }; save(); return; }
-        proposal(bubble("mc-a", ""), { ops: r.ops }, "recorded · " + MODEL + " · " + String((D.run && D.run.date) || "").slice(0, 10), r.state, { text: r.text }); return save();
+        proposal(bubble("mc-a", ""), { ops: r.ops }, "recorded · " + MODEL + " · " + String((D.run && D.run.date) || "").slice(0, 10), r.state, { text: r.text, thread: r.thread }); return save();
       }
       var seed = r ? r.state : null, a = bubble("mc-a", '<div class="mc-note">…</div>'), t0 = performance.now();
       var input = { text: body, state: (function () { var me = build(seed), st = {}; known(seed).forEach(function (p) { st[p] = read(me, p); }); return st; })(), speaker: r && r.speaker };
@@ -481,7 +492,7 @@
         .then(function () { S.busy = false; $(".mc-go").disabled = false; scr.scrollTop = scr.scrollHeight; save(); });
     }
 
-    function proposal(a, obj, src, seed) {
+    function proposal(a, obj, src, seed, opt) {
       var list = obj && Array.isArray(obj.ops) ? obj.ops : [], v = validateOps(obj);
       var h = '<div class="mc-src">' + esc(src) + "</div>";
       var useL = !!LL() && !v.errors.length;
@@ -517,7 +528,7 @@
         if (ub && ub.classList.contains("mc-u")) linkText(ub, idx, "lh-w"); wireMini(a.querySelector(".mc-mini"), M, d, card); paint(); }
       var yes = a.querySelector(".mc-yes"); if (!yes) return;
       var done = function (msg, cls) { a.querySelectorAll(".mc-yes,.mc-no").forEach(function (b) { b.remove(); }); var o = a.querySelector(".mc-out"); o.className = "mc-out mc-note " + (cls || ""); o.textContent = msg; };
-      a.querySelector(".mc-no").onclick = function () { done("Discarded. Nothing changed."); save(); };
+      a.querySelector(".mc-no").onclick = function () { done("Discarded. Nothing changed."); if (opt && opt.thread) { S.waiting = false; chips(); } save(); };
       yes.onclick = function () {
         var sk = {}; a.querySelectorAll(".mc-sk").forEach(function (i) { if (i.value) sk[i.dataset.p] = i.value; });
         var prevSeed = S.seed, prevPaths = new Set(S.paths), prevDer = Object.assign({}, S.derived);
@@ -530,7 +541,8 @@
           v.ops.forEach(function (o) { if (o.op === "remove") { var p = canon(o.path + "." + o.key); Array.from(S.paths).forEach(function (q) { if (q === p || q.indexOf(p + ".") === 0 || q.indexOf(p + "[") === 0) S.paths.delete(q); }); delete S.derived[p]; try { var so = keys(canon(o.path)).reduce(function (x, k) { return x[k]; }, S.seed); if (so) delete so[o.key]; } catch (e) {} }
             if (o.op === "define") touched([o], d.known).forEach(function (p) { S.derived[p] = 1; S.paths.delete(p); }); });
           S.changed = {}; d.diff.forEach(function (x) { S.changed[x.path] = 1; });
-          render(me); card.applied = true; card.redraw && card.redraw(); done("Applied.", "mc-ok"); save();
+          render(me); card.applied = true; card.redraw && card.redraw(); done("Applied.", "mc-ok");
+          if (opt && opt.thread) { S.turn = (S.turn || 0) + 1; S.waiting = false; chips(); } save();
         } catch (e) { S.batches.pop(); S.seed = prevSeed; S.paths = prevPaths; S.derived = prevDer; done(e.message, "mc-bad"); }
       };
     }

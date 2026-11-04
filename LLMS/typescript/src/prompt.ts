@@ -14,12 +14,14 @@ export function userMessage(i: ParseInput, secretPaths: string[] = []): string {
   ].filter(Boolean).join("\n");
 }
 
-export function buildMessages(i: ParseInput, opts: { secretPaths?: string[]; examples?: typeof EXAMPLES } = {}): ChatMessage[] {
+export function buildMessages(i: ParseInput, opts: { secretPaths?: string[]; examples?: typeof EXAMPLES; history?: ChatMessage[] } = {}): ChatMessage[] {
   const msgs: ChatMessage[] = [{ role: "system", content: SYSTEM_PROMPT }];
   for (const ex of opts.examples ?? EXAMPLES) {
     msgs.push({ role: "user", content: userMessage({ text: ex.text, state: ex.state, speaker: ex.speaker }) });
     msgs.push({ role: "assistant", content: JSON.stringify({ ops: ex.ops }) });
   }
+  // earlier turns of the same conversation (as the /LLMS/Meta chat sends them: the last 6 messages)
+  for (const t of (opts.history ?? []).slice(-6)) msgs.push({ role: t.role, content: t.content });
   msgs.push({ role: "user", content: userMessage(i, opts.secretPaths) });
   return msgs;
 }

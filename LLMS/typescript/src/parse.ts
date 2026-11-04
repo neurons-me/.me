@@ -7,13 +7,13 @@ import { buildMessages } from "./prompt.ts";
 import { extractJson, validateOps } from "./validate.ts";
 import { dryRun } from "./kernel.ts";
 
-export type ParseOptions = { model: ChatModel; maxRepairs?: number; secretPaths?: string[]; examples?: any[] };
+export type ParseOptions = { model: ChatModel; maxRepairs?: number; secretPaths?: string[]; examples?: any[]; history?: ChatMessage[] };
 
 export async function parse(input: ParseInput, opts: ParseOptions): Promise<ParseResult> {
   if (!input || typeof input.text !== "string" || !input.text.trim()) throw new Error("parse: text is required");
   const text = input.text.slice(0, 4000);
   const maxRepairs = Math.max(0, Math.min(2, opts.maxRepairs ?? 2));
-  const messages: ChatMessage[] = buildMessages({ ...input, text }, { secretPaths: opts.secretPaths, examples: opts.examples });
+  const messages: ChatMessage[] = buildMessages({ ...input, text }, { secretPaths: opts.secretPaths, examples: opts.examples, history: opts.history });
   const raw: string[] = [];
   let errors: string[] = [];
   for (let attempt = 1; attempt <= maxRepairs + 1; attempt++) {
