@@ -455,7 +455,18 @@
     var LL = function () { return root.GUI && root.GUI.LLMS && root.ReactDOM && root.ReactDOM.createRoot ? root.GUI.LLMS : null; };
     function drawLLMS(r) { r.root.render(React.createElement(LL(), Object.assign({}, r.props(), { activePath: HB.hov || HB.pin || null, pinnedPath: HB.pin || null, colors: "css",
       onHoverPath: function (k) { if (HB.hov !== k) { HB.hov = k; paint(); } },
-      onPinPath: function (k) { HB.pin = HB.pin === k ? null : k; if (HB.touch) HB.hov = null; paint(); } }))); }
+      onPinPath: function (k) { HB.pin = HB.pin === k ? null : k; if (HB.touch) HB.hov = null; paint(); },
+      onNodeClick: function (p) { if (p) focusWriter(p); } }))); }
+    // a graph node click (sidebar or mini) scrolls to the confirmed message whose op wrote that path, opens it and highlights the line
+    var CARDS = [], wrote = function (o) { var p = canon(o.path || ""); return o.op === "define" ? canon(p + "." + o.name) : o.op === "remove" ? canon(p + "." + o.key) : o.op === "query" || o.op === "identity" ? null : p; };
+    function focusWriter(p) { p = canon(p); CARDS = CARDS.filter(function (c) { return c.a.isConnected; });
+      var hitc = null; for (var i = CARDS.length - 1; i >= 0 && !hitc; i--) if (CARDS[i].card.applied && CARDS[i].ops.some(function (o) { return wrote(o) === p; })) hitc = CARDS[i];
+      if (!hitc) return; CARDS.forEach(function (c) { if (c.card.focus) { c.card.focus = null; c.card.code && c.card.code(); } });
+      hitc.card.focus = p; hitc.card.code(); setTimeout(function () { var ln = hitc.a.querySelector(".llms-ln.focus") || hitc.a; ln.scrollIntoView({ block: "center", behavior: "smooth" }); }, 60); }
+    // an inline value edit becomes a local proposal (no model call): same validate / dry-run / pending graph / Confirm
+    function editOp(op, v) { var o = Object.assign({}, op, { value: v });
+      bubble("mc-u mc-edit", '✎ <span style="color:' + FG2 + '">edit</span> <span class="mc-p">' + esc(canon(o.path)) + '</span> ' + '<span class="mc-del">' + esc(J(op.value)) + '</span> → <span class="mc-n">' + esc(J(v)) + "</span>");
+      proposal(bubble("mc-a", ""), { ops: [o] }, "your edit · local, no model call", null, {}); save(); }
     function mountLLMS(box, props) { var r = { box: box, root: root.ReactDOM.createRoot(box), props: props }; (HB.roots = HB.roots || []).push(r); drawLLMS(r); return r; }
     // graph + explain() props from the mini model (or the full state when expanded), on the dry-run kernel until confirmed
     function llmsProps(M, d, card) { var me = card.applied ? build() : d.after, F = fullModel(M, me);
@@ -501,8 +512,9 @@
       if (v.errors.length) { a.innerHTML = h + '<div class="mc-v mc-bad">✗ ' + v.errors.map(esc).join("<br>✗ ") + '</div><div class="mc-note">Rejected by the validator; nothing reaches the kernel.</div>'; return; }
       var d = dry(v.ops, seed);
       if (!useL || d.errors.length) h += '<div class="mc-v ' + (d.errors.length ? "mc-bad" : "mc-ok") + '">' + (d.errors.length ? "✗ " + d.errors.map(esc).join("<br>✗ ") : '✓ <span style="color:' + FG2 + '">validated · dry-run ok</span>') + "</div>";
+      var onlyQ = v.ops.every(function (o) { return o.op === "query"; });
       var df = (useL ? [] : d.diff).map(function (x) { return '<span class="mc-p">' + esc(x.path) + "</span> " + (x.before === undefined ? "" : '<span class="mc-del">' + esc(J(x.before)) + "</span> ") + '→ <span class="mc-n">' + esc(J(x.after)) + "</span>"; })
-        .concat(Object.keys(d.reads).map(function (p) { return '<span class="mc-p">' + esc(p) + '</span> = <span class="mc-n">' + esc(J(d.reads[p])) + "</span>"; }));
+        .concat((useL && !onlyQ ? [] : Object.keys(d.reads)).map(function (p) { return '<span class="mc-p">' + esc(p) + '</span> = <span class="mc-n">' + esc(J(d.reads[p])) + "</span>"; }));
       if (df.length) h += '<div class="mc-diff">' + df.join("<br>") + "</div>";
       var M = miniModel(v.ops, d);
       if (M && useL) h += '<div class="mc-llms-g"></div>';
@@ -517,12 +529,15 @@
       a.innerHTML = h; scr.scrollTop = scr.scrollHeight;
       var card = {}, ub = a.previousElementSibling, scope = [a].concat(ub && ub.classList.contains("mc-u") ? [ub] : []);
       if (useL) { var lc = a.querySelector(".mc-llms-code"), lg = a.querySelector(".mc-llms-g");
-        mountLLMS(lc, function () { return { ops: v.ops, graph: M ? llmsProps(M, d, card).graph : undefined, parts: ["syntax"] }; });
-        if (!M) { var idx0 = linkIndex({ nodes: Array.from(known(seed)) }, d.after); linkText(a.querySelector(".mc-diff"), idx0, "lh-t"); paint(); }
+        var cr = mountLLMS(lc, function () { return { ops: v.ops, graph: M ? llmsProps(M, d, card).graph : undefined, parts: ["syntax"], pending: !card.applied, collapsed: !!card.applied, output: card.applied ? "Applied." : undefined, focusPath: card.focus || null,
+          onEditValue: card.focus ? function (i, x) { card.focus = null; card.code(); editOp(v.ops[i], x); } : undefined }; });
+        CARDS.push({ a: a, ops: v.ops, card: card });
+        card.code = function () { drawLLMS(cr); paint(); };
+        card.code = card.code || function () {}; if (!M) { var idx0 = linkIndex({ nodes: Array.from(known(seed)) }, d.after); linkText(a.querySelector(".mc-diff"), idx0, "lh-t"); paint(); }
       }
       if (M && useL) { var idx = linkIndex(M, d.after); linkText(a.querySelector(".mc-diff"), idx, "lh-t");
         if (ub && ub.classList.contains("mc-u")) linkText(ub, idx, "lh-w");
-        var gr = mountLLMS(lg, function () { return Object.assign(llmsProps(M, d, card), { parts: ["graph", "explain"] }); });
+        var gr = mountLLMS(lg, function () { return Object.assign(llmsProps(M, d, card), { parts: ["graph", "explain"], pending: !card.applied }); });
         addDeps(M.deps); card.redraw = function () { drawLLMS(gr); paint(); }; paint(); }
       else if (M) { var idx = linkIndex(M, d.after); a.querySelectorAll(".mc-code").forEach(function (c) { linkText(c, idx, "lh-t"); }); linkText(a.querySelector(".mc-diff"), idx, "lh-t");
         if (ub && ub.classList.contains("mc-u")) linkText(ub, idx, "lh-w"); wireMini(a.querySelector(".mc-mini"), M, d, card); paint(); }
@@ -541,7 +556,8 @@
           v.ops.forEach(function (o) { if (o.op === "remove") { var p = canon(o.path + "." + o.key); Array.from(S.paths).forEach(function (q) { if (q === p || q.indexOf(p + ".") === 0 || q.indexOf(p + "[") === 0) S.paths.delete(q); }); delete S.derived[p]; try { var so = keys(canon(o.path)).reduce(function (x, k) { return x[k]; }, S.seed); if (so) delete so[o.key]; } catch (e) {} }
             if (o.op === "define") touched([o], d.known).forEach(function (p) { S.derived[p] = 1; S.paths.delete(p); }); });
           S.changed = {}; d.diff.forEach(function (x) { S.changed[x.path] = 1; });
-          render(me); card.applied = true; card.redraw && card.redraw(); done("Applied.", "mc-ok");
+          render(me); card.applied = true; card.redraw && card.redraw();
+          if (card.code) { var row = yes.closest(".mc-row"); a.querySelectorAll(".mc-sk").forEach(function (i) { var r = i.closest(".mc-row"); if (r) r.remove(); }); a.querySelectorAll(".mc-warn").forEach(function (w) { w.remove(); }); if (row) row.remove(); card.code(); } else done("Applied.", "mc-ok");
           if (opt && opt.thread) { S.turn = (S.turn || 0) + 1; S.waiting = false; chips(); } save();
         } catch (e) { S.batches.pop(); S.seed = prevSeed; S.paths = prevPaths; S.derived = prevDer; done(e.message, "mc-bad"); }
       };
