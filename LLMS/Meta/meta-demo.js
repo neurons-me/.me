@@ -316,7 +316,7 @@
   function scrubNums(rootN) { if (!rootN || !document.createTreeWalker) return; var w = document.createTreeWalker(rootN, 4), n, hit = [];
     while ((n = w.nextNode())) { var pe = n.parentNode; if (pe && /^(SCRIPT|STYLE|TEXTAREA|TITLE|title)$/.test(pe.nodeName)) continue; TAIL.lastIndex = 0; if (TAIL.test(n.nodeValue)) hit.push(n); }
     hit.forEach(function (n) { var raw = n.nodeValue, pe = n.parentNode, nums = raw.match(TAIL); n.nodeValue = raw.replace(TAIL, function (m) { return NUM(+m); });
-      var tip = nums.join(", "); if (pe.namespaceURI === "http://www.w3.org/2000/svg") { if (!pe.querySelector(":scope > title")) { var t = document.createElementNS("http://www.w3.org/2000/svg", "title"); t.textContent = tip; pe.insertBefore(t, pe.firstChild); } }
+      var tip = nums.join(", "); if (pe.namespaceURI === "http://www.w3.org/2000/svg") { var g = (pe.closest && pe.closest("g")) || pe.parentNode, t0 = g && g.querySelector(":scope > title"); if (t0) { if (t0.textContent.indexOf(tip) < 0) t0.textContent += " · " + tip; } else if (g) { var t = document.createElementNS("http://www.w3.org/2000/svg", "title"); t.textContent = tip; g.insertBefore(t, g.firstChild); } }
       else if (!pe.title) pe.title = tip; }); }
   function watchNums(rootN) { if (!rootN || typeof MutationObserver === "undefined") return; scrubNums(rootN); new MutationObserver(function () { scrubNums(rootN); }).observe(rootN, { childList: true, subtree: true, characterData: true }); }
   // ops -> .me code (what the kernel runs), coloured by the shared .me highlighter
