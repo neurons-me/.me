@@ -185,9 +185,9 @@
     ".mc-chip{font:inherit;font-size:12.5px;line-height:1.3;padding:5px 10px;border-radius:999px;border:1px solid " + GRID + ";background:transparent;color:inherit;cursor:pointer;text-align:left}.mc-chip:hover{border-color:" + ACC + "}" +
     ".mc-send{display:flex;gap:8px;align-items:flex-end;padding:6px;border:1px solid " + GRID + ";border-radius:24px;background:" + PAPER + "}.mc-send textarea{flex:1;min-width:0;resize:none;font:inherit;padding:8px 12px;border:0;outline:0;background:transparent;color:inherit;max-height:180px}" +
     ".mc-hint{font-size:11.5px;color:" + FG2 + ";margin-top:6px!important;padding:0 4px;opacity:.85}.mc-hint code{font-family:" + MONO + "}" +
-    ".mc-g{margin-top:4px}.mc-g svg{display:block;width:100%;height:auto}.mc-g svg text{font-family:" + MONO + ";font-size:11px;fill:currentColor}" +
+    ".mc-g{margin-top:4px}.mc-g svg{display:block;width:100%;height:auto}.mc-g svg text{font-family:" + MONO + ";font-size:10.5px;fill:currentColor}" +
     ".mc-mini{margin:8px 0 0;border-radius:10px;border:1px solid " + GRID + ";position:relative}.mc-gv{height:150px;overflow:hidden;touch-action:none;cursor:grab;padding:4px}.mc-gv.drag{cursor:grabbing}.mc-mini.big .mc-gv{height:min(360px,55vh)}" +
-    ".mc-gv svg{display:block;width:100%;height:100%;user-select:none}.mc-gv svg text{font-family:" + MONO + ";font-size:11px;fill:currentColor}" +
+    ".mc-gv svg{display:block;width:100%;height:100%;user-select:none}.mc-gv svg text{font-family:" + MONO + ";font-size:10.5px;fill:currentColor}" +
     ".mc-gb{position:absolute;top:4px;right:4px;display:flex;gap:4px}.mc-gbt{font:inherit;font-size:13px;line-height:1;width:26px;height:26px;border-radius:8px;border:1px solid " + GRID + ";background:" + PAPER + ";color:" + FG2 + ";cursor:pointer}.mc-gbt:hover,.mc-gbt.on{color:" + ACC + ";border-color:" + ACC + "}" +
     ".mc-xp{margin:8px 0;border:1px solid " + GRID + ";border-left:3px solid " + DER + ";border-radius:10px;background:" + PAPER + ";font-size:12.5px;overflow:hidden}" +
     ".mc-xph{display:flex;align-items:center;padding:5px 10px;border-bottom:1px solid " + GRID + ";font:600 11px/1.4 " + MONO + ";color:" + FG2 + "}.mc-xpt{font-size:10px;letter-spacing:.06em;text-transform:uppercase;opacity:.8}" +
@@ -199,11 +199,13 @@
     ".lh-w{cursor:pointer;border-radius:4px;padding:0 2px;margin:0 -2px;text-decoration:underline dotted " + mix(ACC, 55) + ";text-underline-offset:4px;transition:background .12s,color .12s}" +
     ".lh-w.on{background:" + mix(ACC, 22) + ";color:" + FG + ";text-decoration-color:" + ACC + "}.lh-w.rel{background:" + mix(ACC, 10) + "}" +
     ".lh-t[data-k]{cursor:pointer;border-radius:3px;transition:background .12s,box-shadow .12s}.lh-t.on{background:" + mix(ACC, 25) + ";box-shadow:0 0 0 1px " + ACC + "}.lh-t.rel{background:" + mix(ACC, 10) + "}" +
-    ".mc-gn{cursor:pointer}.mc-gn .mc-c{fill:" + PAPER + ";stroke-width:1.6;transition:stroke-width .12s,fill .12s}.mc-gn.on .mc-c{stroke-width:3.2;fill:" + mix(ACC, 18) + "}.mc-gn.rel .mc-c{stroke-width:2.4}" +
+    ".mc-gn{cursor:pointer}.mc-gn .mc-c{fill:" + PAPER + ";stroke-width:1.2;transition:stroke-width .12s,fill .12s}.mc-gn text{font-weight:400;opacity:.85;transition:opacity .12s}" +
+    ".mc-gn.on .mc-c{stroke:" + ACC + ";stroke-width:2.4;fill:" + mix(ACC, 35, PAPER) + "}.mc-gn.rel .mc-c{stroke-width:1.8}" +
+    ".mc-gn.on text,.mc-gn.rel text{opacity:1;paint-order:stroke;stroke-linejoin:round;stroke-width:6px}.mc-gn.on text{fill:" + FG + ";stroke:" + mix(ACC, 38, BG) + "}.mc-gn.rel text{stroke:" + mix(ACC, 16, BG) + "}" +
     ".lh-ex{margin:8px 0 0}.lh-ex pre{margin:0;font:11px/1.55 " + MONO + ";color:" + FG2 + ";white-space:pre;overflow-x:auto}.lh-exp{color:" + PATHC + "}.lh-exv{color:" + NUM + "}.lh-exd{color:" + DER + ";font-weight:600}" +
     ".lh-exr[data-k]{cursor:pointer}.lh-exr.on .lh-exp,.lh-exr.on .lh-exv,.lh-exr.ch .lh-exp,.lh-exr.ch .lh-exv{color:" + ACC + ";font-weight:600}.lh-exa{color:" + ACC + "}.lh-exn{margin:6px 0 0;font-size:12px;color:" + FG2 + "}.lh-exn code{font-family:" + MONO + ";color:" + PATHC + "}" +
     ".lh-fade{animation:lh-fade .45s ease both}@keyframes lh-fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}@media (prefers-reduced-motion:reduce){.lh-fade{animation:none}}@media (max-width:480px){.lh-ex pre{font-size:10px}}" +
-    ".mc-hl{animation:mchl 2.4s ease}@keyframes mchl{0%,40%{r:11;opacity:1}100%{r:7}}" +
+    ".mc-hl{animation:mchl 2.4s ease}@keyframes mchl{0%,40%{r:9;opacity:1}100%{r:6.5}}" +
     ".mc-ex{margin-top:10px;padding:9px 11px;border-radius:10px;border:1px dashed " + mix(DER, 50) + ";background:" + mix(DER, 6) + "}.mc-ex pre{font-size:11.5px;white-space:pre;overflow-x:auto}" +
     ".mc-bd{display:none}" +
     "@media(max-width:860px){.mc-sb{position:absolute;top:0;bottom:0;left:0;z-index:25;width:86vw;max-width:320px;margin-left:0!important;transform:translateX(-102%);transition:transform .2s;background:" + PAPER + "}.mc.drw .mc-sb{transform:none}.mc.drw .mc-bd{display:block;position:absolute;inset:0;z-index:24;background:rgba(0,0,0,.4)}}" +
@@ -226,7 +228,7 @@
   var hl = function (code) { try { return root.MeSyntax ? root.MeSyntax.toHTML(code) : esc(code); } catch (e) { return esc(code); } };
 
   // state graph: tree of leaf paths; index segments labelled by their path (items[1]); fits its box (viewBox, width 100%)
-  function graph(leaves, derivedSet, deps, changed) {
+  function graph(leaves, derivedSet, deps, changed, fit) {
     var T = { c: {}, order: [] };
     leaves.forEach(function (lf) { var segs = keys(lf.path), n = T;
       segs.forEach(function (s, i) { if (!n.c[s]) { n.c[s] = { k: /^\d+$/.test(s) ? (segs[i - 1] || "") + "[" + s + "]" : s, c: {}, order: [] }; n.order.push(s); } n = n.c[s]; });
@@ -249,9 +251,11 @@
     rows.forEach(function (r) { var der = r.leaf && derivedSet[r.p], ch = changed[r.p], col = der ? DER : r.leaf ? NUM : ACC;
       s += '<g class="mc-gn" data-k="' + esc(r.p) + '">';
       if (ch) s += '<circle class="mc-hl" cx="' + X(r.d) + '" cy="' + Y(r.y) + '" r="7" fill="none" stroke="' + ACC + '" stroke-width="1.5"/>';
-      s += '<circle class="mc-c" cx="' + X(r.d) + '" cy="' + Y(r.y) + '" r="' + (r.d ? 5 : 6) + '" stroke="' + col + '"/>';
-      s += '<text x="' + (X(r.d) + 10) + '" y="' + (Y(r.y) + 4) + '"' + (ch ? ' font-weight="700"' : "") + ">" + esc(r.k) + (r.leaf ? ' <tspan fill="' + col + '">' + esc(val(r)) + "</tspan>" : "") + "</text></g>"; });
+      s += '<circle class="mc-c" cx="' + X(r.d) + '" cy="' + Y(r.y) + '" r="' + (r.d ? 3.5 : 4.5) + '" stroke="' + col + '"/>';
+      s += '<text x="' + (X(r.d) + 10) + '" y="' + (Y(r.y) + 4) + '"' + "" + ">" + esc(r.k) + (r.leaf ? ' <tspan fill="' + col + '">' + esc(val(r)) + "</tspan>" : "") + "</text></g>"; });
     var H = Math.max(1, y) * RH + 10;
+    if (fit) { var R = rows.filter(function (r) { return !r.d; }), cy = R.reduce(function (m, r) { return m + Y(r.y); }, 0) / Math.max(1, R.length);
+      return '<svg viewBox="0 0 ' + Math.ceil(W) + " " + H + '" data-rx="' + X(0) + '" data-ry="' + Math.round(cy) + '" role="img" aria-label="state graph">' + s + "</svg>"; }
     return '<svg viewBox="0 0 ' + Math.ceil(W) + " " + H + '" style="max-width:' + Math.ceil(W * 1.15) + 'px" role="img" aria-label="state graph">' + s + "</svg>";
   }
   function exBlock(x) { if (!x) return ""; var ins = (x.derivation && x.derivation.inputs) || [];
@@ -396,11 +400,16 @@
     document.addEventListener("pointerdown", function (e) { if (HB.pin && !hit(e.target) && !(e.target.closest && e.target.closest(".mc-gv"))) { HB.pin = null; paint(); } });
     function exInline(me, p, ch) { var x = null; try { x = me.explain(p); } catch (e) {} return xpCard(x, p, read(me, p), ch || {}); }
     // navigable mini graph: wheel/pinch zoom, drag pan, reset, expand to the full graph, click a node for explain()
+    // start zoomed out: fit with padding, and center the root node when that still leaves the labels readable
+    function fitVB(sv) { var bb = sv.getBBox(), cw = sv.clientWidth || 300, chh = sv.clientHeight || 140, px = 22, py = 14;
+      var rx = +sv.dataset.rx, ry = +sv.dataset.ry, hx = Math.max(rx - bb.x, bb.x + bb.width - rx) + px, hy = Math.max(ry - bb.y, bb.y + bb.height - ry) + py;
+      var sc = Math.min(cw / (2 * hx), chh / (2 * hy));
+      return sc >= 1 ? [rx - hx, ry - hy, 2 * hx, 2 * hy] : [bb.x - px, bb.y - py, bb.width + 2 * px, bb.height + 2 * py]; }
     function wireMini(box, M, d, card) {
       var full = false, vb0, vb, svgEl, inst = function () { return card.applied ? build() : d.after; };
       function draw() { var me = inst(), G = full ? fullModel(M, me) : M;
-        box.querySelector(".mc-gv").innerHTML = graph(G.nodes.map(function (p) { return { path: p, value: read(me, p) }; }), G.der, G.deps, G.ch);
-        svgEl = box.querySelector("svg"); svgEl.removeAttribute("style"); var b = svgEl.viewBox.baseVal; vb0 = [b.x, b.y, b.width, b.height]; vb = vb0.slice(); setVB();
+        box.querySelector(".mc-gv").innerHTML = graph(G.nodes.map(function (p) { return { path: p, value: read(me, p) }; }), G.der, G.deps, G.ch, true);
+        svgEl = box.querySelector("svg"); svgEl.removeAttribute("style"); vb0 = fitVB(svgEl); vb = vb0.slice(); setVB();
         box.classList.toggle("big", full); box.querySelector(".mc-gx").classList.toggle("on", full); }
       function setVB() { svgEl.setAttribute("viewBox", vb.join(" ")); }
       function zoom(f, cx, cy) { var r = svgEl.getBoundingClientRect(), px = vb[0] + (cx - r.left) / r.width * vb[2], py = vb[1] + (cy - r.top) / r.height * vb[3];
