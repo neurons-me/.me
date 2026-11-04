@@ -1,0 +1,165 @@
+{
+  "model": "muse-spark-1.3",
+  "date": "2026-11-04T18:56:54.890Z",
+  "thread": [
+    {
+      "id": "c1",
+      "text": "I run a small café. Coffee is 45 and bread is 20.",
+      "lang": "en",
+      "state": {},
+      "ops": [
+        {
+          "op": "set",
+          "path": "cafe.coffee",
+          "value": 45
+        },
+        {
+          "op": "set",
+          "path": "cafe.bread",
+          "value": 20
+        }
+      ],
+      "ok": true,
+      "errors": [],
+      "ms": 34614,
+      "attempts": 1
+    },
+    {
+      "id": "c2",
+      "text": "Make the order total coffee plus bread.",
+      "lang": "en",
+      "state": {
+        "cafe.coffee": 45,
+        "cafe.bread": 20
+      },
+      "ops": [
+        {
+          "op": "define",
+          "path": "order",
+          "name": "total",
+          "expr": "cafe.coffee + cafe.bread"
+        }
+      ],
+      "ok": true,
+      "errors": [],
+      "ms": 4903,
+      "attempts": 1
+    },
+    {
+      "id": "c3",
+      "text": "Bread goes up to 25.",
+      "lang": "en",
+      "state": {
+        "cafe.coffee": 45,
+        "cafe.bread": 20,
+        "order.total": 65
+      },
+      "ops": [
+        {
+          "op": "set",
+          "path": "cafe.bread",
+          "value": 25
+        }
+      ],
+      "ok": true,
+      "errors": [],
+      "ms": 6364,
+      "attempts": 1
+    },
+    {
+      "id": "d1",
+      "text": "Quick, from memory: what's the order total? Just the number in one short sentence.",
+      "lang": "en",
+      "state": {
+        "cafe.coffee": 45,
+        "cafe.bread": 25,
+        "order.total": 70
+      },
+      "context": "stale",
+      "reply": "{\"ops\":[{\"op\":\"query\",\"paths\":[\"order.total\"]}]}",
+      "ms": 19146,
+      "attempts": 1
+    },
+    {
+      "id": "r1",
+      "text": "Make the total include the tip.",
+      "lang": "en",
+      "state": {
+        "cafe.coffee": 45,
+        "cafe.bread": 25,
+        "order.total": 70
+      },
+      "ops": [
+        {
+          "op": "define",
+          "path": "order",
+          "name": "total",
+          "expr": "cafe.coffee + cafe.bread + tip"
+        }
+      ],
+      "ok": false,
+      "errors": [
+        "ops[0].expr: unknown path \"tip\" — nothing in the state is called that (looked for order.tip, tip); nothing was written"
+      ],
+      "ms": 14965,
+      "attempts": 1
+    },
+    {
+      "id": "c4",
+      "text": "Add 16% tax to the total.",
+      "lang": "en",
+      "state": {
+        "cafe.coffee": 45,
+        "cafe.bread": 25,
+        "order.total": 70
+      },
+      "ops": [
+        {
+          "op": "define",
+          "path": "order",
+          "name": "total",
+          "expr": "(cafe.coffee + cafe.bread) * 1.16"
+        }
+      ],
+      "ok": true,
+      "errors": [],
+      "ms": 13653,
+      "attempts": 1
+    },
+    {
+      "id": "c5",
+      "text": "Ana paid the order for her and Luis, split it.",
+      "lang": "en",
+      "state": {
+        "cafe.coffee": 45,
+        "cafe.bread": 25,
+        "order.total": 81.19999999999999
+      },
+      "ops": [
+        {
+          "op": "set",
+          "path": "split.expenses[1].payer",
+          "value": "Ana"
+        },
+        {
+          "op": "set",
+          "path": "split.expenses[1].participants",
+          "value": [
+            "Ana",
+            "Luis"
+          ]
+        },
+        {
+          "op": "define",
+          "path": "split.expenses[1]",
+          "name": "amount",
+          "expr": "order.total"
+        }
+      ],
+      "ok": true,
+      "errors": [],
+      "ms": 21009,
+      "attempts": 1
+    }
+  ]
+}
