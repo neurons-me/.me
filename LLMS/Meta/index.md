@@ -1,7 +1,7 @@
 ---
 layout: gui-doc
 title: ".me — LLMS · Meta demo"
-description: "Type a sentence; Meta Muse Spark proposes .me ops; they are validated, dry-run on a throwaway this.me, and applied only when you confirm."
+description: "Chat with Meta Muse Spark. Every change it suggests is checked and previewed, and nothing is saved until you confirm."
 image: https://neurons-me.github.io/.me/LLMS/assets/llms-og.png
 canonical: https://neurons-me.github.io/.me/LLMS/Meta/
 mepath:
