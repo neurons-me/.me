@@ -4,7 +4,24 @@
 > Correctness is a relationship between a statement and the state it describes.  
 > A model can be coherent. Only the state can make it correct.
 
+**Muse proposes, .me decides.** A model answering from probabilistic memory can stay
+coherent with itself while the world has moved on. We call this **Contextual Momentum**:
+the order was coffee 45 + bread 20 = 65; bread changes to 25; a model extending the old
+picture still says "The total is 65" (coherent ✓, not correct ✗, a hallucination). The
+`.me` deterministic knowledge graph holds bread 25 and derives total 70. The model only
+proposes ops; the kernel validates and computes, so hallucination never becomes state.
+
 Page: https://neurons-me.github.io/.me/LLMS/ (`me://LLMS/`)
+
+## Meta demo (`LLMS/Meta/`): live vs recorded
+- **Live:** the first three turns (coffee 45 → bread 25 → total 70) call Meta
+  `muse-spark-1.3` at recording time through `api.meta.ai/v1`.
+- **Recorded:** the drift question, the rejected `tip` proposal, and tax + split (81.2)
+  replay a real `muse-spark-1.3` run saved in `LLMS/Meta/recorded-en.json` (2026-11-04);
+  they are not live calls and the page labels them as recorded.
+- The opening 65 vs 70 comparison is an illustrative example, not Muse output.
+- Pre-existing: the `this.me` kernel and the HTML page. Built this week: LLMS chat,
+  Muse adapter, validator.
 
 A model turns plain text (ES/EN) into a JSON list of `.me` ops. The ops are then
 **parsed → validated (schema + path rules) → dry-run on a throwaway ME → diffed**.
