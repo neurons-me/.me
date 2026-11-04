@@ -196,7 +196,7 @@
     ".mc-xpr{display:flex;gap:10px;align-items:center;padding:4px 10px;font-family:" + MONO + ";border-radius:6px;cursor:pointer}.mc-xpr.on{background:" + mix(ACC, 18) + ";box-shadow:inset 0 0 0 1px " + ACC + "}" +
     ".mc-xpe{padding:0 10px 4px 22px;color:" + FG2 + ";font-family:" + MONO + "}.mc-xpe code{color:" + DER + "}.mc-xpi{border-top:1px dashed " + GRID + ";padding:3px 0}.mc-xpi .mc-xpr{padding-left:22px}" +
     ".mc-xps{font:600 10px/1 " + MONO + ";padding:3px 6px;border:1px solid;border-radius:999px;text-transform:uppercase;letter-spacing:.04em}" +
-    ".mc-mx{padding:0 8px}.mc-mx:empty{display:none}.mc-mx .lh-ex{margin:0 0 8px}.mc-llms-code{margin:0}.mc-llms-g{margin:8px 0 0}.mc-llms-g .llms-xp{margin:8px 0 0}" +
+    ".mc-mx{padding:0 8px}.mc-mx:empty{display:none}.mc-mx .lh-ex{margin:0 0 8px}.mc-llms-code{margin:0}.mc-chk{color:" + OK + ";font-size:13px;cursor:help;margin:0 2px}.mc-llms-g{margin:8px 0 0}.mc-llms-g .llms-xp{margin:8px 0 0}" +
     // marking copied from the LLMS hero (llms-hero.js): words .lh-w, op tokens .lh-t, nodes, explain .lh-ex
     ".lh-w{cursor:pointer;border-radius:4px;padding:0 2px;margin:0 -2px;text-decoration:underline dotted " + mix(ACC, 55) + ";text-underline-offset:4px;transition:background .12s,color .12s}" +
     ".lh-w.on{background:" + mix(ACC, 22) + ";color:" + FG + ";text-decoration-color:" + ACC + "}.lh-w.rel{background:" + mix(ACC, 10) + "}" +
@@ -328,7 +328,7 @@
     // conversations (this session, in memory)
     function snap() { return { seed: S.seed, batches: S.batches, paths: S.paths, derived: S.derived, hist: S.hist, changed: S.changed, html: log.innerHTML, ex: $(".mc-exs").innerHTML, g: $(".mc-g").innerHTML }; }
     function load(c) { S.seed = c.seed; S.batches = c.batches; S.paths = c.paths; S.derived = c.derived; S.hist = c.hist; S.changed = c.changed; log.innerHTML = c.html; $(".mc-exs").innerHTML = sideDef = c.ex; sideSig = null; $(".mc-g").innerHTML = c.g;
-      log.querySelectorAll(".mc-yes,.mc-no,.mc-addkey").forEach(function (b) { b.remove(); }); }
+      log.querySelectorAll(".mc-yes,.mc-no,.mc-addkey").forEach(function (b) { b.remove(); }); if (LL() && S.batches.length) try { render(build()); } catch (e) {} }
     function conv() { return S.convs.filter(function (c) { return c.id === S.cur; })[0]; }
     function save() { var c = conv(); if (c) Object.assign(c, snap()); }
     function listUI() { var box = $(".mc-cv"); box.innerHTML = "";
@@ -442,16 +442,17 @@
 
     // .GUI LLMS (this.gui >= 4.3.0): the proposal's code / graph / explain() as React roots, driven by the page's one active path (HB)
     var LL = function () { return root.GUI && root.GUI.LLMS && root.ReactDOM && root.ReactDOM.createRoot ? root.GUI.LLMS : null; };
-    function drawLLMS(r) { r.root.render(React.createElement(LL(), Object.assign({}, r.props(), { activePath: HB.hov || HB.pin || null, colors: "css",
+    function drawLLMS(r) { r.root.render(React.createElement(LL(), Object.assign({}, r.props(), { activePath: HB.hov || HB.pin || null, pinnedPath: HB.pin || null, colors: "css",
       onHoverPath: function (k) { if (HB.hov !== k) { HB.hov = k; paint(); } },
       onPinPath: function (k) { HB.pin = HB.pin === k ? null : k; if (HB.touch) HB.hov = null; paint(); } }))); }
     function mountLLMS(box, props) { var r = { box: box, root: root.ReactDOM.createRoot(box), props: props }; (HB.roots = HB.roots || []).push(r); drawLLMS(r); return r; }
     // graph + explain() props from the mini model (or the full state when expanded), on the dry-run kernel until confirmed
     function llmsProps(M, d, card) { var me = card.applied ? build() : d.after, F = fullModel(M, me);
-      var G = function (g) { return { nodes: g.nodes.map(function (p) { return { path: p, value: read(me, p), derived: !!g.der[p] }; }), edges: g.deps.map(function (e) { return { from: canon(e.from), to: canon(e.to) }; }) }; };
+      var bf = {}; d.diff.forEach(function (x) { if (x.before !== undefined) bf[canon(x.path)] = x.before; });
+      var G = function (g) { return { nodes: g.nodes.map(function (p) { var n = { path: p, value: read(me, p), derived: !!g.der[p] }; if (p in bf) n.before = bf[p]; return n; }), edges: g.deps.map(function (e) { return { from: canon(e.from), to: canon(e.to) }; }) }; };
       var ex = Object.keys(F.der).filter(function (p) { return M.der[p] || F.nodes.indexOf(p) >= 0; }).sort(function (a, b) { return (M.der[b] ? 1 : 0) - (M.der[a] ? 1 : 0); })
         .map(function (p) { try { var x = me.explain(p); return x && x.expr ? JSON.parse(JSON.stringify(x)) : null; } catch (e) { return null; } }).filter(Boolean);
-      return { graph: G(M), expandedGraph: G(F), explain: ex, changed: Object.keys(M.ch), graphHeight: 150 }; }
+      return { graph: G(M), explain: ex, changed: Object.keys(M.ch), graphHeight: 150, graphMode: "static", explainOnSelect: true }; }
     function bubble(cls, html) { var d = document.createElement("div"); d.className = "mc-m " + cls; d.innerHTML = html; log.appendChild(d); scr.scrollTop = scr.scrollHeight; return d; }
     function send(text, r) {
       text = String(text || "").trim(); if (!text || S.busy) return; ta.value = ""; ta.oninput();
@@ -488,8 +489,8 @@
       else if (!v.errors.length) { a.innerHTML = h + '<div class="mc-note">Nothing to record in that message.</div>'; return; }
       if (v.errors.length) { a.innerHTML = h + '<div class="mc-v mc-bad">✗ ' + v.errors.map(esc).join("<br>✗ ") + '</div><div class="mc-note">Rejected by the validator; nothing reaches the kernel.</div>'; return; }
       var d = dry(v.ops, seed);
-      h += '<div class="mc-v ' + (d.errors.length ? "mc-bad" : "mc-ok") + '">' + (d.errors.length ? "✗ " + d.errors.map(esc).join("<br>✗ ") : '✓ <span style="color:' + FG2 + '">validated · dry-run ok</span>') + "</div>";
-      var df = d.diff.map(function (x) { return '<span class="mc-p">' + esc(x.path) + "</span> " + (x.before === undefined ? "" : '<span class="mc-del">' + esc(J(x.before)) + "</span> ") + '→ <span class="mc-n">' + esc(J(x.after)) + "</span>"; })
+      if (!useL || d.errors.length) h += '<div class="mc-v ' + (d.errors.length ? "mc-bad" : "mc-ok") + '">' + (d.errors.length ? "✗ " + d.errors.map(esc).join("<br>✗ ") : '✓ <span style="color:' + FG2 + '">validated · dry-run ok</span>') + "</div>";
+      var df = (useL ? [] : d.diff).map(function (x) { return '<span class="mc-p">' + esc(x.path) + "</span> " + (x.before === undefined ? "" : '<span class="mc-del">' + esc(J(x.before)) + "</span> ") + '→ <span class="mc-n">' + esc(J(x.after)) + "</span>"; })
         .concat(Object.keys(d.reads).map(function (p) { return '<span class="mc-p">' + esc(p) + '</span> = <span class="mc-n">' + esc(J(d.reads[p])) + "</span>"; }));
       if (df.length) h += '<div class="mc-diff">' + df.join("<br>") + "</div>";
       var M = miniModel(v.ops, d);
@@ -500,7 +501,7 @@
         var sec = v.ops.filter(function (o) { return o.op === "secret" || o.op === "noise"; }), need = v.ops.filter(function (o) { return CONFIRM.indexOf(o.op) >= 0; });
         if (need.length) h += '<div class="mc-note mc-warn">Needs your OK: ' + need.map(function (o) { return o.op; }).join(", ") + ".</div>";
         h += sec.map(function (o) { return '<div class="mc-row"><input class="mc-in mc-sk" data-p="' + esc(o.path) + '" type="password" placeholder="key for ' + esc(o.path) + ' (never sent to the model)"></div>'; }).join("");
-        h += '<div class="mc-row"><button class="mc-btn mc-yes">Confirm</button><button class="mc-btn ghost mc-no">Discard</button><span class="mc-out mc-note" style="margin:0"></span></div>';
+        h += '<div class="mc-row"><button class="mc-btn mc-yes">Confirm</button>' + (useL ? '<span class="mc-chk" title="validated · dry-run ok" aria-label="validated · dry-run ok">✓</span>' : '') + '<button class="mc-btn ghost mc-no">Discard</button><span class="mc-out mc-note" style="margin:0"></span></div>';
       }
       a.innerHTML = h; scr.scrollTop = scr.scrollHeight;
       var card = {}, ub = a.previousElementSibling, scope = [a].concat(ub && ub.classList.contains("mc-u") ? [ub] : []);
@@ -541,13 +542,19 @@
       var sg = t || ""; if (sg === sideSig) return; sideSig = sg; var me = build(), x = null;
       if (t) { try { x = me.explain(t); } catch (e) {} }
       $(".mc-exs").innerHTML = t ? xpCard(x, t, read(me, t), S.changed) : sideDef; } });
+    var sideR = null, sideP = null;
     function render(me) {
       var deps = [], exs = [], dpaths = Object.keys(S.derived);
       dpaths.forEach(function (p) { try { var x = me.explain(p); var on = ((x.meta && x.meta.dependsOn) || []);
         on.forEach(function (f) { deps.push({ from: f, to: p }); });
         if (S.changed[p] || on.some(function (f) { return S.changed[canon(f)]; })) exs.push(x); } catch (e) {} });
       var leaves = Array.from(S.paths).concat(dpaths).map(function (p) { return { path: p, value: read(me, p) }; });
-      $(".mc-g").innerHTML = leaves.length ? graph(leaves, S.derived, deps, S.changed) : "";
+      if (LL()) { sideP = { graph: { nodes: leaves.map(function (l) { return { path: l.path, value: l.value, derived: !!S.derived[l.path] }; }), edges: deps.map(function (e) { return { from: canon(e.from), to: canon(e.to) }; }) },
+          changed: Object.keys(S.changed), parts: ["graph"], graphHeight: 300 };
+        if (!leaves.length) $(".mc-g").innerHTML = "";
+        else if (sideR && sideR.box.isConnected) drawLLMS(sideR);
+        else { $(".mc-g").innerHTML = '<div class="mc-llms-side"></div>'; sideR = mountLLMS($(".mc-llms-side"), function () { return sideP; }); } }
+      else $(".mc-g").innerHTML = leaves.length ? graph(leaves, S.derived, deps, S.changed) : "";
       sideDef = exs.length ? exs.map(function (x) { return xpCard(x, x.path, x.value, S.changed); }).join("") + '<p class="mc-note">The model only named the formula; the kernel computed the value. <a href="https://neurons-me.github.io/.me/docs/Explain.html">explain()</a> shows where it came from.</p>' : "";
       addDeps(deps); sideSig = null; paint();
     }
