@@ -20,7 +20,7 @@ Page: https://neurons-me.github.io/.me/LLMS/ (`me://LLMS/`)
   replay a real `muse-spark-1.3` run saved in `LLMS/Meta/recorded-en.json` (2026-11-04);
   they are not live calls and the page labels them as recorded.
 - The opening 65 vs 70 comparison is an illustrative example, not Muse output.
-- Pre-existing: the `this.me` kernel and the HTML page. Built this week: LLMS chat,
+- Pre-existing: the `this.me` kernel and .GUI. Built this week: LLMS chat,
   Muse adapter, validator.
 
 A model turns plain text (ES/EN) into a JSON list of `.me` ops. The ops are then
