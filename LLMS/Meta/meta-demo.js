@@ -2,7 +2,7 @@
  * Mounted by landing-gui.js from <div data-live="MetaDemo"> (window.LandingLive.MetaDemo). validate/paths/kernel below are a
  * line-by-line port of LLMS/typescript/src/{paths,validate,kernel}.ts to browser JS; the kernel is this.me@4.2.1 (jsDelivr UMD).
  * Recorded mode replays the ops muse-spark-1.3 returned in eval run 2026-10-29 (demo-data.js, generated from LLMS/eval/results).
- * Live mode calls https://api.meta.ai/v1/chat/completions from the browser with a key the visitor types (kept in sessionStorage).
+ * Live mode calls https://api.meta.ai/v1/chat/completions from the browser with a key the visitor types (kept in localStorage, Service keys).
  */
 (function (root) {
   var React = root.React; if (!React) return;
@@ -154,13 +154,22 @@
   var PATHC = SYN("path", "#79c0ff"), NUM = SYN("number", "#d29922"), DER = SYN("derived", "#a371f7");
   var mix = function (a, p, b) { return "color-mix(in srgb, " + a + " " + p + "%, " + (b || "transparent") + ")"; };
   var MONO = "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace";
-  var CSS = ".mc{font-size:15px;line-height:1.5;margin:0 0 28px;display:grid;grid-template-columns:minmax(0,55fr) minmax(0,45fr);gap:18px;align-items:start}.mc *{box-sizing:border-box}" +
-    "@media(max-width:860px){.mc{grid-template-columns:minmax(0,1fr)}}" +
-    ".mc-chat{border:1px solid " + GRID + ";border-radius:16px;display:flex;flex-direction:column;min-height:520px;max-height:78vh;position:relative}" +
-    ".mc-top{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid " + GRID + ";font-size:13px;color:" + FG2 + "}.mc-top b{color:inherit;font-weight:600}.mc-sp{flex:1}" +
-    ".mc-ib{font:inherit;font-size:13px;background:transparent;color:inherit;border:1px solid " + GRID + ";border-radius:999px;padding:4px 10px;cursor:pointer}.mc-new{opacity:.7;font-size:12px;padding:3px 9px}.mc-new:hover{opacity:1}.mc-ib.on{border-color:" + ACC + ";color:" + ACC + "}" +
-    ".mc-pop{position:absolute;top:46px;right:10px;z-index:5;width:min(340px,calc(100% - 20px));padding:14px;border-radius:12px;border:1px solid " + GRID + ";background:" + V("background-paper", "#161b22") + ";box-shadow:0 8px 30px rgba(0,0,0,.25);font-size:13px}" +
-    ".mc-log{flex:1;overflow-y:auto;padding:16px 14px;display:flex;flex-direction:column;gap:12px}" +
+  var BG = V("background-default", "#0d1117"), PAPER = V("background-paper", "#161b22");
+  var CSS = ".mc{position:fixed;left:0;right:0;bottom:0;top:var(--mc-top,56px);z-index:20;display:flex;font-size:15px;line-height:1.5;background:" + BG + ";color:inherit}.mc *{box-sizing:border-box}" +
+    "body.mc-on{overflow:hidden}" +
+    ".mc-sb{width:300px;flex:0 0 300px;border-right:1px solid " + GRID + ";display:flex;flex-direction:column;min-height:0;background:" + mix(FG2, 4, BG) + ";transition:margin .2s}" +
+    ".mc.shut .mc-sb{margin-left:-300px}" +
+    ".mc-sbx{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:14px}" +
+    ".mc-sb h4{margin:0 0 6px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:" + FG2 + ";font-weight:600}" +
+    ".mc-cv{display:flex;flex-direction:column;gap:2px}.mc-cv button{font:inherit;font-size:13px;text-align:left;background:transparent;color:inherit;border:0;border-radius:8px;padding:6px 9px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.mc-cv button:hover{background:" + mix(FG2, 10) + "}.mc-cv button.cur{background:" + mix(ACC, 16) + "}" +
+    ".mc-wide{width:100%;text-align:left;border-radius:10px!important;padding:7px 12px!important}" +
+    ".mc-kc{display:flex;gap:8px;align-items:center;font:inherit;font-size:13px;width:100%;background:transparent;color:" + FG2 + ";border:1px solid " + GRID + ";border-radius:10px;padding:7px 10px;cursor:pointer}.mc-kc svg{flex:none}.mc-kc.on{color:" + ACC + ";border-color:" + ACC + ";box-shadow:0 0 10px " + mix(ACC, 35) + "}" +
+    ".mc-info{font-size:12.5px;color:" + FG2 + ";margin:0}" +
+    ".mc-main{flex:1;min-width:0;display:flex;flex-direction:column;position:relative}" +
+    ".mc-top{display:flex;align-items:center;gap:8px;padding:8px 14px;font-size:13px;color:" + FG2 + "}.mc-top b{color:inherit;font-weight:600}.mc-sp{flex:1}" +
+    ".mc-ib{font:inherit;font-size:13px;background:transparent;color:inherit;border:1px solid " + GRID + ";border-radius:999px;padding:4px 10px;cursor:pointer}.mc-ib.on{border-color:" + ACC + ";color:" + ACC + "}.mc-tg{border:0;font-size:17px;padding:2px 8px}" +
+    ".mc-pop{position:absolute;z-index:30;width:min(340px,calc(100vw - 20px));padding:14px;border-radius:12px;border:1px solid " + GRID + ";background:" + PAPER + ";box-shadow:0 8px 30px rgba(0,0,0,.25);font-size:13px}" +
+    ".mc-log{flex:1;overflow-y:auto;padding:16px 14px}.mc-col{max-width:780px;margin:0 auto;display:flex;flex-direction:column;gap:14px}" +
     ".mc-m{max-width:88%;padding:9px 13px;border-radius:16px;white-space:pre-wrap;word-break:break-word}.mc-u{align-self:flex-end;background:" + mix(ACC, 18) + ";border-bottom-right-radius:5px}" +
     ".mc-a{align-self:flex-start;max-width:100%;width:100%;padding:2px 2px}.mc-a .mc-tx{white-space:pre-wrap}" +
     ".mc-src{font:11px/1.4 " + MONO + ";color:" + FG2 + ";opacity:.8;margin:2px 0 6px}" +
@@ -171,16 +180,15 @@
     ".mc-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px}" +
     ".mc-btn{font:600 13px/1 inherit;font-family:inherit;padding:8px 14px;border-radius:999px;border:1px solid " + ACC + ";background:" + mix(ACC, 20) + ";color:inherit;cursor:pointer}.mc-btn.ghost{background:transparent;border-color:" + GRID + "}.mc-btn:disabled{opacity:.45;cursor:default}" +
     ".mc-in{flex:1 1 200px;min-width:0;font:inherit;padding:8px 12px;border-radius:10px;border:1px solid " + GRID + ";background:transparent;color:inherit}" +
-    ".mc-foot{padding:10px 12px 12px;border-top:1px solid " + GRID + "}.mc-chips{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 8px}" +
+    ".mc-foot{padding:8px 14px 14px}.mc-foot>div,.mc-foot>p{max-width:780px;margin-left:auto;margin-right:auto}.mc-chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px!important}" +
     ".mc-chip{font:inherit;font-size:12.5px;line-height:1.3;padding:5px 10px;border-radius:999px;border:1px solid " + GRID + ";background:transparent;color:inherit;cursor:pointer;text-align:left}.mc-chip:hover{border-color:" + ACC + "}" +
-    ".mc-send{display:flex;gap:8px;align-items:flex-end}.mc-send textarea{flex:1;min-width:0;resize:none;font:inherit;padding:10px 14px;border-radius:20px;border:1px solid " + GRID + ";background:transparent;color:inherit;max-height:120px}" +
-    ".mc-hint{font-size:11.5px;color:" + FG2 + ";margin:6px 4px 0;opacity:.85}.mc-hint code{font-family:" + MONO + "}" +
-    ".mc-side{border:1px solid " + GRID + ";border-radius:16px;padding:12px 14px;position:sticky;top:76px;min-width:0}" +
-    ".mc-side h4{margin:0;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:" + FG2 + ";font-weight:600}.mc-side summary{cursor:pointer;list-style:none}.mc-side summary::-webkit-details-marker{display:none}" +
-    "@media(min-width:861px){.mc-side summary{pointer-events:none}}" +
-    ".mc-g{margin-top:10px}.mc-g svg{display:block;width:100%;height:auto}.mc-g svg text{font-family:" + MONO + ";font-size:11px;fill:currentColor}" +
+    ".mc-send{display:flex;gap:8px;align-items:flex-end;padding:6px;border:1px solid " + GRID + ";border-radius:24px;background:" + PAPER + "}.mc-send textarea{flex:1;min-width:0;resize:none;font:inherit;padding:8px 12px;border:0;outline:0;background:transparent;color:inherit;max-height:180px}" +
+    ".mc-hint{font-size:11.5px;color:" + FG2 + ";margin-top:6px!important;padding:0 4px;opacity:.85}.mc-hint code{font-family:" + MONO + "}" +
+    ".mc-g{margin-top:4px}.mc-g svg{display:block;width:100%;height:auto}.mc-g svg text{font-family:" + MONO + ";font-size:11px;fill:currentColor}" +
     ".mc-hl{animation:mchl 2.4s ease}@keyframes mchl{0%,40%{r:11;opacity:1}100%{r:7}}" +
     ".mc-ex{margin-top:10px;padding:9px 11px;border-radius:10px;border:1px dashed " + mix(DER, 50) + ";background:" + mix(DER, 6) + "}.mc-ex pre{font-size:11.5px;white-space:pre;overflow-x:auto}" +
+    ".mc-bd{display:none}" +
+    "@media(max-width:860px){.mc-sb{position:absolute;top:0;bottom:0;left:0;z-index:25;width:86vw;max-width:320px;margin-left:0!important;transform:translateX(-102%);transition:transform .2s;background:" + PAPER + "}.mc.drw .mc-sb{transform:none}.mc.drw .mc-bd{display:block;position:absolute;inset:0;z-index:24;background:rgba(0,0,0,.4)}}" +
     ".mc a{color:" + ACC + "}.mc code{font-family:" + MONO + ";font-size:.92em}";
 
   var esc = function (s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); };
@@ -236,35 +244,70 @@
   function seedMerge(a, b) { Object.keys(b || {}).forEach(function (k) { if (isPlain(b[k])) { if (!isPlain(a[k])) { if (a[k] !== undefined) return; a[k] = {}; } seedMerge(a[k], b[k]); } else if (a[k] === undefined) a[k] = b[k]; }); return a; }
   var clone = function (o) { return JSON.parse(JSON.stringify(o)); };
 
+  var KEYI = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M17 6l3 3M15 8l2 2"/></svg>';
   function mount(el) {
-    var ss = function (k, v) { try { if (v === undefined) return sessionStorage.getItem(k); if (v === null) sessionStorage.removeItem(k); else sessionStorage.setItem(k, v); } catch (e) {} };
-    var S = { live: false, key: ss("llms-meta-key") || "", seed: {}, batches: [], paths: new Set(), derived: {}, hist: [], busy: false, changed: {}, focus: [] };
+    var KS = "llms-meta-key", ls = function (k, v) { try { if (v === undefined) return localStorage.getItem(k); if (v === null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) {} };
+    try { var old = sessionStorage.getItem(KS); if (old && !ls(KS)) ls(KS, old); sessionStorage.removeItem(KS); } catch (e) {}
+    var S = { live: false, key: ls(KS) || "", seed: {}, batches: [], paths: new Set(), derived: {}, hist: [], busy: false, changed: {}, focus: [], convs: [], cur: 0, n: 0 };
     var rec = {}; D.recorded.forEach(function (r) { rec[r.id] = r; });
     var byText = function (t) { t = t.trim().toLowerCase(); return D.recorded.filter(function (r) { return r.text.toLowerCase() === t; })[0]; };
-    el.className = "mc";
-    el.innerHTML = '<div class="mc-chat"><div class="mc-top"><b>Muse Spark</b><span class="mc-mode">recorded</span><span class="mc-sp"></span>' +
-      '<button class="mc-ib mc-new" title="Clear the chat and the state">New chat</button><button class="mc-ib mc-lv" title="Use your own Meta API key">Live</button><button class="mc-ib mc-gear" aria-label="settings" title="Settings">⚙</button></div>' +
-      '<div class="mc-pop" hidden><div style="font-weight:600;margin-bottom:6px">Live mode · your Meta API key</div><div class="mc-row" style="margin:0"><input class="mc-in mc-k" type="password" autocomplete="off" placeholder="Meta API key"><button class="mc-btn ghost mc-kc">Forget key</button></div>' +
-      '<p class="mc-note">Get one at <a href="https://dev.meta.ai/" target="_blank" rel="noopener">dev.meta.ai</a> (<a href="https://dev.meta.ai/docs/overview" target="_blank" rel="noopener">docs</a>). Kept in this tab only (sessionStorage), sent only to <code>api.meta.ai</code>. Each message is a real, billed call to <code>' + MODEL + "</code> (1 to 3 requests).</p></div>" +
-      '<div class="mc-log" aria-live="polite"></div>' +
+    var mobile = function () { return !!(root.matchMedia && root.matchMedia("(max-width:860px)").matches); };
+    el.className = "mc"; document.body.classList.add("mc-on");
+    el.innerHTML = '<aside class="mc-sb"><div class="mc-sbx">' +
+      '<button class="mc-ib mc-new mc-wide" title="Clear the chat and the state">+ New chat</button>' +
+      '<div><h4>Chats</h4><div class="mc-cv"></div></div>' +
+      '<div><h4>State · live graph</h4><div class="mc-g"></div><div class="mc-exs"></div></div>' +
+      '<div><h4>Service keys</h4><button class="mc-kc" title="Meta API key">' + KEYI + '<span>Meta · Muse Spark</span></button></div>' +
+      '<div><h4>About</h4><p class="mc-info">The model proposes .me ops; this.me validates, dry-runs and computes. Nothing is written until you confirm.</p>' +
+      '<p class="mc-info" style="margin-top:4px"><a href="/.me/LLMS/">LLMS</a> · <a href="docs.html">Meta adapter docs</a> · <a href="https://github.com/neurons-me/.me/tree/main/LLMS/Meta" target="_blank" rel="noopener">source</a></p></div>' +
+      '</div></aside><div class="mc-bd"></div>' +
+      '<div class="mc-main"><div class="mc-top"><button class="mc-ib mc-tg" aria-label="sidebar" title="Sidebar">☰</button><b>Muse Spark</b><span class="mc-mode">recorded</span><span class="mc-sp"></span>' +
+      '<button class="mc-ib mc-lv" title="Use your own Meta API key">Live</button></div>' +
+      '<div class="mc-log" aria-live="polite"><div class="mc-col"></div></div>' +
       '<div class="mc-foot"><div class="mc-chips"></div><div class="mc-send"><textarea class="mc-t" rows="1" placeholder="Message Muse Spark"></textarea><button class="mc-btn mc-go">Send</button></div>' +
       '<p class="mc-hint">Tell it facts, values or rules and it proposes changes for you to confirm. Start with <code>me:</code> to force that.</p></div></div>' +
-      '<details class="mc-side" open><summary><h4>State · live graph</h4></summary><div class="mc-g"></div><div class="mc-exs"></div></details>';
-    var $ = function (s) { return el.querySelector(s); }, log = $(".mc-log"), EMPTY = '<p class="mc-note">Empty. Confirmed changes from the chat build up here.</p>', ta = $(".mc-t");
-    if (root.matchMedia && root.matchMedia("(max-width:860px)").matches) $(".mc-side").open = false;
+      '<div class="mc-pop" hidden><div style="font-weight:600;margin-bottom:6px">Keychain · Meta · Muse Spark</div><div class="mc-row" style="margin:0"><input class="mc-in mc-k" type="password" autocomplete="off" placeholder="Paste your Meta API key"></div>' +
+      '<div class="mc-row"><button class="mc-btn mc-ksave">Save</button><button class="mc-btn ghost mc-kdel">Remove</button><button class="mc-btn ghost mc-kx">Close</button></div>' +
+      '<p class="mc-note">Get one at <a href="https://dev.meta.ai/" target="_blank" rel="noopener">dev.meta.ai</a>. Stored only in this browser (localStorage), sent only to <code>api.meta.ai</code>. Each live message is a billed call to <code>' + MODEL + "</code>.</p></div>";
+    var $ = function (s) { return el.querySelector(s); }, scr = $(".mc-log"), log = $(".mc-col"), EMPTY = '<p class="mc-note">Empty. Confirmed changes from the chat build up here.</p>', ta = $(".mc-t");
+    // full height under the shared topbar
+    function fit() { var tb = document.querySelector(".topbar") || document.querySelector("header"); var t = tb ? Math.max(0, tb.getBoundingClientRect().bottom) : 56; el.style.setProperty("--mc-top", t + "px"); }
+    fit(); root.addEventListener("resize", fit); setTimeout(fit, 300); setTimeout(fit, 1500);
+    $(".mc-tg").onclick = function () { if (mobile()) el.classList.toggle("drw"); else el.classList.toggle("shut"); };
+    $(".mc-bd").onclick = function () { el.classList.remove("drw"); };
+    // keychain
+    var pop = $(".mc-pop");
+    function openKeys() { var r = $(".mc-kc").getBoundingClientRect(), m = el.getBoundingClientRect(); pop.style.left = Math.max(10, Math.min(r.left - m.left, m.width - 350)) + "px"; pop.style.top = ""; pop.style.bottom = Math.max(10, m.bottom - r.top + 6) + "px";
+      if (mobile() && !el.classList.contains("drw")) { pop.style.left = "10px"; pop.style.bottom = ""; pop.style.top = "50px"; }
+      $(".mc-k").value = ""; $(".mc-k").placeholder = S.key ? "Key saved · paste to replace" : "Paste your Meta API key"; pop.hidden = false; $(".mc-k").focus(); }
+    function keyUI() { $(".mc-kc").classList.toggle("on", !!S.key); $(".mc-kc").title = S.key ? "Meta API key saved" : "Add your Meta API key"; $(".mc-kdel").disabled = !S.key; }
+    $(".mc-kc").onclick = function () { pop.hidden ? openKeys() : (pop.hidden = true); };
+    $(".mc-kx").onclick = function () { pop.hidden = true; };
+    $(".mc-ksave").onclick = function () { var k = $(".mc-k").value.trim(); if (!k) return; S.key = k; ls(KS, k); $(".mc-k").value = ""; keyUI(); setLive(true); pop.hidden = true; };
+    $(".mc-k").onkeydown = function (e) { if (e.key === "Enter") $(".mc-ksave").onclick(); };
+    $(".mc-kdel").onclick = function () { S.key = ""; ls(KS, null); keyUI(); setLive(false); pop.hidden = true; };
     function setLive(on) { S.live = on; $(".mc-lv").classList.toggle("on", on); $(".mc-mode").textContent = on ? "live · " + MODEL : "recorded"; $(".mc-t").placeholder = on ? "Message Muse Spark" : "Pick an example, or add your key for live"; }
-    $(".mc-new").onclick = function () { if (S.busy) return; S.seed = {}; S.batches = []; S.paths = new Set(); S.derived = {}; S.hist = []; S.changed = {}; S.focus = [];
-      log.innerHTML = ""; $(".mc-exs").innerHTML = ""; $(".mc-g").innerHTML = EMPTY; ta.value = ""; ta.oninput(); };
-    $(".mc-gear").onclick = function () { $(".mc-pop").hidden = !$(".mc-pop").hidden; };
-    $(".mc-lv").onclick = function () { if (S.live) return setLive(false); if (!S.key) { $(".mc-pop").hidden = false; $(".mc-k").focus(); return; } setLive(true); };
-    $(".mc-k").value = S.key; $(".mc-k").oninput = function (e) { S.key = e.target.value.trim(); ss("llms-meta-key", S.key || null); setLive(!!S.key); };
-    $(".mc-kc").onclick = function () { S.key = ""; $(".mc-k").value = ""; ss("llms-meta-key", null); setLive(false); };
+    $(".mc-lv").onclick = function () { if (S.live) return setLive(false); if (!S.key) return openKeys(); setLive(true); };
+    // conversations (this session, in memory)
+    function snap() { return { seed: S.seed, batches: S.batches, paths: S.paths, derived: S.derived, hist: S.hist, changed: S.changed, html: log.innerHTML, ex: $(".mc-exs").innerHTML, g: $(".mc-g").innerHTML }; }
+    function load(c) { S.seed = c.seed; S.batches = c.batches; S.paths = c.paths; S.derived = c.derived; S.hist = c.hist; S.changed = c.changed; log.innerHTML = c.html; $(".mc-exs").innerHTML = c.ex; $(".mc-g").innerHTML = c.g;
+      log.querySelectorAll(".mc-yes,.mc-no,.mc-addkey").forEach(function (b) { b.remove(); }); }
+    function conv() { return S.convs.filter(function (c) { return c.id === S.cur; })[0]; }
+    function save() { var c = conv(); if (c) Object.assign(c, snap()); }
+    function listUI() { var box = $(".mc-cv"); box.innerHTML = "";
+      S.convs.slice().reverse().forEach(function (c) { var b = document.createElement("button"); b.textContent = c.title; b.title = c.title; if (c.id === S.cur) b.className = "cur";
+        b.onclick = function () { if (S.busy || c.id === S.cur) return; save(); S.cur = c.id; load(c); listUI(); el.classList.remove("drw"); scr.scrollTop = scr.scrollHeight; }; box.appendChild(b); });
+      if (!S.convs.length) box.innerHTML = '<p class="mc-info">No chats yet.</p>'; }
+    function fresh() { S.seed = {}; S.batches = []; S.paths = new Set(); S.derived = {}; S.hist = []; S.changed = {}; S.focus = [];
+      log.innerHTML = ""; $(".mc-exs").innerHTML = ""; $(".mc-g").innerHTML = EMPTY; ta.value = ""; ta.oninput(); S.cur = 0; listUI(); }
+    function title(text) { if (S.cur) return; S.cur = ++S.n; S.convs.push(Object.assign({ id: S.cur, title: text.length > 42 ? text.slice(0, 40) + "…" : text }, snap())); listUI(); }
+    $(".mc-new").onclick = function () { if (S.busy) return; save(); fresh(); el.classList.remove("drw"); ta.focus(); };
     CHIPS.forEach(function (id) { var r = rec[id]; if (!r) return; var b = document.createElement("button"); b.className = "mc-chip"; b.textContent = r.text;
       b.onclick = function () { send(r.text, r); }; $(".mc-chips").appendChild(b); });
-    ta.oninput = function () { ta.style.height = "auto"; ta.style.height = Math.min(120, ta.scrollHeight) + "px"; };
+    ta.oninput = function () { ta.style.height = "auto"; ta.style.height = Math.min(180, ta.scrollHeight) + "px"; };
     ta.onkeydown = function (e) { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(ta.value); } };
     $(".mc-go").onclick = function () { send(ta.value); };
-    setLive(false);
+    keyUI(); setLive(!!S.key); listUI();
 
     // the conversation's this.me: seed state + every confirmed batch, replayed on a real kernel
     function build(extraSeed, extraOps) { var seed = extraSeed ? seedMerge(clone(S.seed), extraSeed) : S.seed, me = newME(seed);
@@ -279,16 +322,16 @@
         ps.forEach(function (p) { if (after && read(after, p) === undefined) errors.push("ops[" + i + "]: " + p + ' = "' + o.expr + '" evaluates to undefined (unknown name in expr?)'); }); });
       return { diff: diff, reads: reads, errors: errors, known: kn }; }
 
-    function bubble(cls, html) { var d = document.createElement("div"); d.className = "mc-m " + cls; d.innerHTML = html; log.appendChild(d); log.scrollTop = log.scrollHeight; return d; }
+    function bubble(cls, html) { var d = document.createElement("div"); d.className = "mc-m " + cls; d.innerHTML = html; log.appendChild(d); scr.scrollTop = scr.scrollHeight; return d; }
     function send(text, r) {
       text = String(text || "").trim(); if (!text || S.busy) return; ta.value = ""; ta.oninput();
       var force = /^me:/i.test(text), body = force ? text.replace(/^me:\s*/i, "") : text;
       r = r || byText(body);
-      bubble("mc-u", esc(text));
+      title(text); bubble("mc-u", esc(text));
       if (!S.live) {
         if (!r) { bubble("mc-a", '<div class="mc-note">Recorded mode only replays real responses from the eval run, so there is no answer for this message. <a href="#" class="mc-addkey">Add your Meta API key</a> to talk to ' + MODEL + " live, or pick an example above.</div>")
-          .querySelector(".mc-addkey").onclick = function (e) { e.preventDefault(); $(".mc-pop").hidden = false; $(".mc-k").focus(); }; return; }
-        return proposal(bubble("mc-a", ""), { ops: r.ops }, "recorded · " + MODEL + " · 2026-10-29", r.state, { text: r.text });
+          .querySelector(".mc-addkey").onclick = function (e) { e.preventDefault(); openKeys(); }; save(); return; }
+        proposal(bubble("mc-a", ""), { ops: r.ops }, "recorded · " + MODEL + " · 2026-10-29", r.state, { text: r.text }); return save();
       }
       var seed = r ? r.state : null, a = bubble("mc-a", '<div class="mc-note">…</div>'), t0 = performance.now();
       var input = { text: body, state: (function () { var me = build(seed), st = {}; known(seed).forEach(function (p) { st[p] = read(me, p); }); return st; })(), speaker: r && r.speaker };
@@ -303,7 +346,7 @@
           if (t.obj == null) { a.innerHTML = '<div class="mc-src">' + esc(src) + '</div><pre class="mc-code">' + esc(t.reply) + '</pre><div class="mc-v mc-bad">✗ model reply is not a JSON object</div>'; return; }
           proposal(a, t.obj, src, seed, { text: body }); })
         .catch(function (e) { a.innerHTML = '<div class="mc-v mc-bad">' + esc(e.message) + "</div>"; })
-        .then(function () { S.busy = false; $(".mc-go").disabled = false; log.scrollTop = log.scrollHeight; });
+        .then(function () { S.busy = false; $(".mc-go").disabled = false; scr.scrollTop = scr.scrollHeight; save(); });
     }
 
     function proposal(a, obj, src, seed) {
@@ -324,10 +367,10 @@
         h += sec.map(function (o) { return '<div class="mc-row"><input class="mc-in mc-sk" data-p="' + esc(o.path) + '" type="password" placeholder="key for ' + esc(o.path) + ' (never sent to the model)"></div>'; }).join("");
         h += '<div class="mc-row"><button class="mc-btn mc-yes">Confirm</button><button class="mc-btn ghost mc-no">Discard</button><span class="mc-out mc-note" style="margin:0"></span></div>';
       }
-      a.innerHTML = h; log.scrollTop = log.scrollHeight;
+      a.innerHTML = h; scr.scrollTop = scr.scrollHeight;
       var yes = a.querySelector(".mc-yes"); if (!yes) return;
       var done = function (msg, cls) { a.querySelectorAll(".mc-yes,.mc-no").forEach(function (b) { b.remove(); }); var o = a.querySelector(".mc-out"); o.className = "mc-out mc-note " + (cls || ""); o.textContent = msg; };
-      a.querySelector(".mc-no").onclick = function () { done("Discarded. Nothing changed."); };
+      a.querySelector(".mc-no").onclick = function () { done("Discarded. Nothing changed."); save(); };
       yes.onclick = function () {
         var sk = {}; a.querySelectorAll(".mc-sk").forEach(function (i) { if (i.value) sk[i.dataset.p] = i.value; });
         var prevSeed = S.seed, prevPaths = new Set(S.paths), prevDer = Object.assign({}, S.derived);
@@ -340,7 +383,7 @@
           v.ops.forEach(function (o) { if (o.op === "remove") { var p = canon(o.path + "." + o.key); Array.from(S.paths).forEach(function (q) { if (q === p || q.indexOf(p + ".") === 0 || q.indexOf(p + "[") === 0) S.paths.delete(q); }); delete S.derived[p]; try { var so = keys(canon(o.path)).reduce(function (x, k) { return x[k]; }, S.seed); if (so) delete so[o.key]; } catch (e) {} }
             if (o.op === "define") touched([o], d.known).forEach(function (p) { S.derived[p] = 1; S.paths.delete(p); }); });
           S.changed = {}; d.diff.forEach(function (x) { S.changed[x.path] = 1; });
-          render(me); done("Applied.", "mc-ok");
+          render(me); done("Applied.", "mc-ok"); save();
         } catch (e) { S.batches.pop(); S.seed = prevSeed; S.paths = prevPaths; S.derived = prevDer; done(e.message, "mc-bad"); }
       };
     }
@@ -353,7 +396,6 @@
       var leaves = Array.from(S.paths).concat(dpaths).map(function (p) { return { path: p, value: read(me, p) }; });
       $(".mc-g").innerHTML = leaves.length ? graph(leaves, S.derived, deps, S.changed) : "";
       $(".mc-exs").innerHTML = exs.length ? exs.map(exBlock).join("") + '<p class="mc-note">The model only named the formula; the kernel computed the value. <a href="https://neurons-me.github.io/.me/docs/Explain.html">explain()</a> shows where it came from.</p>' : "";
-      if (root.matchMedia && root.matchMedia("(max-width:860px)").matches) $(".mc-side").open = true;
     }
     $(".mc-g").innerHTML = EMPTY;
   }
