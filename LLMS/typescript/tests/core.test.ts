@@ -54,7 +54,7 @@ test("maxRepairs 0 means one call", async () => {
 test("define over unknown names fails the dry-run and is sent back", async () => {
   const { m, calls } = scripted(J([{ op: "define", path: "order", name: "total", expr: "subtotl + tax" }]), J([{ op: "define", path: "order", name: "total", expr: "subtotal + tax" }]));
   const r = await parse({ text: "total", state: { order: { subtotal: 1, tax: 2 } } }, { model: m });
-  assert.equal(r.ok, true); assert.equal(r.attempts, 2); assert.match(calls[1].at(-1).content, /evaluates to undefined/);
+  assert.equal(r.ok, true); assert.equal(r.attempts, 2); assert.match(calls[1].at(-1).content, /unknown path "subtotl"/);
   assert.equal(r.diff[0].after, 3);
 });
 

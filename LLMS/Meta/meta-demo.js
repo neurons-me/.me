@@ -30,6 +30,23 @@
       { op: "define", path: "cafe.order", name: "per_person", expr: "total / diners" }] },
     { text: "The bread price just went up to 30.", ops: [{ op: "set", path: "cafe.order.bread.price", value: 30 }] },
     { text: "What's the total now, and how much does each of them pay?", ops: [{ op: "query", paths: ["cafe.order.subtotal", "cafe.order.total", "cafe.order.per_person"] }] }] } };
+  // the three moments, scripted (no model): what Muse's reply WOULD be is hand-written and labelled as such, never shown as Muse
+  var SCRIPT_SRC = "test · scripted, no model";
+  var SETUP20 = { text: "I run a small café. Coffee is 45 and bread is 20; the total is coffee plus bread.", ops: [
+    { op: "set", path: "cafe.coffee.price", value: 45 }, { op: "set", path: "cafe.bread.price", value: 20 },
+    { op: "define", path: "cafe", name: "total", expr: "coffee.price + bread.price" }] };
+  TESTS.happy = { chip: "Test: happy path", turns: [
+    { text: "I run a small café. Coffee is 45 and bread is 20.", ops: [{ op: "set", path: "cafe.coffee.price", value: 45 }, { op: "set", path: "cafe.bread.price", value: 20 }] },
+    { text: "Bread goes up to 25, and the total is coffee plus bread.", src: SCRIPT_SRC, ops: [{ op: "set", path: "cafe.bread.price", value: 25 }, { op: "define", path: "cafe", name: "total", expr: "coffee.price + bread.price" }] }] };
+  TESTS.drift = { chip: "Test: drift check", turns: [SETUP20,
+    { text: "Bread goes up to 25.", ops: [{ op: "set", path: "cafe.bread.price", value: 25 }] },
+    { text: "Quick, from memory: what's the order total?", src: SCRIPT_SRC, reply: "The order total is 65: coffee 45 + bread 20." }] };
+  TESTS.reject = { chip: "Test: rejected op", turns: [
+    { text: "I run a small café. Coffee is 45 and bread is 25; the total is coffee plus bread.", ops: [
+      { op: "set", path: "cafe.coffee.price", value: 45 }, { op: "set", path: "cafe.bread.price", value: 25 },
+      { op: "define", path: "cafe", name: "total", expr: "coffee.price + bread.price" }] },
+    { text: "Make the total include the tip.", src: SCRIPT_SRC, ops: [{ op: "define", path: "cafe", name: "total", expr: "coffee.price + bread.price + tip" }] }] };
+  var LOGIC = TESTS.logic; delete TESTS.logic; TESTS.logic = LOGIC; // the three moments first
   var CHIPS = ["e24", "e05", "e20", "e07", "e23"]; // removals last, so no chip undoes an earlier chip's result
 
   // ── paths.ts ──
@@ -96,6 +113,38 @@
     if (errors.length) return { ops: [], errors: errors, per: per };
     return { ops: list.map(function (o) { return o.op === "identity" ? Object.assign({}, o, { handle: o.handle.replace(/^@/, "").toLowerCase() }) : o; }), errors: [], per: per };
   }
+
+  // validate.ts refErrors: every name a define reads must exist (state, or written earlier in the batch), resolved from the
+  // define's path up to the root. Unknown -> rejected at "validated", before any kernel sees it.
+  var EXPR_WORDS = { "true": 1, "false": 1, "null": 1, "undefined": 1, and: 1, or: 1, not: 1 };
+  function exprRefs(expr) { var w = String(expr).replace(/"[^"]*"|'[^']*'/g, " ").match(/[\p{L}_$][\p{L}\p{N}_$]*(?:\[(?:\d+|i)\])?(?:\.[\p{L}_$][\p{L}\p{N}_$]*(?:\[(?:\d+|i)\])?|\.\d+)*/gu) || [];
+    return w.filter(function (x, i) { return !EXPR_WORDS[x] && w.indexOf(x) === i; }); }
+  function refErrors(ops, knownPaths) { var has = {}, errors = [];
+    var addP = function (p) { var q = ""; canon(p).split(".").forEach(function (s) { q = q ? q + "." + s : s; has[q] = 1; has[q.replace(/\[\d+\]/g, "[i]")] = 1; var m = q.match(/^(.*)\[\d+\]$/); if (m) has[m[1]] = 1; }); };
+    knownPaths.forEach(addP);
+    ops.forEach(function (o, i) { if (o.op === "set" || o.op === "pointer") addP(o.path); if (o.op !== "define" || typeof o.expr !== "string") return;
+      var base = canon(o.path).split(".");
+      exprRefs(o.expr).forEach(function (r) { var rc = canon(r), tried = [], ok = false;
+        for (var k = base.length; k >= 0 && !ok; k--) { var c = (k ? base.slice(0, k).join(".") + "." : "") + rc; tried.push(c); if (has[c] || has[c.replace(/\[\d+\]/g, "[i]")]) ok = true; }
+        if (!ok) errors.push("ops[" + i + "].expr: unknown path \"" + r + "\" — nothing in the state is called that (looked for " + tried.join(", ") + "); nothing was written"); });
+      addP(o.path + "." + o.name); });
+    return errors; }
+
+  // claim check: numbers a plain-text reply states, matched to the state path they talk about (by the words just before them),
+  // compared with what the kernel holds now. entries: [{ path, value }] (current state, derived values included).
+  var STOP = { the: 1, is: 1, are: 1, of: 1, a: 1, an: 1, and: 1, at: 1, to: 1, it: 1, its: 1, "for": 1, now: 1, order: 0 };
+  function claimCheck(text, entries, claims) { var out = [], used = {};
+    var num = entries.filter(function (e) { return typeof e.value === "number"; });
+    if (Array.isArray(claims)) claims.forEach(function (c) { var e = num.filter(function (x) { return x.path === canon(String(c.path)); })[0]; if (e && typeof c.value === "number") { used[e.path] = 1; out.push({ path: e.path, claim: c.value, state: e.value, ok: Math.abs(c.value - e.value) < 1e-9 }); } });
+    var t = String(text || ""), re = /(-?\d+(?:\.\d+)?)/g, m, last = 0;
+    while ((m = re.exec(t))) { var win = t.slice(last, m.index).toLowerCase(), words = (win.match(/[\p{L}_]+/gu) || []).filter(function (w) { return !STOP[w]; }).slice(-4); last = m.index + m[0].length;
+      if (!words.length) continue;
+      var best = null, bs = 0;
+      num.forEach(function (e) { var segs = keys(e.path).map(function (x) { return x.toLowerCase(); }), sc = 0;
+        segs.forEach(function (sg, j) { if (j && words.indexOf(sg) >= 0) sc += 2 + words.lastIndexOf(sg) / 10; else if (!j && words.indexOf(sg) >= 0) sc += 0.5; });
+        if (sc > bs || (sc === bs && best && e.path.length < best.path.length)) { bs = sc; best = e; } });
+      if (best && bs >= 2 && !used[best.path]) { used[best.path] = 1; var v = +m[1]; out.push({ path: best.path, claim: v, state: best.value, ok: Math.abs(v - best.value) < 1e-9 }); } }
+    return out; }
 
   // ── kernel.ts ──
   var isPlain = function (v) { return !!v && typeof v === "object" && !Array.isArray(v); };
@@ -231,6 +280,7 @@
     ".mc-xpr{display:flex;gap:10px;align-items:center;padding:4px 10px;font-family:" + MONO + ";border-radius:6px;cursor:pointer}.mc-xpr.on{background:" + mix(ACC, 18) + ";box-shadow:inset 0 0 0 1px " + ACC + "}" +
     ".mc-xpe{padding:0 10px 4px 22px;color:" + FG2 + ";font-family:" + MONO + "}.mc-xpe code{color:" + DER + "}.mc-xpi{border-top:1px dashed " + GRID + ";padding:3px 0}.mc-xpi .mc-xpr{padding-left:22px}" +
     ".mc-xps{font:600 10px/1 " + MONO + ";padding:3px 6px;border:1px solid;border-radius:999px;text-transform:uppercase;letter-spacing:.04em}" +
+    ".mc-sc{border-left-color:" + OK + "}.mc-sc.bad{border-left-color:" + BAD + "}.mc-sc pre{padding:6px 10px;font:12px/1.6 " + MONO + "}.mc-sc .mc-sp{flex:1}.mc-sc .lh-ex pre{padding:0}" +
     ".mc-mx{padding:0 8px}.mc-mx:empty{display:none}.mc-mx .lh-ex{margin:0 0 8px}.mc-llms-code{margin:0}.mc-chk{color:" + OK + ";font-size:13px;cursor:help;margin:0 2px}.mc-llms-g{margin:8px 0 0}.mc-llms-g .llms-xp{margin:8px 0 0}" +
     // marking copied from the LLMS hero (llms-hero.js): words .lh-w, op tokens .lh-t, nodes, explain .lh-ex
     ".lh-w{cursor:pointer;border-radius:4px;padding:0 2px;margin:0 -2px;text-decoration:underline dotted " + mix(ACC, 55) + ";text-underline-offset:4px;transition:background .12s,color .12s}" +
@@ -392,7 +442,7 @@
       var b = document.createElement("button"); b.className = "mc-chip"; b.textContent = TH[i].text; b.onclick = function () { turn(); }; box.appendChild(b);
       if (i) b.textContent = "Next \u2192 " + TH[i].text; b.title = "Step " + (i + 1) + " of " + TH.length + ": click to send, then Confirm"; }
     function turn() { var r = TH[S.turn || 0]; if (!r || S.busy) return; if (S.live && !TM) return send(r.text);
-      S.waiting = true; chips(); send(r.text, { id: r.id, text: r.text, ops: r.ops, state: null, thread: true, test: !!TM }); }
+      S.waiting = true; chips(); send(r.text, { id: r.id, text: r.text, ops: r.ops, reply: r.reply, claims: r.claims, src: r.src, context: r.context, state: null, thread: true, test: !!TM }); }
     chips();
     ta.oninput = function () { ta.style.height = "auto"; ta.style.height = Math.min(180, ta.scrollHeight) + "px"; };
     ta.onkeydown = function (e) { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(ta.value); } };
@@ -623,7 +673,8 @@
       var force = /^me:/i.test(text), body = force ? text.replace(/^me:\s*/i, "") : text;
       r = r || byText(body);
       title(text); bubble("mc-u", esc(text));
-      if (r && r.test) { proposal(bubble("mc-a", ""), { ops: r.ops }, TEST_SRC, null, { text: r.text, thread: true }); return save(); }
+      if (r && r.test) { if (r.reply != null) textReply(bubble("mc-a", ""), r.reply, r.src || SCRIPT_SRC, r.claims, true); else proposal(bubble("mc-a", ""), { ops: r.ops }, r.src || TEST_SRC, null, { text: r.text, thread: true }); return save(); }
+      if (r && r.thread && r.reply != null && !S.live) { textReply(bubble("mc-a", ""), r.reply, "recorded · " + MODEL + " · " + String((D.run && D.run.date) || "").slice(0, 10) + (r.context === "stale" ? " · stale context (earlier messages only, no State)" : ""), r.claims, true); return save(); }
       if (!S.live) {
         if (!r) { bubble("mc-a", '<div class="mc-note">Recorded mode only replays real responses from the eval run, so there is no answer for this message. <a href="#" class="mc-addkey">Add your Meta API key</a> to talk to ' + MODEL + " live, or pick an example above.</div>")
           .querySelector(".mc-addkey").onclick = function (e) { e.preventDefault(); openKeys(); }; save(); return; }
@@ -634,11 +685,10 @@
       // userMessage() flattens nested objects; here state is already flat path -> value
       S.busy = true; $(".mc-go").disabled = true;
       liveChat(S.key, input, S.hist, force, function (t) { if (t.errors.length) a.innerHTML = '<div class="mc-note">attempt ' + t.attempts + " rejected, sending the errors back…</div>"; },
-        function (ops) { return dry(ops, seed).errors; })
+        function (ops) { var re = refErrors(ops, known(seed)); return re.length ? re : dry(ops, seed).errors; })
         .then(function (t) { var src = "live · " + MODEL + " · " + Math.round(performance.now() - t0) + " ms" + (t.attempts > 1 ? " · " + t.attempts + " attempts" : "");
           S.hist.push({ role: "user", content: body });
-          if (t.text !== undefined) { S.hist.push({ role: "assistant", content: t.text }); a.innerHTML = '<div class="mc-tx">' + esc(t.text) + '</div><div class="mc-src">' + esc(src) + "</div>";
-            linkText(a.querySelector(".mc-tx"), linkIndex({ nodes: Array.from(S.paths).concat(Object.keys(S.derived)) }, build()), "lh-w"); paint(); return; }
+          if (t.text !== undefined) { S.hist.push({ role: "assistant", content: t.text }); textReply(a, t.text, src, null, false); return; }
           S.hist.push({ role: "assistant", content: t.reply });
           if (t.obj == null) { a.innerHTML = '<div class="mc-src">' + esc(src) + '</div><pre class="mc-code">' + esc(t.reply) + '</pre><div class="mc-v mc-bad">✗ model reply is not a JSON object</div>'; return; }
           proposal(a, t.obj, src, seed, { text: body }); })
@@ -646,13 +696,31 @@
         .then(function () { S.busy = false; $(".mc-go").disabled = false; toBottom(); save(); });
     }
 
+    // a plain-text reply, then .me's state check: every number it claims about a path vs. what the kernel holds now
+    function textReply(a, text, src, claims, thread) { var me = build(), ent = known().map(function (p) { return { path: p, value: read(me, p) }; });
+      var cs = claimCheck(text, ent, claims), bad = cs.filter(function (c) { return !c.ok; });
+      var h = '<div class="mc-src">' + esc(src) + '</div><div class="mc-tx">' + esc(text) + "</div>";
+      if (cs.length) { var w = cs.reduce(function (m, c) { return Math.max(m, c.path.length); }, 0);
+        h += '<div class="mc-xp mc-sc' + (bad.length ? " bad" : "") + '"><div class="mc-xph"><span class="mc-xpt">state check · .me</span><span class="mc-sp"></span>' + (bad.length ? '<span class="mc-bad">✗ ' + bad.length + " claim" + (bad.length > 1 ? "s" : "") + " ≠ state</span>" : '<span class="mc-ok">✓ matches state</span>') + "</div><pre>" +
+          cs.map(function (c) { return '<span class="lh-exr" data-k="' + esc(c.path) + '">' + (c.ok ? '<span class="mc-ok">✓</span> ' : '<span class="mc-bad">✗</span> ') + '<span class="lh-exp">' + esc(c.path) + "</span>" + " ".repeat(w - c.path.length + 2) +
+            "claim " + (c.ok ? '<span class="lh-exv">' : '<span class="mc-bad">') + esc(J(c.claim)) + '</span> · state <span class="' + (S.derived[c.path] ? "lh-exd" : "lh-exv") + '">' + esc(J(c.state)) + "</span></span>"; }).join("\n") + "</pre>";
+        if (bad.length) { var dv = bad.filter(function (c) { return S.derived[c.path]; })[0];
+          h += '<p class="mc-note" style="margin:6px 10px">Coherent, not correct: the reply agrees with itself, not with the state. The model did not read the runtime; .me did.</p>';
+          if (dv) h += '<div style="padding:0 10px 8px">' + exInline(me, dv.path, {}) + "</div>"; }
+        h += "</div>"; }
+      else h += '<div class="mc-note">state check · no numeric claims about recorded paths in this reply.</div>';
+      a.innerHTML = h; linkText(a.querySelector(".mc-tx"), linkIndex({ nodes: known() }, me), "lh-w"); paint(); toBottom();
+      if (thread) { S.turn = (S.turn || 0) + 1; S.waiting = false; chips(); } }
     function proposal(a, obj, src, seed, opt) {
       var list = obj && Array.isArray(obj.ops) ? obj.ops : [], v = validateOps(obj);
+      if (!v.errors.length) { var re = refErrors(v.ops, known(seed)); if (re.length) v = { ops: [], errors: re, per: [], refs: true }; }
       var h = '<div class="mc-src">' + esc(src) + "</div>";
       var useL = !!LL() && !v.errors.length;
+      if (v.errors.length && list.length) h += '<pre class="mc-code me-code">' + hl(list.map(opCode).join("\n")) + "</pre>";
       if (list.length) h += useL ? '<div class="mc-llms-code"></div>' : '<pre class="mc-code me-code">' + hl(list.map(opCode).join("\n")) + "</pre>";
       else if (!v.errors.length) { a.innerHTML = h + '<div class="mc-note">Nothing to record in that message.</div>'; return; }
-      if (v.errors.length) { a.innerHTML = h + '<div class="mc-v mc-bad">✗ ' + v.errors.map(esc).join("<br>✗ ") + '</div><div class="mc-note">Rejected by the validator; nothing reaches the kernel.</div>'; return; }
+      if (v.errors.length) { a.innerHTML = h + '<div class="mc-v mc-bad"><b>✗ rejected at validated</b><br>✗ ' + v.errors.map(esc).join("<br>✗ ") + '</div><div class="mc-note">Nothing was written and there is nothing to confirm: the model proposes, only the state decides. The graph is unchanged.</div>';
+        toBottom(); if (opt && opt.thread) { S.turn = (S.turn || 0) + 1; S.waiting = false; chips(); } return; }
       var d = dry(v.ops, seed);
       if (!useL || d.errors.length) h += '<div class="mc-v ' + (d.errors.length ? "mc-bad" : "mc-ok") + '">' + (d.errors.length ? "✗ " + d.errors.map(esc).join("<br>✗ ") : '✓ <span style="color:' + FG2 + '">validated · dry-run ok</span>') + "</div>";
       var onlyQ = v.ops.every(function (o) { return o.op === "query"; });
@@ -743,5 +811,5 @@
     return React.createElement("div", { ref: ref });
   }
   root.LandingLive = Object.assign(root.LandingLive || {}, { MetaDemo: MetaDemo });
-  root.MetaDemoMount = mount; root.MetaDemoTests = TESTS;
+  root.MetaDemoMount = mount; root.MetaDemoTests = TESTS; root.MetaDemoCheck = { refErrors: refErrors, claimCheck: claimCheck, validateOps: validateOps };
 })(typeof window !== "undefined" ? window : this);

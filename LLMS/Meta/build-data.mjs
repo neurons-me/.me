@@ -12,7 +12,7 @@ const enF = path.join(L, "Meta/recorded-en.json");
 let thread = null;
 if (fs.existsSync(enF)) { const en = JSON.parse(fs.readFileSync(enF, "utf8"));
   // new format: one conversation (thread), replayed in order in a single chat
-  if (Array.isArray(en.thread)) thread = en.thread.map((x) => ({ id: x.id, lang: "en", text: x.text, state: x.state, ops: x.ops, ms: x.ms, attempts: x.attempts }));
+  if (Array.isArray(en.thread)) thread = en.thread.map((x) => ({ id: x.id, lang: "en", text: x.text, state: x.state, ops: x.ops, reply: x.reply, context: x.context, ok: x.ok, errors: x.errors, ms: x.ms, attempts: x.attempts }));
   (en.rows ?? []).forEach((x) => { const i = recorded.findIndex((r) => r.id === x.id), row = { id: x.id, lang: "en", text: x.text, state: x.state, speaker: x.speaker, ops: x.ops, ms: x.ms, attempts: x.attempts };
     if (i >= 0) recorded[i] = row; else recorded.push(row); });
   runInfo = { model: en.model, date: en.date, file: "LLMS/Meta/recorded-en.json" }; }

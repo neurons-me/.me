@@ -73,3 +73,32 @@ export function validateOps(obj: unknown): { ops: Op[]; errors: string[] } {
   if (errors.length) return { ops: [], errors };
   return { ops: list.map((o: any) => (o.op === "identity" ? { ...o, handle: o.handle.replace(/^@/, "").toLowerCase() } : o)), errors };
 }
+
+// Every name a define's expr reads must exist: in the state, or written earlier in the same op list. Names resolve from the
+// define's own path up to the root (cafe.order + "tip" -> cafe.order.tip, cafe.tip, tip). An unknown name is rejected here, at
+// "validated", before any kernel sees the op: the model cannot invent an input (e.g. a "tip" nobody recorded).
+const EXPR_WORDS = new Set(["true", "false", "null", "undefined", "and", "or", "not"]);
+const canonP = (p: string) => p.split(".").reduce((a, s) => (/^\d+$/.test(s) && a ? `${a}[${s}]` : a ? `${a}.${s}` : s), "");
+export function exprRefs(expr: string): string[] {
+  const noStr = expr.replace(/"[^"]*"|'[^']*'/g, " ");
+  return [...new Set((noStr.match(/[\p{L}_$][\p{L}\p{N}_$]*(?:\[(?:\d+|i)\])?(?:\.[\p{L}_$][\p{L}\p{N}_$]*(?:\[(?:\d+|i)\])?|\.\d+)*/gu) || [])
+    .filter((w) => !EXPR_WORDS.has(w)))];
+}
+export function refErrors(ops: Op[], knownPaths: string[]): string[] {
+  const has = new Set<string>(), errors: string[] = [];
+  const addP = (p: string) => { const c = canonP(p); let q = ""; for (const s of c.split(".")) { q = q ? `${q}.${s}` : s; has.add(q); has.add(q.replace(/\[\d+\]/g, "[i]")); const m = q.match(/^(.*)\[\d+\]$/); if (m) has.add(m[1]); } };
+  knownPaths.forEach(addP);
+  ops.forEach((o: any, i) => {
+    if (o.op === "set" || o.op === "pointer") addP(o.path);
+    if (o.op !== "define" || typeof o.expr !== "string") return;
+    const base = canonP(o.path).split(".");
+    for (const r of exprRefs(o.expr)) {
+      const rc = canonP(r), tried: string[] = [];
+      let ok = false;
+      for (let k = base.length; k >= 0 && !ok; k--) { const c = (k ? base.slice(0, k).join(".") + "." : "") + rc; tried.push(c); if (has.has(c) || has.has(c.replace(/\[\d+\]/g, "[i]"))) ok = true; }
+      if (!ok) errors.push(`ops[${i}].expr: unknown path "${r}" — nothing in the state is called that (looked for ${tried.join(", ")}); nothing was written`);
+    }
+    addP(`${o.path}.${o.name}`);
+  });
+  return errors;
+}

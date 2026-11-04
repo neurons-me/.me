@@ -4,8 +4,8 @@
 import type { ChatModel, ParseInput, ParseResult, ChatMessage, Op } from "./types.ts";
 import { CONFIRM_OPS } from "./types.ts";
 import { buildMessages } from "./prompt.ts";
-import { extractJson, validateOps } from "./validate.ts";
-import { dryRun } from "./kernel.ts";
+import { extractJson, validateOps, refErrors } from "./validate.ts";
+import { dryRun, flattenState } from "./kernel.ts";
 
 export type ParseOptions = { model: ChatModel; maxRepairs?: number; secretPaths?: string[]; examples?: any[]; history?: ChatMessage[] };
 
@@ -23,6 +23,7 @@ export async function parse(input: ParseInput, opts: ParseOptions): Promise<Pars
     try {
       const v = validateOps(extractJson(reply));
       ops = v.ops; errors = v.errors;
+      if (!errors.length) { errors = refErrors(ops, flattenState(input.state as any).map(([p]) => p)); if (errors.length) ops = []; }
     } catch (e: any) { errors = [e.message]; }
     if (!errors.length) {
       const d = dryRun(input.state as any, ops);
