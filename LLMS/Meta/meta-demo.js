@@ -188,6 +188,11 @@
     ".mc-mini{margin:8px 0 0;border-radius:10px;border:1px solid " + GRID + ";position:relative}.mc-gv{height:150px;overflow:hidden;touch-action:none;cursor:grab;padding:4px}.mc-gv.drag{cursor:grabbing}.mc-mini.big .mc-gv{height:min(360px,55vh)}" +
     ".mc-gv svg{display:block;width:100%;height:100%;user-select:none}.mc-gv svg text{font-family:" + MONO + ";font-size:11px;fill:currentColor}" +
     ".mc-gb{position:absolute;top:4px;right:4px;display:flex;gap:4px}.mc-gbt{font:inherit;font-size:13px;line-height:1;width:26px;height:26px;border-radius:8px;border:1px solid " + GRID + ";background:" + PAPER + ";color:" + FG2 + ";cursor:pointer}.mc-gbt:hover,.mc-gbt.on{color:" + ACC + ";border-color:" + ACC + "}" +
+    ".mc-xp{margin:8px 0;border:1px solid " + GRID + ";border-left:3px solid " + DER + ";border-radius:10px;background:" + PAPER + ";font-size:12.5px;overflow:hidden}" +
+    ".mc-xph{display:flex;align-items:center;padding:5px 10px;border-bottom:1px solid " + GRID + ";font:600 11px/1.4 " + MONO + ";color:" + FG2 + "}.mc-xpt{font-size:10px;letter-spacing:.06em;text-transform:uppercase;opacity:.8}" +
+    ".mc-xpr{display:flex;gap:10px;align-items:center;padding:4px 10px;font-family:" + MONO + ";border-radius:6px;cursor:pointer}.mc-xpr.on{background:" + mix(ACC, 18) + ";box-shadow:inset 0 0 0 1px " + ACC + "}" +
+    ".mc-xpe{padding:0 10px 4px 22px;color:" + FG2 + ";font-family:" + MONO + "}.mc-xpe code{color:" + DER + "}.mc-xpi{border-top:1px dashed " + GRID + ";padding:3px 0}.mc-xpi .mc-xpr{padding-left:22px}" +
+    ".mc-xps{font:600 10px/1 " + MONO + ";padding:3px 6px;border:1px solid;border-radius:999px;text-transform:uppercase;letter-spacing:.04em}" +
     ".mc-mx{padding:0 8px}.mc-mx:empty{display:none}.mc-mx .mc-ex{margin:0 0 8px}" +
     ".mc-gn{cursor:pointer}.mc-gn.on circle:not(.mc-hl){stroke:" + ACC + ";stroke-width:3}.mc-gn.on text{fill:" + ACC + ";font-weight:700}" +
     ".mc-w,.mc-code [data-k]{cursor:pointer;border-radius:4px;transition:background .12s,box-shadow .12s}.mc-u .mc-w{text-decoration:underline dotted " + mix(ACC, 55) + ";text-underline-offset:4px}" +
@@ -247,6 +252,17 @@
     var w = ins.reduce(function (m, i) { return Math.max(m, String(i.path).length); }, 0);
     return '<div class="mc-ex"><pre><span class="mc-p">' + esc(x.path) + '</span> = <span class="mc-d">' + esc(J(x.value)) + "</span>\n  ← " + esc(x.expr || "") +
       ins.map(function (i) { return "\n      " + '<span class="mc-p">' + esc(i.path) + "</span>" + " ".repeat(Math.max(1, w - String(i.path).length + 2)) + '<span class="mc-n">' + esc(J(i.value)) + "</span>"; }).join("") + "</pre></div>"; }
+
+  // explain() card (.GUI tokens): target path = value, ← expression, inputs with value and status; rows carry data-k for linking
+  function xpCard(x, p, v, ch) { ch = ch || {};
+    var ins = (x && x.derivation && x.derivation.inputs) || [], der = !!(x && x.expr);
+    var st = function (i) { var k = canon(String(i.path)); return i.masked || i.stealth ? ["masked", WARN] : i.value === undefined ? ["missing", BAD] : ch[k] ? ["changed", ACC] : ["ok", OK]; };
+    var h = '<div class="mc-xp"><div class="mc-xph"><span class="mc-xpl">me.explain</span><span class="mc-sp"></span>' + (der ? '<span class="mc-xpt">derived</span>' : '<span class="mc-xpt">value</span>') + "</div>" +
+      '<div class="mc-xpr" data-k="' + esc(canon(p)) + '"><span class="mc-p">' + esc(canon(p)) + '</span><span class="mc-sp"></span><span class="' + (der ? "mc-d" : "mc-n") + '">' + (v === undefined || isPlain(v) ? "{ … }" : esc(J(v))) + "</span></div>";
+    if (der) { h += '<div class="mc-xpe">← <code>' + esc(x.expr) + "</code></div>";
+      if (ins.length) h += '<div class="mc-xpi">' + ins.map(function (i) { var k = canon(String(i.path)), s2 = st(i);
+        return '<div class="mc-xpr" data-k="' + esc(k) + '"><span class="mc-p">' + esc(k) + '</span><span class="mc-sp"></span><span class="mc-n">' + esc(J(i.value)) + '</span><span class="mc-xps" style="color:' + s2[1] + ";border-color:" + mix(s2[1], 45) + '">' + s2[0] + "</span></div>"; }).join("") + "</div>"; }
+    return h + "</div>"; }
 
   // deep-merge b into a, keeping what a already has (eval starting states seed the shared conversation state)
   function seedMerge(a, b) { Object.keys(b || {}).forEach(function (k) { if (isPlain(b[k])) { if (!isPlain(a[k])) { if (a[k] !== undefined) return; a[k] = {}; } seedMerge(a[k], b[k]); } else if (a[k] === undefined) a[k] = b[k]; }); return a; }
@@ -360,9 +376,7 @@
         e.addEventListener("mouseout", function (ev) { if (!pin && !(ev.relatedTarget && ev.relatedTarget.closest && ev.relatedTarget.closest("[data-k]"))) set(null); });
         e.addEventListener("click", function (ev) { var t = ev.target.closest && ev.target.closest("[data-k]"); if (!t || t.closest(".mc-gn")) return; pin = pin === t.dataset.k ? null : t.dataset.k; set(pin || null); }); });
       return { pin: function (k) { pin = k; set(k); } }; }
-    function exInline(me, p) { var x = null; try { x = me.explain(p); } catch (e) {}
-      if (x && x.expr) return exBlock(x);
-      var v = read(me, p); return '<div class="mc-ex"><pre><span class="mc-p">' + esc(p) + "</span>" + (v === undefined || isPlain(v) ? " { … }" : ' = <span class="mc-n">' + esc(J(v)) + "</span>") + "</pre></div>"; }
+    function exInline(me, p, ch) { var x = null; try { x = me.explain(p); } catch (e) {} return xpCard(x, p, read(me, p), ch || {}); }
     // navigable mini graph: wheel/pinch zoom, drag pan, reset, expand to the full graph, click a node for explain()
     function wireMini(box, M, d, card, link) {
       var full = false, vb0, vb, svgEl, inst = function () { return card.applied ? build() : d.after; };
@@ -385,10 +399,10 @@
       gv.addEventListener("pointerup", up); gv.addEventListener("pointercancel", up);
       gv.addEventListener("click", function (e) { if (moved >= 4) return; var n = downN || (e.target.closest && e.target.closest(".mc-gn")); var mx = box.querySelector(".mc-mx");
         if (!n) return; var k = n.dataset.k; if (mx.dataset.k === k) { mx.dataset.k = ""; mx.innerHTML = ""; link.pin(null); return; }
-        mx.dataset.k = k; mx.innerHTML = exInline(inst(), k); link.pin(k); });
+        mx.dataset.k = k; mx.innerHTML = exInline(inst(), k, M.ch); link.pin(k); });
       box.querySelector(".mc-gr").onclick = function () { vb = vb0.slice(); setVB(); };
       box.querySelector(".mc-gx").onclick = function () { full = !full; draw(); };
-      card.redraw = function () { draw(); var mx = box.querySelector(".mc-mx"); if (mx.dataset.k) mx.innerHTML = exInline(inst(), mx.dataset.k); };
+      card.redraw = function () { draw(); var mx = box.querySelector(".mc-mx"); if (mx.dataset.k) mx.innerHTML = exInline(inst(), mx.dataset.k, M.ch); };
       draw(); }
 
     function bubble(cls, html) { var d = document.createElement("div"); d.className = "mc-m " + cls; d.innerHTML = html; log.appendChild(d); scr.scrollTop = scr.scrollHeight; return d; }
@@ -469,7 +483,7 @@
         if (S.changed[p] || on.some(function (f) { return S.changed[canon(f)]; })) exs.push(x); } catch (e) {} });
       var leaves = Array.from(S.paths).concat(dpaths).map(function (p) { return { path: p, value: read(me, p) }; });
       $(".mc-g").innerHTML = leaves.length ? graph(leaves, S.derived, deps, S.changed) : "";
-      $(".mc-exs").innerHTML = exs.length ? exs.map(exBlock).join("") + '<p class="mc-note">The model only named the formula; the kernel computed the value. <a href="https://neurons-me.github.io/.me/docs/Explain.html">explain()</a> shows where it came from.</p>' : "";
+      $(".mc-exs").innerHTML = exs.length ? exs.map(function (x) { return xpCard(x, x.path, x.value, S.changed); }).join("") + '<p class="mc-note">The model only named the formula; the kernel computed the value. <a href="https://neurons-me.github.io/.me/docs/Explain.html">explain()</a> shows where it came from.</p>' : "";
     }
     $(".mc-g").innerHTML = EMPTY;
   }
