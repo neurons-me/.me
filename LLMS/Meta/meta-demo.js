@@ -185,7 +185,13 @@
     ".mc-send{display:flex;gap:8px;align-items:flex-end;padding:6px;border:1px solid " + GRID + ";border-radius:24px;background:" + PAPER + "}.mc-send textarea{flex:1;min-width:0;resize:none;font:inherit;padding:8px 12px;border:0;outline:0;background:transparent;color:inherit;max-height:180px}" +
     ".mc-hint{font-size:11.5px;color:" + FG2 + ";margin-top:6px!important;padding:0 4px;opacity:.85}.mc-hint code{font-family:" + MONO + "}" +
     ".mc-g{margin-top:4px}.mc-g svg{display:block;width:100%;height:auto}.mc-g svg text{font-family:" + MONO + ";font-size:11px;fill:currentColor}" +
-    ".mc-mini{margin:8px 0 0;padding:6px 8px;border-radius:10px;border:1px solid " + GRID + ";overflow-x:auto}.mc-mini svg{display:block;max-height:150px;width:auto;max-width:100%;height:auto}.mc-mini svg text{font-family:" + MONO + ";font-size:11px;fill:currentColor}" +
+    ".mc-mini{margin:8px 0 0;border-radius:10px;border:1px solid " + GRID + ";position:relative}.mc-gv{height:150px;overflow:hidden;touch-action:none;cursor:grab;padding:4px}.mc-gv.drag{cursor:grabbing}.mc-mini.big .mc-gv{height:min(360px,55vh)}" +
+    ".mc-gv svg{display:block;width:100%;height:100%;user-select:none}.mc-gv svg text{font-family:" + MONO + ";font-size:11px;fill:currentColor}" +
+    ".mc-gb{position:absolute;top:4px;right:4px;display:flex;gap:4px}.mc-gbt{font:inherit;font-size:13px;line-height:1;width:26px;height:26px;border-radius:8px;border:1px solid " + GRID + ";background:" + PAPER + ";color:" + FG2 + ";cursor:pointer}.mc-gbt:hover,.mc-gbt.on{color:" + ACC + ";border-color:" + ACC + "}" +
+    ".mc-mx{padding:0 8px}.mc-mx:empty{display:none}.mc-mx .mc-ex{margin:0 0 8px}" +
+    ".mc-gn{cursor:pointer}.mc-gn.on circle:not(.mc-hl){stroke:" + ACC + ";stroke-width:3}.mc-gn.on text{fill:" + ACC + ";font-weight:700}" +
+    ".mc-w,.mc-code [data-k]{cursor:pointer;border-radius:4px;transition:background .12s,box-shadow .12s}.mc-u .mc-w{text-decoration:underline dotted " + mix(ACC, 55) + ";text-underline-offset:4px}" +
+    ".mc-w.on{background:" + mix(ACC, 25) + ";box-shadow:0 0 0 1px " + ACC + "}" +
     ".mc-hl{animation:mchl 2.4s ease}@keyframes mchl{0%,40%{r:11;opacity:1}100%{r:7}}" +
     ".mc-ex{margin-top:10px;padding:9px 11px;border-radius:10px;border:1px dashed " + mix(DER, 50) + ";background:" + mix(DER, 6) + "}.mc-ex pre{font-size:11.5px;white-space:pre;overflow-x:auto}" +
     ".mc-bd{display:none}" +
@@ -230,9 +236,10 @@
     deps.forEach(function (e) { var a = P[canon(e.from)], b = P[canon(e.to)]; if (!a || !b) return; var ax = tx(a), bx = tx(b), cx = Math.max(ax, bx) + 24; W = Math.max(W, cx + 6);
       s += '<path d="M' + ax + " " + Y(a.y) + " C" + cx + " " + Y(a.y) + " " + cx + " " + Y(b.y) + " " + bx + " " + Y(b.y) + '" fill="none" stroke="' + DER + '" stroke-dasharray="3 3" stroke-width="1.2" opacity=".8"/>'; });
     rows.forEach(function (r) { var der = r.leaf && derivedSet[r.p], ch = changed[r.p], col = der ? DER : r.leaf ? NUM : ACC;
+      s += '<g class="mc-gn" data-k="' + esc(r.p) + '">';
       if (ch) s += '<circle class="mc-hl" cx="' + X(r.d) + '" cy="' + Y(r.y) + '" r="7" fill="none" stroke="' + ACC + '" stroke-width="1.5"/>';
       s += '<circle cx="' + X(r.d) + '" cy="' + Y(r.y) + '" r="' + (r.d ? 4 : 5) + '" fill="' + col + '"/>';
-      s += '<text x="' + (X(r.d) + 9) + '" y="' + (Y(r.y) + 4) + '"' + (ch ? ' font-weight="700"' : "") + ">" + esc(r.k) + (r.leaf ? ' <tspan fill="' + col + '">' + esc(val(r)) + "</tspan>" : "") + "</text>"; });
+      s += '<text x="' + (X(r.d) + 9) + '" y="' + (Y(r.y) + 4) + '"' + (ch ? ' font-weight="700"' : "") + ">" + esc(r.k) + (r.leaf ? ' <tspan fill="' + col + '">' + esc(val(r)) + "</tspan>" : "") + "</text></g>"; });
     var H = Math.max(1, y) * RH + 10;
     return '<svg viewBox="0 0 ' + Math.ceil(W) + " " + H + '" style="max-width:' + Math.ceil(W * 1.15) + 'px" role="img" aria-label="state graph">' + s + "</svg>";
   }
@@ -323,13 +330,66 @@
         ps.forEach(function (p) { if (after && read(after, p) === undefined) errors.push("ops[" + i + "]: " + p + ' = "' + o.expr + '" evaluates to undefined (unknown name in expr?)'); }); });
       return { diff: diff, reads: reads, errors: errors, known: kn, after: after }; }
     // only what the proposal touches: written paths, derived nodes that recompute, and their direct inputs
-    function mini(ops, d) { if (!d.after || d.errors.length) return ""; var ch = {}, der = {}, deps = [], nodes = new Set();
+    // only what the proposal touches: written paths, derived nodes that recompute, and their direct inputs
+    function miniModel(ops, d) { if (!d.after || d.errors.length) return null; var ch = {}, der = {}, deps = [], nodes = new Set();
       d.diff.forEach(function (x) { ch[x.path] = 1; nodes.add(x.path); });
       ops.forEach(function (o) { if (o.op === "define") touched([o], d.known).forEach(function (p) { der[p] = 1; }); });
       Object.keys(S.derived).concat(Object.keys(der)).forEach(function (p) { try { var on = ((d.after.explain(p).meta || {}).dependsOn || []).map(canon);
         if (der[p] || on.some(function (f) { return ch[f]; })) { der[p] = 1; ch[p] = 1; nodes.add(p); on.forEach(function (f) { nodes.add(f); deps.push({ from: f, to: p }); }); } } catch (e) {} });
-      if (!nodes.size) return "";
-      return '<div class="mc-mini">' + graph(Array.from(nodes).map(function (p) { return { path: p, value: read(d.after, p) }; }), der, deps, ch) + "</div>"; }
+      return nodes.size ? { nodes: Array.from(nodes), der: der, deps: deps, ch: ch } : null; }
+    function fullModel(M, me) { var der = Object.assign({}, S.derived, M.der), deps = [], nodes = new Set(Array.from(S.paths).concat(Object.keys(der), M.nodes));
+      Object.keys(der).forEach(function (p) { try { ((me.explain(p).meta || {}).dependsOn || []).forEach(function (f) { deps.push({ from: canon(f), to: p }); }); } catch (e) {} });
+      return { nodes: Array.from(nodes).filter(function (p) { return !Array.from(nodes).some(function (q) { return q !== p && (q.indexOf(p + ".") === 0 || q.indexOf(p + "[") === 0); }); }), der: der, deps: deps, ch: M.ch }; }
+    // word -> node keys, from the proposal's own nodes: path segments (and their prefixes) and leaf values. Only real matches link.
+    function linkIndex(M, me) { var idx = {}, add = function (w, k) { w = String(w).trim().toLowerCase(); if (w.length < 2 || /^\d$/.test(w)) return; (idx[w] = idx[w] || new Set()).add(k); };
+      M.nodes.forEach(function (p) { var segs = keys(p), pre = "";
+        segs.forEach(function (sg, i) { pre = i ? (/^\d+$/.test(sg) ? pre + "[" + sg + "]" : pre + "." + sg) : sg; if (/^\d+$/.test(sg)) return; add(sg, pre); if (sg.indexOf("_") >= 0) add(sg.replace(/_/g, " "), pre); });
+        var v = read(me, p); if (typeof v === "string" || typeof v === "number") add(v, p); if (Array.isArray(v)) v.forEach(function (x) { if (typeof x === "string") add(x, p); }); });
+      return idx; }
+    function linkText(root0, idx) { var ws = Object.keys(idx).sort(function (a, b) { return b.length - a.length; }); if (!ws.length) return;
+      var re = new RegExp("(^|[^\\p{L}\\p{N}_])(" + ws.map(function (w) { return w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }).join("|") + ")(?![\\p{L}\\p{N}_])", "giu");
+      var tw = document.createTreeWalker(root0, NodeFilter.SHOW_TEXT), list = []; while (tw.nextNode()) list.push(tw.currentNode);
+      list.forEach(function (t) { var txt = t.nodeValue, m, last = 0, frag = document.createDocumentFragment(), hit = false; re.lastIndex = 0;
+        while ((m = re.exec(txt))) { var st = m.index + m[1].length; frag.appendChild(document.createTextNode(txt.slice(last, st)));
+          var sp = document.createElement("span"); sp.className = "mc-w"; sp.textContent = m[2]; sp.dataset.k = Array.from(idx[m[2].toLowerCase()]).join(" "); frag.appendChild(sp); last = st + m[2].length; hit = true; }
+        if (hit) { frag.appendChild(document.createTextNode(txt.slice(last))); t.parentNode.replaceChild(frag, t); } }); }
+    // hover / tap linking across the user's words, the op tokens and the graph nodes (as in the LLMS hero)
+    function linkScope(els) { var pin = null, set = function (ks) { var on = new Set(ks ? ks.split(" ") : []);
+        els.forEach(function (e) { e.querySelectorAll("[data-k]").forEach(function (n) { var hit = n.dataset.k.split(" ").some(function (k) { return on.has(k); }); n.classList.toggle("on", hit); }); }); };
+      els.forEach(function (e) { e.addEventListener("mouseover", function (ev) { var t = ev.target.closest && ev.target.closest("[data-k]"); if (t && !pin) set(t.dataset.k); });
+        e.addEventListener("mouseout", function (ev) { if (!pin && !(ev.relatedTarget && ev.relatedTarget.closest && ev.relatedTarget.closest("[data-k]"))) set(null); });
+        e.addEventListener("click", function (ev) { var t = ev.target.closest && ev.target.closest("[data-k]"); if (!t || t.closest(".mc-gn")) return; pin = pin === t.dataset.k ? null : t.dataset.k; set(pin || null); }); });
+      return { pin: function (k) { pin = k; set(k); } }; }
+    function exInline(me, p) { var x = null; try { x = me.explain(p); } catch (e) {}
+      if (x && x.expr) return exBlock(x);
+      var v = read(me, p); return '<div class="mc-ex"><pre><span class="mc-p">' + esc(p) + "</span>" + (v === undefined || isPlain(v) ? " { … }" : ' = <span class="mc-n">' + esc(J(v)) + "</span>") + "</pre></div>"; }
+    // navigable mini graph: wheel/pinch zoom, drag pan, reset, expand to the full graph, click a node for explain()
+    function wireMini(box, M, d, card, link) {
+      var full = false, vb0, vb, svgEl, inst = function () { return card.applied ? build() : d.after; };
+      function draw() { var me = inst(), G = full ? fullModel(M, me) : M;
+        box.querySelector(".mc-gv").innerHTML = graph(G.nodes.map(function (p) { return { path: p, value: read(me, p) }; }), G.der, G.deps, G.ch);
+        svgEl = box.querySelector("svg"); svgEl.removeAttribute("style"); var b = svgEl.viewBox.baseVal; vb0 = [b.x, b.y, b.width, b.height]; vb = vb0.slice(); setVB();
+        box.classList.toggle("big", full); box.querySelector(".mc-gx").classList.toggle("on", full); }
+      function setVB() { svgEl.setAttribute("viewBox", vb.join(" ")); }
+      function zoom(f, cx, cy) { var r = svgEl.getBoundingClientRect(), px = vb[0] + (cx - r.left) / r.width * vb[2], py = vb[1] + (cy - r.top) / r.height * vb[3];
+        var w = Math.max(vb0[2] / 8, Math.min(vb0[2] * 4, vb[2] * f)), k = w / vb[2]; vb = [px - (px - vb[0]) * k, py - (py - vb[1]) * k, w, vb[3] * k]; setVB(); }
+      var gv = box.querySelector(".mc-gv"), pts = {}, moved = 0, last = null, dist = 0;
+      gv.addEventListener("wheel", function (e) { e.preventDefault(); zoom(Math.exp(e.deltaY * 0.0015), e.clientX, e.clientY); }, { passive: false });
+      var downN = null;
+      gv.addEventListener("pointerdown", function (e) { downN = e.target.closest && e.target.closest(".mc-gn"); pts[e.pointerId] = [e.clientX, e.clientY]; moved = 0; last = null; dist = 0; try { gv.setPointerCapture(e.pointerId); } catch (x) {} });
+      gv.addEventListener("pointermove", function (e) { if (!pts[e.pointerId]) return; var prev = pts[e.pointerId]; pts[e.pointerId] = [e.clientX, e.clientY]; var ids = Object.keys(pts);
+        if (ids.length === 2) { var a = pts[ids[0]], b = pts[ids[1]], nd = Math.hypot(a[0] - b[0], a[1] - b[1]); if (dist) zoom(dist / nd, (a[0] + b[0]) / 2, (a[1] + b[1]) / 2); dist = nd; moved += 10; return; }
+        var dx = e.clientX - prev[0], dy = e.clientY - prev[1]; moved += Math.abs(dx) + Math.abs(dy); if (moved < 4) return;
+        var r = svgEl.getBoundingClientRect(), sc = Math.max(vb[2] / r.width, vb[3] / r.height); vb[0] -= dx * sc; vb[1] -= dy * sc; setVB(); gv.classList.add("drag"); });
+      var up = function (e) { delete pts[e.pointerId]; dist = 0; gv.classList.remove("drag"); };
+      gv.addEventListener("pointerup", up); gv.addEventListener("pointercancel", up);
+      gv.addEventListener("click", function (e) { if (moved >= 4) return; var n = downN || (e.target.closest && e.target.closest(".mc-gn")); var mx = box.querySelector(".mc-mx");
+        if (!n) return; var k = n.dataset.k; if (mx.dataset.k === k) { mx.dataset.k = ""; mx.innerHTML = ""; link.pin(null); return; }
+        mx.dataset.k = k; mx.innerHTML = exInline(inst(), k); link.pin(k); });
+      box.querySelector(".mc-gr").onclick = function () { vb = vb0.slice(); setVB(); };
+      box.querySelector(".mc-gx").onclick = function () { full = !full; draw(); };
+      card.redraw = function () { draw(); var mx = box.querySelector(".mc-mx"); if (mx.dataset.k) mx.innerHTML = exInline(inst(), mx.dataset.k); };
+      draw(); }
 
     function bubble(cls, html) { var d = document.createElement("div"); d.className = "mc-m " + cls; d.innerHTML = html; log.appendChild(d); scr.scrollTop = scr.scrollHeight; return d; }
     function send(text, r) {
@@ -369,7 +429,8 @@
       var df = d.diff.map(function (x) { return '<span class="mc-p">' + esc(x.path) + "</span> " + (x.before === undefined ? "" : '<span class="mc-del">' + esc(J(x.before)) + "</span> ") + '→ <span class="mc-n">' + esc(J(x.after)) + "</span>"; })
         .concat(Object.keys(d.reads).map(function (p) { return '<span class="mc-p">' + esc(p) + '</span> = <span class="mc-n">' + esc(J(d.reads[p])) + "</span>"; }));
       if (df.length) h += '<div class="mc-diff">' + df.join("<br>") + "</div>";
-      h += mini(v.ops, d);
+      var M = miniModel(v.ops, d);
+      if (M) h += '<div class="mc-mini"><div class="mc-gv"></div><div class="mc-gb"><button class="mc-gbt mc-gx" title="Full graph">⤢</button><button class="mc-gbt mc-gr" title="Reset view">⟲</button></div><div class="mc-mx"></div></div>';
       var onlyQuery = v.ops.every(function (o) { return o.op === "query"; });
       if (!d.errors.length && !onlyQuery) {
         var sec = v.ops.filter(function (o) { return o.op === "secret" || o.op === "noise"; }), need = v.ops.filter(function (o) { return CONFIRM.indexOf(o.op) >= 0; });
@@ -378,6 +439,9 @@
         h += '<div class="mc-row"><button class="mc-btn mc-yes">Confirm</button><button class="mc-btn ghost mc-no">Discard</button><span class="mc-out mc-note" style="margin:0"></span></div>';
       }
       a.innerHTML = h; scr.scrollTop = scr.scrollHeight;
+      var card = {}, ub = a.previousElementSibling, scope = [a].concat(ub && ub.classList.contains("mc-u") ? [ub] : []);
+      if (M) { var idx = linkIndex(M, d.after); a.querySelectorAll(".mc-code").forEach(function (c) { linkText(c, idx); }); if (ub && ub.classList.contains("mc-u")) linkText(ub, idx);
+        var link = linkScope(scope); wireMini(a.querySelector(".mc-mini"), M, d, card, link); }
       var yes = a.querySelector(".mc-yes"); if (!yes) return;
       var done = function (msg, cls) { a.querySelectorAll(".mc-yes,.mc-no").forEach(function (b) { b.remove(); }); var o = a.querySelector(".mc-out"); o.className = "mc-out mc-note " + (cls || ""); o.textContent = msg; };
       a.querySelector(".mc-no").onclick = function () { done("Discarded. Nothing changed."); save(); };
@@ -393,7 +457,7 @@
           v.ops.forEach(function (o) { if (o.op === "remove") { var p = canon(o.path + "." + o.key); Array.from(S.paths).forEach(function (q) { if (q === p || q.indexOf(p + ".") === 0 || q.indexOf(p + "[") === 0) S.paths.delete(q); }); delete S.derived[p]; try { var so = keys(canon(o.path)).reduce(function (x, k) { return x[k]; }, S.seed); if (so) delete so[o.key]; } catch (e) {} }
             if (o.op === "define") touched([o], d.known).forEach(function (p) { S.derived[p] = 1; S.paths.delete(p); }); });
           S.changed = {}; d.diff.forEach(function (x) { S.changed[x.path] = 1; });
-          render(me); done("Applied.", "mc-ok"); save();
+          render(me); card.applied = true; card.redraw && card.redraw(); done("Applied.", "mc-ok"); save();
         } catch (e) { S.batches.pop(); S.seed = prevSeed; S.paths = prevPaths; S.derived = prevDer; done(e.message, "mc-bad"); }
       };
     }
