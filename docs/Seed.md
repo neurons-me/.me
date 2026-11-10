@@ -7,6 +7,9 @@ mepath:
   - text: Docs
     url: https://neurons-me.github.io/.me/docs/
 crumb: Seed
+scripts:
+  - /assets/me-kernel/me-kernel.js?v=1
+  - /assets/me-live/me-live.js?v=1
 related:
   - me.html
   - Primitives.html
@@ -16,11 +19,11 @@ related:
 
 # 𓇗 SEED
 
-The **seed** is the root value a `.me` kernel is constructed from. Its public fingerprint (`identityHash`) and its signing keys (`prove()`) are derived from it.
-
 ```ts
 new ME(seed)
 ```
+
+<div data-live="MeSeedInput" data-mode="seed"></div>
 
 No network call, no namespace, no server. A seed is a string held by the kernel, and everything derived from it is computed locally.
 
@@ -72,6 +75,8 @@ function deriveCompoundSeed(who: string, secret: string): string {
 ```
 
 Same `who` + same `secret`, on any device, at any time, gives the same seed. The constructor also sets `who` as the active expression, which `prove()` requires.
+
+<div data-live="MeSeedInput" data-mode="compound"></div>
 
 An existing kernel can be re-seeded the same way at runtime through the internal `ME_RESEED` symbol. It re-derives `seed` and `identityHash`, clears the identity root and any `_()`/`~()` values held from the previous identity, and rebuilds the index.
 
@@ -162,6 +167,8 @@ branchSeed = deriveHkdfBytes(seed, "me.prove.v1", activeExpression, 32)  // deri
 ```
 
 `prove()` signs a payload with an Ed25519 key derived from the seed and the active expression. This is why the seed must stay private when it is used as an identity: whoever has the seed can produce the same signatures.
+
+The two labels are fixed and distinct — `"this.me/identity:v1::"` in `keccak256("this.me/identity:v1::" + seed)`, and `"me.prove.v1"` as the HKDF-SHA-256 salt (with the active name as info) for the Ed25519 key — so the same seed yields unrelated values. Seeing `identityHash` does not reveal the signing key.
 
 ### What the seed does *not* protect
 

@@ -517,6 +517,8 @@
     if (n.nodeType !== 1) return null;
     const t = tagOf(n);
     if (t === "a") return N("Link", { href: n.getAttribute("href"), underline: "hover", sx: { color: "primary.main", fontWeight: "inherit" } }, inl(n));
+    // an inline live element (<code data-live="MeLive" data-me="identityHash">): a component a page script put on window.LandingLive
+    if (n.dataset && n.dataset.live && window.LandingLive && window.LandingLive[n.dataset.live]) return N(n.dataset.live, { ...n.dataset, text: n.textContent });
     // Inline code that is .me code (starts with me. / me( / me[) goes through the .me highlighter too.
     if (t === "code") { const tx = n.textContent, isMe = SYN && (isMeCode(tx) || (meTable && /^[\p{L}_$][\p{L}\p{N}_$]*(\.[\p{L}\p{N}_$]+|\[\d+\])+$/u.test(tx)));
       return N("Box", { component: "code", className: isMe ? "me-code" : undefined, sx: { fontFamily: MONO, fontSize: ".86em", px: .5, py: .125, borderRadius: "4px", bgcolor: "action.hover", color: "text.primary", overflowWrap: "anywhere" } }, isMe ? SYN.render(h, tx) : [tx]); }
@@ -583,6 +585,8 @@
       return N("KernelBadge", { html: b.innerHTML.replace(/\s*ⓘ\s*$/, ""), tip: more ? more.innerHTML : "" }); }
     if (b.classList.contains("doc-kernel-more") && b.previousElementSibling && b.previousElementSibling.classList.contains("doc-kernel")) return null;
     if (H[t]) return T(inl(b), { ...H[t], scrollMarginTop: "64px" }, { component: t, id: b.id || undefined });
+    // a formula paragraph marked {: .doc-expr}: monospace lines, no prose styling
+    if (t === "p" && b.classList.contains("doc-expr")) return T(inl(b), { fontFamily: MONO, fontSize: { xs: ".8rem", sm: ".9rem" }, lineHeight: 2, color: "text.primary", mb: 2, overflowWrap: "anywhere" }, { component: "p", className: "doc-expr" });
     if (t === "p") return T(inl(b), { fontSize: "1rem", lineHeight: 1.7, color: "text.primary", mb: 2 }, { component: "p" });
     if (t === "blockquote") return N("Box", { component: "blockquote", sx: { m: 0, mb: 2.5, pl: 2, py: .25, borderLeft: 3, borderColor: "primary.main", color: "text.secondary", "& p": { mb: 0, color: "text.secondary" } } }, blocks(b));
     if (t === "ul" || t === "ol") return N("Box", { component: t, sx: { pl: 3, mt: 0, mb: 2.5, "& > li": { mb: .75, lineHeight: 1.65 }, "& > li p": { mb: .5 } } },
