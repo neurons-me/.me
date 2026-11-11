@@ -415,10 +415,11 @@
   ].filter(Boolean));
   // ── Markdown doc page (layout gui-doc): the rendered Markdown, element by element, as registry nodes ──
   const SYN = window.MeSyntax;
-  function MeCodeBlock({ code, lang, "data-gui-node-id": id }) {
+  function MeCodeBlock({ code, lang, narrow, "data-gui-node-id": id }) {
     const me = SYN && /^(ts|js|javascript|typescript|me)$/.test(lang || "");
-    return h(Box, { component: "pre", "data-gui-node-id": id, className: me ? "me-code" : undefined, sx: (t) => ({ m: 0, mb: 2.5, px: 2, py: 1.5, borderRadius: "10px", overflowX: "auto", fontFamily: MONO, fontSize: { xs: 12, sm: 13 }, lineHeight: me ? 1.6 : 1.25,
-        bgcolor: `color-mix(in srgb, ${t.palette.text.primary} 4%, ${t.palette.background.paper})`, border: 1, borderColor: "divider", color: "text.primary" }) },
+    return h(Box, { component: "pre", "data-gui-node-id": id, className: me ? "me-code" : undefined, "data-doc-input-width": narrow ? "" : undefined, sx: (t) => ({ m: 0, mb: 2.5, px: 2, py: 1.5, borderRadius: "10px", overflowX: "auto", fontFamily: MONO, fontSize: { xs: 12, sm: 13 }, lineHeight: me ? 1.6 : 1.25,
+        bgcolor: `color-mix(in srgb, ${t.palette.text.primary} 4%, ${t.palette.background.paper})`, border: 1, borderColor: "divider", color: "text.primary",
+        ...(narrow ? { maxWidth: 520, width: "100%", boxSizing: "border-box" } : {}) }) },
       h("code", { style: { fontFamily: "inherit", whiteSpace: "pre" } }, ...(me ? SYN.render(h, code) : [code])));
   }
   // Raw image markup that follows the GUI light/dark mode: each <picture> becomes its <img>, with the
@@ -471,6 +472,25 @@
       const sec = document.createElement("section"); sec.className = "doc-axiom-block";
       hd.before(sec);
       let n = hd; while (n) { const next = n.nextElementSibling; sec.appendChild(n); n = next; if (!n || /^(H1|H2|H3|HR)$/.test(n.tagName)) break; }
+    });
+    return body;
+  }
+  // Seed Shown sections (Determinism, Sensitivity, One-way, Compound): the title and the
+  // one-line description sit on the same row (stacked under 640px), with a tighter gap to the inputs.
+  function seedDemoSections(body) {
+    const names = /^(Determinism|Sensitivity|One-way|Compound)$/;
+    body.querySelectorAll(":scope > h3").forEach((hd) => {
+      if (!names.test((hd.textContent || "").replace(/\s+/g, " ").trim())) return;
+      const sec = document.createElement("section");
+      sec.className = "doc-demo-section";
+      hd.before(sec);
+      sec.appendChild(hd);
+      let n = sec.nextElementSibling;
+      while (n && !/^(H1|H2|H3|HR)$/.test(n.tagName)) {
+        const next = n.nextElementSibling;
+        sec.appendChild(n);
+        n = next;
+      }
     });
     return body;
   }
@@ -599,7 +619,8 @@
     if (b.classList.contains("me-run") && window.MeRun) return N("MeRunBlock", { idx: runN++, solo: b.classList.contains("me-solo"), compact: !!b.closest(".me-intro"), code: (b.querySelector("code") || b).textContent.replace(/\n$/, "") });
     if (t === "pre" || b.classList.contains("highlighter-rouge")) {
       const lang = ((b.className.match(/language-(\w+)/) || [])[1]) || "", code = (b.querySelector("code") || b).textContent.replace(/\n$/, "");
-      return N("MeCodeBlock", { code, lang });
+      const narrow = b.classList.contains("doc-input-width") || !!(b.parentElement && b.parentElement.classList.contains("doc-input-width"));
+      return N("MeCodeBlock", { code, lang, narrow });
     }
     if (b.classList.contains("doc-cards")) return docCards(b);
     if (b.classList.contains("doc-svg")) return N("Box", { component: "figure", className: "doc-svg", sx: { m: 0, mb: 2.5, color: "text.primary", overflowX: b.getAttribute("data-min") ? "auto" : undefined, "& svg": { display: "block", width: "100%", height: "auto", maxWidth: b.getAttribute("data-max") || "100%", minWidth: b.getAttribute("data-min") || 0 }, "& figure": { m: 0 }, "& figcaption": { fontSize: ".82rem", color: "text.secondary", mt: .75, lineHeight: 1.5 } }, dangerouslySetInnerHTML: { __html: b.innerHTML } });
@@ -637,7 +658,32 @@
     }
     // <div class="doc-sidebar">: a sticky right-hand panel beside the page (docSpec widens the page into two columns)
     if (b.classList.contains("doc-sidebar")) return N("Box", { component: "div", "data-doc-sidebar": "1" }, blocks(b));
-    if (t === "div" || t === "section") return N("Box", { component: t }, blocks(b));
+    if (b.classList.contains("doc-demo-section")) {
+      const kids = [...b.children];
+      const hd = kids.find((c) => tagOf(c) === "h3");
+      const lede = hd && hd.nextElementSibling && tagOf(hd.nextElementSibling) === "p" ? hd.nextElementSibling : null;
+      const rest = document.createElement("div");
+      kids.forEach((c) => { if (c !== hd && c !== lede) rest.appendChild(c); });
+      // Title left, description on the same line to its right (wraps beside the title). Input directly below.
+      // On small screens the description stacks under the title. No column-2 divider.
+      return N("Box", { component: "section", className: "doc-demo-section", sx: {
+        mt: 3.5, mb: 2.5, minWidth: 0,
+        "& [data-me-demo], & [data-me-seed-input]": { mt: "0 !important", mb: "0 !important" }
+      } }, [
+        N("Box", { "data-me-section-head": "", sx: {
+          display: "flex", alignItems: "baseline", columnGap: 1.5, rowGap: 0.5, mb: 1, minWidth: 0,
+          "@media (max-width: 639px)": { flexDirection: "column", alignItems: "stretch", columnGap: 0 }
+        } }, [
+          hd && T(inl(hd), { fontSize: "1.15rem", fontWeight: 700, lineHeight: 1.3, m: 0, whiteSpace: "nowrap", scrollMarginTop: "64px", flex: "0 0 auto" }, { component: "h3", id: hd.id || undefined }),
+          lede && N("Box", { component: "p", sx: { fontSize: "1rem", fontWeight: 400, lineHeight: 1.3, m: 0, color: "text.secondary", minWidth: 0, flex: "1 1 auto" } }, inl(lede))
+        ].filter(Boolean)),
+        N("Box", { "data-me-section-body": "", sx: { minWidth: 0, display: "flex", flexDirection: "column", gap: 1 } }, blocks(rest))
+      ]);
+    }
+    if (t === "div" || t === "section") {
+      const narrow = b.classList.contains("doc-input-width");
+      return N("Box", { component: t, ...(narrow ? { className: "doc-input-width", sx: { maxWidth: 520, width: "100%" } } : {}) }, blocks(b));
+    }
     return N("Box", { component: t, sx: { mb: 2 } }, inl(b));
   }).filter(Boolean);
   const docSpec = () => N("Box", { sx: { minHeight: "100vh", bgcolor: "background.default", color: "text.primary" } }, [
@@ -648,8 +694,8 @@
       ? N("Box", { component: "main", sx: { width: "min(1240px, calc(100% - 40px))", mx: "auto", pt: 5, pb: 10, "@media (max-width:480px)": { pt: 3.5, width: "calc(100% - 32px)" },
           "@media (min-width:1000px)": { display: "grid", gridTemplateColumns: "minmax(0, 1fr) 380px", columnGap: "28px", alignItems: "start", "& > *": { gridColumn: 1, minWidth: 0 },
             "& > [data-doc-sidebar]": { gridColumn: 2, gridRow: "1 / span 400", alignSelf: "stretch" },
-            "& > [data-doc-sidebar] > *": { position: "sticky", top: "60px", maxHeight: "calc(100vh - 72px)", overflowY: "auto", overscrollBehavior: "contain" } } } }, blocks(axiomBlocks(relatedCards(page.body))))
-      : N("Box", { component: "main", sx: { width: "min(860px, calc(100% - 40px))", mx: "auto", pt: 5, pb: 10, "@media (max-width:480px)": { pt: 3.5, width: "calc(100% - 32px)" } } }, blocks(axiomBlocks(relatedCards(page.body)))),
+            "& > [data-doc-sidebar] > *": { position: "sticky", top: "60px", maxHeight: "calc(100vh - 72px)", overflowY: "auto", overscrollBehavior: "contain" } } } }, blocks(seedDemoSections(axiomBlocks(relatedCards(page.body)))))
+      : N("Box", { component: "main", sx: { width: "min(860px, calc(100% - 40px))", mx: "auto", pt: 5, pb: 10, "@media (max-width:480px)": { pt: 3.5, width: "calc(100% - 32px)" } } }, blocks(seedDemoSections(axiomBlocks(relatedCards(page.body))))),
   ]);
   const spec = docPage ? docSpec() : docsIndex ? docsSpec() : demosIndex ? indexSpec() : N("Box", { sx: { minHeight: "100vh", bgcolor: "background.default", color: "text.primary", lineHeight: 1.6 } }, [
     N("LandingTopBar", {}),

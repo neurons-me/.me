@@ -9,25 +9,59 @@ mepath:
 crumb: Seed
 scripts:
   - /assets/me-kernel/me-kernel.js?v=1
-  - /assets/me-live/me-live.js?v=1
+  - /assets/me-live/me-live.js?v=13
 related:
   - me.html
   - Primitives.html
   - Axioms.html
   - Architecture.html
 ---
-
 # 𓇗 SEED
 
 ```ts
 new ME(seed)
 ```
+{: .doc-input-width}
 
 <div data-live="MeSeedInput" data-mode="seed"></div>
 
-No network call, no namespace, no server. A seed is a string held by the kernel, and everything derived from it is computed locally.
-
 > Randomness can create a root once. Determinism reproduces its results from that same root. The two are compatible.
+
+A seed is a root: a value you choose, or that is generated once. Everything else is derived from it, always the same way. The same seed always gives the same identity.
+
+## Shown
+
+Each property below is computed in this browser from the seed.
+
+### Determinism
+
+The same seed gives the same Hash.
+
+<div data-live="MeSeedDemo" data-demo="determinism"></div>
+
+### Sensitivity
+
+Change one character, and the Hash changes completely.
+
+<div data-live="MeSeedDemo" data-demo="sensitivity"></div>
+
+### Compound
+
+Username + Secret also give a seed. The separator `::` keeps `aa` + `b` and `a` + `ab` from becoming the same string.
+
+A seed can be compound, built from a username and a secret. They are joined with the separator `::` before hashing — `seed = keccak256("me.seed/compound:v1::"+who+"::"+secret)` — so `aa` + `b` and `a` + `ab` give a different Hash even though the concatenated text is the same. The Username + Secret card derives the same Hash locally each time, and the secret never leaves the browser.
+
+<div data-live="MeSeedDemo" data-demo="compound"></div>
+
+<div data-live="MeSeedInput" data-mode="compound"></div>
+
+### Local
+
+Nothing leaves this browser. Derivation makes no network call, and typing does not change localStorage.
+
+<div data-live="MeSeedDemo" data-demo="local"></div>
+
+Each seed is its own root; what all roots share is the rule. The rule is the derivation itself. A shared space, such as an [audience](./Audiences.html), is where roots meet; that is a later page.
 
 ---
 
@@ -73,6 +107,7 @@ function deriveCompoundSeed(who: string, secret: string): string {
   return keccak256(COMPOUND_SEED_DOMAIN + who + "::" + secret);
 }
 ```
+{: .doc-input-width}
 
 Same `who` + same `secret`, on any device, at any time, gives the same seed. The constructor also sets `who` as the active expression, which `prove()` requires.
 
