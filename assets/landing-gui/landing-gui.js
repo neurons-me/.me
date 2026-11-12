@@ -521,7 +521,7 @@
     return body;
   }
   function seedDemoSections(body) {
-    const names = /^(Determinism|Sensitivity|One-way|Compound)$/;
+    const names = /^(Determinism|Sensitivity|One-way|Compound)(\s*\{:.*\})?$/;
     body.querySelectorAll(":scope > h3").forEach((hd) => {
       if (!names.test((hd.textContent || "").replace(/\s+/g, " ").trim())) return;
       const sec = document.createElement("section");
@@ -707,10 +707,10 @@
       const lede = hd && hd.nextElementSibling && tagOf(hd.nextElementSibling) === "p" ? hd.nextElementSibling : null;
       const rest = document.createElement("div");
       kids.forEach((c) => { if (c !== hd && c !== lede) rest.appendChild(c); });
-      const isCompound = hd && /^(Compound)$/.test((hd.textContent || "").replace(/\s+/g, " ").trim());
+      const isCompound = hd && /^Compound(\s*\{:.*\})?$/.test((hd.textContent || "").replace(/\s+/g, " ").trim());
       // Title left, description on the same line to its right (wraps beside the title). Input directly below.
       // On small screens the description stacks under the title. No column-2 divider.
-      // Compound: no full-width heading — title lives on the Username/Secret column (me-live.js), id="compound" stays there.
+      // Compound: no visible heading (kramdown IAL must not leak). #compound is a visually hidden anchor in me-live.js.
       return N("Box", { component: "section", className: "doc-demo-section", "data-me-demo-section": isCompound ? "compound" : "", sx: {
         mt: 3.5, mb: 2.5, minWidth: 0,
         "& [data-me-demo], & [data-me-seed-input]": { mt: "0 !important", mb: "0 !important" }

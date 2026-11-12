@@ -9,7 +9,7 @@ mepath:
 crumb: Seed
 scripts:
   - /assets/me-kernel/me-kernel.js?v=1
-  - /assets/me-live/me-live.js?v=35
+  - /assets/me-live/me-live.js?v=36
 related:
   - me.html
   - Primitives.html
@@ -39,7 +39,7 @@ Change one character, and the Hash changes completely.
 
 <div data-live="MeSeedDemo" data-demo="sensitivity"></div>
 
-### Compound {: #compound}
+<h3 id="compound" hidden>Compound</h3>
 
 <div data-live="MeSeedInput" data-mode="compound">
 <div data-me-ctor-fallback>

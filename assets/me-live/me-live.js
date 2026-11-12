@@ -434,12 +434,14 @@
     var a = R.useState(""), seed = a[0], setSeed = a[1], b = R.useState(""), user = b[0], setUser = b[1], c = R.useState(""), secret = c[0], setSecret = c[1];
     var live = null, cur, hash, cseed;
     if (compound) {
-      if (user && secret) {
+      if (user || secret) {
         cseed = compoundSeedOf(user, secret);
         hash = identityHashOf(cseed);
         cur = current();
-        live = { state: "ok", source: "compound", hash: hash, expression: user,
+        live = { state: "ok", source: "compound", hash: hash, expression: user || null,
           prove: (cur.source === "compound" && cur.hash === hash && cur.prove) ? cur.prove : { ok: false, pending: true } };
+      } else {
+        live = ensureAnonIdentity();
       }
     } else if (seed !== "") {
       live = { state: "ok", source: "seed", hash: identityHashOf(seed), expression: null, prove: { ok: false, error: "ACTIVE_EXPRESSION_REQUIRED" } };
@@ -479,18 +481,18 @@
             position: "relative",
             width: "100%", maxWidth: "100%", minWidth: 0, overflow: "visible",
             display: "grid",
-            gridTemplateColumns: live ? "auto minmax(0, 1fr) minmax(0, 1.15fr)" : "minmax(0, 1fr) minmax(0, 1.15fr)",
-            gridTemplateAreas: live ? '"card fields ctors"' : '"fields ctors"',
+            gridTemplateColumns: "auto minmax(0, 1fr) minmax(0, 1.15fr)",
+            gridTemplateAreas: '"card fields ctors"',
             columnGap: 1.5, rowGap: 1.5, alignItems: "start", mt: 0, mb: 1, pt: 0,
             "@media (max-width: 719px)": {
               gridTemplateColumns: "minmax(0, 1fr)",
-              gridTemplateAreas: live ? '"card" "fields" "ctors"' : '"fields" "ctors"'
+              gridTemplateAreas: '"card" "fields" "ctors"'
             }
           } },
         h(G.Atoms.Box, { component: "h3", id: "compound", sx: srOnly }, "Compound"),
         h(G.Atoms.Box, { component: "h3", id: "the-three-constructors", sx: srOnly }, "The three constructors"),
-        live ? h(G.Atoms.Box, { "data-me-compound-qr": "", sx: { gridArea: "card", alignSelf: "start", width: "fit-content" } },
-          h(MeCard, { live: live, focus: "me", inline: true, hug: true, compact: true, keepCard: true, expandable: true, copyable: true, noHashLabel: true })) : null,
+        h(G.Atoms.Box, { "data-me-compound-qr": "", sx: { gridArea: "card", alignSelf: "start", width: "fit-content" } },
+          h(MeCard, { live: live, focus: "me", inline: true, hug: true, compact: true, keepCard: true, expandable: true, copyable: true, noHashLabel: true })),
         h(G.Atoms.Box, { "data-me-compound-fields": "", sx: {
           gridArea: "fields", display: "flex", flexDirection: "column",
           justifyContent: "flex-start",
