@@ -2,6 +2,8 @@
 // - <code data-live="MeLive" data-me="me|identityHash|prove"> (inline, rendered by landing-gui.js through window.LandingLive)
 //   opens a small card on hover, focus or tap with that .me's public data.
 // - <div data-live="MeSeedInput" data-mode="seed|compound"> draws the Seed field (new ME(seed)) or the Username + Secret
+// - <div data-live="MeCtorRecap"> is the three-constructor recap: hover, focus or tap a token to light matching
+//   fields and QR cards on the page (same bind/pin/hover and primary outline as LlmsHero in .me/LLMS/assets/llms-hero.js).
 //   fields (new ME(username, secret)) with the same .GUI TextField the Cleaker sign-in form uses (GUI.Atoms.TextField).
 //   The identityHash card is rendered in flow, directly below the fields (same width), never as a floating tooltip.
 // The identityHash shown while typing is keccak256 of the same domains this.me 4.2.1 uses
@@ -11,11 +13,13 @@
 // The kernel is the unmodified this.me 4.2.1 through window.MeKernel (assets/me-kernel, sha256 checked); identity is read
 // from me[Symbol.for("me.identity")] → { hash, expression }.
 // Which .me is "running here": the last input typed into that is not empty; with none, the anonymous .me of this browser.
-// Anonymous: if the kernel already keeps an anonymous seed (this.me.seed:v1, left by a Run block on another doc page),
-// new ME() reuses it, as the kernel always does; if not, the page builds it from 32 random bytes passed as an explicit seed,
-// so nothing is written to storage. Explicit and compound seeds are never persisted by the kernel. Typed values stay in the
-// masked fields only: they are never shown, logged or stored. Only public data is kept: identityHash, the expression
-// (username), and for a held name the public key and namespace returned by a real prove() call.
+// Anonymous: same path as the kernel's `new ME()` — reuse localStorage["this.me.seed:v1"] if present, otherwise
+// generate 32 random bytes, persist that key once, and derive identityHash from it. The intro QR/Hash shows this
+// anonymous identity on load and when the Seed field is cleared. Typing an explicit seed updates the Hash/QR live
+// and never writes localStorage. The anonymous seed itself is never displayed — only the public identityHash and QR.
+// Explicit and compound seeds are never persisted by the kernel. Typed values stay in the masked fields only: they
+// are never shown, logged or stored. Only public data is kept: identityHash, the expression (username), and for a
+// held name the public key and namespace returned by a real prove() call.
 (function () {
   "use strict";
   var G = window.GUI, R = window.React;
@@ -142,6 +146,28 @@
   }
   function hasStoredAnon() { try { return !!window.localStorage && Object.prototype.hasOwnProperty.call(window.localStorage, SEED_KEY); } catch (e) { return false; } }
   function freshHex() { var b = new Uint8Array(32); crypto.getRandomValues(b); var s = ""; for (var i = 0; i < b.length; i++) s += b[i].toString(16).padStart(2, "0"); return s; }
+  function readStoredAnonSeed() {
+    try {
+      if (!window.localStorage) return null;
+      var stored = window.localStorage.getItem(SEED_KEY);
+      return stored === null ? null : stored;
+    } catch (e) { return null; }
+  }
+  // Kernel path for anonymous new ME(): readStoredSeed() ?? generateSeed(), then persistSeed once.
+  // The raw seed stays in this closure and in localStorage under SEED_KEY. It is never put on a
+  // live object, in the DOM, or on window.MeLive — only the identityHash is public.
+  var anonIdentity = null;
+  function ensureAnonIdentity() {
+    if (anonIdentity && anonIdentity.hash) return anonIdentity;
+    var seed = readStoredAnonSeed();
+    if (seed === null) {
+      seed = freshHex();
+      try { window.localStorage.setItem(SEED_KEY, seed); } catch (e) {}
+    }
+    anonIdentity = { state: "ok", source: "anonymous", hash: identityHashOf(seed), expression: null,
+      prove: { ok: false, error: "ACTIVE_EXPRESSION_REQUIRED" }, reused: hasStoredAnon() };
+    return anonIdentity;
+  }
   function kernel() { return window.MeKernel ? window.MeKernel.load() : Promise.reject(new Error("kernel loader missing (assets/me-kernel)")); }
   // public facts of a kernel instance; for a held name, one real prove() for the page's own root namespace (no challenge)
   function facts(me, source, extra) {
@@ -152,9 +178,13 @@
   }
   function startAnon() {
     if (anonStarted) return; anonStarted = true;
-    anon = { state: "loading" }; emit();
-    kernel().then(function (ME) { var reused = hasStoredAnon(); return facts(reused ? new ME() : new ME(freshHex()), "anonymous", { reused: reused }); })
-      .then(function (f) { anon = f; emit(); }, function (e) { anon = { state: "error", text: String(e && e.message || e) }; emit(); });
+    var local = ensureAnonIdentity();
+    anon = local; emit();
+    kernel().then(function (ME) { return facts(new ME(), "anonymous", { reused: hasStoredAnon() }); })
+      .then(function (f) {
+        if (f && local && f.hash && local.hash && f.hash !== local.hash) f = Object.assign({}, f, { hash: local.hash });
+        if (f) { anon = f; emit(); }
+      }, function () { /* keep the sync anonymous identity already shown */ });
   }
   // Last call wins. identityHash is set immediately from the cheap keccak path.
   // A full kernel is only constructed (debounced by the input) when prove() needs it — never to compute the hash, and never in a way that blocks typing.
@@ -194,21 +224,99 @@
 
   // ── the card: in-flow under the inputs; real G.QRme (namespace lives on the QR via perimeterLabel) and identityHash beside it ──
   var CAP = { color: "text.disabled", textTransform: "uppercase", letterSpacing: "0.1em", fontSize: "0.68rem" };
+  function shortHashOf(hash, compact) {
+    if (!hash) return "…";
+    return compact ? hash.slice(0, 8) + "…" + hash.slice(-6) : hash.slice(0, 10) + "…" + hash.slice(-8);
+  }
+  function ExpandableHash(p) {
+    var hash = p.hash || "", compact = !!p.compact, fit = !!p.fit;
+    var st = R.useState(false), expanded = st[0], setExpanded = st[1];
+    if (!hash) return null;
+    return h(G.Atoms.Box, {
+      component: "button", type: "button",
+      "data-me-hash-short": expanded ? undefined : "",
+      "data-me-hash": expanded ? "" : undefined,
+      "data-me-hash-expand": expanded ? "open" : "closed",
+      "aria-expanded": expanded,
+      "aria-label": expanded ? "Collapse hash" : "Expand hash",
+      onClick: function (e) { e.preventDefault(); e.stopPropagation(); setExpanded(function (v) { return !v; }); },
+      sx: {
+        display: "block", width: (fit && !expanded) ? "auto" : "100%", boxSizing: "border-box", textAlign: "left",
+        border: 0, background: "none", cursor: "pointer", p: 0, m: 0,
+        fontFamily: MONO, fontWeight: expanded ? 600 : 700,
+        fontSize: expanded ? (compact ? "0.52rem" : "0.62rem") : (compact ? "0.78rem" : "0.95rem"),
+        color: "primary.main", letterSpacing: "0.02em", lineHeight: expanded ? 1.45 : 1.3,
+        whiteSpace: expanded ? "normal" : "nowrap",
+        overflow: expanded ? "visible" : "hidden",
+        textOverflow: expanded ? "clip" : "ellipsis",
+        wordBreak: expanded ? "break-all" : "normal",
+        overflowWrap: expanded ? "anywhere" : "normal",
+        maxWidth: "100%", userSelect: expanded ? "all" : "none",
+        "&:focus-visible": { outline: "2px solid", outlineColor: "primary.main", outlineOffset: "1px", borderRadius: "2px" }
+      }
+    }, expanded ? hash : shortHashOf(hash, compact));
+  }
+  function CopyHashBtn(p) {
+    var st = R.useState(false), copied = st[0], setCopied = st[1], timer = R.useRef(null);
+    R.useEffect(function () { return function () { if (timer.current) clearTimeout(timer.current); }; }, []);
+    function copy(e) {
+      e.preventDefault(); e.stopPropagation();
+      var text = p.hash || "";
+      if (!text) return;
+      function ok() {
+        setCopied(true);
+        if (timer.current) clearTimeout(timer.current);
+        timer.current = setTimeout(function () { setCopied(false); }, 1400);
+      }
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(ok, function () {});
+      } else {
+        var ta = document.createElement("textarea");
+        ta.value = text; ta.setAttribute("readonly", ""); ta.style.position = "fixed"; ta.style.left = "-9999px";
+        document.body.appendChild(ta); ta.select();
+        try { if (document.execCommand("copy")) ok(); } catch (err) {}
+        document.body.removeChild(ta);
+      }
+    }
+    return h(G.Atoms.Box, {
+      component: "button", type: "button",
+      "data-me-hash-copy": copied ? "copied" : "",
+      "aria-label": copied ? "Copied" : "Copy hash",
+      title: copied ? "Copied" : "Copy hash",
+      onClick: copy,
+      sx: {
+        position: "absolute", top: 4, right: 4, zIndex: 2,
+        display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 0.4,
+        minWidth: 22, height: 22, p: 0, px: copied ? 0.5 : 0, border: 0, borderRadius: "4px",
+        bgcolor: "background.paper",
+        boxShadow: 1,
+        cursor: "pointer", color: copied ? "primary.main" : "text.secondary",
+        "&:hover": { color: "primary.main", bgcolor: "action.hover" },
+        "&:focus-visible": { outline: "2px solid", outlineColor: "primary.main", outlineOffset: "1px" }
+      }
+    }, copied
+      ? h(G.Atoms.Box, { component: "span", sx: { fontSize: "0.58rem", fontWeight: 700, letterSpacing: "0.02em", lineHeight: 1, px: 0.25 } }, "Copied")
+      : h("svg", { width: 14, height: 14, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", "stroke-width": 2, "stroke-linecap": "round", "stroke-linejoin": "round", "aria-hidden": "true" },
+          h("rect", { x: 9, y: 9, width: 13, height: 13, rx: 2 }),
+          h("path", { d: "M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" })));
+  }
   function MeCard(p) {
     useTick();
     var L = p.live || current(), Monad = (G.Widgets && G.Widgets.Monad) || G.Monad, QRme = G.QRme, ok = L.state === "ok";
-    var shortHash = L.hash ? L.hash.slice(0, 10) + "…" + L.hash.slice(-8) : "…";
+    var hug = !!p.hug, compact = !!p.compact, keepCard = !!p.keepCard, shortOnly = !!p.shortOnly;
+    var shortHash = L.hash ? L.hash.slice(0, (compact || keepCard) ? 8 : 10) + "…" + L.hash.slice(-((compact || keepCard) ? 6 : 8)) : "…";
     // The QR is the real G.QRme (same component as the left-bar / root Cleaker QR).
     // perimeterLabel is omitted: this page has no claimed namespace, and we do not invent one.
     // value is the public identityHash only — never a seed, secret, or fabricated cleaker URL.
-    var hug = !!p.hug;
     var cardSx = hug ? {
         width: "fit-content", maxWidth: "100%", boxSizing: "border-box",
-        p: 1.5, borderRadius: 2, border: "1px solid", borderColor: "divider", bgcolor: "action.hover",
-        display: "flex", flexDirection: "column", alignItems: "center", gap: 1.25,
-        "@media (max-width: 639px)": {
-          display: "contents", p: 0, border: "none", bgcolor: "transparent", width: "auto", maxWidth: "none", gap: 0
-        }
+        p: compact ? 1 : 1.5, borderRadius: 2, border: "1px solid", borderColor: "divider", bgcolor: "action.hover",
+        display: "flex", flexDirection: "column", alignItems: "center", gap: compact ? 0.75 : 1.25,
+        ...(keepCard ? {} : {
+          "@media (max-width: 639px)": {
+            display: "contents", p: 0, border: "none", bgcolor: "transparent", width: "auto", maxWidth: "none", gap: 0
+          }
+        })
       } : {
         width: p.inline ? "100%" : "min(520px, calc(100vw - 32px))", boxSizing: "border-box",
         p: 2, borderRadius: 2, border: "1px solid", borderColor: "divider", bgcolor: "action.hover",
@@ -217,30 +325,40 @@
     var qrSx = {
       flexShrink: 0, width: "fit-content", lineHeight: 0, "& .monad-tooltip": { display: "none" },
       ...(hug ? {
-        "@media (max-width: 639px)": {
-          gridArea: "card", boxSizing: "border-box", alignSelf: "start", width: "fit-content",
-          p: 1, borderRadius: 2, border: "1px solid", borderColor: "divider", bgcolor: "action.hover",
-          "& > *": { zoom: 130 / 192 }
-        },
-        "@media (max-width: 360px)": {
-          "& > *": { zoom: 112 / 192 }
-        }
+        ...(compact || keepCard ? { "& > *": { zoom: 130 / 192 } } : {}),
+        ...(keepCard ? {
+          "@media (max-width: 360px)": { "& > *": { zoom: 112 / 192 } }
+        } : {
+          "@media (max-width: 639px)": {
+            gridArea: "card", boxSizing: "border-box", alignSelf: "start", width: "fit-content",
+            p: 1, borderRadius: 2, border: "1px solid", borderColor: "divider", bgcolor: "action.hover",
+            "& > *": { zoom: 130 / 192 }
+          },
+          "@media (max-width: 360px)": {
+            "& > *": { zoom: 112 / 192 }
+          }
+        })
       } : {})
     };
     var hashColSx = hug ? {
         width: 0, minWidth: "100%", maxWidth: "100%", boxSizing: "border-box",
         display: "flex", flexDirection: "column", gap: 0.5,
-        "@media (max-width: 639px)": { gridArea: "hash", width: "100%", minWidth: 0, maxWidth: "100%" }
+        ...(keepCard ? {} : { "@media (max-width: 639px)": { gridArea: "hash", width: "100%", minWidth: 0, maxWidth: "100%" } })
       } : { flex: 1, minWidth: 180, display: "flex", flexDirection: "column", gap: 0.75 };
-    return h(G.Atoms.Box, { "data-me-card": p.inline ? "inline" : "tip", "data-me-hug": hug ? "" : undefined, "data-me-row": ok ? "identityHash" : undefined, sx: cardSx },
+    return h(G.Atoms.Box, { "data-me-card": p.inline ? "inline" : "tip", "data-me-hug": hug ? "" : undefined, "data-me-row": ok ? "identityHash" : undefined, sx: p.copyable ? { ...cardSx, position: "relative" } : cardSx },
       L.state === "error" ? h(G.Atoms.Box, { sx: { fontSize: ".78rem", color: "text.secondary", overflowWrap: "anywhere" } }, L.text) : null,
       ok ? h(G.Atoms.Box, { "data-me-qr": "", sx: qrSx },
         QRme ? h(QRme, { value: L.hash, username: L.expression || undefined, variant: p.inline ? "lg" : "md", hoverFlip: true, clickFlip: true, showAvatarLabel: true })
              : (Monad ? h(Monad, { key: L.hash, variant: "identity", kind: "me", seed: L.hash, mode: "contained", size: p.inline ? 96 : 72, tooltip: false, solid: true }) : null)) : null,
-      ok ? h(G.Atoms.Box, { "data-me-hash-block": "", sx: hashColSx },
-        h(G.Atoms.Box, { sx: { color: "text.disabled", letterSpacing: "0.06em", fontSize: "0.68rem" } }, "Hash"),
-        h(G.Atoms.Box, { "data-me-hash-short": "", sx: { fontFamily: MONO, fontWeight: 700, fontSize: hug ? "0.85rem" : "1rem", color: "primary.main", letterSpacing: "0.02em", whiteSpace: hug ? "normal" : "nowrap", overflowWrap: hug ? "anywhere" : undefined, wordBreak: hug ? "break-all" : undefined, maxWidth: "100%", "@media (max-width: 639px)": { fontSize: "0.95rem", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", wordBreak: "normal", overflowWrap: "normal" } } }, shortHash),
-        h(G.Atoms.Box, { "data-me-hash": "", sx: { fontFamily: MONO, fontSize: hug ? "0.55rem" : "0.62rem", color: "text.disabled", wordBreak: "break-all", overflowWrap: "anywhere", lineHeight: 1.6, userSelect: "all", maxWidth: "100%", "@media (max-width: 639px)": { fontSize: "0.62rem" } } }, L.hash)) : null);
+      (ok && p.copyable && L.hash) ? h(CopyHashBtn, { hash: L.hash }) : null,
+      (ok && !p.hideHash) ? h(G.Atoms.Box, { "data-me-hash-block": "", sx: hashColSx },
+        p.noHashLabel ? null : h(G.Atoms.Box, { sx: { color: "text.disabled", letterSpacing: "0.06em", fontSize: "0.68rem" } }, "Hash"),
+        p.expandable
+          ? h(ExpandableHash, { hash: L.hash, compact: compact || keepCard })
+          : [
+              h(G.Atoms.Box, { "data-me-hash-short": "", sx: { fontFamily: MONO, fontWeight: 700, fontSize: (compact || keepCard) ? "0.78rem" : (hug ? "0.85rem" : "1rem"), color: "primary.main", letterSpacing: "0.02em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "100%" } }, shortHash),
+              (shortOnly || !L.hash) ? null : h(G.Atoms.Box, { "data-me-hash": "", sx: { fontFamily: MONO, fontSize: compact ? "0.5rem" : (hug ? "0.55rem" : "0.62rem"), color: "text.disabled", wordBreak: "break-all", overflowWrap: "anywhere", lineHeight: 1.5, userSelect: "all", maxWidth: "100%", "@media (max-width: 639px)": { fontSize: "0.62rem" } } }, L.hash)
+            ]) : null);
   }
 
   // the one card, as a themed tooltip anchored to a marked word in the text (MeLive). Inputs no longer use this.
@@ -291,7 +409,7 @@
 
   // ── the inputs: Cleaker sign-in fields; identityHash is computed immediately and shown in flow below ──
   // Intro seed field and QR card are siblings in two columns; share the live hash in this page-only store.
-  var introLive = { live: null };
+  var introLive = { live: ensureAnonIdentity() };
   var introSubs = new Set();
   function publishIntroLive(live) {
     var a = introLive.live, b = live || null;
@@ -325,6 +443,8 @@
       }
     } else if (seed !== "") {
       live = { state: "ok", source: "seed", hash: identityHashOf(seed), expression: null, prove: { ok: false, error: "ACTIVE_EXPRESSION_REQUIRED" } };
+    } else {
+      live = ensureAnonIdentity();
     }
     // Debounce only the kernel/prove path and the shared "running here" state — the card above already has the hash.
     R.useEffect(function () {
@@ -344,14 +464,39 @@
       publishIntroLive(live);
     }, [compound, part, seed]);
     if (!compound && part === "card") {
-      return intro ? h(MeCard, { live: intro, focus: "identityHash", inline: true, hug: true }) : null;
+      return h(MeCard, { live: intro || ensureAnonIdentity(), focus: "identityHash", inline: true, hug: true, noHashLabel: true });
     }
     var seedFieldOnly = !compound && part === "field";
+    if (compound) {
+      var fullHashEl = (live && live.hash) ? h(G.Atoms.Box, { "data-me-hash": "", "data-me-compound-full": "", sx: {
+          fontFamily: MONO, fontSize: "0.62rem", color: "text.disabled",
+          wordBreak: "break-all", overflowWrap: "anywhere", lineHeight: 1.6,
+          userSelect: "all", minWidth: 0, maxWidth: "100%"
+        } }, live.hash) : null;
+      return h(G.Atoms.Box, { "data-gui-node-id": p["data-gui-node-id"], "data-me-seed-input": which, "data-me-compound-sbs": "",
+          sx: {
+            width: "100%", maxWidth: "100%", minWidth: 0, overflow: "visible",
+            display: "grid",
+            gridTemplateColumns: live ? "auto minmax(0, 1fr)" : "minmax(0, 1fr)",
+            gridTemplateAreas: live ? '"card fields"' : '"fields"',
+            columnGap: 1.5, rowGap: 1.25, alignItems: "start", mt: 0.5, mb: 1, pt: 1
+          } },
+        live ? h(G.Atoms.Box, { "data-me-compound-qr": "", sx: { gridArea: "card", alignSelf: "start", width: "fit-content" } },
+          h(MeCard, { live: live, focus: "me", inline: true, hug: true, compact: true, keepCard: true, expandable: true, copyable: true, noHashLabel: true })) : null,
+        h(G.Atoms.Box, { "data-me-compound-fields": "", sx: {
+          gridArea: "fields", display: "flex", flexDirection: "column",
+          justifyContent: "flex-start",
+          gap: 1.5, minWidth: 0, maxWidth: live ? "none" : 520, width: "100%",
+          overflow: "visible", pt: 0, alignSelf: "start"
+        } },
+          field("Username", setUser, false, "username"),
+          field("Secret", setSecret, true, "secret"),
+          fullHashEl));
+    }
     return h(G.Atoms.Box, { "data-gui-node-id": p["data-gui-node-id"], "data-me-seed-input": which,
         sx: { maxWidth: seedFieldOnly ? "100%" : 520, width: "100%", display: "flex", flexDirection: "column", gap: 2, mt: seedFieldOnly ? 0 : .5, mb: seedFieldOnly ? 0 : 3, pt: seedFieldOnly ? 0 : 1, overflow: "visible" } },
-      compound ? field("Username", setUser, false, "username") : null,
-      compound ? field("Secret", setSecret, true, "secret") : field("Seed", setSeed, true, "seed"),
-      (!seedFieldOnly && live) ? h(MeCard, { live: live, focus: compound ? "me" : "identityHash", inline: true }) : null);
+      field("Seed", setSeed, true, "seed"),
+      (!seedFieldOnly && live) ? h(MeCard, { live: live, focus: "identityHash", inline: true }) : null);
   }
 
 
@@ -557,7 +702,7 @@
       h(G.Atoms.Box, { sx: { display: "flex", flexDirection: "column", gap: 1, minWidth: 0 } }, [
         flowRow("forward",
           demoField("Seed", seed, setSeed, "sensitivity", false),
-          flowArrow(true),
+          ready ? sensSign(n === 0, true) : h(G.Atoms.Box, { sx: { gridArea: "mid", width: "1em" } }),
           hashField(hash, "sensitivity-hash-fwd"),
           full, "right", note),
         onewayLede(),
@@ -568,6 +713,26 @@
           full, "left")
       ])
     ], true);
+  }
+  function sensSign(same, flow) {
+    return h(G.Atoms.Box, {
+      "data-me-match": same ? "same" : "different",
+      "data-me-sens-sign": same ? "same" : "neq",
+      "aria-label": same ? "same Hash" : "different Hash",
+      sx: function (theme) {
+        var pal = theme.palette || {};
+        var ok = (pal.success && pal.success.main) || "#2e7d32";
+        var warn = (pal.warning && pal.warning.main) || "#f5a623";
+        var sx = {
+          display: "flex", alignItems: "center", justifyContent: "center",
+          alignSelf: "center", justifySelf: "center",
+          fontSize: { xs: "1.75rem", sm: "2.15rem" }, fontWeight: 600, lineHeight: 1,
+          color: same ? ok : warn, userSelect: "none", px: 0.25
+        };
+        if (flow) sx.gridArea = "mid";
+        return sx;
+      }
+    }, same ? "=" : "≠");
   }
   function flowArrow(ok) {
     var label = ok
@@ -658,24 +823,20 @@
     );
   }
   function DemoCompound() {
-    var rows = [
-      { who: "aa", secret: "b", id: "aa-b" },
-      { who: "a", secret: "ab", id: "a-ab" }
-    ];
-    var hashes = rows.map(function (r) { return identityHashOf(compoundSeedOf(r.who, r.secret)); });
-    var sameSeed = compoundSeedOf("aa", "b") === compoundSeedOf("a", "ab");
+    var h1 = identityHashOf(compoundSeedOf("aa", "b"));
+    var h2 = identityHashOf(compoundSeedOf("a", "ab"));
     return demoBox("compound", [
-      pairRow(
+      compareRow(
         pairCol([
           h(G.Atoms.Box, { sx: { fontFamily: MONO, fontSize: "0.86rem", color: "text.secondary" } }, "aa + b"),
-          HashCol(hashes[0])
+          HashCol(h1)
         ], { "data-me-compound-row": "aa-b" }),
+        sensSign(h1 === h2),
         pairCol([
           h(G.Atoms.Box, { sx: { fontFamily: MONO, fontSize: "0.86rem", color: "text.secondary" } }, "a + ab"),
-          HashCol(hashes[1])
+          HashCol(h2)
         ], { "data-me-compound-row": "a-ab" })
-      ),
-      matchLine(hashes[0] === hashes[1] || sameSeed)
+      )
     ], true);
   }
   function DemoLocal() {
@@ -709,6 +870,128 @@
     return null;
   }
 
-  window.LandingLive = Object.assign(window.LandingLive || {}, { MeLive: MeLive, MeTerm: MeTerm, MeSeedInput: MeSeedInput, MeSeedDemo: MeSeedDemo });
+  
+  // Three-constructor recap: tokens use the same hover / focus / tap-to-pin pattern as LlmsHero
+  // on the .me/LLMS page (assets/llms-hero.js): bind() sets hover on enter/focus, pin on click
+  // or Enter/Space, Escape or pointerdown outside [data-k] clears the pin. Matching page
+  // targets get data-me-ctor-hit. Highlight is a theme-primary fill + 1px outline (color-mix
+  // and box-shadow: 0 0 0 1px, same as .lh-t.on).
+  var CTOR_CSS = (function () {
+    var acc = "var(--mui-palette-primary-main, #4fd1c5)";
+    var fg2 = "var(--mui-palette-text-secondary, #8b949e)";
+    var paper = "var(--mui-palette-background-paper, transparent)";
+    var text = "var(--mui-palette-text-primary, currentColor)";
+    var div = "var(--mui-palette-divider, rgba(127,127,127,.25))";
+    var mix = function (p) { return "color-mix(in srgb, " + acc + " " + p + "%, transparent)"; };
+    return ".me-ctor{font-family:" + MONO + ";font-size:13px;line-height:1.7;margin:0 0 16px;padding:12px 16px;border:1px solid " + div + ";border-radius:10px;background:color-mix(in srgb, " + text + " 4%, " + paper + ");color:" + text + ";white-space:pre;overflow-x:auto;max-width:100%;width:fit-content;box-sizing:border-box}" +
+      ".me-ctor .me-ctor-ln{display:block}.me-ctor .me-ctor-ln+.me-ctor-ln{margin-top:2px}" +
+      ".me-ctor-cm{color:" + fg2 + ";font-style:italic}" +
+      ".me-ctor-t[data-me-ctor-k]{cursor:pointer;border-radius:3px;transition:background .12s,box-shadow .12s}" +
+      ".me-ctor-t.on{background:" + mix(25) + ";box-shadow:0 0 0 1px " + acc + "}" +
+      ".me-ctor-t.rel{background:" + mix(10) + "}" +
+      ".me-ctor :focus-visible{outline:2px solid " + acc + ";outline-offset:2px}" +
+      "[data-me-ctor-hit]{border-radius:6px;background:" + mix(18) + ";box-shadow:0 0 0 2px " + acc + ", 0 0 10px " + mix(40) + ";transition:background .12s,box-shadow .12s}" +
+      "[data-me-ctor-hit].MuiOutlinedInput-root,[data-me-ctor-hit] .MuiOutlinedInput-root{box-shadow:0 0 0 2px " + acc + ", 0 0 10px " + mix(40) + ";background:" + mix(14) + "}" +
+      "@media (max-width:600px){.me-ctor{width:100%;white-space:pre-wrap}.me-ctor-pad{display:none}.me-ctor-cm{display:block;margin-top:0;padding-left:0;white-space:pre-wrap}}" +
+      "@media (prefers-reduced-motion:reduce){.me-ctor-t[data-me-ctor-k],[data-me-ctor-hit]{transition:none}}";
+  })();
+  var CTOR_SEL = {
+    anon: ".doc-intro-card [data-me-card], .doc-intro-card [data-me-qr], .doc-intro-card [data-me-hash-block]",
+    seed: "[data-me-input=seed], [data-me-input=determinism-a], [data-me-input=determinism-b], [data-me-input=sensitivity], .doc-intro-card [data-me-card], .doc-intro-card [data-me-qr], .doc-intro-card [data-me-hash-block], [data-me-demo=determinism] [data-me-hash], [data-me-demo=determinism] [data-me-hash-short], [data-me-demo=sensitivity] [data-me-flow=forward] [data-me-hash], [data-me-demo=sensitivity] [data-me-flow=forward] [data-me-hash-short], [data-me-input=sensitivity-hash-fwd], [data-me-compound-sbs] [data-me-card], [data-me-compound-sbs] [data-me-qr], [data-me-compound-sbs] [data-me-hash-block], [data-me-compound-sbs] [data-me-hash-short]",
+    username: "[data-me-input=username]",
+    secret: "[data-me-input=secret]",
+    me: "[data-me-card], [data-me-qr]"
+  };
+  function applyCtorHighlight(k) {
+    var prev = document.querySelectorAll("[data-me-ctor-hit]"), i;
+    for (i = 0; i < prev.length; i++) prev[i].removeAttribute("data-me-ctor-hit");
+    if (!k || !CTOR_SEL[k]) { document.documentElement.removeAttribute("data-me-ctor-hl"); return; }
+    document.documentElement.setAttribute("data-me-ctor-hl", k);
+    var nodes = document.querySelectorAll(CTOR_SEL[k]);
+    for (i = 0; i < nodes.length; i++) {
+      nodes[i].setAttribute("data-me-ctor-hit", k);
+      if (nodes[i].getAttribute("data-me-input")) {
+        var inner = nodes[i].querySelector(".MuiOutlinedInput-root, .MuiInputBase-root");
+        if (inner && inner !== nodes[i]) inner.setAttribute("data-me-ctor-hit", k);
+      }
+    }
+  }
+  function MeCtorRecap() {
+    var hs = R.useState(null), hov = hs[0], setHov = hs[1];
+    var ps = R.useState(null), pin = ps[0], setPin = ps[1];
+    var a = hov || pin;
+    R.useEffect(function () {
+      if (!document.getElementById("me-ctor-css")) {
+        var s = document.createElement("style");
+        s.id = "me-ctor-css";
+        s.textContent = CTOR_CSS;
+        document.head.appendChild(s);
+      }
+      var off = function (e) { if (!e.target.closest || !e.target.closest("[data-me-ctor-k]")) setPin(null); };
+      document.addEventListener("pointerdown", off);
+      return function () { document.removeEventListener("pointerdown", off); };
+    }, []);
+    R.useEffect(function () { applyCtorHighlight(a); return function () { applyCtorHighlight(null); }; }, [a]);
+    var bind = function (k, label) {
+      return {
+        "data-me-ctor-k": k,
+        className: "me-ctor-t" + (a === k ? " on" : (a === "me" && k === "anon") || (a === "anon" && k === "me") ? " rel" : ""),
+        tabIndex: 0,
+        role: "button",
+        "aria-label": label,
+        "aria-pressed": pin === k,
+        onMouseEnter: function () { setHov(k); },
+        onMouseLeave: function () { setHov(null); },
+        onFocus: function () { setHov(k); },
+        onBlur: function () { setHov(null); },
+        onClick: function () { setPin(pin === k ? null : k); },
+        onKeyDown: function (e) {
+          if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setPin(pin === k ? null : k); }
+          if (e.key === "Escape") setPin(null);
+        }
+      };
+    };
+    var lines = [
+      { comment: "// anonymous seed, reused or generated", parts: [
+        { t: "new " },
+        { t: "ME()", k: "anon", label: "new ME() — the anonymous root QR" }
+      ] },
+      { comment: "// literal seed", parts: [
+        { t: "new " },
+        { t: "ME", k: "me", label: "ME — every QR on this page" },
+        { t: "(" },
+        { t: "\"seed\"", k: "seed", label: "\"seed\" — Seed inputs and their Hash" },
+        { t: ")" }
+      ] },
+      { comment: "// compound seed, derived", parts: [
+        { t: "new " },
+        { t: "ME", k: "me", label: "ME — every QR on this page" },
+        { t: "(" },
+        { t: "username", k: "username", label: "username — Username inputs" },
+        { t: ", " },
+        { t: "secret", k: "secret", label: "secret — Secret inputs" },
+        { t: ")" }
+      ] }
+    ];
+    var width = 0, i, code;
+    for (i = 0; i < lines.length; i++) {
+      code = lines[i].parts.map(function (p) { return p.t; }).join("");
+      if (code.length > width) width = code.length;
+    }
+    return h("pre", { "data-me-ctor-recap": "", "data-gui-node-id": "Seed.ctors", className: "me-ctor me-code", "aria-label": "The three constructors. Hover, focus or tap a token to highlight matching fields on the page." },
+      lines.map(function (ln, i) {
+        code = ln.parts.map(function (p) { return p.t; }).join("");
+        var pad = "  " + " ".repeat(Math.max(0, width - code.length));
+        return h("span", { key: i, className: "me-ctor-ln" },
+          ln.parts.map(function (p, j) {
+            return p.k ? h("span", Object.assign({ key: j }, bind(p.k, p.label)), p.t)
+                       : h("span", { key: j }, p.t);
+          }),
+          h("span", { className: "me-ctor-pad" }, pad),
+          h("span", { className: "me-ctor-cm" }, ln.comment));
+      }));
+  }
+
+  window.LandingLive = Object.assign(window.LandingLive || {}, { MeLive: MeLive, MeTerm: MeTerm, MeSeedInput: MeSeedInput, MeSeedDemo: MeSeedDemo, MeCtorRecap: MeCtorRecap });
   window.MeLive = { get state() { var L = current(); return { state: L.state, source: L.source, hash: L.hash, expression: L.expression, reused: L.reused, prove: L.prove && { ok: L.prove.ok, pending: L.prove.pending, error: L.prove.error, publicKey: L.prove.publicKey, namespace: L.prove.namespace } }; }, start: startAnon, identityHashOf: identityHashOf, compoundSeedOf: compoundSeedOf };
 })();

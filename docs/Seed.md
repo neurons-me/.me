@@ -9,7 +9,7 @@ mepath:
 crumb: Seed
 scripts:
   - /assets/me-kernel/me-kernel.js?v=1
-  - /assets/me-live/me-live.js?v=19
+  - /assets/me-live/me-live.js?v=31
 related:
   - me.html
   - Primitives.html
@@ -18,7 +18,7 @@ related:
 ---
 # 𓇗 SEED
 
-A seed is a root: a value you choose, or that is generated once. Everything else is derived from it, always the same way. The same seed always gives the same identity.
+Everything derives from a seed: the same seed always gives the same root.
 
 ```ts
 new ME(seed)
@@ -41,13 +41,18 @@ Change one character, and the Hash changes completely.
 
 ### Compound
 
-Username + Secret also give a seed. The separator `::` keeps `aa` + `b` and `a` + `ab` from becoming the same string.
-
-A seed can be compound, built from a username and a secret. They are joined with the separator `::` before hashing — `seed = keccak256("me.seed/compound:v1::"+who+"::"+secret)` — so `aa` + `b` and `a` + `ab` give a different Hash even though the concatenated text is the same. The Username + Secret card derives the same Hash locally each time, and the secret never leaves the browser.
-
-<div data-live="MeSeedDemo" data-demo="compound"></div>
+Username + Secret also give a seed.
 
 <div data-live="MeSeedInput" data-mode="compound"></div>
+
+### The three constructors
+
+<div data-live="MeCtorRecap">
+<pre><code class="language-ts">new ME()                  // anonymous seed, reused or generated
+new ME("seed")            // literal seed
+new ME(username, secret)  // compound seed, derived
+</code></pre>
+</div>
 
 ### Local
 
@@ -72,25 +77,11 @@ A root can be generated once and then reproduced by derivation every time after.
 
 ---
 
-## The three constructors
+## Constructor details
 
-```ts
-new ME("suign")        // literal seed
-new ME(username, secret)  // compound seed, derived
-new ME()                  // anonymous seed, reused or generated
-```
+### `new ME("seed")` — literal seed
 
-| Construction | Where the seed comes from | Saved to the anonymous slot? |
-|---|---|---|
-| `new ME("suign")` | The string itself, as-is. No hashing at this step. | No |
-| `new ME(username, secret)` | `deriveCompoundSeed(username, secret)`, deterministic. | No |
-| `new ME()` | The stored anonymous seed, or 32 fresh random bytes. | Yes, the kernel tries to keep it |
-
-### `new ME("suign")` — literal seed
-
-The string is used directly as the seed (`normalizeSeedInput` only converts non-strings with `String()`).
-
-This form is useful for explaining the API and for tests. It is **not a private identity**: anyone who knows the text `"suign"` can construct the same kernel and reproduce everything derived from it, including `identityHash` and the `prove()` signing key. A literal seed is only as private as the string.
+The string is used directly as the seed (`normalizeSeedInput` only converts non-strings with `String()`). Anyone who knows the text can construct the same kernel and reproduce `identityHash` and the `prove()` signing key.
 
 ### `new ME(username, secret)` — compound seed
 
@@ -103,9 +94,7 @@ function deriveCompoundSeed(who: string, secret: string): string {
 ```
 {: .doc-input-width}
 
-Same `who` + same `secret`, on any device, at any time, gives the same seed. The constructor also sets `who` as the active expression, which `prove()` requires.
-
-<div data-live="MeSeedInput" data-mode="compound"></div>
+The `::` separators mean `aa` + `b` and `a` + `ab` give a different Hash even though the concatenated text is the same. The secret is not sent and is not written to `localStorage`.
 
 An existing kernel can be re-seeded the same way at runtime through the internal `ME_RESEED` symbol. It re-derives `seed` and `identityHash`, clears the identity root and any `_()`/`~()` values held from the previous identity, and rebuilds the index.
 
@@ -113,18 +102,13 @@ This is one way to obtain a seed, not the only one. In this form the name and th
 
 ### `new ME()` — anonymous seed
 
-With no arguments, the kernel:
+With no arguments, the kernel reuses the seed already in memory, then `localStorage` under `DEFAULT_SEED_STORAGE_KEY = "this.me.seed:v1"`, or generates one with `generateSeed()`: 32 bytes from `crypto.getRandomValues`, hex-encoded. If secure randomness is unavailable it throws instead of falling back. It then tries to persist that seed so the same browser origin keeps it after a reload.
 
-1. reuses the seed already stored for anonymous use in this runtime (in memory, then `localStorage` under `DEFAULT_SEED_STORAGE_KEY = "this.me.seed:v1"`), or
-2. generates a new one with `generateSeed()`: 32 bytes from `crypto.getRandomValues`, hex-encoded. If secure randomness is unavailable it throws instead of falling back.
-
-It then tries to persist that seed, so the same browser origin gets the same anonymous seed after a reload.
-
-**Anonymous** means no identity recognized by others has been established yet. It does not mean ephemeral: when `localStorage` is available, the seed survives reloads. It is lost only when that storage is cleared or unavailable (then it lives only in memory for the process).
+**Anonymous** means no identity recognized by others has been established yet, not that the seed is ephemeral. If `localStorage` is unavailable, the seed lives only in memory for the process.
 
 ---
 
-## A generated identity, recoverable by phrase
+## A generated identity, recoverable by phrase {: #a-generated-identity-recoverable-by-phrase}
 
 The `.GUI` registration flow (`Claim.tsx`, `core/identity/recoveryPhrase.ts`) uses randomness once and derivation afterward:
 
