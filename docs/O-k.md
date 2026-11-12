@@ -8,6 +8,8 @@ mepath:
     url: https://neurons-me.github.io/.me/docs/
 canonical: https://suign.github.io/WhatIsOK.html
 crumb: O(k)
+view_content_name: "Doc - What is O(k)?"
+view_content_category: "Docs"
 ---
 
 # What is O(k)?

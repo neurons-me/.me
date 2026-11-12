@@ -15,6 +15,8 @@ related:
   - Primitives.html
   - Axioms.html
   - Architecture.html
+view_content_name: "Doc - SEED — .me"
+view_content_category: "Docs"
 ---
 # 𓇗 SEED
 

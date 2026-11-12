@@ -14,6 +14,8 @@ related:
   - Algebra-of-Contexts.html
   - Pointer-Composition.html
   - https://suign.github.io/Equations.html
+view_content_name: "Doc - What Is the Mathematical Structure of a Space in .me?"
+view_content_category: "Docs"
 ---
 
 # ≤ What Is the Mathematical Structure of a Space in .me?

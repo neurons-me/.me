@@ -1,0 +1,19 @@
+{% if page.view_content_name %}
+<script>
+(function () {
+  var params = {
+    content_name: {{ page.view_content_name | jsonify }},
+    content_category: {{ page.view_content_category | default: "" | jsonify }}
+  };
+  var sent = false;
+  function fire() {
+    if (sent || typeof window.fbq !== 'function') return;
+    sent = true;
+    window.fbq('track', 'ViewContent', params);
+  }
+  window.__neuronsPixelReadyQueue = window.__neuronsPixelReadyQueue || [];
+  window.__neuronsPixelReadyQueue.push(fire);
+  if (window.__neuronsPixelReady) fire();
+})();
+</script>
+{% endif %}

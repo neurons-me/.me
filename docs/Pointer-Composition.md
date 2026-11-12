@@ -7,6 +7,8 @@ mepath:
   - text: Docs
     url: https://neurons-me.github.io/.me/docs/
 crumb: Pointer Composition
+view_content_name: "Doc - Pointer Composition"
+view_content_category: "Docs"
 ---
 
 # 🔗 Pointer Composition

@@ -14,6 +14,8 @@ related:
   - Pointer-Composition.html
   - Axioms.html
   - https://suign.github.io/Equations.html
+view_content_name: "Doc - Is .me a Category? From Pointer Semantics to Categorical Structure"
+view_content_category: "Docs"
 ---
 
 # → Is .me a Category?

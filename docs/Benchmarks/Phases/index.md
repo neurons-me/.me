@@ -7,6 +7,8 @@ mepath:
   - text: Benchmarks
     url: https://neurons-me.github.io/.me/docs/Benchmarks/
 crumb: Phases
+view_content_name: "Doc - .me — Phase benchmarks"
+view_content_category: "Docs"
 ---
 
 # Phases

@@ -8,6 +8,8 @@ mepath:
     url: https://neurons-me.github.io/.me/docs/
 canonical: https://suign.github.io/Explain.html
 crumb: explain
+view_content_name: "Doc - me.explain(path)"
+view_content_category: "Docs"
 ---
 
 # me.explain(path)

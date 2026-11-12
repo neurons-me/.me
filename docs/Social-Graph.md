@@ -18,6 +18,8 @@ related:
   - Pointer-Composition.html
   - Audiences.html
   - https://neurons-me.github.io/social-graphs/
+view_content_name: "Doc - Social Graph"
+view_content_category: "Docs"
 ---
 
 # 𓀠 Social Graph

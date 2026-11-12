@@ -9,6 +9,8 @@ mepath:
 crumb: Fan-Out
 scripts:
   - /assets/fanout-viz/fanout-viz.js?v=3.1.3
+view_content_name: "Doc - Extreme Fan-Out"
+view_content_category: "Docs"
 ---
 
 # Extreme Fan-Out

@@ -14,6 +14,8 @@ related:
   - O-k.html
   - https://neurons-me.github.io/digital-space-algebra/
   - https://neurons-me.github.io/mlearning.studio/
+view_content_name: "Doc - Vector Index"
+view_content_category: "Docs"
 ---
 
 # ≈ Vector Index

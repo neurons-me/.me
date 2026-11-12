@@ -7,6 +7,8 @@ mepath:
   - text: Docs
     url: https://neurons-me.github.io/.me/docs/
 crumb: me
+view_content_name: "Doc - What is .me?"
+view_content_category: "Docs"
 ---
 
 

@@ -15,6 +15,8 @@ related:
   - Operators.html
   - Syntax.html
   - Pointer-Composition.html
+view_content_name: "Doc - The Axioms of .me"
+view_content_category: "Docs"
 ---
 
 

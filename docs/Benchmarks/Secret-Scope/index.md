@@ -7,6 +7,8 @@ mepath:
   - text: Benchmarks
     url: https://neurons-me.github.io/.me/docs/Benchmarks/
 crumb: Secret-Scope
+view_content_name: "Doc - .me — Secret scope benchmarks"
+view_content_category: "Docs"
 ---
 
 # Secret scope &amp; scaling

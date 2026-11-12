@@ -18,6 +18,8 @@ related:
   - Explain.html
   - Axioms.html
   - https://neurons-me.github.io/digital-space-algebra/
+view_content_name: "Doc - Algebra of Contexts"
+view_content_category: "Docs"
 ---
 
 # ⊇ Algebra of Contexts

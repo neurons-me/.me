@@ -160,7 +160,31 @@
       html:not(.gui-on) .mepath a { color:#4fd1c5; }
     }
   </style>
-<link rel="icon" type="image/png" href="https://res.cloudinary.com/dkwnxf6gm/image/upload/v1760629064/neurons.me_b50f6a.png?v=brain"><link rel="stylesheet" href="/.me/assets/hiero.css"></head>
+<link rel="icon" type="image/png" href="https://res.cloudinary.com/dkwnxf6gm/image/upload/v1760629064/neurons.me_b50f6a.png?v=brain"><link rel="stylesheet" href="/.me/assets/hiero.css">
+<script async src="https://www.googletagmanager.com/gtm.js?id=GTM-MZD5357B"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+</script>
+<!-- Consent + Meta Pixel (the pixel loads only after the visitor accepts): /assets/js/consent.js -->
+<script src="/assets/js/consent.js?v=2" defer></script>
+<!-- ViewContent: per-page Meta event; declared on this page only. -->
+<script>
+(function () {
+  var params = { content_name: 'Doc - Indice', content_category: 'Docs' };
+  var sent = false;
+  function fire() {
+    if (sent || typeof window.fbq !== 'function') return;
+    sent = true;
+    window.fbq('track', 'ViewContent', params);
+  }
+  window.__neuronsPixelReadyQueue = window.__neuronsPixelReadyQueue || [];
+  window.__neuronsPixelReadyQueue.push(fire);
+  if (window.__neuronsPixelReady) fire();
+})();
+</script>
+</head>
 <body>
 <div id="static-landing" data-layout="docs-index">
   <nav class="topnav" aria-label="me path">

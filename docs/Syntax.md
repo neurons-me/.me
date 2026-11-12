@@ -10,6 +10,8 @@ crumb: Syntax
 scripts:
   - /assets/me-kernel/me-kernel.js?v=1
   - /assets/me-run/me-run.js?v=2
+view_content_name: "Doc - .me Syntax"
+view_content_category: "Docs"
 ---
 
 # .me Syntax

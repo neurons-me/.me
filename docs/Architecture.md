@@ -2,6 +2,8 @@
 layout: readme
 title: O(k) Semantic Kernel Architecture
 image: https://neurons-me.github.io/.me/docs/assets/architecture-og.jpg
+view_content_name: "Doc - O(k) Semantic Kernel Architecture"
+view_content_category: "Docs"
 ---
 
 # O(k) Semantic Kernel Architecture

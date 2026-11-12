@@ -7,6 +7,8 @@ mepath:
   - text: Docs
     url: https://neurons-me.github.io/.me/docs/
 crumb: Primitives
+view_content_name: "Doc - The Primitives of .me"
+view_content_category: "Docs"
 ---
 
 

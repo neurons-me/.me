@@ -9,6 +9,8 @@ mepath:
 crumb: Kernel
 scripts:
   - /assets/kernel-timeline/kernel-timeline.js?v=2
+view_content_name: "Doc - .me — Kernel benchmarks"
+view_content_category: "Docs"
 ---
 
 # .me Kernel — Benchmark Results

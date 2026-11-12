@@ -3,6 +3,8 @@ layout: readme
 title: Hospital
 description: Hospital provider / measure tables as a reactive .me node — correct one record, update dependent checks, explain() the wave.
 image: https://suign.github.io/assets/imgs/SMARTCITY.jpg
+view_content_name: "Doc - Hospital"
+view_content_category: "Docs"
 ---
 
 # Hospital

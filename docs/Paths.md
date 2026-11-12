@@ -13,6 +13,8 @@ scripts:
   - /assets/me-kernel/me-kernel.js?v=1
   - /assets/me-run/me-run.js?v=2
   - /assets/paths-live/paths-live.js?v=6
+view_content_name: "Doc - me.whatever(what)"
+view_content_category: "Docs"
 ---
 
 # 𓂀 me.whatever(what)

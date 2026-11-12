@@ -19,6 +19,8 @@ related:
   - Axioms.html
   - https://neurons-me.github.io/encrypted-audiences/
   - https://suign.github.io/SetChemistry.html
+view_content_name: "Doc - Audiences"
+view_content_category: "Docs"
 ---
 
 # ∪ Audiences

@@ -81,6 +81,29 @@
     html:not(.gui-on) .topnav a.logo { display:inline-flex; padding:2px 4px; line-height:0; }
     html:not(.gui-on) .topnav a.logo img { display:block; object-fit:contain; }
   </style>
+<script async src="https://www.googletagmanager.com/gtm.js?id=GTM-MZD5357B"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+</script>
+<!-- Consent + Meta Pixel (the pixel loads only after the visitor accepts): /assets/js/consent.js -->
+<script src="/assets/js/consent.js?v=2" defer></script>
+<!-- ViewContent: per-page Meta event; declared on this page only. -->
+<script>
+(function () {
+  var params = { content_name: 'Demos - Indice', content_category: 'Demos' };
+  var sent = false;
+  function fire() {
+    if (sent || typeof window.fbq !== 'function') return;
+    sent = true;
+    window.fbq('track', 'ViewContent', params);
+  }
+  window.__neuronsPixelReadyQueue = window.__neuronsPixelReadyQueue || [];
+  window.__neuronsPixelReadyQueue.push(fire);
+  if (window.__neuronsPixelReady) fire();
+})();
+</script>
 </head>
 <body>
 <div id="static-landing">

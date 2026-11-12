@@ -7,6 +7,8 @@ mepath:
   - text: Benchmarks
     url: https://neurons-me.github.io/.me/docs/Benchmarks/
 crumb: GTFS
+view_content_name: "Doc - .me — GTFS benchmarks"
+view_content_category: "Docs"
 ---
 
 # GTFS

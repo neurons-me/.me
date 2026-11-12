@@ -2,6 +2,8 @@
 image: https://neurons-me.github.io/.me/docs/assets/og-hemisphere.jpg
 layout: readme
 title: Hemisphere Scale
+view_content_name: "Doc - Hemisphere Scale"
+view_content_category: "Docs"
 ---
 
 

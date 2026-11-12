@@ -5,6 +5,8 @@ description: "Benchmarks of the .me kernel: kernel benchmarks (1–11 and the fi
 image: https://neurons-me.github.io/.me/docs/assets/kernel-timeline-og.jpg
 mepath: []
 crumb: Benchmarks
+view_content_name: "Doc - .me — Benchmarks"
+view_content_category: "Docs"
 ---
 
 # Benchmarks

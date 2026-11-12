@@ -2,6 +2,8 @@
 image: https://neurons-me.github.io/.me/docs/assets/og-smart-cities.jpg
 layout: readme
 title: Smart Cities As Reactive Semantic Trees
+view_content_name: "Doc - Smart Cities As Reactive Semantic Trees"
+view_content_category: "Docs"
 ---
 
 <style>

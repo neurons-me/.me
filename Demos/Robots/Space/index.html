@@ -43,6 +43,29 @@
   html, body { margin: 0; }
   #boot-error { font: 13px/1.5 ui-monospace, Menlo, monospace; color: #c97e7e; padding: 24px; display: none; }
 </style>
+<script async src="https://www.googletagmanager.com/gtm.js?id=GTM-MZD5357B"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+</script>
+<!-- Consent + Meta Pixel (the pixel loads only after the visitor accepts): /assets/js/consent.js -->
+<script src="/assets/js/consent.js?v=2" defer></script>
+<!-- ViewContent: per-page Meta event; declared on this page only. -->
+<script>
+(function () {
+  var params = { content_name: 'Demo - Space', content_category: 'Demos' };
+  var sent = false;
+  function fire() {
+    if (sent || typeof window.fbq !== 'function') return;
+    sent = true;
+    window.fbq('track', 'ViewContent', params);
+  }
+  window.__neuronsPixelReadyQueue = window.__neuronsPixelReadyQueue || [];
+  window.__neuronsPixelReadyQueue.push(fire);
+  if (window.__neuronsPixelReady) fire();
+})();
+</script>
 </head>
 <body>
 <div id="root"></div>

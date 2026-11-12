@@ -2,6 +2,8 @@
 image: https://neurons-me.github.io/.me/docs/assets/me-og.jpg
 layout: readme
 title: Collaborators
+view_content_name: "Doc - Collaborators"
+view_content_category: "Docs"
 ---
 
 # 🤝 Collaborators
