@@ -9,7 +9,7 @@ mepath:
 crumb: Seed
 scripts:
   - /assets/me-kernel/me-kernel.js?v=1
-  - /assets/me-live/me-live.js?v=13
+  - /assets/me-live/me-live.js?v=19
 related:
   - me.html
   - Primitives.html
@@ -18,20 +18,14 @@ related:
 ---
 # 𓇗 SEED
 
+A seed is a root: a value you choose, or that is generated once. Everything else is derived from it, always the same way. The same seed always gives the same identity.
+
 ```ts
 new ME(seed)
 ```
 {: .doc-input-width}
 
 <div data-live="MeSeedInput" data-mode="seed"></div>
-
-> Randomness can create a root once. Determinism reproduces its results from that same root. The two are compatible.
-
-A seed is a root: a value you choose, or that is generated once. Everything else is derived from it, always the same way. The same seed always gives the same identity.
-
-## Shown
-
-Each property below is computed in this browser from the seed.
 
 ### Determinism
 
@@ -81,22 +75,22 @@ A root can be generated once and then reproduced by derivation every time after.
 ## The three constructors
 
 ```ts
-new ME("jabellae")        // literal seed
+new ME("suign")        // literal seed
 new ME(username, secret)  // compound seed, derived
 new ME()                  // anonymous seed, reused or generated
 ```
 
 | Construction | Where the seed comes from | Saved to the anonymous slot? |
 |---|---|---|
-| `new ME("jabellae")` | The string itself, as-is. No hashing at this step. | No |
+| `new ME("suign")` | The string itself, as-is. No hashing at this step. | No |
 | `new ME(username, secret)` | `deriveCompoundSeed(username, secret)`, deterministic. | No |
 | `new ME()` | The stored anonymous seed, or 32 fresh random bytes. | Yes, the kernel tries to keep it |
 
-### `new ME("jabellae")` — literal seed
+### `new ME("suign")` — literal seed
 
 The string is used directly as the seed (`normalizeSeedInput` only converts non-strings with `String()`).
 
-This form is useful for explaining the API and for tests. It is **not a private identity**: anyone who knows the text `"jabellae"` can construct the same kernel and reproduce everything derived from it, including `identityHash` and the `prove()` signing key. A literal seed is only as private as the string.
+This form is useful for explaining the API and for tests. It is **not a private identity**: anyone who knows the text `"suign"` can construct the same kernel and reproduce everything derived from it, including `identityHash` and the `prove()` signing key. A literal seed is only as private as the string.
 
 ### `new ME(username, secret)` — compound seed
 
@@ -224,7 +218,7 @@ So in both formats, seed secrecy and branch secrecy are separate concerns. What 
 
 ## Seed vs. namespace claim
 
-A seed by itself proves nothing to anyone else — it's just math you can run alone. **Claiming a namespace** (binding a handle like `jabellae` to a specific running surface, so other people can find and verify "this is really jabellae") is a different, optional layer that lives in `cleaker` and `monad`, not in `.me`. The seed is the expression; the claim is what happens when you express it somewhere with witnesses.
+A seed by itself proves nothing to anyone else — it's just math you can run alone. **Claiming a namespace** (binding a handle like `suign` to a specific running surface, so other people can find and verify "this is really suign") is a different, optional layer that lives in `cleaker` and `monad`, not in `.me`. The seed is the expression; the claim is what happens when you express it somewhere with witnesses.
 
 | | Seed | Namespace claim |
 |---|---|---|

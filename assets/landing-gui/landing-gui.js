@@ -477,6 +477,49 @@
   }
   // Seed Shown sections (Determinism, Sensitivity, One-way, Compound): the title and the
   // one-line description sit on the same row (stacked under 640px), with a tighter gap to the inputs.
+  function seedIntroSplit(body) {
+    const h1 = body.querySelector(":scope > h1");
+    if (!h1) return body;
+    const first = h1.nextElementSibling;
+    const isCode = (el) => el && (el.tagName === "PRE" || (el.classList && el.classList.contains("doc-input-width") && el.querySelector("pre")));
+    const isSeed = (el) => el && el.getAttribute && el.getAttribute("data-live") === "MeSeedInput" && (el.getAttribute("data-mode") || "seed") === "seed";
+    let node = first, quote = null, para = null, code = null, input = null;
+    while (node && !/^(H1|H2|H3|HR)$/.test(node.tagName)) {
+      if (!code && isCode(node)) code = node;
+      else if (!input && isSeed(node)) input = node;
+      else if (!quote && node.tagName === "BLOCKQUOTE") quote = node;
+      else if (!para && node.tagName === "P") para = node;
+      else break;
+      node = node.nextElementSibling;
+    }
+    if (!isCode(code) || !isSeed(input) || !para || para.tagName !== "P") return body;
+    const split = document.createElement("div");
+    split.className = "doc-intro-split";
+    const copy = document.createElement("div");
+    copy.className = "doc-intro-copy";
+    const card = document.createElement("div");
+    card.className = "doc-intro-card";
+    const mount = document.createElement("div");
+    mount.setAttribute("data-live", "MeSeedInput");
+    mount.setAttribute("data-mode", "seed");
+    mount.setAttribute("data-part", "card");
+    input.setAttribute("data-part", "field");
+    code.before(split);
+    const fields = document.createElement("div");
+    fields.className = "doc-intro-fields";
+    const text = document.createElement("div");
+    text.className = "doc-intro-text";
+    fields.appendChild(code);
+    fields.appendChild(input);
+    if (quote) text.appendChild(quote);
+    text.appendChild(para);
+    copy.appendChild(text);
+    copy.appendChild(fields);
+    card.appendChild(mount);
+    split.appendChild(card);
+    split.appendChild(copy);
+    return body;
+  }
   function seedDemoSections(body) {
     const names = /^(Determinism|Sensitivity|One-way|Compound)$/;
     body.querySelectorAll(":scope > h3").forEach((hd) => {
@@ -666,7 +709,7 @@
       kids.forEach((c) => { if (c !== hd && c !== lede) rest.appendChild(c); });
       // Title left, description on the same line to its right (wraps beside the title). Input directly below.
       // On small screens the description stacks under the title. No column-2 divider.
-      return N("Box", { component: "section", className: "doc-demo-section", sx: {
+      return N("Box", { component: "section", className: "doc-demo-section", "data-me-demo-section": "", sx: {
         mt: 3.5, mb: 2.5, minWidth: 0,
         "& [data-me-demo], & [data-me-seed-input]": { mt: "0 !important", mb: "0 !important" }
       } }, [
@@ -677,8 +720,61 @@
           hd && T(inl(hd), { fontSize: "1.15rem", fontWeight: 700, lineHeight: 1.3, m: 0, whiteSpace: "nowrap", scrollMarginTop: "64px", flex: "0 0 auto" }, { component: "h3", id: hd.id || undefined }),
           lede && N("Box", { component: "p", sx: { fontSize: "1rem", fontWeight: 400, lineHeight: 1.3, m: 0, color: "text.secondary", minWidth: 0, flex: "1 1 auto" } }, inl(lede))
         ].filter(Boolean)),
-        N("Box", { "data-me-section-body": "", sx: { minWidth: 0, display: "flex", flexDirection: "column", gap: 1 } }, blocks(rest))
+        N("Box", { "data-me-section-body": "", sx: { minWidth: 0, display: "flow-root", "& > * + *": { mt: 1 } } }, blocks(rest))
       ]);
+    }
+    if (b.classList.contains("doc-intro-split")) {
+      const copy = [...b.children].find((c) => c.classList.contains("doc-intro-copy"));
+      const card = [...b.children].find((c) => c.classList.contains("doc-intro-card"));
+      const fields = copy && [...copy.children].find((c) => c.classList.contains("doc-intro-fields"));
+      const text = copy && [...copy.children].find((c) => c.classList.contains("doc-intro-text"));
+      const stackSx = { minWidth: 0, display: "flex", flexDirection: "column", gap: 2, "& > *": { mt: "0 !important", mb: "0 !important" } };
+      const fieldsSx = { ...stackSx,
+        "@media (min-width: 640px)": {
+          flexDirection: "row", alignItems: "stretch", gap: 1.5,
+          "& .doc-input-width, & [data-doc-input-width], & pre": {
+            width: "fit-content !important", maxWidth: "none !important", flex: "0 0 auto",
+            mb: "0 !important", height: 40, boxSizing: "border-box",
+            display: "flex", alignItems: "center", py: 0, whiteSpace: "nowrap"
+          },
+          "& [data-me-seed-input]": {
+            flex: "1 1 auto", minWidth: 0, width: "auto !important", maxWidth: "none !important"
+          }
+        }
+      };
+      return N("Box", { className: "doc-intro-split", "data-me-intro": "", sx: {
+        display: "contents",
+        "& .doc-input-width, & [data-doc-input-width]": { maxWidth: "100% !important", width: "100%" },
+        "& [data-me-seed-input]": { maxWidth: "100% !important", mt: "0 !important", mb: "0 !important" },
+        "@media (min-width: 640px)": {
+          "& [data-me-intro-fields] .doc-input-width, & [data-me-intro-fields] [data-doc-input-width], & [data-me-intro-fields] pre": {
+            width: "fit-content !important", maxWidth: "none !important"
+          }
+        },
+        "@media (max-width: 639px)": {
+          display: "grid",
+          gridTemplateColumns: "auto minmax(0, 1fr)",
+          columnGap: 1.5, rowGap: 1.5,
+          alignItems: "start", mt: 0.5, mb: 4, minWidth: 0,
+          gridTemplateAreas: '"text text" "card fields" "hash hash"',
+          "& > [data-me-intro-card], & > [data-me-intro-copy]": { display: "contents", float: "none", margin: 0 },
+          "& [data-me-intro-fields]": { gridArea: "fields", minWidth: 0, width: "100%" },
+          "& [data-me-intro-text]": { gridArea: "text" }
+        }
+      } }, [
+        card && N("Box", { className: "doc-intro-card", "data-me-intro-card": "", sx: {
+          width: "fit-content", maxWidth: "100%",
+          "@media (min-width: 640px)": { float: "left", mr: 3, mb: 2 }
+        } }, blocks(card)),
+        copy && N("Box", { className: "doc-intro-copy", "data-me-intro-copy": "", sx: {
+          ...stackSx,
+          "@media (min-width: 640px)": { mt: 0.5 } // flex already makes a BFC, so it shrinks beside the float
+        } },
+          (fields || text) ? [
+            text && N("Box", { className: "doc-intro-text", "data-me-intro-text": "", sx: stackSx }, blocks(text)),
+            fields && N("Box", { className: "doc-intro-fields", "data-me-intro-fields": "", sx: fieldsSx }, blocks(fields))
+          ].filter(Boolean) : blocks(copy))
+      ].filter(Boolean));
     }
     if (t === "div" || t === "section") {
       const narrow = b.classList.contains("doc-input-width");
@@ -694,8 +790,8 @@
       ? N("Box", { component: "main", sx: { width: "min(1240px, calc(100% - 40px))", mx: "auto", pt: 5, pb: 10, "@media (max-width:480px)": { pt: 3.5, width: "calc(100% - 32px)" },
           "@media (min-width:1000px)": { display: "grid", gridTemplateColumns: "minmax(0, 1fr) 380px", columnGap: "28px", alignItems: "start", "& > *": { gridColumn: 1, minWidth: 0 },
             "& > [data-doc-sidebar]": { gridColumn: 2, gridRow: "1 / span 400", alignSelf: "stretch" },
-            "& > [data-doc-sidebar] > *": { position: "sticky", top: "60px", maxHeight: "calc(100vh - 72px)", overflowY: "auto", overscrollBehavior: "contain" } } } }, blocks(seedDemoSections(axiomBlocks(relatedCards(page.body)))))
-      : N("Box", { component: "main", sx: { width: "min(860px, calc(100% - 40px))", mx: "auto", pt: 5, pb: 10, "@media (max-width:480px)": { pt: 3.5, width: "calc(100% - 32px)" } } }, blocks(seedDemoSections(axiomBlocks(relatedCards(page.body))))),
+            "& > [data-doc-sidebar] > *": { position: "sticky", top: "60px", maxHeight: "calc(100vh - 72px)", overflowY: "auto", overscrollBehavior: "contain" } } } }, blocks(seedDemoSections(seedIntroSplit(axiomBlocks(relatedCards(page.body))))))
+      : N("Box", { component: "main", sx: { width: "min(860px, calc(100% - 40px))", mx: "auto", pt: 5, pb: 10, "@media (max-width:480px)": { pt: 3.5, width: "calc(100% - 32px)" } } }, blocks(seedDemoSections(seedIntroSplit(axiomBlocks(relatedCards(page.body)))))),
   ]);
   const spec = docPage ? docSpec() : docsIndex ? docsSpec() : demosIndex ? indexSpec() : N("Box", { sx: { minHeight: "100vh", bgcolor: "background.default", color: "text.primary", lineHeight: 1.6 } }, [
     N("LandingTopBar", {}),

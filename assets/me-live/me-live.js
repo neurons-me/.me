@@ -201,19 +201,46 @@
     // The QR is the real G.QRme (same component as the left-bar / root Cleaker QR).
     // perimeterLabel is omitted: this page has no claimed namespace, and we do not invent one.
     // value is the public identityHash only — never a seed, secret, or fabricated cleaker URL.
-    return h(G.Atoms.Box, { "data-me-card": p.inline ? "inline" : "tip", "data-me-row": ok ? "identityHash" : undefined, sx: {
+    var hug = !!p.hug;
+    var cardSx = hug ? {
+        width: "fit-content", maxWidth: "100%", boxSizing: "border-box",
+        p: 1.5, borderRadius: 2, border: "1px solid", borderColor: "divider", bgcolor: "action.hover",
+        display: "flex", flexDirection: "column", alignItems: "center", gap: 1.25,
+        "@media (max-width: 639px)": {
+          display: "contents", p: 0, border: "none", bgcolor: "transparent", width: "auto", maxWidth: "none", gap: 0
+        }
+      } : {
         width: p.inline ? "100%" : "min(520px, calc(100vw - 32px))", boxSizing: "border-box",
         p: 2, borderRadius: 2, border: "1px solid", borderColor: "divider", bgcolor: "action.hover",
         display: "flex", gap: 2, alignItems: "center", flexWrap: "wrap"
-      } },
+      };
+    var qrSx = {
+      flexShrink: 0, width: "fit-content", lineHeight: 0, "& .monad-tooltip": { display: "none" },
+      ...(hug ? {
+        "@media (max-width: 639px)": {
+          gridArea: "card", boxSizing: "border-box", alignSelf: "start", width: "fit-content",
+          p: 1, borderRadius: 2, border: "1px solid", borderColor: "divider", bgcolor: "action.hover",
+          "& > *": { zoom: 130 / 192 }
+        },
+        "@media (max-width: 360px)": {
+          "& > *": { zoom: 112 / 192 }
+        }
+      } : {})
+    };
+    var hashColSx = hug ? {
+        width: 0, minWidth: "100%", maxWidth: "100%", boxSizing: "border-box",
+        display: "flex", flexDirection: "column", gap: 0.5,
+        "@media (max-width: 639px)": { gridArea: "hash", width: "100%", minWidth: 0, maxWidth: "100%" }
+      } : { flex: 1, minWidth: 180, display: "flex", flexDirection: "column", gap: 0.75 };
+    return h(G.Atoms.Box, { "data-me-card": p.inline ? "inline" : "tip", "data-me-hug": hug ? "" : undefined, "data-me-row": ok ? "identityHash" : undefined, sx: cardSx },
       L.state === "error" ? h(G.Atoms.Box, { sx: { fontSize: ".78rem", color: "text.secondary", overflowWrap: "anywhere" } }, L.text) : null,
-      ok ? h(G.Atoms.Box, { sx: { flexShrink: 0, "& .monad-tooltip": { display: "none" } } },
+      ok ? h(G.Atoms.Box, { "data-me-qr": "", sx: qrSx },
         QRme ? h(QRme, { value: L.hash, username: L.expression || undefined, variant: p.inline ? "lg" : "md", hoverFlip: true, clickFlip: true, showAvatarLabel: true })
              : (Monad ? h(Monad, { key: L.hash, variant: "identity", kind: "me", seed: L.hash, mode: "contained", size: p.inline ? 96 : 72, tooltip: false, solid: true }) : null)) : null,
-      ok ? h(G.Atoms.Box, { sx: { flex: 1, minWidth: 180, display: "flex", flexDirection: "column", gap: 0.75 } },
+      ok ? h(G.Atoms.Box, { "data-me-hash-block": "", sx: hashColSx },
         h(G.Atoms.Box, { sx: { color: "text.disabled", letterSpacing: "0.06em", fontSize: "0.68rem" } }, "Hash"),
-        h(G.Atoms.Box, { "data-me-hash-short": "", sx: { fontFamily: MONO, fontWeight: 700, fontSize: "1rem", color: "primary.main", letterSpacing: "0.02em", whiteSpace: "nowrap" } }, shortHash),
-        h(G.Atoms.Box, { "data-me-hash": "", sx: { fontFamily: MONO, fontSize: "0.62rem", color: "text.disabled", wordBreak: "break-all", lineHeight: 1.6, userSelect: "all" } }, L.hash)) : null);
+        h(G.Atoms.Box, { "data-me-hash-short": "", sx: { fontFamily: MONO, fontWeight: 700, fontSize: hug ? "0.85rem" : "1rem", color: "primary.main", letterSpacing: "0.02em", whiteSpace: hug ? "normal" : "nowrap", overflowWrap: hug ? "anywhere" : undefined, wordBreak: hug ? "break-all" : undefined, maxWidth: "100%", "@media (max-width: 639px)": { fontSize: "0.95rem", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", wordBreak: "normal", overflowWrap: "normal" } } }, shortHash),
+        h(G.Atoms.Box, { "data-me-hash": "", sx: { fontFamily: MONO, fontSize: hug ? "0.55rem" : "0.62rem", color: "text.disabled", wordBreak: "break-all", overflowWrap: "anywhere", lineHeight: 1.6, userSelect: "all", maxWidth: "100%", "@media (max-width: 639px)": { fontSize: "0.62rem" } } }, L.hash)) : null);
   }
 
   // the one card, as a themed tooltip anchored to a marked word in the text (MeLive). Inputs no longer use this.
@@ -263,9 +290,29 @@
   }
 
   // ── the inputs: Cleaker sign-in fields; identityHash is computed immediately and shown in flow below ──
+  // Intro seed field and QR card are siblings in two columns; share the live hash in this page-only store.
+  var introLive = { live: null };
+  var introSubs = new Set();
+  function publishIntroLive(live) {
+    var a = introLive.live, b = live || null;
+    if ((a && a.hash) === (b && b.hash) && !a === !b) return;
+    introLive = { live: b };
+    introSubs.forEach(function (f) { f(); });
+  }
+  function useIntroLive() {
+    var tick = R.useState(0)[1];
+    R.useEffect(function () {
+      var on = function () { tick(function (n) { return n + 1; }); };
+      introSubs.add(on);
+      return function () { introSubs.delete(on); };
+    }, []);
+    return introLive.live;
+  }
+
   function MeSeedInput(p) {
     useTick();
-    var compound = p.mode === "compound", which = compound ? "compound" : "seed", TF = G.Atoms.TextField;
+    var intro = useIntroLive();
+    var compound = p.mode === "compound", which = compound ? "compound" : "seed", part = p.part || "all", TF = G.Atoms.TextField;
     var a = R.useState(""), seed = a[0], setSeed = a[1], b = R.useState(""), user = b[0], setUser = b[1], c = R.useState(""), secret = c[0], setSecret = c[1];
     var live = null, cur, hash, cseed;
     if (compound) {
@@ -292,11 +339,19 @@
         autoComplete: "off", onChange: function (e) { set(e.target.value); },
         inputProps: { spellCheck: false, autoCapitalize: "off", autoCorrect: "off", "data-lpignore": "true", "data-1p-ignore": "true" } });
     };
+    R.useEffect(function () {
+      if (compound || part === "card") return undefined;
+      publishIntroLive(live);
+    }, [compound, part, seed]);
+    if (!compound && part === "card") {
+      return intro ? h(MeCard, { live: intro, focus: "identityHash", inline: true, hug: true }) : null;
+    }
+    var seedFieldOnly = !compound && part === "field";
     return h(G.Atoms.Box, { "data-gui-node-id": p["data-gui-node-id"], "data-me-seed-input": which,
-        sx: { maxWidth: 520, width: "100%", display: "flex", flexDirection: "column", gap: 2, mt: .5, mb: 3 } },
+        sx: { maxWidth: seedFieldOnly ? "100%" : 520, width: "100%", display: "flex", flexDirection: "column", gap: 2, mt: seedFieldOnly ? 0 : .5, mb: seedFieldOnly ? 0 : 3, pt: seedFieldOnly ? 0 : 1, overflow: "visible" } },
       compound ? field("Username", setUser, false, "username") : null,
       compound ? field("Secret", setSecret, true, "secret") : field("Seed", setSeed, true, "seed"),
-      live ? h(MeCard, { live: live, focus: compound ? "me" : "identityHash", inline: true }) : null);
+      (!seedFieldOnly && live) ? h(MeCard, { live: live, focus: compound ? "me" : "identityHash", inline: true }) : null);
   }
 
 
@@ -336,7 +391,7 @@
     return h(G.Atoms.TextField, props);
   }
   function demoBox(kind, children, wide) {
-    var sx = { maxWidth: wide === true ? "100%" : 520, width: "100%", display: "flex", flexDirection: "column", gap: 1.5, mt: 0.5, mb: 3, minWidth: 0 };
+    var sx = { maxWidth: wide === true ? "100%" : 520, width: "100%", display: "flex", flexDirection: "column", gap: 1.5, mt: 0.5, mb: 3, pt: 1, minWidth: 0, overflow: "visible" };
     if (wide === "half") {
       sx.maxWidth = "100%";
       sx["@media (min-width: 640px)"] = { maxWidth: "calc((100% - 16px) / 2)" };
@@ -344,7 +399,7 @@
     return h(G.Atoms.Box, { "data-me-demo": kind, sx: sx }, children);
   }
   function pairCol(children, attrs) {
-    return h(G.Atoms.Box, Object.assign({ sx: { display: "flex", flexDirection: "column", gap: 1, minWidth: 0, overflow: "hidden" } }, attrs || {}), children);
+    return h(G.Atoms.Box, Object.assign({ sx: { display: "flex", flexDirection: "column", gap: 1, minWidth: 0, overflow: "visible", pt: 1 } }, attrs || {}), children);
   }
   function pairRow(left, right, align) {
     return h(G.Atoms.Box, { "data-me-pair": "", sx: {
@@ -407,7 +462,7 @@
   installNetWatch();
 
   // Sensitivity compares against Determinism's seed A; keep the hash in a small shared store.
-  var detA = { hash: identityHashOf("jabellae"), seed: "jabellae" };
+  var detA = { hash: identityHashOf("suign"), seed: "suign" };
   var detASubs = new Set();
   function publishDetA(hash, seed) {
     if (seed === undefined) seed = detA.seed;
@@ -452,7 +507,7 @@
     } }, left, mid, right);
   }
   function DemoDeterminism() {
-    var a = R.useState("jabellae"), left = a[0], setLeft = a[1], b = R.useState("jabellae"), right = b[0], setRight = b[1];
+    var a = R.useState("suign"), left = a[0], setLeft = a[1], b = R.useState("suign"), right = b[0], setRight = b[1];
     var h1 = left !== "" ? identityHashOf(left) : "", h2 = right !== "" ? identityHashOf(right) : "";
     var ready = !!(h1 && h2);
     R.useEffect(function () { publishDetA(h1, left); }, [h1, left]);
@@ -492,7 +547,7 @@
     );
   }
   function DemoSensitivity() {
-    var a = R.useState("jabellae."), seed = a[0], setSeed = a[1];
+    var a = R.useState("suign."), seed = a[0], setSeed = a[1];
     var base = useDetAHash();
     var hash = seed !== "" ? identityHashOf(seed) : "";
     var ready = !!(hash && base), n = ready ? hexDiffer(base, hash) : null;
@@ -503,8 +558,8 @@
         flowRow("forward",
           demoField("Seed", seed, setSeed, "sensitivity", false),
           flowArrow(true),
-          hashField(hash, "sensitivity-hash-fwd", note),
-          full, "right"),
+          hashField(hash, "sensitivity-hash-fwd"),
+          full, "right", note),
         onewayLede(),
         flowRow("reverse",
           hashField(hash, "sensitivity-hash-rev"),
@@ -543,22 +598,19 @@
       )
     );
   }
-  function hashField(hash, id, note) {
+  function hashField(hash, id) {
     var shortH = hash ? hash.slice(0, 10) + "…" + hash.slice(-8) : "…";
-    return h(G.Atoms.Box, { sx: { position: "relative", minWidth: 0 } },
-      demoField("Hash", shortH, null, id, false, {
-        readOnly: true,
-        sx: {
-          "& input": {
-            fontFamily: MONO, fontWeight: 700, letterSpacing: "0.02em",
-            color: hash ? "primary.main" : "text.disabled",
-            WebkitTextFillColor: "currentColor"
-          }
-        },
-        inputProps: { "data-me-hash-short": "" }
-      }),
-      note ? h(G.Atoms.Box, { sx: { position: "absolute", top: "-0.45em", right: 0, maxWidth: "72%", zIndex: 1, pointerEvents: "none" } }, note) : null
-    );
+    return demoField("Hash", shortH, null, id, false, {
+      readOnly: true,
+      sx: {
+        "& input": {
+          fontFamily: MONO, fontWeight: 700, letterSpacing: "0.02em",
+          color: hash ? "primary.main" : "text.disabled",
+          WebkitTextFillColor: "currentColor"
+        }
+      },
+      inputProps: { "data-me-hash-short": "" }
+    });
   }
   function hashFull(hash) {
     if (!hash) return null;
@@ -574,13 +626,19 @@
       }
     });
   }
-  function flowRow(kind, left, mid, right, under, hashSide) {
-    var areas = hashSide === "left"
-      ? '"left mid right" "under . ."'
-      : '"left mid right" ". . under"';
-    var areasMobile = hashSide === "left"
-      ? '"left" "under" "mid" "right"'
-      : '"left" "mid" "right" "under"';
+  function flowRow(kind, left, mid, right, under, hashSide, over) {
+    var areas, areasMobile;
+    if (hashSide === "left") {
+      areas = over ? '"over mid ." "left mid right" "under . ."' : '"left mid right" "under . ."';
+      areasMobile = over ? '"over" "left" "under" "mid" "right"' : '"left" "under" "mid" "right"';
+    } else {
+      areas = over ? '". . over" "left mid right" ". . under"' : '"left mid right" ". . under"';
+      areasMobile = over ? '"left" "mid" "over" "right" "under"' : '"left" "mid" "right" "under"';
+    }
+    // For the left-side over (unused today), don't stretch the arrow into the caption row.
+    if (hashSide === "left" && over) {
+      areas = '"over . ." "left mid right" "under . ."';
+    }
     return h(G.Atoms.Box, { "data-me-pair": "", "data-me-flow": kind, sx: {
       display: "grid",
       gridTemplateColumns: "minmax(0, 1fr) 3rem minmax(0, 1fr)",
@@ -592,6 +650,7 @@
         columnGap: 0, rowGap: 1
       }
     } },
+      over ? h(G.Atoms.Box, { "data-me-flow-side": "over", sx: { gridArea: "over", minWidth: 0, display: "flex", justifyContent: "flex-end", alignItems: "baseline", pb: 0.75, boxSizing: "content-box" } }, over) : null,
       h(G.Atoms.Box, { "data-me-flow-side": "left", sx: { gridArea: "left", minWidth: 0 } }, left),
       mid,
       h(G.Atoms.Box, { "data-me-flow-side": "right", sx: { gridArea: "right", minWidth: 0 } }, right),
