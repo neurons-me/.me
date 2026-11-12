@@ -473,25 +473,35 @@
           wordBreak: "break-all", overflowWrap: "anywhere", lineHeight: 1.6,
           userSelect: "all", minWidth: 0, maxWidth: "100%"
         } }, live.hash) : null;
+      var srOnly = { position: "absolute", width: "1px", height: "1px", padding: 0, margin: "-1px", overflow: "hidden", clip: "rect(0, 0, 0, 0)", whiteSpace: "nowrap", border: 0, scrollMarginTop: "64px" };
       return h(G.Atoms.Box, { "data-gui-node-id": p["data-gui-node-id"], "data-me-seed-input": which, "data-me-compound-sbs": "",
           sx: {
+            position: "relative",
             width: "100%", maxWidth: "100%", minWidth: 0, overflow: "visible",
             display: "grid",
-            gridTemplateColumns: live ? "auto minmax(0, 1fr)" : "minmax(0, 1fr)",
-            gridTemplateAreas: live ? '"card fields"' : '"fields"',
-            columnGap: 1.5, rowGap: 1.25, alignItems: "start", mt: 0.5, mb: 1, pt: 1
+            gridTemplateColumns: live ? "auto minmax(0, 1fr) minmax(0, 1.15fr)" : "minmax(0, 1fr) minmax(0, 1.15fr)",
+            gridTemplateAreas: live ? '"card fields ctors"' : '"fields ctors"',
+            columnGap: 1.5, rowGap: 1.5, alignItems: "start", mt: 0, mb: 1, pt: 0,
+            "@media (max-width: 719px)": {
+              gridTemplateColumns: "minmax(0, 1fr)",
+              gridTemplateAreas: live ? '"card" "fields" "ctors"' : '"fields" "ctors"'
+            }
           } },
+        h(G.Atoms.Box, { component: "h3", id: "compound", sx: srOnly }, "Compound"),
+        h(G.Atoms.Box, { component: "h3", id: "the-three-constructors", sx: srOnly }, "The three constructors"),
         live ? h(G.Atoms.Box, { "data-me-compound-qr": "", sx: { gridArea: "card", alignSelf: "start", width: "fit-content" } },
           h(MeCard, { live: live, focus: "me", inline: true, hug: true, compact: true, keepCard: true, expandable: true, copyable: true, noHashLabel: true })) : null,
         h(G.Atoms.Box, { "data-me-compound-fields": "", sx: {
           gridArea: "fields", display: "flex", flexDirection: "column",
           justifyContent: "flex-start",
-          gap: 1.5, minWidth: 0, maxWidth: live ? "none" : 520, width: "100%",
+          gap: 1.5, minWidth: 0, width: "100%",
           overflow: "visible", pt: 0, alignSelf: "start"
         } },
           field("Username", setUser, false, "username"),
           field("Secret", setSecret, true, "secret"),
-          fullHashEl));
+          fullHashEl),
+        h(G.Atoms.Box, { "data-me-compound-ctors": "", sx: { gridArea: "ctors", minWidth: 0, alignSelf: "start" } },
+          h(MeCtorRecap)));
     }
     return h(G.Atoms.Box, { "data-gui-node-id": p["data-gui-node-id"], "data-me-seed-input": which,
         sx: { maxWidth: seedFieldOnly ? "100%" : 520, width: "100%", display: "flex", flexDirection: "column", gap: 2, mt: seedFieldOnly ? 0 : .5, mb: seedFieldOnly ? 0 : 3, pt: seedFieldOnly ? 0 : 1, overflow: "visible" } },
@@ -882,17 +892,27 @@
     var paper = "var(--mui-palette-background-paper, transparent)";
     var text = "var(--mui-palette-text-primary, currentColor)";
     var div = "var(--mui-palette-divider, rgba(127,127,127,.25))";
+    var root = "var(--me-syn-root, var(--mui-palette-primary-main, #58a6ff))";
+    var str = "var(--me-syn-string, #d29922)";
+    var cm = "var(--me-syn-comment, " + fg2 + ")";
+    var kw = "var(--me-syn-keyword, var(--me-syn-path, " + text + "))";
+    var punct = "var(--me-syn-punct, " + fg2 + ")";
     var mix = function (p) { return "color-mix(in srgb, " + acc + " " + p + "%, transparent)"; };
-    return ".me-ctor{font-family:" + MONO + ";font-size:13px;line-height:1.7;margin:0 0 16px;padding:12px 16px;border:1px solid " + div + ";border-radius:10px;background:color-mix(in srgb, " + text + " 4%, " + paper + ");color:" + text + ";white-space:pre;overflow-x:auto;max-width:100%;width:fit-content;box-sizing:border-box}" +
+    var smix = function (p) { return "color-mix(in srgb, " + str + " " + p + "%, transparent)"; };
+    return ".me-ctor{font-family:" + MONO + ";font-size:13px;line-height:1.7;margin:0;padding:12px 16px;border:1px solid " + div + ";border-radius:12px;background:" + paper + ";color:" + text + ";white-space:pre;overflow-x:auto;max-width:100%;width:100%;box-sizing:border-box}" +
       ".me-ctor .me-ctor-ln{display:block}.me-ctor .me-ctor-ln+.me-ctor-ln{margin-top:2px}" +
-      ".me-ctor-cm{color:" + fg2 + ";font-style:italic}" +
+      ".me-ctor .mes-kw{color:" + kw + "}" +
+      ".me-ctor .mes-punct,.me-ctor .mes-paren{color:" + punct + "}" +
+      ".me-ctor .mes-root{color:" + root + ";font-weight:700}" +
+      ".me-ctor .mes-str,.me-ctor .mes-quote{color:" + str + ";background:" + smix(16) + ";box-shadow:0 0 0 1px " + smix(40) + ";border-radius:3px;padding:0 3px;margin:0 1px}" +
+      ".me-ctor-cm,.me-ctor .mes-comment{color:" + cm + ";font-style:italic}" +
       ".me-ctor-t[data-me-ctor-k]{cursor:pointer;border-radius:3px;transition:background .12s,box-shadow .12s}" +
       ".me-ctor-t.on{background:" + mix(25) + ";box-shadow:0 0 0 1px " + acc + "}" +
       ".me-ctor-t.rel{background:" + mix(10) + "}" +
       ".me-ctor :focus-visible{outline:2px solid " + acc + ";outline-offset:2px}" +
       "[data-me-ctor-hit]{border-radius:6px;background:" + mix(18) + ";box-shadow:0 0 0 2px " + acc + ", 0 0 10px " + mix(40) + ";transition:background .12s,box-shadow .12s}" +
       "[data-me-ctor-hit].MuiOutlinedInput-root,[data-me-ctor-hit] .MuiOutlinedInput-root{box-shadow:0 0 0 2px " + acc + ", 0 0 10px " + mix(40) + ";background:" + mix(14) + "}" +
-      "@media (max-width:600px){.me-ctor{width:100%;white-space:pre-wrap}.me-ctor-pad{display:none}.me-ctor-cm{display:block;margin-top:0;padding-left:0;white-space:pre-wrap}}" +
+      "[data-me-compound-ctors] .me-ctor{white-space:pre-wrap}[data-me-compound-ctors] .me-ctor-pad{display:none}[data-me-compound-ctors] .me-ctor-cm{display:block;margin-top:0;padding-left:0;white-space:pre-wrap}@media (max-width:719px){.me-ctor{white-space:pre-wrap}.me-ctor-pad{display:none}.me-ctor-cm{display:block;margin-top:0;padding-left:0;white-space:pre-wrap}}" +
       "@media (prefers-reduced-motion:reduce){.me-ctor-t[data-me-ctor-k],[data-me-ctor-hit]{transition:none}}";
   })();
   var CTOR_SEL = {
@@ -935,7 +955,7 @@
     var bind = function (k, label) {
       return {
         "data-me-ctor-k": k,
-        className: "me-ctor-t" + (a === k ? " on" : (a === "me" && k === "anon") || (a === "anon" && k === "me") ? " rel" : ""),
+        className: ("me-ctor-t " + (arguments[2] || "")).trim() + (a === k ? " on" : (a === "me" && k === "anon") || (a === "anon" && k === "me") ? " rel" : ""),
         tabIndex: 0,
         role: "button",
         "aria-label": label,
@@ -953,24 +973,24 @@
     };
     var lines = [
       { comment: "// anonymous seed, reused or generated", parts: [
-        { t: "new " },
-        { t: "ME()", k: "anon", label: "new ME() — the anonymous root QR" }
+        { t: "new ", cls: "mes-kw" },
+        { t: "ME()", k: "anon", cls: "mes-root", label: "new ME() — the anonymous root QR" }
       ] },
       { comment: "// literal seed", parts: [
-        { t: "new " },
-        { t: "ME", k: "me", label: "ME — every QR on this page" },
-        { t: "(" },
-        { t: "\"seed\"", k: "seed", label: "\"seed\" — Seed inputs and their Hash" },
-        { t: ")" }
+        { t: "new ", cls: "mes-kw" },
+        { t: "ME", k: "me", cls: "mes-root", label: "ME — every QR on this page" },
+        { t: "(", cls: "mes-punct" },
+        { t: "\"seed\"", k: "seed", cls: "mes-str mes-quote", label: "\"seed\" — Seed inputs and their Hash" },
+        { t: ")", cls: "mes-punct" }
       ] },
       { comment: "// compound seed, derived", parts: [
-        { t: "new " },
-        { t: "ME", k: "me", label: "ME — every QR on this page" },
-        { t: "(" },
-        { t: "username", k: "username", label: "username — Username inputs" },
-        { t: ", " },
-        { t: "secret", k: "secret", label: "secret — Secret inputs" },
-        { t: ")" }
+        { t: "new ", cls: "mes-kw" },
+        { t: "ME", k: "me", cls: "mes-root", label: "ME — every QR on this page" },
+        { t: "(", cls: "mes-punct" },
+        { t: "username", k: "username", cls: "mes-str", label: "username — Username inputs" },
+        { t: ", ", cls: "mes-punct" },
+        { t: "secret", k: "secret", cls: "mes-str", label: "secret — Secret inputs" },
+        { t: ")", cls: "mes-punct" }
       ] }
     ];
     var width = 0, i, code;
@@ -984,11 +1004,11 @@
         var pad = "  " + " ".repeat(Math.max(0, width - code.length));
         return h("span", { key: i, className: "me-ctor-ln" },
           ln.parts.map(function (p, j) {
-            return p.k ? h("span", Object.assign({ key: j }, bind(p.k, p.label)), p.t)
-                       : h("span", { key: j }, p.t);
+            return p.k ? h("span", Object.assign({ key: j }, bind(p.k, p.label, p.cls)), p.t)
+                       : h("span", { key: j, className: p.cls || undefined }, p.t);
           }),
           h("span", { className: "me-ctor-pad" }, pad),
-          h("span", { className: "me-ctor-cm" }, ln.comment));
+          h("span", { className: "me-ctor-cm mes-comment" }, ln.comment));
       }));
   }
 

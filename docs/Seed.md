@@ -2,14 +2,14 @@
 image: https://neurons-me.github.io/.me/docs/assets/og-seed.jpg
 layout: gui-doc
 title: "SEED — .me"
-description: "The seed is the root value a .me kernel derives its identity from: how it is generated, derived, and stored."
+description: "The root of .me: how it is generated, derived, and stored."
 mepath:
   - text: Docs
     url: https://neurons-me.github.io/.me/docs/
 crumb: Seed
 scripts:
   - /assets/me-kernel/me-kernel.js?v=1
-  - /assets/me-live/me-live.js?v=31
+  - /assets/me-live/me-live.js?v=35
 related:
   - me.html
   - Primitives.html
@@ -39,19 +39,16 @@ Change one character, and the Hash changes completely.
 
 <div data-live="MeSeedDemo" data-demo="sensitivity"></div>
 
-### Compound
+### Compound {: #compound}
 
-Username + Secret also give a seed.
-
-<div data-live="MeSeedInput" data-mode="compound"></div>
-
-### The three constructors
-
-<div data-live="MeCtorRecap">
+<div data-live="MeSeedInput" data-mode="compound">
+<div data-me-ctor-fallback>
+<h3 id="the-three-constructors">The three constructors</h3>
 <pre><code class="language-ts">new ME()                  // anonymous seed, reused or generated
 new ME("seed")            // literal seed
 new ME(username, secret)  // compound seed, derived
 </code></pre>
+</div>
 </div>
 
 ### Local

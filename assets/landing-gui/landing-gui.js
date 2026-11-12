@@ -707,13 +707,15 @@
       const lede = hd && hd.nextElementSibling && tagOf(hd.nextElementSibling) === "p" ? hd.nextElementSibling : null;
       const rest = document.createElement("div");
       kids.forEach((c) => { if (c !== hd && c !== lede) rest.appendChild(c); });
+      const isCompound = hd && /^(Compound)$/.test((hd.textContent || "").replace(/\s+/g, " ").trim());
       // Title left, description on the same line to its right (wraps beside the title). Input directly below.
       // On small screens the description stacks under the title. No column-2 divider.
-      return N("Box", { component: "section", className: "doc-demo-section", "data-me-demo-section": "", sx: {
+      // Compound: no full-width heading — title lives on the Username/Secret column (me-live.js), id="compound" stays there.
+      return N("Box", { component: "section", className: "doc-demo-section", "data-me-demo-section": isCompound ? "compound" : "", sx: {
         mt: 3.5, mb: 2.5, minWidth: 0,
         "& [data-me-demo], & [data-me-seed-input]": { mt: "0 !important", mb: "0 !important" }
       } }, [
-        N("Box", { "data-me-section-head": "", sx: {
+        isCompound ? null : N("Box", { "data-me-section-head": "", sx: {
           display: "flex", alignItems: "baseline", columnGap: 1.5, rowGap: 0.5, mb: 1, minWidth: 0,
           "@media (max-width: 639px)": { flexDirection: "column", alignItems: "stretch", columnGap: 0 }
         } }, [
@@ -721,7 +723,7 @@
           lede && N("Box", { component: "p", sx: { fontSize: "1rem", fontWeight: 400, lineHeight: 1.3, m: 0, color: "text.secondary", minWidth: 0, flex: "1 1 auto" } }, inl(lede))
         ].filter(Boolean)),
         N("Box", { "data-me-section-body": "", sx: { minWidth: 0, display: "flow-root", "& > * + *": { mt: 1 } } }, blocks(rest))
-      ]);
+      ].filter(Boolean));
     }
     if (b.classList.contains("doc-intro-split")) {
       const copy = [...b.children].find((c) => c.classList.contains("doc-intro-copy"));
