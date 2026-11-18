@@ -1,10 +1,33 @@
 # TypeScript .me Changelog
 
-## 4.2.2
+## 4.3.0
 
-Package metadata only. **No code change**: the kernel behaves exactly as in 4.2.1.
+Declared roots in `me://` addressing. **The kernel is unchanged**: values, `explain()`, memories, hashes and
+snapshots behave exactly as in 4.2.1. The change is in name parsing and formatting (`src/me-uri.ts`) and in
+`createThisMe` accepting a one-label configured root (`src/factory.ts`). Minor version, not a patch: it adds
+public functions.
 
-- `description`, `keywords`, `homepage` and `author` brought in line with the other neurons.me packages.
+Name resolution under a root the runtime declares for itself. Nothing changes for callers that pass no declared
+spaces: context-free parsing and formatting keep their two-label minimum.
+
+- **Added:** a root the runtime declares (`localhost`, `here`, `neurons.me`) may have one or more labels, and
+  names inside it (`jabellae.localhost`) resolve against it. The longest declared space that fits wins; a name
+  is never split without that context.
+  - `validateKnownSpaces(spaces)`: checks a declaration where it is configured and names the bad entry.
+  - `parseMeUri(uri, { knownSpaces })`, `formatCanonicalMeUri({ ..., knownSpaces })` and
+    `canonicalizeHumanIdentity(..., { knownSpaces })` accept a one-label space only when it is declared.
+  - `parseMeSpaceUri` / `tryParseMeSpaceUri` / `formatMeSpaceUri`: `me://<space>` addresses a declared space
+    itself, with optional `[selector]` and `/path`. `me://ana.here` is refused as a space (it is a namespace).
+  - `createThisMe({ name, space })`: an explicitly configured root may be one label.
+  - `projectDnsHostToNamespace` returns `INVALID_KNOWN_SPACES` for a bad declaration instead of throwing.
+- **Changed:** `projectDnsHostToNamespace` checks the declared spaces before the `localhost` / `*.local`
+  transport-only rule, which remains the answer for undeclared hosts. A declared `localhost` or `<host>.local`
+  now resolves as the space it was declared to be.
+- **Compatibility:** a consumer that calls `validateKnownSpaces` or `parseMeSpaceUri` needs this version or later.
+  monad.ai checks for these functions at startup and refuses to start against an older one; its dependency
+  floor should be `this.me ^4.3.0` (4.2.0 and 4.2.1 do not have them).
+- **Package metadata:** `description`, `keywords`, `homepage` and `author` brought in line with the other
+  neurons.me packages. (Prepared earlier as 4.2.2, which was never published.)
 
 ## 4.2.1
 
@@ -227,28 +250,8 @@ ops("ops.beansKg"); // readable when the key matches
 - Still open from 4.1.0: #2 (formulas not in snapshots), #5 (numeric segment
   after a dot in formula text), #6 (path identity), log growth.
 
-## Unreleased - declared roots (merged onto 4.2.0 for the VM release candidate; version number NOT decided)
-
-Name resolution under a root the runtime declares for itself. Nothing changes for callers that pass no declared
-spaces: context-free parsing and formatting keep their two-label minimum.
-
-- **Added:** a root the runtime declares (`localhost`, `here`, `neurons.me`) may have one or more labels, and
-  names inside it (`jabellae.localhost`) resolve against it. The longest declared space that fits wins; a name
-  is never split without that context.
-  - `validateKnownSpaces(spaces)`: checks a declaration where it is configured and names the bad entry.
-  - `parseMeUri(uri, { knownSpaces })`, `formatCanonicalMeUri({ ..., knownSpaces })` and
-    `canonicalizeHumanIdentity(..., { knownSpaces })` accept a one-label space only when it is declared.
-  - `parseMeSpaceUri` / `tryParseMeSpaceUri` / `formatMeSpaceUri`: `me://<space>` addresses a declared space
-    itself, with optional `[selector]` and `/path`. `me://ana.here` is refused as a space (it is a namespace).
-  - `createThisMe({ name, space })`: an explicitly configured root may be one label.
-  - `projectDnsHostToNamespace` returns `INVALID_KNOWN_SPACES` for a bad declaration instead of throwing.
-- **Changed:** `projectDnsHostToNamespace` checks the declared spaces before the `localhost` / `*.local`
-  transport-only rule, which remains the answer for undeclared hosts. A declared `localhost` or `<host>.local`
-  now resolves as the space it was declared to be.
-- **Compatibility:** a consumer that calls `validateKnownSpaces` or `parseMeSpaceUri` needs this version or later.
-  monad.ai declares `this.me ^4.2.0` for that reason and refuses to start against an older one.
-
 ## 4.1.0
+
 Correctness release for derived values (`=`). Several cases returned a stale
 or placeholder value without any error; they are fixed, and two behaviors
 change as a result (see **Changed**). Minor version rather than a patch
