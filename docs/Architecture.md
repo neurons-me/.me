@@ -8,7 +8,7 @@ view_content_category: "Docs"
 
 # O(k) Semantic Kernel Architecture
 
-Every call into `.me` is a path — Subject-Verb-Object, plus an operator table (`@`, `_`, `~`, `->`, `=`, `?`, `-`) for identity, secrets, resets, derivation, assignment, queries, and negation:
+Every call into `.me` is a path — Subject-Verb-Object, plus an operator table ([`@`, `_`, `~`, `__`/`->`, `=`, `?`, `-`](./Operators.html)) for identity, secret scopes, noise resets, pointers, derivation, queries, and removal:
 
 ```js
 me.some.path("value");   // write a path

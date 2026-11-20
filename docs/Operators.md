@@ -33,6 +33,8 @@ An operator is called as a bracketed key on a path: `me.path["op"](arg)`. Select
 
 `__` and `->` are the same operator; both return the same results above.
 
+`me["!"]` is not in the table because it is not a path operator: it is the escape into the runtime plane (`me["!"].identity()`, `me["!"].explain(path)`, `me["!"].prove()`, snapshots, replay), described in [proxy.ts](https://github.com/neurons-me/.me/blob/main/Typescript/src/proxy.ts) as "the reflective runtime plane for .me". Inside a `=` expression, `!` is logical not.
+
 ## See also
 
 - [.me Syntax](./Syntax.html): paths, selectors and the call forms these operators use.
